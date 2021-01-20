@@ -9,7 +9,7 @@ import Foundation
 
 struct Endpoint {
     var path: String
-    var httpMethod: String
+    var httpMethod: RequestType
     var headers: [String: Any] { ["Content-Type": "application/json", "User-Agent": "Pepper Tesla App"] }
     var parameters: [URLQueryItem]
     var queryItems: [URLQueryItem] { parameters + alwaysIncludeParameters }

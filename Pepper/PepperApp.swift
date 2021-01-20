@@ -6,12 +6,13 @@
 //
 
 import SwiftUI
+import Combine
 
 @main
 struct PepperApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            LoginView()
         }
     }
 }

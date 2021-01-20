@@ -15,21 +15,24 @@ enum RequestType: String {
 
 protocol NetworkControllerProtocol: class {
     typealias Headers = [String: Any]
-    func request<T>(type: T.Type, url: URL, headers: Headers, httpMethod: RequestType) -> AnyPublisher<T, Error> where T: Decodable
+    func request<T>(type: T.Type, url: URL, headers: Headers, httpMethod: RequestType, token: String?) -> AnyPublisher<T, Error> where T: Decodable
 }
 
 final class NetworkController: NetworkControllerProtocol {
 
     static let shared = NetworkController()
 
-    func request<T: Decodable>(type: T.Type, url: URL, headers: Headers, httpMethod: RequestType = .get) -> AnyPublisher<T, Error> {
+    func request<T: Decodable>(type: T.Type, url: URL, headers: Headers, httpMethod: RequestType = .get, token: String?) -> AnyPublisher<T, Error> {
         var urlRequest = URLRequest(url: url)
+        if let token = token {
+            urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
         headers.forEach { (key, value) in
             if let value = value as? String {
                 urlRequest.setValue(value, forHTTPHeaderField: key)
-                urlRequest.httpMethod = httpMethod.rawValue
             }
         }
+        urlRequest.httpMethod = httpMethod.rawValue
         return URLSession.shared.dataTaskPublisher(for: urlRequest)
             .map(\.data)
             .decode(type: T.self, decoder: JSONDecoder())

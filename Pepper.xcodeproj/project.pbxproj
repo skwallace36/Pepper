@@ -8,28 +8,34 @@
 
 /* Begin PBXBuildFile section */
 		4583A46F25B3BDD3007C44EA /* PepperApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4583A46E25B3BDD3007C44EA /* PepperApp.swift */; };
-		4583A47125B3BDD3007C44EA /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4583A47025B3BDD3007C44EA /* ContentView.swift */; };
+		4583A47125B3BDD3007C44EA /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4583A47025B3BDD3007C44EA /* LoginView.swift */; };
 		4583A47325B3BDD4007C44EA /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4583A47225B3BDD4007C44EA /* Assets.xcassets */; };
 		4583A47625B3BDD4007C44EA /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4583A47525B3BDD4007C44EA /* Preview Assets.xcassets */; };
 		45C9625425B3E10100AB0D83 /* NetworkController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45C9625325B3E10100AB0D83 /* NetworkController.swift */; };
-		45C9625825B3E12500AB0D83 /* Endpoints.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45C9625725B3E12500AB0D83 /* Endpoints.swift */; };
-		45C9625B25B3E16C00AB0D83 /* Login.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45C9625A25B3E16C00AB0D83 /* Login.swift */; };
+		45C9625B25B3E16C00AB0D83 /* LoginNetworking.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45C9625A25B3E16C00AB0D83 /* LoginNetworking.swift */; };
 		45C9625F25B3E26E00AB0D83 /* Endpoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45C9625E25B3E26E00AB0D83 /* Endpoint.swift */; };
 		45C9626425B3EA0200AB0D83 /* Credentials.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45C9626325B3EA0200AB0D83 /* Credentials.swift */; };
+		45FA08BE25B8E27100A19CBF /* LoginViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45FA08BD25B8E27100A19CBF /* LoginViewModel.swift */; };
+		45FA08C425B8E3DD00A19CBF /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45FA08C325B8E3DD00A19CBF /* HomeView.swift */; };
+		45FA08C825B8E3E500A19CBF /* HomeViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45FA08C725B8E3E500A19CBF /* HomeViewModel.swift */; };
+		45FA08CD25B8E4E300A19CBF /* HomeNetworking.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45FA08CC25B8E4E300A19CBF /* HomeNetworking.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		4583A46B25B3BDD3007C44EA /* Pepper.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Pepper.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		4583A46E25B3BDD3007C44EA /* PepperApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PepperApp.swift; sourceTree = "<group>"; };
-		4583A47025B3BDD3007C44EA /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		4583A47025B3BDD3007C44EA /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
 		4583A47225B3BDD4007C44EA /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		4583A47525B3BDD4007C44EA /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		4583A47725B3BDD4007C44EA /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		45C9625325B3E10100AB0D83 /* NetworkController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkController.swift; sourceTree = "<group>"; };
-		45C9625725B3E12500AB0D83 /* Endpoints.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Endpoints.swift; sourceTree = "<group>"; };
-		45C9625A25B3E16C00AB0D83 /* Login.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Login.swift; sourceTree = "<group>"; };
+		45C9625A25B3E16C00AB0D83 /* LoginNetworking.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginNetworking.swift; sourceTree = "<group>"; };
 		45C9625E25B3E26E00AB0D83 /* Endpoint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Endpoint.swift; sourceTree = "<group>"; };
 		45C9626325B3EA0200AB0D83 /* Credentials.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Credentials.swift; sourceTree = "<group>"; };
+		45FA08BD25B8E27100A19CBF /* LoginViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginViewModel.swift; sourceTree = "<group>"; };
+		45FA08C325B8E3DD00A19CBF /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		45FA08C725B8E3E500A19CBF /* HomeViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeViewModel.swift; sourceTree = "<group>"; };
+		45FA08CC25B8E4E300A19CBF /* HomeNetworking.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeNetworking.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -62,9 +68,10 @@
 		4583A46D25B3BDD3007C44EA /* Pepper */ = {
 			isa = PBXGroup;
 			children = (
+				45FA08C225B8E3CC00A19CBF /* Home */,
+				45FA08BC25B8E25E00A19CBF /* Login */,
 				45C9625225B3E0F500AB0D83 /* Networking */,
 				4583A46E25B3BDD3007C44EA /* PepperApp.swift */,
-				4583A47025B3BDD3007C44EA /* ContentView.swift */,
 				4583A47225B3BDD4007C44EA /* Assets.xcassets */,
 				4583A47725B3BDD4007C44EA /* Info.plist */,
 				4583A47425B3BDD4007C44EA /* Preview Content */,
@@ -85,11 +92,29 @@
 			children = (
 				45C9625325B3E10100AB0D83 /* NetworkController.swift */,
 				45C9625E25B3E26E00AB0D83 /* Endpoint.swift */,
-				45C9625725B3E12500AB0D83 /* Endpoints.swift */,
 				45C9626325B3EA0200AB0D83 /* Credentials.swift */,
-				45C9625A25B3E16C00AB0D83 /* Login.swift */,
 			);
 			path = Networking;
+			sourceTree = "<group>";
+		};
+		45FA08BC25B8E25E00A19CBF /* Login */ = {
+			isa = PBXGroup;
+			children = (
+				4583A47025B3BDD3007C44EA /* LoginView.swift */,
+				45FA08BD25B8E27100A19CBF /* LoginViewModel.swift */,
+				45C9625A25B3E16C00AB0D83 /* LoginNetworking.swift */,
+			);
+			path = Login;
+			sourceTree = "<group>";
+		};
+		45FA08C225B8E3CC00A19CBF /* Home */ = {
+			isa = PBXGroup;
+			children = (
+				45FA08C325B8E3DD00A19CBF /* HomeView.swift */,
+				45FA08C725B8E3E500A19CBF /* HomeViewModel.swift */,
+				45FA08CC25B8E4E300A19CBF /* HomeNetworking.swift */,
+			);
+			path = Home;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -161,11 +186,14 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				4583A47125B3BDD3007C44EA /* ContentView.swift in Sources */,
-				45C9625B25B3E16C00AB0D83 /* Login.swift in Sources */,
+				45FA08CD25B8E4E300A19CBF /* HomeNetworking.swift in Sources */,
+				45FA08C425B8E3DD00A19CBF /* HomeView.swift in Sources */,
+				4583A47125B3BDD3007C44EA /* LoginView.swift in Sources */,
+				45C9625B25B3E16C00AB0D83 /* LoginNetworking.swift in Sources */,
+				45FA08C825B8E3E500A19CBF /* HomeViewModel.swift in Sources */,
 				45C9625425B3E10100AB0D83 /* NetworkController.swift in Sources */,
 				45C9626425B3EA0200AB0D83 /* Credentials.swift in Sources */,
-				45C9625825B3E12500AB0D83 /* Endpoints.swift in Sources */,
+				45FA08BE25B8E27100A19CBF /* LoginViewModel.swift in Sources */,
 				45C9625F25B3E26E00AB0D83 /* Endpoint.swift in Sources */,
 				4583A46F25B3BDD3007C44EA /* PepperApp.swift in Sources */,
 			);
