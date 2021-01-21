@@ -15,14 +15,15 @@ enum RequestType: String {
 
 protocol NetworkControllerProtocol: class {
     typealias Headers = [String: Any]
-    func request<T>(type: T.Type, url: URL, headers: Headers, httpMethod: RequestType, token: String?) -> AnyPublisher<T, Error> where T: Decodable
+    func request<T>(type: T.Type, url: URL, headers: Headers, httpMethod: RequestType) -> AnyPublisher<T, Error> where T: Decodable
 }
 
 final class NetworkController: NetworkControllerProtocol {
 
     static let shared = NetworkController()
+    var token: String?
 
-    func request<T: Decodable>(type: T.Type, url: URL, headers: Headers, httpMethod: RequestType = .get, token: String?) -> AnyPublisher<T, Error> {
+    func request<T: Decodable>(type: T.Type, url: URL, headers: Headers, httpMethod: RequestType = .get) -> AnyPublisher<T, Error> {
         var urlRequest = URLRequest(url: url)
         if let token = token {
             urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")

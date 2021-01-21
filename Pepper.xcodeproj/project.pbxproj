@@ -19,6 +19,8 @@
 		45FA08C425B8E3DD00A19CBF /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45FA08C325B8E3DD00A19CBF /* HomeView.swift */; };
 		45FA08C825B8E3E500A19CBF /* HomeViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45FA08C725B8E3E500A19CBF /* HomeViewModel.swift */; };
 		45FA08CD25B8E4E300A19CBF /* HomeNetworking.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45FA08CC25B8E4E300A19CBF /* HomeNetworking.swift */; };
+		45FA08D925B90F0500A19CBF /* Climate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45FA08D825B90F0500A19CBF /* Climate.swift */; };
+		45FA08DE25B9117C00A19CBF /* Vehicle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45FA08DD25B9117C00A19CBF /* Vehicle.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -36,6 +38,8 @@
 		45FA08C325B8E3DD00A19CBF /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		45FA08C725B8E3E500A19CBF /* HomeViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeViewModel.swift; sourceTree = "<group>"; };
 		45FA08CC25B8E4E300A19CBF /* HomeNetworking.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeNetworking.swift; sourceTree = "<group>"; };
+		45FA08D825B90F0500A19CBF /* Climate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Climate.swift; sourceTree = "<group>"; };
+		45FA08DD25B9117C00A19CBF /* Vehicle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Vehicle.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -110,11 +114,29 @@
 		45FA08C225B8E3CC00A19CBF /* Home */ = {
 			isa = PBXGroup;
 			children = (
+				45FA08DC25B9116600A19CBF /* Vehicle */,
+				45FA08D725B90EF800A19CBF /* Climate */,
 				45FA08C325B8E3DD00A19CBF /* HomeView.swift */,
 				45FA08C725B8E3E500A19CBF /* HomeViewModel.swift */,
 				45FA08CC25B8E4E300A19CBF /* HomeNetworking.swift */,
 			);
 			path = Home;
+			sourceTree = "<group>";
+		};
+		45FA08D725B90EF800A19CBF /* Climate */ = {
+			isa = PBXGroup;
+			children = (
+				45FA08D825B90F0500A19CBF /* Climate.swift */,
+			);
+			path = Climate;
+			sourceTree = "<group>";
+		};
+		45FA08DC25B9116600A19CBF /* Vehicle */ = {
+			isa = PBXGroup;
+			children = (
+				45FA08DD25B9117C00A19CBF /* Vehicle.swift */,
+			);
+			path = Vehicle;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -186,6 +208,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				45FA08DE25B9117C00A19CBF /* Vehicle.swift in Sources */,
 				45FA08CD25B8E4E300A19CBF /* HomeNetworking.swift in Sources */,
 				45FA08C425B8E3DD00A19CBF /* HomeView.swift in Sources */,
 				4583A47125B3BDD3007C44EA /* LoginView.swift in Sources */,
@@ -195,6 +218,7 @@
 				45C9626425B3EA0200AB0D83 /* Credentials.swift in Sources */,
 				45FA08BE25B8E27100A19CBF /* LoginViewModel.swift in Sources */,
 				45C9625F25B3E26E00AB0D83 /* Endpoint.swift in Sources */,
+				45FA08D925B90F0500A19CBF /* Climate.swift in Sources */,
 				4583A46F25B3BDD3007C44EA /* PepperApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

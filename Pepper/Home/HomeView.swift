@@ -15,15 +15,13 @@ struct HomeView: View {
 
     init(loginViewModel: LoginViewModel) {
         self.loginViewModel = loginViewModel
-        self.homeViewModel = HomeViewModel(token: loginViewModel.token)
+        self.homeViewModel = HomeViewModel()
     }
 
     var body: some View {
-        Text("welcome")
-        Button(action: {
-            loginViewModel.logoutButtonTouched()
-        }, label: {
-            Text("Logout")
-        })
+        VStack {
+            Text(homeViewModel.selectedVehicle?.display_name ?? "").animation(.none)
+            Text("\(homeViewModel.selectedVehicleClimate?.insideTemp ?? 0.0)").animation(.none)
+        }
     }
 }

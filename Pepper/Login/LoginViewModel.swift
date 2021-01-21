@@ -15,7 +15,6 @@ class LoginViewModel: ObservableObject {
     @Published var loggedIn = false
     @Published var email: String = Credentials.email
     @Published var password: String = Credentials.password
-    @Published var token: String?
 
     func loginButtonTouched() {
         loginNetworking.fetchToken(email: email, password: password)
@@ -26,8 +25,8 @@ class LoginViewModel: ObservableObject {
                 case .finished: break
                 }
             }) { tokenResponse in
-                self.token = tokenResponse.access_token
                 DispatchQueue.main.async { [weak self] in
+                    NetworkController.shared.token = tokenResponse.access_token
                     self?.loggedIn = true
                 }
                 self.subscriptions.removeAll()

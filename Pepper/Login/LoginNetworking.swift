@@ -26,7 +26,7 @@ public class LoginNetworking: LoginProtocol {
 
     func fetchToken(email: String, password: String) -> AnyPublisher<FetchTokenResponse, Error> {
         let endpoint = Endpoint.fetchToken(email: email, password: password)
-        return networkController.request(type: FetchTokenResponse.self, url: endpoint.url, headers: endpoint.headers, httpMethod: .post, token: nil)
+        return networkController.request(type: FetchTokenResponse.self, url: endpoint.url, headers: endpoint.headers, httpMethod: .post)
     }
 }
 

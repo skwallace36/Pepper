@@ -6,28 +6,60 @@
 //
 
 import Combine
+import Foundation
 
 class HomeViewModel: ObservableObject {
-    let homeHandler = HomeNetworking()
+
+    @Published var selectedVehicle: Vehicle? {
+        didSet { fetchSelectedVehicleClimate() }
+    }
+
+    @Published var selectedVehicleClimate: ClimateStateResponse?
+
+    let homeNetworking = HomeNetworking()
     var subscriptions = Set<AnyCancellable>()
 
     var fetchVehiclesResponse: FetchVehiclesResponse?
+    var vechicles: [Vehicle]?
 
-    init(token: String?) {
-        fetchVehicles(token: token)
+    var token: String?
+
+    init() {
+        fetchVehicles()
     }
 
-    func fetchVehicles(token: String?) {
-        homeHandler.getVehicles(token: token)
-        .sink(receiveCompletion: { (completion) in
-            switch completion {
-            case let .failure(error):
-                print("Couldn't get users: \(error)")
-            case .finished: break
+    func fetchVehicles() {
+        homeNetworking.getVehicles()
+            .sink(receiveCompletion: { (completion) in
+                switch completion {
+                case let .failure(error):
+                    print("Couldn't get users: \(error)")
+                case .finished: break
+                }
+            }) { vehicleResponse in
+                self.vechicles = vehicleResponse.response
+                DispatchQueue.main.async { [weak self] in
+                    self?.selectedVehicle = vehicleResponse.response.first
+                }
             }
-        }) { vehicleResponse in
-            print(vehicleResponse)
-        }
-        .store(in: &subscriptions)
+            .store(in: &subscriptions)
     }
+
+    func fetchSelectedVehicleClimate() {
+        guard let id = selectedVehicle?.id else { return }
+        homeNetworking.getClimateState(id: id)
+            .sink(receiveCompletion: { (completion) in
+                switch completion {
+                case let .failure(error):
+                    print("Couldn't get users: \(error)")
+                case .finished: break
+                }
+            }) { climateResponse in
+                DispatchQueue.main.async { [ weak self] in
+                    self?.selectedVehicleClimate = climateResponse
+                }
+            }
+            .store(in: &subscriptions)
+    }
+
 }
