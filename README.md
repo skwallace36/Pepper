@@ -1,3 +1,3 @@
 # Pepper
 
-A description of this package.
+A SwiftUI Collections / Grid / List builder.
