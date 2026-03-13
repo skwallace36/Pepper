@@ -1,0 +1,878 @@
+#!/usr/bin/env python3
+"""
+pepper-ctl -- command-line interface for the pepper plane.
+
+Usage:
+  pepper-ctl ping
+  pepper-ctl tree [--depth N]
+  pepper-ctl snapshot                         # interactive elements (introspect)
+  pepper-ctl tap --text "Label"
+  pepper-ctl tap --id save_button
+  pepper-ctl tap --class UIButton --index 0
+  pepper-ctl tap --point 100,750
+  pepper-ctl input --id email_field --value "user@example.com"
+  pepper-ctl navigate --deeplink "home"
+  pepper-ctl navigate --screen settings
+  pepper-ctl look                             # compact screen summary
+  pepper-ctl read --id element_id
+  pepper-ctl scroll --direction down --amount 300
+  pepper-ctl batch --file commands.json
+  pepper-ctl help
+  pepper-ctl raw '{"cmd":"ping"}'
+"""
+
+import argparse
+import asyncio
+import base64
+import json
+import os
+import sys
+import uuid
+
+try:
+    import websockets
+except ImportError:
+    print("Error: 'websockets' package required. Install with:", file=sys.stderr)
+    print("  pip install websockets", file=sys.stderr)
+    sys.exit(1)
+
+DEFAULT_HOST = "localhost"
+DEFAULT_PORT = None  # Auto-discover from port files
+PORT_DIR = "/tmp/pepper-ports"
+
+
+def load_env():
+    """Load .env file from project root for default configuration."""
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    env_file = os.path.join(os.path.dirname(script_dir), ".env")
+    env = {}
+    if os.path.isfile(env_file):
+        with open(env_file) as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key, _, val = line.partition("=")
+                env[key.strip()] = val.strip().strip("'\"")
+    return env
+
+
+def discover_port(simulator=None):
+    """Auto-discover Pepper port from port files written by the dylib.
+
+    If simulator UDID is given, reads that specific port file.
+    Otherwise, if exactly one port file exists, uses it.
+    Falls back to 8765 for backwards compatibility.
+    """
+    if simulator:
+        path = os.path.join(PORT_DIR, f"{simulator}.port")
+        if os.path.exists(path):
+            try:
+                return int(open(path).read().strip())
+            except (ValueError, OSError):
+                pass
+        print(f"Warning: No port file for simulator {simulator}, falling back to 8765", file=sys.stderr)
+        return 8765
+
+    # Auto-discover: look for port files
+    if os.path.isdir(PORT_DIR):
+        port_files = [f for f in os.listdir(PORT_DIR) if f.endswith(".port")]
+        if len(port_files) == 1:
+            try:
+                path = os.path.join(PORT_DIR, port_files[0])
+                return int(open(path).read().strip())
+            except (ValueError, OSError):
+                pass
+        elif len(port_files) > 1:
+            print(f"Multiple simulators running ({len(port_files)}). Use --simulator <UDID> to pick one:", file=sys.stderr)
+            for f in sorted(port_files):
+                udid = f.replace(".port", "")
+                try:
+                    port = int(open(os.path.join(PORT_DIR, f)).read().strip())
+                    print(f"  {udid} → port {port}", file=sys.stderr)
+                except (ValueError, OSError):
+                    pass
+            sys.exit(1)
+
+    return 8765
+
+# --- Colors ---
+
+USE_COLOR = sys.stdout.isatty()
+
+
+def _c(code, text):
+    if USE_COLOR:
+        return f"\033[{code}m{text}\033[0m"
+    return text
+
+
+def green(text):
+    return _c("32", text)
+
+
+def red(text):
+    return _c("31", text)
+
+
+def yellow(text):
+    return _c("33", text)
+
+
+def cyan(text):
+    return _c("36", text)
+
+
+def dim(text):
+    return _c("2", text)
+
+
+def bold(text):
+    return _c("1", text)
+
+
+# --- Protocol helpers ---
+
+
+def make_command(cmd, params=None):
+    """Build a command message with a short unique id."""
+    msg = {"id": str(uuid.uuid4())[:8], "cmd": cmd}
+    if params:
+        msg["params"] = params
+    return msg
+
+
+async def send_command(host, port, msg, timeout=10, verbose=False):
+    """Connect, send a single command, return the response.
+
+    Filters out event messages (e.g. event:log) while waiting for
+    the command response matching our message id.
+    """
+    url = f"ws://{host}:{port}"
+    msg_id = msg.get("id")
+    try:
+        async with websockets.connect(url) as ws:
+            await ws.send(json.dumps(msg))
+            deadline = asyncio.get_event_loop().time() + timeout
+            while True:
+                remaining = deadline - asyncio.get_event_loop().time()
+                if remaining <= 0:
+                    print(red("Error: Timeout waiting for response."), file=sys.stderr)
+                    sys.exit(1)
+                raw = await asyncio.wait_for(ws.recv(), timeout=remaining)
+                data = json.loads(raw)
+                # Skip event messages (e.g. log events broadcast by the server)
+                if "event" in data:
+                    if verbose:
+                        evt = data["event"]
+                        evt_data = data.get("data", {})
+                        print(dim(f"[event:{evt}] {json.dumps(evt_data)}"), file=sys.stderr)
+                    continue
+                # Accept response matching our id, or any non-event response
+                if msg_id is None or data.get("id") == msg_id:
+                    return data
+    except ConnectionRefusedError:
+        print(red(f"Error: Cannot connect to {url}"), file=sys.stderr)
+        print("Is the app running with the control plane enabled?", file=sys.stderr)
+        sys.exit(1)
+    except asyncio.TimeoutError:
+        print(red("Error: Timeout waiting for response."), file=sys.stderr)
+        sys.exit(1)
+    except websockets.exceptions.ConnectionClosed:
+        cmd_name = msg.get("cmd", "unknown")
+        print(red(f"APP CRASHED. The '{cmd_name}' command caused the app to crash (WebSocket connection lost)."), file=sys.stderr)
+        print("Investigate the crash before retrying — do NOT just redeploy.", file=sys.stderr)
+        sys.exit(1)
+
+
+async def send_and_recv_multi(host, port, msg, timeout=10, verbose=False):
+    """Send a command and collect multiple responses (for batch)."""
+    url = f"ws://{host}:{port}"
+    msg_id = msg.get("id")
+    try:
+        async with websockets.connect(url) as ws:
+            await ws.send(json.dumps(msg))
+            deadline = asyncio.get_event_loop().time() + timeout
+            while True:
+                remaining = deadline - asyncio.get_event_loop().time()
+                if remaining <= 0:
+                    print(red("Error: Timeout waiting for response."), file=sys.stderr)
+                    sys.exit(1)
+                raw = await asyncio.wait_for(ws.recv(), timeout=remaining)
+                data = json.loads(raw)
+                if "event" in data:
+                    if verbose:
+                        evt = data["event"]
+                        evt_data = data.get("data", {})
+                        print(dim(f"[event:{evt}] {json.dumps(evt_data)}"), file=sys.stderr)
+                    continue
+                if msg_id is None or data.get("id") == msg_id:
+                    return data
+    except ConnectionRefusedError:
+        print(red(f"Error: Cannot connect to {url}"), file=sys.stderr)
+        sys.exit(1)
+    except asyncio.TimeoutError:
+        print(red("Error: Timeout waiting for response."), file=sys.stderr)
+        sys.exit(1)
+    except websockets.exceptions.ConnectionClosed:
+        cmd_name = msg.get("cmd", "unknown")
+        print(red(f"APP CRASHED. The '{cmd_name}' command caused the app to crash (WebSocket connection lost)."), file=sys.stderr)
+        print("Investigate the crash before retrying — do NOT just redeploy.", file=sys.stderr)
+        sys.exit(1)
+
+
+async def wait_for_events(host, port, events, timeout=30):
+    """Subscribe to events and wait."""
+    url = f"ws://{host}:{port}"
+    try:
+        async with websockets.connect(url) as ws:
+            sub = make_command("subscribe", {"events": events})
+            await ws.send(json.dumps(sub))
+            await asyncio.wait_for(ws.recv(), timeout=5)
+            print(f"Listening for events: {', '.join(events)} (timeout: {timeout}s)", file=sys.stderr)
+            deadline = asyncio.get_event_loop().time() + timeout
+            while asyncio.get_event_loop().time() < deadline:
+                remaining = deadline - asyncio.get_event_loop().time()
+                try:
+                    raw = await asyncio.wait_for(ws.recv(), timeout=min(remaining, 1.0))
+                    data = json.loads(raw)
+                    if "event" in data:
+                        print(json.dumps(data, indent=2))
+                except asyncio.TimeoutError:
+                    continue
+    except ConnectionRefusedError:
+        print(red(f"Error: Cannot connect to {url}"), file=sys.stderr)
+        sys.exit(1)
+
+
+# --- Output formatting ---
+
+
+def pretty_json(obj):
+    """Pretty-print JSON with optional color."""
+    raw = json.dumps(obj, indent=2, ensure_ascii=False)
+    if not USE_COLOR:
+        return raw
+    # Colorize keys and values
+    lines = []
+    for line in raw.split("\n"):
+        # Colorize JSON keys
+        stripped = line.lstrip()
+        if stripped.startswith('"') and '": ' in stripped:
+            key_end = stripped.index('": ')
+            key = stripped[: key_end + 1]
+            rest = stripped[key_end + 2 :]
+            indent = line[: len(line) - len(stripped)]
+            lines.append(f"{indent}{cyan(key)}:{rest}")
+        else:
+            lines.append(line)
+    return "\n".join(lines)
+
+
+def output_response(response, raw_json=False):
+    """Print a response with status coloring."""
+    if raw_json:
+        print(json.dumps(response))
+        return
+
+    status = response.get("status", "unknown")
+    data = response.get("data")
+
+    if status == "error":
+        msg = data.get("message", "Unknown error") if data else "Unknown error"
+        print(red(f"Error: {msg}"), file=sys.stderr)
+        sys.exit(1)
+
+    if data:
+        print(pretty_json(data))
+    else:
+        print(green("OK"))
+
+
+# --- CLI argument parser ---
+
+
+def build_parser():
+    parser = argparse.ArgumentParser(
+        prog="pepper-ctl",
+        description="Command-line interface for the pepper plane.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""examples:
+  pepper-ctl ping                            Health check
+  pepper-ctl snapshot                        List interactive elements
+  pepper-ctl tree --depth 3                  View hierarchy (limited depth)
+  pepper-ctl tap --text "Start Walk"         Tap element by label text
+  pepper-ctl tap --id start_button           Tap element by accessibility ID
+  pepper-ctl tap --class button --index 2    Tap 3rd button on screen
+  pepper-ctl tap --point 200,400             Tap at screen coordinates
+  pepper-ctl input --id email --value "a@b"  Set text field value
+  pepper-ctl navigate --screen settings      Navigate to screen
+  pepper-ctl scroll --direction down         Scroll down
+  pepper-ctl look                            Compact screen summary (what's tappable)
+  pepper-ctl read --id label_name            Read element value
+  pepper-ctl batch --file commands.json      Run batch commands
+  pepper-ctl help                            List server commands
+""",
+    )
+    parser.add_argument("--host", default=DEFAULT_HOST, help=f"Server host (default: {DEFAULT_HOST})")
+    parser.add_argument("--port", "-p", type=int, default=None, help="Server port (default: auto-discover from port files)")
+    parser.add_argument("--simulator", "-s", default=None, help="Simulator UDID to connect to (reads port from /tmp/pepper-ports/<UDID>.port)")
+    parser.add_argument("--json", action="store_true", dest="raw_json", help="Output raw JSON response")
+    parser.add_argument("--timeout", "-t", type=int, default=10, help="Response timeout in seconds (default: 10)")
+    parser.add_argument("--verbose", "-v", action="store_true", help="Show event messages on stderr")
+    parser.add_argument("--no-color", action="store_true", help="Disable colored output")
+
+    sub = parser.add_subparsers(dest="command", help="Command to send")
+
+    # ping
+    sub.add_parser("ping", help="Health check")
+
+    # tree
+    p = sub.add_parser("tree", help="Get full view hierarchy")
+    p.add_argument("--depth", "-d", type=int, default=None, help="Maximum tree depth (default: unlimited)")
+    p.add_argument("--element", "-e", help="Scope to subtree of element ID")
+
+    # look
+    sub.add_parser("look", help="Compact screen summary — what's visible and tappable")
+
+    # snapshot
+    sub.add_parser("snapshot", help="Get all interactive elements on screen")
+
+    # tap
+    p = sub.add_parser("tap", help="Tap an element")
+    tap_target = p.add_mutually_exclusive_group(required=True)
+    tap_target.add_argument("--text", help="Find and tap element by label text")
+    tap_target.add_argument("--id", help="Tap element by accessibility identifier")
+    tap_target.add_argument("--class", dest="tap_class", help="Tap element by type/class (use --index to pick which)")
+    tap_target.add_argument("--point", help="Tap at screen coordinates (x,y)")
+    p.add_argument("--index", type=int, default=0, help="Index when using --class (default: 0)")
+
+    # input
+    p = sub.add_parser("input", help="Set a text field value")
+    p.add_argument("--id", required=True, dest="element_id", help="Element accessibility ID")
+    p.add_argument("--value", required=True, help="Value to set")
+    p.add_argument("--no-clear", action="store_true", help="Don't clear field before setting value")
+
+    # navigate
+    p = sub.add_parser("navigate", aliases=["nav"], help="Navigate to a screen")
+    nav_target = p.add_mutually_exclusive_group(required=True)
+    nav_target.add_argument("--screen", help="Screen ID to navigate to")
+    nav_target.add_argument("--deeplink", help="Deep link URL (e.g. pepper://walk)")
+    nav_target.add_argument("--tab", type=int, help="Tab index to switch to")
+
+    # back
+    sub.add_parser("back", help="Go back / dismiss current screen")
+
+    # screen
+    sub.add_parser("screen", help="Get current screen info")
+
+    # read
+    p = sub.add_parser("read", help="Read an element's value")
+    p.add_argument("--id", required=True, dest="element_id", help="Element accessibility ID")
+
+    # scroll
+    p = sub.add_parser("scroll", help="Scroll the screen or an element")
+    p.add_argument("--direction", "-d", choices=["up", "down", "left", "right"], help="Scroll direction")
+    p.add_argument("--amount", "-a", type=int, default=200, help="Scroll amount in points (default: 200)")
+    p.add_argument("--element", "-e", help="Scroll to make this element visible")
+
+    # toggle
+    p = sub.add_parser("toggle", help="Toggle a switch")
+    p.add_argument("--id", required=True, dest="element_id", help="Element accessibility ID")
+
+    # batch
+    p = sub.add_parser("batch", help="Execute a batch of commands")
+    p.add_argument("--file", "-f", required=True, help="JSON file with commands array")
+    p.add_argument("--delay", type=int, default=0, help="Delay between commands in ms (default: 0)")
+    p.add_argument("--continue-on-error", action="store_true", help="Continue executing after errors")
+
+    # help (server-side)
+    sub.add_parser("help", help="List all available commands from the server")
+
+    # subscribe / wait
+    p = sub.add_parser("wait", help="Subscribe to events and wait")
+    p.add_argument("events", nargs="+", help="Event types to subscribe to")
+    p.add_argument("--wait-timeout", type=int, default=30, help="How long to listen (default: 30s)")
+
+    # raw
+    p = sub.add_parser("raw", help="Send raw JSON command")
+    p.add_argument("json_str", help="JSON string to send")
+
+    return parser
+
+
+# --- Command handlers ---
+
+
+async def cmd_ping(args):
+    msg = make_command("ping")
+    resp = await send_command(args.host, args.port, msg, args.timeout, args.verbose)
+    if not args.raw_json:
+        if resp.get("status") == "ok":
+            print(green("pong"))
+            return
+    output_response(resp, args.raw_json)
+
+
+async def cmd_tree(args):
+    params = {}
+    if args.depth is not None:
+        params["depth"] = args.depth
+    if args.element:
+        params["element"] = args.element
+    msg = make_command("tree", params or None)
+    resp = await send_command(args.host, args.port, msg, args.timeout, args.verbose)
+    output_response(resp, args.raw_json)
+
+
+async def cmd_look(args):
+    """Compact spatial summary of what's on screen and what's tappable."""
+    msg = make_command("introspect", {"mode": "map"})
+    resp = await send_command(args.host, args.port, msg, args.timeout, args.verbose)
+    if not args.raw_json and resp.get("status") == "ok":
+        data = resp.get("data", {})
+        screen = data.get("screen", "unknown")
+        rows = data.get("rows", [])
+        ni = data.get("non_interactive", [])
+
+        # Count interactive elements across rows
+        interactive_count = sum(len(r.get("elements", [])) for r in rows)
+
+        # Simplify screen name — strip SwiftUI modifier noise
+        simple_screen = screen
+        # Extract the innermost view name from nested modifier wrappers
+        import re
+        m = re.search(r'<(_\w+_view)', screen)
+        if m:
+            simple_screen = m.group(1)
+        elif len(screen) > 60:
+            simple_screen = screen[:57] + "..."
+
+        # Detect tab bar (last row often has tab elements)
+        tab_info = ""
+        for row in rows:
+            for e in row.get("elements", []):
+                traits = e.get("traits", [])
+                label = e.get("label", "")
+                # Tab bar items: bottom of screen, have "selected" trait
+                if "selected" in traits and e.get("center", [0, 0])[1] > 700:
+                    tab_info = label
+                    break
+            if tab_info:
+                break
+
+        # Header
+        header = f"Screen: {bold(simple_screen)}"
+        if tab_info:
+            header += f" | Tab: {bold(tab_info)}"
+        header += f"  ({interactive_count} interactive, {len(ni)} text)"
+        print(header)
+        print()
+
+        for row in rows:
+            elements = row.get("elements", [])
+            if not elements:
+                continue
+            y_range = row.get("y_range", [0, 0])
+            print(dim(f"[y={y_range[0]}-{y_range[1]}]"))
+            for e in elements:
+                etype = e.get("type", "?")
+                label = e.get("label", "")
+                tap_cmd = e.get("tap_cmd", "")
+                icon = e.get("icon_name", "")
+                heuristic = e.get("heuristic", "")
+                badge = e.get("badge", "")
+                traits = e.get("traits", [])
+                suggested = e.get("suggested_tap", "")
+
+                # Status flags
+                flags = ""
+                if e.get("selected") or "selected" in traits:
+                    flags += green(" [selected]")
+                toggle_state = e.get("toggle_state", "")
+                if toggle_state:
+                    flags += green(f" [{toggle_state}]") if toggle_state == "on" else yellow(f" [{toggle_state}]")
+                if "notEnabled" in traits:
+                    flags += yellow(" [disabled]")
+                if not e.get("hit_reachable", True):
+                    flags += red(" [blocked]")
+
+                # Element description
+                idx = e.get("index")  # ordinal index for duplicate labels
+                value = e.get("value", "")
+                if icon and not label:
+                    desc = f"[{icon}]"
+                elif label:
+                    # Truncate long labels
+                    disp = label if len(label) <= 50 else label[:47] + "..."
+                    idx_suffix = f" [{idx}]" if idx else ""
+                    val_suffix = f" = {value}" if value and etype in ("textField", "searchField", "textView") else ""
+                    desc = f'"{disp}"{idx_suffix}{val_suffix}'
+                else:
+                    desc = f"({heuristic or etype})"
+
+                # Type prefix
+                type_abbrev = {"button": "btn", "staticText": "txt", "textField": "fld",
+                               "switch": "tog", "segment": "seg", "cell": "cell",
+                               "slider": "sld", "image": "img"}
+                prefix = badge if badge else type_abbrev.get(etype, etype[:4])
+
+                # Tap instruction
+                if tap_cmd == "text" and label:
+                    if idx:
+                        tap = f'tap text:"{label}" index:{idx}'
+                    elif len(label) <= 40:
+                        tap = f'tap text:"{label}"'
+                    else:
+                        tap = f'tap point:{e["center"][0]},{e["center"][1]}'
+                elif tap_cmd == "icon_name" and (icon or suggested):
+                    tap = f"tap icon:{icon or suggested}"
+                elif tap_cmd == "heuristic" and (heuristic or suggested):
+                    tap = f"tap heuristic:{suggested or heuristic}"
+                elif tap_cmd == "point" or tap_cmd == "":
+                    cx, cy = e.get("center", [0, 0])
+                    tap = f"tap point:{cx},{cy}"
+                else:
+                    tap = f"tap {tap_cmd}"
+
+                print(f"  {cyan(prefix):>8s}  {desc:<52s} → {tap}{flags}")
+            print()
+
+        # Non-interactive text (compact)
+        if ni:
+            print(dim("--- text ---"))
+            for e in ni:
+                label = e.get("label", "")
+                if label:
+                    print(f"  {dim(label)}")
+        return
+    output_response(resp, args.raw_json)
+
+
+async def cmd_snapshot(args):
+    msg = make_command("introspect", {"mode": "interactive"})
+    resp = await send_command(args.host, args.port, msg, args.timeout, args.verbose)
+    if not args.raw_json and resp.get("status") == "ok":
+        data = resp.get("data", {})
+        elements = data.get("elements") or []
+        screen = data.get("screen", "unknown")
+        print(f"Screen: {bold(screen)}  ({len(elements)} elements)\n")
+        for e in elements:
+            eid = e.get("id", "?")
+            etype = e.get("type", "?")
+            label = e.get("label", "")
+            value = e.get("value", "")
+            visible = e.get("visible", True)
+            enabled = e.get("enabled", True)
+
+            # Status indicators
+            status = ""
+            if not visible:
+                status += dim(" [hidden]")
+            if not enabled:
+                status += yellow(" [disabled]")
+
+            # Format: id (type) "label" = value
+            line = f"  {cyan(eid)} ({etype})"
+            if label:
+                line += f'  "{label}"'
+            if value:
+                line += f"  = {value}"
+            line += status
+            print(line)
+        return
+    output_response(resp, args.raw_json)
+
+
+async def cmd_tap(args):
+    # Build tap params — pass directly to server (it handles text/id/class matching)
+    params = {}
+    if args.point:
+        try:
+            parts = args.point.split(",")
+            x, y = float(parts[0]), float(parts[1])
+            params["point"] = {"x": x, "y": y}
+        except (ValueError, IndexError):
+            print(red("Error: --point must be x,y (e.g. 100,750)"), file=sys.stderr)
+            sys.exit(1)
+    elif args.text:
+        params["text"] = args.text
+    elif args.id:
+        params["element"] = args.id
+    elif args.tap_class:
+        params["class"] = args.tap_class
+        if args.index:
+            params["index"] = args.index
+    else:
+        print(red("Error: tap requires --id, --text, --class, or --point"), file=sys.stderr)
+        sys.exit(1)
+
+    msg = make_command("tap", params)
+
+    resp = await send_command(args.host, args.port, msg, args.timeout, args.verbose)
+    if not args.raw_json and resp.get("status") == "ok":
+        data = resp.get("data", {})
+        eid = data.get("element", "?")
+        etype = data.get("type", "?")
+        title = data.get("title", "")
+        result = f"Tapped {cyan(eid)} ({etype})"
+        if title:
+            result += f' "{title}"'
+        print(green(result))
+        return
+    output_response(resp, args.raw_json)
+
+
+async def cmd_input(args):
+    params = {"element": args.element_id, "value": args.value}
+    if args.no_clear:
+        params["clear"] = False
+    msg = make_command("input", params)
+    resp = await send_command(args.host, args.port, msg, args.timeout, args.verbose)
+    if not args.raw_json and resp.get("status") == "ok":
+        data = resp.get("data", {})
+        print(green(f"Set {cyan(data.get('element', '?'))} = \"{data.get('value', '')}\""))
+        return
+    output_response(resp, args.raw_json)
+
+
+async def cmd_navigate(args):
+    if args.screen:
+        msg = make_command("navigate", {"to": args.screen})
+    elif args.tab is not None:
+        msg = make_command("navigate", {"tab": args.tab})
+    elif args.deeplink:
+        msg = make_command("navigate", {"to": args.deeplink})
+    else:
+        print(red("Error: navigate requires --screen, --deeplink, or --tab"), file=sys.stderr)
+        sys.exit(1)
+
+    resp = await send_command(args.host, args.port, msg, args.timeout, args.verbose)
+    if not args.raw_json and resp.get("status") == "ok":
+        data = resp.get("data", {})
+        screen = data.get("current_screen", "?")
+        title = data.get("title", "")
+        result = f"Navigated to {bold(screen)}"
+        if title:
+            result += f' "{title}"'
+        if "selected_tab" in data:
+            result += f" (tab {data['selected_tab']})"
+        print(green(result))
+        return
+    output_response(resp, args.raw_json)
+
+
+async def cmd_back(args):
+    msg = make_command("back")
+    resp = await send_command(args.host, args.port, msg, args.timeout, args.verbose)
+    if not args.raw_json and resp.get("status") == "ok":
+        print(green("Navigated back"))
+        return
+    output_response(resp, args.raw_json)
+
+
+async def cmd_screen(args):
+    msg = make_command("screen")
+    resp = await send_command(args.host, args.port, msg, args.timeout, args.verbose)
+    output_response(resp, args.raw_json)
+
+
+async def cmd_read(args):
+    msg = make_command("read", {"element": args.element_id})
+    resp = await send_command(args.host, args.port, msg, args.timeout, args.verbose)
+    if not args.raw_json and resp.get("status") == "ok":
+        data = resp.get("data", {})
+        eid = data.get("id", "?")
+        etype = data.get("type", "?")
+        value = data.get("value", "")
+        label = data.get("label", "")
+        print(f"{cyan(eid)} ({etype})")
+        if label:
+            print(f"  label: {label}")
+        if value is not None and value != "":
+            print(f"  value: {bold(str(value))}")
+        # Print extra fields
+        skip = {"id", "type", "value", "label", "frame"}
+        for k, v in sorted(data.items()):
+            if k not in skip:
+                print(f"  {k}: {v}")
+        return
+    output_response(resp, args.raw_json)
+
+
+async def cmd_scroll(args):
+    if args.element:
+        # Scroll to element
+        msg = make_command("scroll", {"element": args.element})
+    elif args.direction:
+        params = {"direction": args.direction, "amount": args.amount}
+        msg = make_command("scroll", params)
+    else:
+        print(red("Error: scroll requires --direction or --element"), file=sys.stderr)
+        sys.exit(1)
+
+    resp = await send_command(args.host, args.port, msg, args.timeout, args.verbose)
+    if not args.raw_json and resp.get("status") == "ok":
+        data = resp.get("data", {})
+        if "direction" in data:
+            print(green(f"Scrolled {data['direction']} by {data.get('amount', '?')}pt"))
+        elif "element" in data:
+            print(green(f"Scrolled to element {cyan(data['element'])}"))
+        offset = data.get("scrollOffset", {})
+        if offset:
+            print(f"  offset: ({offset.get('x', 0)}, {offset.get('y', 0)})")
+        return
+    output_response(resp, args.raw_json)
+
+
+async def cmd_toggle(args):
+    msg = make_command("toggle", {"element": args.element_id})
+    resp = await send_command(args.host, args.port, msg, args.timeout, args.verbose)
+    if not args.raw_json and resp.get("status") == "ok":
+        print(green(f"Toggled {cyan(args.element_id)}"))
+        return
+    output_response(resp, args.raw_json)
+
+
+async def cmd_batch(args):
+    # Read commands from file
+    try:
+        with open(args.file, "r") as f:
+            file_content = json.load(f)
+    except FileNotFoundError:
+        print(red(f"Error: File not found: {args.file}"), file=sys.stderr)
+        sys.exit(1)
+    except json.JSONDecodeError as e:
+        print(red(f"Error: Invalid JSON in {args.file}: {e}"), file=sys.stderr)
+        sys.exit(1)
+
+    # Accept either a bare array or {"commands": [...]}
+    if isinstance(file_content, list):
+        commands = file_content
+    elif isinstance(file_content, dict) and "commands" in file_content:
+        commands = file_content["commands"]
+    else:
+        print(red("Error: File must contain a JSON array or {\"commands\": [...]}"), file=sys.stderr)
+        sys.exit(1)
+
+    params = {
+        "commands": commands,
+    }
+    if args.delay > 0:
+        params["delay_ms"] = args.delay
+    if args.continue_on_error:
+        params["continue_on_error"] = True
+
+    msg = make_command("batch", params)
+    # Use a longer timeout for batch commands
+    batch_timeout = max(args.timeout, len(commands) * 5)
+    resp = await send_command(args.host, args.port, msg, batch_timeout, args.verbose)
+
+    if not args.raw_json and resp.get("status") == "ok":
+        data = resp.get("data", {})
+        total = data.get("total", 0)
+        executed = data.get("executed", 0)
+        errors = data.get("errors", 0)
+
+        status_color = green if errors == 0 else yellow
+        print(status_color(f"Batch: {executed}/{total} executed, {errors} errors"))
+
+        responses = data.get("responses", [])
+        for r in responses:
+            idx = r.get("index", "?")
+            cmd = r.get("cmd", "?")
+            st = r.get("status", "?")
+            if st == "ok":
+                print(f"  [{idx}] {cmd}: {green('ok')}")
+            else:
+                err_data = r.get("data", {})
+                err_msg = err_data.get("message", "") if isinstance(err_data, dict) else str(r.get("message", ""))
+                print(f"  [{idx}] {cmd}: {red(st)} - {err_msg}")
+        return
+    output_response(resp, args.raw_json)
+
+
+async def cmd_help(args):
+    msg = make_command("help")
+    resp = await send_command(args.host, args.port, msg, args.timeout, args.verbose)
+    if not args.raw_json and resp.get("status") == "ok":
+        data = resp.get("data", {})
+        commands = data.get("commands", [])
+        print(bold("Available server commands:"))
+        for cmd in sorted(commands):
+            print(f"  {cyan(cmd)}")
+        return
+    output_response(resp, args.raw_json)
+
+
+async def cmd_wait(args):
+    await wait_for_events(args.host, args.port, args.events, args.wait_timeout)
+
+
+async def cmd_raw(args):
+    try:
+        msg = json.loads(args.json_str)
+        if "id" not in msg:
+            msg["id"] = str(uuid.uuid4())[:8]
+    except json.JSONDecodeError as e:
+        print(red(f"Invalid JSON: {e}"), file=sys.stderr)
+        sys.exit(1)
+    resp = await send_command(args.host, args.port, msg, args.timeout, args.verbose)
+    output_response(resp, args.raw_json)
+
+
+# --- Main ---
+
+
+def main():
+    parser = build_parser()
+    args = parser.parse_args()
+
+    if args.no_color:
+        global USE_COLOR
+        USE_COLOR = False
+
+    # Load .env defaults — CLI flags take precedence
+    env = load_env()
+    if args.simulator is None and "PEPPER_SIMULATOR" in env:
+        args.simulator = env["PEPPER_SIMULATOR"]
+
+    # Resolve port: explicit --port wins, then --simulator lookup, then auto-discover
+    if args.port is None:
+        args.port = discover_port(simulator=args.simulator)
+
+    if not args.command:
+        parser.print_help()
+        sys.exit(1)
+
+    # Dispatch to handler
+    handlers = {
+        "ping": cmd_ping,
+        "tree": cmd_tree,
+        "look": cmd_look,
+        "snapshot": cmd_snapshot,
+        "tap": cmd_tap,
+        "input": cmd_input,
+        "navigate": cmd_navigate,
+        "nav": cmd_navigate,
+        "back": cmd_back,
+        "screen": cmd_screen,
+        "read": cmd_read,
+        "scroll": cmd_scroll,
+        "toggle": cmd_toggle,
+        "batch": cmd_batch,
+        "help": cmd_help,
+        "wait": cmd_wait,
+        "raw": cmd_raw,
+    }
+
+    handler = handlers.get(args.command)
+    if not handler:
+        parser.print_help()
+        sys.exit(1)
+
+    asyncio.run(handler(args))
+
+
+if __name__ == "__main__":
+    main()
