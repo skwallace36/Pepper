@@ -81,6 +81,10 @@ print('WARNING: Sim $(SIMULATOR_ID) claimed by PID ' + str(s['pid']) + \
 		SIMCTL_CHILD_PEPPER_ADAPTER="$(ADAPTER_TYPE)" \
 		xcrun simctl launch "$(SIMULATOR_ID)" "$(BUNDLE_ID)"
 	@echo "Launched with injection. Control plane at ws://localhost:$(PORT)"
+	@python3 -c "import sys, time; sys.path.insert(0, '$(TOOLS_DIR)'); \
+from pepper_sessions import quick_port_check, claim_simulator_with_port; \
+[time.sleep(0.5) for _ in range(20) if not quick_port_check($(PORT), 0.5)]; \
+claim_simulator_with_port('$(SIMULATOR_ID)', '$(BUNDLE_ID)', $(PORT), label='make-deploy')" 2>/dev/null || true
 
 ## deploy: Build dylib + launch with injection
 deploy: build launch
