@@ -1,4 +1,4 @@
-# control/
+# dylib/
 
 The Swift source for Pepper's injected dylib. Everything here compiles into `build/Pepper.framework/Pepper`.
 

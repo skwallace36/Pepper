@@ -11,7 +11,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-CONTROL_DIR="$PROJECT_DIR/control"
+CONTROL_DIR="$PROJECT_DIR/dylib"
 BUILD_DIR="$PROJECT_DIR/build/dylib"
 FRAMEWORK_DIR="$PROJECT_DIR/build/Pepper.framework"
 

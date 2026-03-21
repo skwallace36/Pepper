@@ -29,7 +29,7 @@ If `make ping` returns `{"pong": true}`, you're live.
 
 Pepper is a **dylib** injected into the target iOS app at simulator launch via `DYLD_INSERT_LIBRARIES`. No source patches or workspace modifications needed.
 
-1. `make build` compiles the Swift control plane (`control/`) into `build/Pepper.framework/Pepper`
+1. `make build` compiles the Swift source (`dylib/`) into `build/Pepper.framework/Pepper`
 2. `make launch` boots the simulator, terminates any existing app process, and launches with the dylib injected
 3. The dylib starts a WebSocket server on `ws://localhost:8765` inside the app process
 
@@ -41,7 +41,7 @@ Pepper is a **dylib** injected into the target iOS app at simulator launch via `
 make build
 ```
 
-This compiles `control/{server,commands,bridge}/*.swift` into a standalone framework dylib. Takes a few seconds.
+This compiles `dylib/{server,commands,bridge}/*.swift` into a standalone framework dylib. Takes a few seconds.
 
 ### 2. Launch with injection
 
