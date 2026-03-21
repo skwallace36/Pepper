@@ -1,6 +1,7 @@
 #!/bin/bash
 # Pre-commit hook for pepper repo.
 # Install: ln -sf ../../scripts/pre-commit .git/hooks/pre-commit
+# Or run: make setup
 set -e
 
 REPO_DIR="$(git rev-parse --show-toplevel)"
@@ -9,14 +10,18 @@ FAILED=0
 # Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
 DIM='\033[2m'
 NC='\033[0m'
 
 pass() { echo -e "${GREEN}✓${NC} $1"; }
 fail() { echo -e "${RED}✗${NC} $1"; FAILED=1; }
+warn() { echo -e "${YELLOW}⚠${NC} $1"; }
 
 echo "pepper pre-commit checks"
 echo "========================"
+
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM)
 
 # 1. Swift compilation
 echo ""
@@ -64,8 +69,38 @@ exec(code.split('if __name__')[0])
     fi
 fi
 
-# 4. No hardcoded personal paths in committed files
-STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM)
+# 4. Coverage sync — regenerate and check if COVERAGE.md matches
+if echo "$STAGED_FILES" | grep -qE "(PepperDispatcher|Handler\.swift|coverage-status\.json)"; then
+    if python3 "$REPO_DIR/scripts/gen-coverage.py" --check 2>/dev/null; then
+        pass "COVERAGE.md in sync"
+    else
+        fail "COVERAGE.md is stale — run 'make coverage' and stage the result"
+    fi
+else
+    pass "COVERAGE.md (no relevant changes)"
+fi
+
+# 5. New handler must have COMMANDS.md entry
+if echo "$STAGED_FILES" | grep -q "dylib/commands/handlers/.*Handler\.swift"; then
+    NEW_HANDLERS=$(echo "$STAGED_FILES" | grep "dylib/commands/handlers/.*Handler\.swift")
+    MISSING=""
+    for handler_file in $NEW_HANDLERS; do
+        # Extract commandName from the handler
+        CMD_NAME=$(grep -oE 'commandName.*"(\w+)"' "$REPO_DIR/$handler_file" 2>/dev/null | grep -oE '"[^"]+"' | tr -d '"' | head -1)
+        if [ -n "$CMD_NAME" ]; then
+            if ! grep -q "\`$CMD_NAME\`" "$REPO_DIR/docs/COMMANDS.md" 2>/dev/null; then
+                MISSING="$MISSING $CMD_NAME"
+            fi
+        fi
+    done
+    if [ -n "$MISSING" ]; then
+        fail "New handlers missing from docs/COMMANDS.md:$MISSING"
+    else
+        pass "Handler→COMMANDS.md sync"
+    fi
+fi
+
+# 6. No hardcoded personal paths in committed files
 if echo "$STAGED_FILES" | xargs grep -l "/Users/[a-z]" 2>/dev/null | grep -v ".env" | grep -v ".mcp.json" | head -5 | grep -q .; then
     fail "Hardcoded personal paths found in staged files:"
     echo "$STAGED_FILES" | xargs grep -n "/Users/[a-z]" 2>/dev/null | grep -v ".env" | grep -v ".mcp.json" | head -5
@@ -73,7 +108,16 @@ else
     pass "No hardcoded personal paths"
 fi
 
-# 5. No screenshots being committed
+# 7. No secrets/credentials staged
+SECRETS_PATTERN='(api[_-]?key|secret[_-]?key|password|token|credential|private[_-]?key)\s*[:=]'
+if echo "$STAGED_FILES" | grep -v ".env.example" | xargs grep -ilE "$SECRETS_PATTERN" 2>/dev/null | head -5 | grep -q .; then
+    fail "Possible secrets in staged files:"
+    echo "$STAGED_FILES" | grep -v ".env.example" | xargs grep -inE "$SECRETS_PATTERN" 2>/dev/null | head -5
+else
+    pass "No secrets detected"
+fi
+
+# 8. No screenshots being committed
 if echo "$STAGED_FILES" | grep -q "\.png$\|\.jpg$\|\.jpeg$"; then
     fail "Image files staged — screenshots should not be committed"
     echo "$STAGED_FILES" | grep "\.png$\|\.jpg$\|\.jpeg$"
@@ -81,7 +125,7 @@ else
     pass "No image files staged"
 fi
 
-# 6. Swift file length check (flag > 500 lines)
+# 9. Swift file length check (flag > 500 lines)
 LONG_FILES=""
 for f in $(echo "$STAGED_FILES" | grep "\.swift$"); do
     if [ -f "$REPO_DIR/$f" ]; then
@@ -92,10 +136,14 @@ for f in $(echo "$STAGED_FILES" | grep "\.swift$"); do
     fi
 done
 if [ -n "$LONG_FILES" ]; then
-    echo -e "${RED}⚠${NC} Long Swift files (>500 lines):$LONG_FILES"
-    # Warning only, don't fail
+    warn "Long Swift files (>500 lines):$LONG_FILES"
 else
     pass "No oversized Swift files"
+fi
+
+# 10. .env exists
+if [ ! -f "$REPO_DIR/.env" ]; then
+    warn "No .env file — copy from .env.example"
 fi
 
 echo ""

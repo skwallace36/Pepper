@@ -48,3 +48,7 @@ Python packages: `websockets` (required), `mcp` (for pepper-mcp).
 pip3 install websockets
 pip3 install -r tools/requirements.txt  # full deps
 ```
+
+---
+
+**Routing:** Bugs → `../BUGS.md` | Work items → `../ROADMAP.md` | Test coverage → `../test-app/COVERAGE.md` | Research → `../docs/RESEARCH.md`

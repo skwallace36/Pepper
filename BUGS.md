@@ -15,3 +15,7 @@ Format: `BUG-NNN` ID, component tag, description, date found.
 ## Fixed
 
 *(none yet)*
+
+---
+
+**Routing:** Work items → `ROADMAP.md` | Test coverage → `test-app/COVERAGE.md` | Research → `docs/RESEARCH.md`

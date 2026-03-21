@@ -9,3 +9,7 @@ Reference documentation.
 - `SETUP.md` — getting started guide. Prerequisites, quick start, troubleshooting.
 - `RESEARCH.md` — ideas and capabilities identified from analyzing other tools (FLEX, Chisel, Maestro, Appium, etc.). Not a roadmap — a research log.
 - `COMPETITIVE.md` — feature-by-feature comparison with competitors. Tracks what's done, built, tested, planned, or won't do.
+
+---
+
+**Routing:** Bugs → `../BUGS.md` | Work items → `../ROADMAP.md` | Test coverage → `../test-app/COVERAGE.md` | Research → `RESEARCH.md`
