@@ -80,34 +80,22 @@ else
     pass "COVERAGE.md (no relevant changes)"
 fi
 
-# 4b. Commands sync — check if COMMANDS.md matches MCP tool definitions
-if echo "$STAGED_FILES" | grep -q "tools/pepper-mcp"; then
-    if python3 "$REPO_DIR/scripts/gen-commands.py" --check 2>/dev/null; then
-        pass "COMMANDS.md in sync"
-    else
-        fail "COMMANDS.md is stale — run 'make docs' and stage the result"
-    fi
-else
-    pass "COMMANDS.md (no relevant changes)"
-fi
-
-# 5. New handler must have COMMANDS.md entry
+# 5. New handler must have MCP tool + coverage entry
 if echo "$STAGED_FILES" | grep -q "dylib/commands/handlers/.*Handler\.swift"; then
     NEW_HANDLERS=$(echo "$STAGED_FILES" | grep "dylib/commands/handlers/.*Handler\.swift")
     MISSING=""
     for handler_file in $NEW_HANDLERS; do
-        # Extract commandName from the handler
         CMD_NAME=$(grep -oE 'commandName.*"(\w+)"' "$REPO_DIR/$handler_file" 2>/dev/null | grep -oE '"[^"]+"' | tr -d '"' | head -1)
         if [ -n "$CMD_NAME" ]; then
-            if ! grep -q "\`$CMD_NAME\`" "$REPO_DIR/docs/COMMANDS.md" 2>/dev/null; then
+            if ! grep -q "\"$CMD_NAME" "$REPO_DIR/test-app/coverage-status.json" 2>/dev/null; then
                 MISSING="$MISSING $CMD_NAME"
             fi
         fi
     done
     if [ -n "$MISSING" ]; then
-        fail "New handlers missing from docs/COMMANDS.md:$MISSING"
+        fail "New handlers missing from coverage-status.json:$MISSING"
     else
-        pass "Handler→COMMANDS.md sync"
+        pass "Handler→coverage sync"
     fi
 fi
 
