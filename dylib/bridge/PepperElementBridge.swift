@@ -270,65 +270,29 @@ extension UIView {
     /// - Returns: `true` if input was applied, `false` if the view doesn't support text input.
     @discardableResult
     func pepper_simulateTextInput(_ text: String) -> Bool {
-        var success = false
-        pepper_ensureMainThread {
-            if let textField = self as? UITextField {
-                // Focus the field so it becomes first responder
-                textField.becomeFirstResponder()
-
-                // Notify the text input system that we're about to change text.
-                // SwiftUI's coordinator implements UITextInputDelegate and listens
-                // to these callbacks to sync the binding.
-                textField.inputDelegate?.textWillChange(textField)
-
-                // Set the text directly
-                textField.text = text
-
-                // Notify the text input system that text changed
-                textField.inputDelegate?.textDidChange(textField)
-
-                // Also notify selection changed (SwiftUI may use this)
-                textField.inputDelegate?.selectionWillChange(textField)
-                textField.inputDelegate?.selectionDidChange(textField)
-
-                // Fire editing changed actions for UIKit observers
-                textField.sendActions(for: .editingChanged)
-
-                // Post notification
-                NotificationCenter.default.post(
-                    name: UITextField.textDidChangeNotification,
-                    object: textField
-                )
-
-                success = true
-                pepperLog.debug("Set text on UITextField: \(self.accessibilityIdentifier ?? "unknown")", category: .bridge)
-
-            } else if let textView = self as? UITextView {
-                // Notify delegate of begin editing
-                textView.delegate?.textViewDidBeginEditing?(textView)
-
-                // Set the text
-                textView.text = text
-
-                // Notify delegate of change
-                textView.delegate?.textViewDidChange?(textView)
-
-                // Notify delegate of end editing
-                textView.delegate?.textViewDidEndEditing?(textView)
-
-                // Post notification for any observers
-                NotificationCenter.default.post(
-                    name: UITextView.textDidChangeNotification,
-                    object: textView
-                )
-
-                success = true
-                pepperLog.debug("Set text on UITextView: \(self.accessibilityIdentifier ?? "unknown")", category: .bridge)
-            } else {
-                pepperLog.warning("View does not support text input: \(self.accessibilityIdentifier ?? "unknown")", category: .bridge)
-            }
+        if let textField = self as? UITextField {
+            textField.becomeFirstResponder()
+            textField.inputDelegate?.textWillChange(textField)
+            textField.text = text
+            textField.inputDelegate?.textDidChange(textField)
+            textField.inputDelegate?.selectionWillChange(textField)
+            textField.inputDelegate?.selectionDidChange(textField)
+            textField.sendActions(for: .editingChanged)
+            NotificationCenter.default.post(name: UITextField.textDidChangeNotification, object: textField)
+            pepperLog.debug("Set text on UITextField: \(self.accessibilityIdentifier ?? "unknown")", category: .bridge)
+            return true
+        } else if let textView = self as? UITextView {
+            textView.delegate?.textViewDidBeginEditing?(textView)
+            textView.text = text
+            textView.delegate?.textViewDidChange?(textView)
+            textView.delegate?.textViewDidEndEditing?(textView)
+            NotificationCenter.default.post(name: UITextView.textDidChangeNotification, object: textView)
+            pepperLog.debug("Set text on UITextView: \(self.accessibilityIdentifier ?? "unknown")", category: .bridge)
+            return true
+        } else {
+            pepperLog.warning("View does not support text input: \(self.accessibilityIdentifier ?? "unknown")", category: .bridge)
+            return false
         }
-        return success
     }
 
 }
@@ -342,19 +306,15 @@ extension UIView {
     /// - Returns: `true` if the toggle was applied.
     @discardableResult
     func pepper_simulateToggle(value: Bool? = nil) -> Bool {
-        var success = false
-        pepper_ensureMainThread {
-            guard let uiSwitch = self as? UISwitch else {
-                pepperLog.warning("View is not a UISwitch: \(self.accessibilityIdentifier ?? "unknown")", category: .bridge)
-                return
-            }
-            let newValue = value ?? !uiSwitch.isOn
-            uiSwitch.setOn(newValue, animated: false)
-            uiSwitch.sendActions(for: .valueChanged)
-            success = true
-            pepperLog.debug("Toggled switch to \(newValue): \(self.accessibilityIdentifier ?? "unknown")", category: .bridge)
+        guard let uiSwitch = self as? UISwitch else {
+            pepperLog.warning("View is not a UISwitch: \(self.accessibilityIdentifier ?? "unknown")", category: .bridge)
+            return false
         }
-        return success
+        let newValue = value ?? !uiSwitch.isOn
+        uiSwitch.setOn(newValue, animated: false)
+        uiSwitch.sendActions(for: .valueChanged)
+        pepperLog.debug("Toggled switch to \(newValue): \(self.accessibilityIdentifier ?? "unknown")", category: .bridge)
+        return true
     }
 }
 

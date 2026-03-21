@@ -15,9 +15,6 @@ enum PepperClassFilter {
     /// Returns true if the class name belongs to Pepper's own injected views/controllers.
     /// Uses prefix matching — won't false-positive on "PepperoniView".
     static func isInternalClass(_ className: String) -> Bool {
-        for prefix in internalPrefixes {
-            if className.hasPrefix(prefix) { return true }
-        }
-        return false
+        internalPrefixes.contains { className.hasPrefix($0) }
     }
 }
