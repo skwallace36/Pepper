@@ -32,7 +32,7 @@ Source code context lookup. Helps agents find relevant source for a given comman
 Interactive REPL for exploring Pepper commands. Good for experimentation.
 
 ### `build-dylib.sh` (Bash)
-Compiles `control/` into `build/Pepper.framework/Pepper`. Called by `make build`.
+Compiles `dylib/` into `build/Pepper.framework/Pepper`. Called by `make build`.
 
 ### `upload-screenshot` (Python)
 Uploads screenshots to GitHub PRs.
