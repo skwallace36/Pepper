@@ -22,7 +22,7 @@ DYLIB_PATH  := $(PROJECT_DIR)/build/Pepper.framework/Pepper
 LOGS_DIR    := $(PROJECT_DIR)/build/logs
 
 .PHONY: help build deploy launch kill relaunch ping check \
-        logs clean test-client pepper-ctl
+        logs clean test-client pepper-ctl test-app
 
 # ============================================================
 # Help
@@ -119,6 +119,31 @@ test-client:
 ## pepper-ctl: Show pepper-ctl CLI usage
 pepper-ctl:
 	@python3 "$(TOOLS_DIR)/pepper-ctl" --help
+
+# ============================================================
+# Test App
+# ============================================================
+
+TEST_APP_DIR  := $(PROJECT_DIR)/test-app
+TEST_APP_BUNDLE := com.pepper.testapp
+
+## test-app: Build and install the test app on the booted simulator
+test-app:
+	@echo "Building PepperTestApp..."
+	@xcodebuild -project "$(TEST_APP_DIR)/PepperTestApp.xcodeproj" \
+		-scheme PepperTestApp -sdk iphonesimulator \
+		-destination "id=$(SIMULATOR_ID)" \
+		-configuration Debug build \
+		-quiet 2>&1 | tail -1
+	@APP=$$(find ~/Library/Developer/Xcode/DerivedData/PepperTestApp-*/Build/Products/Debug-iphonesimulator -name "PepperTestApp.app" -type d 2>/dev/null | head -1); \
+	if [ -z "$$APP" ]; then echo "Build failed — app not found." >&2; exit 1; fi; \
+	echo "Installing on $(SIMULATOR_ID)..."; \
+	xcrun simctl install "$(SIMULATOR_ID)" "$$APP"; \
+	echo "PepperTestApp installed. Run 'make deploy BUNDLE_ID=$(TEST_APP_BUNDLE)' to inject Pepper."
+
+## test-deploy: Build test app + build dylib + launch with Pepper injected
+test-deploy: test-app build
+	@$(MAKE) launch BUNDLE_ID=$(TEST_APP_BUNDLE)
 
 # ============================================================
 # Housekeeping
