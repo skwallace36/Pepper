@@ -5,8 +5,6 @@
 - macOS with Xcode 15+
 - iOS Simulator (ships with Xcode)
 - Python 3 with `websockets` (`pip3 install websockets`)
-- Node.js 18+ (for the dashboard)
-- Rust / Cargo (for the Tauri backend — install via [rustup](https://rustup.rs))
 
 ## Quick Start
 
@@ -53,15 +51,7 @@ make launch
 
 Terminates any running instance, boots the simulator if needed, and launches the app with Pepper injected via `DYLD_INSERT_LIBRARIES`.
 
-### 3. Start services
-
-```bash
-make services
-```
-
-Starts the Tauri dashboard (port 1420, with API backend on port 8767) and BLE proxy daemon (port 8766). Both are idempotent — safe to re-run.
-
-### 4. Use it
+### 3. Use it
 
 ```bash
 make ping                              # health check
@@ -76,7 +66,7 @@ python3 tools/pepper-ctl raw '{"cmd":"introspect","params":{"mode":"map"}}' # fu
 Or do it all at once:
 
 ```bash
-make deploy    # build + launch + services
+make deploy    # build + launch with injection
 ```
 
 ## Configuration
@@ -114,11 +104,6 @@ Most apps auto-login from keychain on subsequent relaunches.
 **"No key window available"**
 - The app needs a moment after launch. Wait 2-3 seconds, then retry.
 
-**Dashboard won't start**
-- Check if Tauri dependencies are installed: `cd dashboard && npm install`
-- Check the log: `cat build/logs/dashboard.log`
-- Make sure Rust is installed: `rustc --version`
-
 **Port already in use**
-- Find what's using it: `lsof -i :8765` / `lsof -i :8767`
-- Kill stale processes: `make kill` for the app, `make services-stop` for services
+- Find what's using it: `lsof -i :8765`
+- Kill stale processes: `make kill`
