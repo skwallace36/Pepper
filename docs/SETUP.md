@@ -8,7 +8,7 @@ For manual setup or details, see `CLAUDE.md` at project root.
 
 **"Connection refused"**
 - Is the app running? `make deploy`
-- Check for a stale process: `lsof -i :8765 -sTCP:LISTEN`
+- Check for a stale process: `lsof -i -sTCP:LISTEN | grep pepper`
 - Kill and relaunch: `make kill && make launch`
 
 **Build fails**
