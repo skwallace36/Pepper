@@ -21,6 +21,10 @@ import sys
 import tempfile
 from typing import Optional
 
+# Session management for multi-agent simulator coordination
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import pepper_sessions
+
 # Suppress all stdout except MCP protocol — critical for stdio transport
 import logging
 logging.basicConfig(stream=sys.stderr, level=logging.WARNING)
@@ -164,35 +168,55 @@ def _resolve_port_file(simulator: Optional[str] = None) -> tuple[str, int]:
 
     If simulator is given, looks up that specific UDID.
     Otherwise auto-discovers from PORT_DIR (must have exactly one).
+    Validates port liveness — cleans stale port files automatically.
     """
     if simulator:
         path = os.path.join(PORT_DIR, f"{simulator}.port")
         if os.path.exists(path):
             try:
-                return simulator, int(open(path).read().strip())
-            except (ValueError, OSError):
+                port = int(open(path).read().strip())
+                if pepper_sessions.quick_port_check(port):
+                    return simulator, port
+                # Port is dead — clean up stale file
+                try:
+                    os.remove(path)
+                except OSError:
+                    pass
+                raise RuntimeError(
+                    f"Stale port file for {simulator} (app not responding on port {port}). "
+                    f"Cleaned up. Re-deploy with `deploy`."
+                )
+            except ValueError:
                 pass
         raise RuntimeError(f"No port file for simulator {simulator}")
 
     if os.path.isdir(PORT_DIR):
-        port_files = [f for f in os.listdir(PORT_DIR) if f.endswith(".port")]
-        if len(port_files) == 1:
-            udid = port_files[0].replace(".port", "")
+        # Filter to only live port files
+        live_ports = []
+        for f in sorted(os.listdir(PORT_DIR)):
+            if not f.endswith(".port"):
+                continue
+            udid = f.replace(".port", "")
+            port_path = os.path.join(PORT_DIR, f)
             try:
-                return udid, int(open(os.path.join(PORT_DIR, port_files[0])).read().strip())
+                port = int(open(port_path).read().strip())
             except (ValueError, OSError):
-                pass
-        elif len(port_files) > 1:
-            sims = []
-            for f in sorted(port_files):
-                udid = f.replace(".port", "")
+                continue
+            if pepper_sessions.quick_port_check(port):
+                live_ports.append((udid, port))
+            else:
+                # Stale — clean up
                 try:
-                    port = int(open(os.path.join(PORT_DIR, f)).read().strip())
-                    sims.append(f"  {udid} → port {port}")
-                except (ValueError, OSError):
+                    os.remove(port_path)
+                except OSError:
                     pass
+
+        if len(live_ports) == 1:
+            return live_ports[0]
+        elif len(live_ports) > 1:
+            sims = [f"  {udid} → port {port}" for udid, port in live_ports]
             raise RuntimeError(
-                f"Multiple simulators running ({len(port_files)}). "
+                f"Multiple simulators running ({len(live_ports)}). "
                 f"Pass simulator=UDID to pick one:\n" + "\n".join(sims)
             )
     raise RuntimeError("No Pepper instances found. Is the app running with dylib injection?")
@@ -2104,9 +2128,30 @@ async def simulator(
     sim = simulator_id
     if action == "list":
         sims = list_simulators()
+        sessions = {s["udid"]: s for s in pepper_sessions.list_sessions()}
         if not sims:
+            # Still show session info even if no Pepper running
+            if sessions:
+                lines = []
+                for udid, sess in sessions.items():
+                    status = "live" if sess.get("live") else "stale"
+                    label = f" ({sess['label']})" if sess.get("label") else ""
+                    lines.append(f"  {udid} — session PID {sess['pid']}{label} [{status}]")
+                return f"No Pepper instances running. {len(sessions)} session(s):\n" + "\n".join(lines)
             return "No Pepper instances running."
-        lines = [f"  {s['udid']} → port {s['port']}" for s in sims]
+        lines = []
+        for s in sims:
+            sess = sessions.get(s["udid"])
+            if sess and sess.get("live"):
+                owner = f" [PID {sess['pid']}"
+                if sess.get("label"):
+                    owner += f" ({sess['label']})"
+                if sess.get("pid") == os.getpid():
+                    owner += ", this session"
+                owner += "]"
+            else:
+                owner = " [unclaimed]"
+            lines.append(f"  {s['udid']} → port {s['port']}{owner}")
         return f"{len(sims)} simulator(s):\n" + "\n".join(lines)
 
     # All other actions need a simulator
@@ -2327,55 +2372,53 @@ def _find_available_iphone() -> Optional[str]:
 
 
 def _resolve_simulator(simulator: Optional[str] = None) -> str:
-    """Resolve simulator UDID from param, session affinity, running Pepper instances, or booted sims.
-    Auto-boots an iPhone simulator if none are booted.
-    Once resolved, the sim is sticky for this MCP server process (= Claude session)."""
+    """Resolve simulator UDID with session awareness.
+
+    Resolution order:
+    1. Explicit param (always wins)
+    2. Session affinity (reuse previously resolved sim for this process)
+    3. Our existing session claim (from pepper_sessions)
+    4. Unclaimed sim with Pepper running
+    5. Unclaimed booted sim
+    6. Boot an existing unbooted iPhone sim
+    7. Error if at cap
+
+    Updates heartbeat on every call. Sticky for this MCP server process.
+    """
     global _session_simulator
-    import subprocess
 
     # Explicit param always wins
     if simulator:
         _session_simulator = simulator
+        pepper_sessions.heartbeat(simulator)
         return simulator
 
     # Session affinity: reuse the sim from a previous call in this session
     if _session_simulator:
+        pepper_sessions.heartbeat(_session_simulator)
         return _session_simulator
 
-    sims = list_simulators()
-    if len(sims) == 1:
-        _session_simulator = sims[0]["udid"]
-        return _session_simulator
-    elif len(sims) > 1:
-        raise RuntimeError("Multiple sims running Pepper. Specify simulator UDID:\n" +
-                           "\n".join(f"  {s['udid']} → port {s['port']}" for s in sims))
+    # Check if we already own a session from a previous process lifecycle
+    owned = pepper_sessions.my_session()
+    if owned:
+        _session_simulator = owned
+        pepper_sessions.heartbeat(owned)
+        return owned
 
-    # No pepper running — try booted sims
-    result = subprocess.run(
-        ["xcrun", "simctl", "list", "devices", "booted", "-j"],
-        capture_output=True, text=True
-    )
+    # Clean up stale sessions before searching
+    pepper_sessions.cleanup_stale()
+
+    # Find an available simulator (reuse-first, capped)
+    # This covers: unclaimed Pepper sims, unclaimed booted sims, unbooted sims
     try:
-        data = json.loads(result.stdout)
-        booted = []
-        for _runtime, devices in data.get("devices", {}).items():
-            for d in devices:
-                if d.get("state") == "Booted":
-                    booted.append(d["udid"])
-        if len(booted) == 1:
-            _session_simulator = booted[0]
-            return _session_simulator
-        elif len(booted) > 1:
-            raise RuntimeError(f"Multiple booted sims. Specify simulator UDID:\n" +
-                               "\n".join(f"  {u}" for u in booted))
-    except (json.JSONDecodeError, KeyError):
-        pass
+        udid = pepper_sessions.find_available_simulator()
+    except RuntimeError:
+        raise  # Propagate cap errors and "no sims" errors
 
-    # No booted sims — find and boot one automatically
-    udid = _find_available_iphone()
-    if not udid:
-        raise RuntimeError("No available iPhone simulators found. Install one via Xcode → Settings → Platforms.")
-    _boot_simulator(udid)
+    # If the sim needs booting, boot it
+    if not _is_sim_booted(udid):
+        _boot_simulator(udid)
+
     _session_simulator = udid
     return udid
 
@@ -2478,6 +2521,18 @@ async def _deploy_app(simulator: str, bundle_id: Optional[str] = None,
     if not os.path.exists(dylib):
         return f"Pepper dylib not found at {dylib}. Run `make build` in pepper dir."
 
+    # Session guard: refuse to deploy if another session owns this simulator
+    session = pepper_sessions.is_claimed(simulator)
+    if session and session.get("pid") != os.getpid():
+        label = session.get("label", "")
+        label_str = f" ({label})" if label else ""
+        return (
+            f"Simulator {simulator} is in use by another Pepper session "
+            f"(PID {session['pid']}{label_str}, claimed at {session.get('claimed_at', '?')}). "
+            f"Use a different simulator or wait for that session to finish.\n"
+            f"Tip: use `simulator action=list` to see all available simulators."
+        )
+
     # Ensure simulator is booted
     if not _is_sim_booted(simulator):
         _boot_simulator(simulator)
@@ -2534,6 +2589,8 @@ async def _deploy_app(simulator: str, bundle_id: Optional[str] = None,
                     await asyncio.sleep(1)  # let UI settle
                     look_resp = await send_command(port, "introspect", {"mode": "map"}, timeout=5)
                     screen_summary = format_look(look_resp) if look_resp.get("status") == "ok" else "(look not ready yet)"
+                    # Claim this simulator for our session
+                    pepper_sessions.claim_simulator(simulator, bundle_id=bid, port=port)
                     return f"Deployed to {simulator} (PID {pid}, port {port}). Pepper is connected.\n\n--- Screen ---\n{screen_summary}"
             except Exception:
                 pass
@@ -2797,4 +2854,12 @@ async def deploy(
 
 
 if __name__ == "__main__":
+    import atexit
+
+    def _cleanup_session():
+        owned = pepper_sessions.my_session()
+        if owned:
+            pepper_sessions.release_simulator(owned)
+
+    atexit.register(_cleanup_session)
     mcp.run(transport="stdio")
