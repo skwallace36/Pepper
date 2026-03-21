@@ -100,4 +100,11 @@ See `dylib/DYLIB.md` for the full guide. Short version:
 1. Create handler in `dylib/commands/handlers/`
 2. Register in `PepperDispatcher.swift`
 3. Add MCP tool in `tools/pepper-mcp`
-4. `make build` and test
+4. Add entry to `docs/COMMANDS.md` summary table (with category)
+5. Add test surface + status entry to `test-app/coverage-status.json`
+6. Run `make coverage` to regenerate `test-app/COVERAGE.md`
+7. `make build` and test
+
+---
+
+**Routing:** Bugs → `BUGS.md` | Work items → `ROADMAP.md` | Test results → `test-app/COVERAGE.md` (auto-generated) | Research → `docs/RESEARCH.md`
