@@ -4,7 +4,6 @@ Reference documentation.
 
 ## Files
 
-- `COMMANDS.md` — auto-generated command reference from MCP tool definitions (`make commands`)
 - `SETUP.md` — troubleshooting guide (setup itself is `make setup`)
 - `RESEARCH.md` — competitive analysis, ideas worth building, unique differentiators
 

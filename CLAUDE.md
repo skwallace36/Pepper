@@ -8,25 +8,9 @@ For project status and priorities, see `ROADMAP.md`.
 
 ### MCP Tools (preferred)
 
-If the Pepper MCP server is configured (`.mcp.json`), use native tools directly:
+46 tools available via the MCP server (`.mcp.json`). Each tool has full docstrings and parameter descriptions in `tools/pepper-mcp` — that's the reference.
 
-- **`look`** — primary tool. Compact screen summary: all interactive elements with tap commands + visible text. Use `raw=true` for full JSON with coordinates/frames. Use `visual=true` to include a simulator screenshot alongside the structured data for visual validation.
-- **`tap`** — tap by text, icon name, heuristic, or point
-- **`scroll`** — scroll in a direction
-- **`navigate`** — deep link or tab switch
-- **`back`** — go back / dismiss
-- **`screen`** — current screen name
-- **`vars_inspect`** — list/dump/mirror/set ViewModel properties
-- **`heap`** — discover live objects (classes, controllers, find singletons)
-- **`layers`** — CALayer tree at a point (colors, gradients, shadows)
-- **`console`** — capture and read app logs
-- **`network`** — monitor HTTP traffic
-- **`animations`** — scan active animations or trace movement
-- **`deploy`** — terminate + relaunch with dylib injection
-- **`simulators`** — list sims with active Pepper connections
-- **`raw`** — send any command not covered above
-
-Full command reference: `docs/COMMANDS.md`
+`look` · `tap` · `scroll` · `scroll_to` · `swipe` · `gesture` · `input_text` · `toggle` · `navigate` · `back` · `dismiss` · `dismiss_keyboard` · `dialog` · `screen` · `vars_inspect` · `heap` · `layers` · `console` · `network` · `timeline` · `crash_log` · `animations` · `lifecycle` · `find` · `read_element` · `tree` · `highlight` · `hook` · `defaults` · `clipboard` · `keychain` · `cookies` · `locale` · `flags` · `push` · `orientation` · `status` · `wait_for` · `wait_idle` · `record` · `raw` · `simulator` · `build` · `build_device` · `deploy` · `iterate`
 
 ### CLI Fallback (`pepper-ctl`)
 
@@ -124,7 +108,7 @@ See `dylib/DYLIB.md` for the full guide. Short version:
 2. Register in `PepperDispatcher.swift`
 3. Add MCP tool in `tools/pepper-mcp`
 4. Add test surface + status entry to `test-app/coverage-status.json`
-5. Run `make docs` to regenerate `COMMANDS.md` + `COVERAGE.md`
+5. Run `make coverage` to regenerate `COVERAGE.md`
 6. `make build` and test
 
 ---

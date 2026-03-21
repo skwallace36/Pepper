@@ -23,7 +23,7 @@ LOGS_DIR    := $(PROJECT_DIR)/build/logs
 
 .PHONY: help build deploy launch kill relaunch ping check \
         logs clean test-client pepper-ctl test-app coverage coverage-check \
-        commands commands-check docs setup
+        docs setup
 
 # ============================================================
 # Help
@@ -158,16 +158,8 @@ coverage:
 coverage-check:
 	@python3 "$(PROJECT_DIR)/scripts/gen-coverage.py" --check
 
-## commands: Regenerate docs/COMMANDS.md from MCP tool definitions
-commands:
-	@python3 "$(PROJECT_DIR)/scripts/gen-commands.py"
-
-## commands-check: Verify COMMANDS.md is in sync with source
-commands-check:
-	@python3 "$(PROJECT_DIR)/scripts/gen-commands.py" --check
-
 ## docs: Regenerate all auto-generated docs
-docs: coverage commands
+docs: coverage
 
 ## setup: Install deps, verify env, set up git hooks
 setup:
