@@ -142,46 +142,7 @@ control/
     ├── PepperNetworkModels.swift                # Network data models
     └── PepperNetworkProtocol.swift              # URL protocol for interception
 
-dashboard/src-tauri/src/
-├── lib.rs                 # Tauri app setup, DB init, startup flow
-├── state.rs               # AppState (DB mutex, project_root, app_handle)
-├── export.rs              # Auto-export test manifest to data/test-manifest.json
-├── seed.rs                # DB seed operations
-├── db/
-│   ├── schema.rs          # CREATE TABLE statements
-│   └── seed.rs            # Seed data
-└── routes/
-    ├── mod.rs              # Router setup, shared types (ApiResult, AppError)
-    ├── accounts.rs         # Account CRUD, API discovery, device pool, provisioning
-    ├── account_entities.rs # Account entity sub-routes (pets, devices)
-    ├── builder.rs          # Builder state and operations
-    ├── builder_overlay.rs  # Builder overlay callbacks (from Swift)
-    ├── devices.rs          # Device pool CRUD
-    ├── test_items.rs       # Test item CRUD
-    ├── test_runs.rs        # Test run management + results
-    ├── test_scripts.rs     # Test script CRUD
-    ├── test_suites.rs      # Test suite CRUD + membership
-    ├── shared_blocks.rs    # Shared block CRUD
-    ├── runner.rs           # Test runner orchestration
-    ├── deploy/             # Deploy pipeline (build, launch, inject)
-    ├── app_control.rs      # App restart, screenshot
-    ├── screen_state.rs     # Live screen state
-    ├── recordings.rs       # Recording management
-    ├── pepper.rs           # WebSocket command proxy
-    ├── app_adapter/         # App adapter trait + implementations
-    ├── helpers.rs          # Shared route helpers
-    └── icon_usage.rs       # Icon usage analytics
 ```
-
-## Test Manifest
-
-Test definitions are auto-exported from the DB to `data/test-manifest.json` (git-tracked). Three automation layers:
-
-1. **Reactive**: `export.rs::schedule_export()` called after every test mutation API endpoint (debounced 500ms)
-2. **Startup**: `export_test_manifest()` runs on app launch to sync manifest with DB state
-3. **Pre-commit hook**: `.git/hooks/pre-commit` auto-stages the manifest before every commit
-
-If the DB has no tests but the manifest exists, `import_test_manifest()` restores from the JSON file (disaster recovery).
 
 ## Key Design Decisions
 
