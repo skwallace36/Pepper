@@ -53,6 +53,12 @@ All commands are sent as JSON over WebSocket to `ws://localhost:8765`.
 | `animations` | inspection | Scan active CAAnimations or trace view movement over time | `pepper-ctl raw '{"cmd":"animations"}'` |
 | `find` | observation | Query elements using NSPredicate expressions | `pepper-ctl raw '{"cmd":"find","params":{"predicate":"label CONTAINS \'Save\'"}}'` |
 | `hook` | inspection | Hook ObjC methods at runtime to log invocations | `pepper-ctl raw '{"cmd":"hook","params":{"action":"install","class":"UIViewController","method":"viewDidAppear:"}}'` |
+| `heap_snapshot` | inspection | Heap snapshots and diffing | `pepper-ctl raw '{"cmd":"heap_snapshot","params":{"action":"snapshot"}}'` |
+| `defaults` | toolbox | NSUserDefaults access | `pepper-ctl raw '{"cmd":"defaults","params":{"action":"list"}}'` |
+| `clipboard` | toolbox | Clipboard access (get/set/clear) | `pepper-ctl raw '{"cmd":"clipboard","params":{"action":"get"}}'` |
+| `cookies` | toolbox | Web cookie access | `pepper-ctl raw '{"cmd":"cookies","params":{"action":"list"}}'` |
+| `keychain` | toolbox | Keychain access | `pepper-ctl raw '{"cmd":"keychain","params":{"action":"list"}}'` |
+| `timeline` | meta | Flight recorder queries | `pepper-ctl raw '{"cmd":"timeline","params":{"action":"query"}}'` |
 
 ## Message Format
 
