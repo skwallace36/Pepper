@@ -149,29 +149,38 @@ def _remove_session(udid: str):
 def _is_session_live(session: dict) -> bool:
     """Check if a session is still active.
 
-    Primary: PID must be alive.
-    Secondary: heartbeat must not be too old (catches zombie edge cases).
+    A session is live if EITHER:
+    - The claiming PID is still alive (long-running MCP server), OR
+    - The Pepper port is still responding (app is running, even if deploy script exited)
+
+    This dual check supports both MCP deploy (PID stays alive) and `make deploy`
+    (PID dies after launch, but the app + Pepper port remain live).
     """
     pid = session.get("pid", 0)
-    if not _is_pid_alive(pid):
-        return False
+    port = session.get("port", 0)
 
-    # PID is alive — check heartbeat staleness as secondary signal
-    heartbeat_str = session.get("heartbeat", "")
-    if heartbeat_str:
-        try:
-            heartbeat_time = datetime.fromisoformat(heartbeat_str)
-            age = (datetime.now(timezone.utc) - heartbeat_time).total_seconds()
-            if age > HEARTBEAT_STALE_SECONDS:
-                # PID is alive but heartbeat is very old — could be PID reuse.
-                # Be conservative: treat as stale only if the port is also dead.
-                port = session.get("port", 0)
-                if port and not quick_port_check(port):
-                    return False
-        except (ValueError, TypeError):
-            pass
+    if _is_pid_alive(pid):
+        # PID is alive — check heartbeat staleness as secondary signal
+        heartbeat_str = session.get("heartbeat", "")
+        if heartbeat_str:
+            try:
+                heartbeat_time = datetime.fromisoformat(heartbeat_str)
+                age = (datetime.now(timezone.utc) - heartbeat_time).total_seconds()
+                if age > HEARTBEAT_STALE_SECONDS:
+                    # PID is alive but heartbeat is very old — could be PID reuse.
+                    # Be conservative: treat as stale only if the port is also dead.
+                    if port and not quick_port_check(port):
+                        return False
+            except (ValueError, TypeError):
+                pass
+        return True
 
-    return True
+    # PID is dead — but is the app still running?
+    # This covers `make deploy` where the deploy script exits but the app stays up.
+    if port and quick_port_check(port):
+        return True
+
+    return False
 
 
 def claim_simulator(udid: str, bundle_id: str = "", port: int = 0,
@@ -204,6 +213,54 @@ def claim_simulator(udid: str, bundle_id: str = "", port: int = 0,
         "label": label or os.environ.get("PEPPER_SESSION_LABEL", ""),
     }
     return _write_session_atomic(udid, data)
+
+
+def claim_simulator_with_port(udid: str, bundle_id: str = "", port: int = 0,
+                              label: Optional[str] = None) -> bool:
+    """Claim a simulator using port liveness as the anchor (not PID).
+
+    For use by short-lived scripts like `make deploy` where the claiming process
+    exits immediately but the app (and its Pepper port) stays alive. The session
+    is considered live as long as the port responds, regardless of PID.
+
+    Uses PID 0 as a sentinel — _is_session_live will fall through to port check.
+    """
+    existing = _read_session(udid)
+    if existing and _is_session_live(existing):
+        # Another live session owns it — check if it's the same port (redeploy)
+        if existing.get("port") == port:
+            # Same port = same app instance, just update
+            pass
+        else:
+            return False
+    elif existing:
+        _remove_session(udid)
+
+    now = datetime.now(timezone.utc).isoformat()
+    data = {
+        "udid": udid,
+        "pid": 0,  # sentinel — liveness determined by port check
+        "claimed_at": now,
+        "heartbeat": now,
+        "bundle_id": bundle_id,
+        "port": port,
+        "label": label or os.environ.get("PEPPER_SESSION_LABEL", "make-deploy"),
+    }
+    # Write directly — no PID race to verify since we use port liveness
+    _ensure_session_dir()
+    path = _session_path(udid)
+    tmp_path = f"{path}.{os.getpid()}.tmp"
+    try:
+        with open(tmp_path, "w") as f:
+            json.dump(data, f)
+        os.rename(tmp_path, path)
+        return True
+    except OSError:
+        try:
+            os.remove(tmp_path)
+        except OSError:
+            pass
+        return False
 
 
 def release_simulator(udid: str):
