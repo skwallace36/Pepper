@@ -10,7 +10,7 @@ For project status and priorities, see `ROADMAP.md`.
 
 46 tools available via the MCP server (`.mcp.json`). Each tool has full docstrings and parameter descriptions in `tools/pepper-mcp` — that's the reference.
 
-`look` · `tap` · `scroll` · `scroll_to` · `swipe` · `gesture` · `input_text` · `toggle` · `navigate` · `back` · `dismiss` · `dismiss_keyboard` · `dialog` · `screen` · `vars_inspect` · `heap` · `layers` · `console` · `network` · `timeline` · `crash_log` · `animations` · `lifecycle` · `find` · `read_element` · `tree` · `highlight` · `hook` · `defaults` · `clipboard` · `keychain` · `cookies` · `locale` · `flags` · `push` · `orientation` · `status` · `wait_for` · `wait_idle` · `record` · `raw` · `simulator` · `build` · `build_device` · `deploy` · `iterate`
+look, tap, scroll, scroll_to, swipe, gesture, input_text, toggle, navigate, back, dismiss, dismiss_keyboard, dialog, screen, vars_inspect, heap, layers, console, network, timeline, crash_log, animations, lifecycle, find, read_element, tree, highlight, hook, defaults, clipboard, keychain, cookies, locale, flags, push, orientation, status, wait_for, wait_idle, record, raw, simulator, build, build_device, deploy, iterate
 
 ### CLI Fallback (`pepper-ctl`)
 
@@ -35,25 +35,7 @@ make deploy   # Build + launch with injection
 make ping     # Verify control plane
 ```
 
-Source of truth is `dylib/`. Changes go here. `make build` compiles to `build/Pepper.framework`.
-
-```
-┌──────────────────────────────────────────┐
-│       iOS App (Simulator)                │
-│  ┌─────────┐  ┌──────────┐  ┌────────┐  │
-│  │ ViewCtrl │  │ TabBar   │  │ Models │  │  ← target app (unmodified)
-│  └────┬─────┘  └────┬─────┘  └────────┘  │
-│  ═════╪══════════════╪════════════════════│  ← dylib injection boundary
-│  ┌────▼──────────────▼─────────────────┐  │
-│  │   Pepper.framework (injected dylib) │  │
-│  │  WS Server · Cmd Dispatcher         │  │
-│  │  UI Bridge · HID Synthesizer        │  │
-│  └─────────────────────────────────────┘  │
-└──────────────────┬───────────────────────┘
-                   │ WebSocket
-                   ▼
-     MCP Server · pepper-ctl · test-client
-```
+Source of truth is `dylib/`. Changes go here. `make build` compiles to `build/Pepper.framework`. The dylib starts a WebSocket server inside the app process; MCP server and CLI tools connect to it.
 
 Configuration via `.env`:
 ```bash
@@ -61,32 +43,11 @@ APP_BUNDLE_ID=com.pepper.testapp    # Target app bundle ID
 APP_ADAPTER_TYPE=generic            # Adapter type (generic or app-specific)
 ```
 
-## Project Layout
-
-Each directory has its own doc with details:
-
-```
-pepper/
-├── CLAUDE.md              # This file
-├── ROADMAP.md             # Project status, bugs, what's next
-├── Makefile               # Build/deploy
-├── .mcp.json              # MCP server config for Claude Code
-├── dylib/                 # Dylib Swift source → see dylib/DYLIB.md
-├── tools/                 # CLI, MCP server, utilities → see tools/TOOLS.md
-├── test-app/              # Integration test app → see test-app/TEST-APP.md
-├── scripts/               # Build/CI scripts → see scripts/SCRIPTS.md
-├── docs/                  # Reference docs → see docs/DOCS.md
-├── build/                 # gitignored
-└── .gitignore
-```
-
 ## Developing Pepper
 
 ### Commit Discipline
 
-Commit early and often. Don't let uncommitted changes pile up across many files — commit at natural boundaries (a completed refactor, a bug fix, a feature addition) rather than batching everything into one giant commit at the end. If you've touched 3+ files and the work is in a coherent state, commit it.
-
-**A commit is a checkpoint, not a finish line.** After committing, step back and evaluate: does the original request fully work? Are there remaining steps, edge cases, or verification needed? Keep working until the task is actually done, not just committed.
+Commit early and often at natural boundaries. A commit is a checkpoint, not a finish line — keep working until the task is actually done.
 
 ### Code Conventions
 
