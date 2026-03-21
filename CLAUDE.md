@@ -39,13 +39,7 @@ CLI fallback: `python3 tools/pepper-ctl look`
 
 ## Adding a Command
 
-See `dylib/DYLIB.md` for the full guide. Short version:
-1. Create handler in `dylib/commands/handlers/`
-2. Register in `PepperDispatcher.swift`
-3. Add MCP tool in `tools/pepper-mcp`
-4. Add test surface + status entry to `test-app/coverage-status.json`
-5. Run `make coverage` to regenerate `COVERAGE.md`
-6. `make build` and test
+See `dylib/DYLIB.md`.
 
 ---
 
