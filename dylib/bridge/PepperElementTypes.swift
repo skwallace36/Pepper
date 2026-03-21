@@ -293,12 +293,4 @@ extension CGRect {
         return container.contains(self)
     }
 
-    /// True when at least half the element's area is within the container bounds.
-    func isMostlyVisible(in container: CGRect) -> Bool {
-        let overlap = self.intersection(container)
-        guard !overlap.isNull else { return false }
-        let area = self.width * self.height
-        guard area > 0 else { return false }
-        return (overlap.width * overlap.height) / area >= 0.5
-    }
 }
