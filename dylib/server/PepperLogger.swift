@@ -5,10 +5,10 @@ import os
 
 /// Categories for pepper logging, each with a dedicated OSLog subsystem.
 enum PepperLogCategory: String, CaseIterable {
-    case server     = "server"
-    case commands   = "commands"
-    case bridge     = "bridge"
-    case lifecycle  = "lifecycle"
+    case server
+    case commands
+    case bridge
+    case lifecycle
 }
 
 // MARK: - PepperLogger
