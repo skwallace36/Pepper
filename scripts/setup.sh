@@ -119,16 +119,13 @@ fi
 
 # Generated docs sync
 info "Checking generated docs..."
-for gen_script in gen-coverage.py gen-commands.py; do
-    name=$(echo "$gen_script" | sed 's/gen-//' | sed 's/\.py//')
-    if python3 "$REPO_DIR/scripts/$gen_script" --check 2>/dev/null; then
-        pass "${name^^}.md in sync"
-    else
-        warn "${name^^}.md stale — regenerating..."
-        python3 "$REPO_DIR/scripts/$gen_script"
-        pass "${name^^}.md regenerated"
-    fi
-done
+if python3 "$REPO_DIR/scripts/gen-coverage.py" --check 2>/dev/null; then
+    pass "COVERAGE.md in sync"
+else
+    warn "COVERAGE.md stale — regenerating..."
+    python3 "$REPO_DIR/scripts/gen-coverage.py"
+    pass "COVERAGE.md regenerated"
+fi
 
 echo ""
 echo "============"
