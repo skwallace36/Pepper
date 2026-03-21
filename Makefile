@@ -22,7 +22,7 @@ DYLIB_PATH  := $(PROJECT_DIR)/build/Pepper.framework/Pepper
 LOGS_DIR    := $(PROJECT_DIR)/build/logs
 
 .PHONY: help build deploy launch kill relaunch ping check \
-        logs clean test-client pepper-ctl test-app coverage coverage-check
+        logs clean test-client pepper-ctl test-app coverage coverage-check setup
 
 # ============================================================
 # Help
@@ -156,6 +156,10 @@ coverage:
 ## coverage-check: Verify COVERAGE.md is in sync with source
 coverage-check:
 	@python3 "$(PROJECT_DIR)/scripts/gen-coverage.py" --check
+
+## setup: Install deps, verify env, set up git hooks
+setup:
+	@bash "$(PROJECT_DIR)/scripts/setup.sh"
 
 ## clean: Clean build artifacts
 clean:
