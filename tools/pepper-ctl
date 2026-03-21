@@ -36,6 +36,10 @@ except ImportError:
     print("  pip install websockets", file=sys.stderr)
     sys.exit(1)
 
+# Session management for liveness-aware port discovery
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import pepper_sessions
+
 DEFAULT_HOST = "localhost"
 DEFAULT_PORT = None  # Auto-discover from port files
 PORT_DIR = "/tmp/pepper-ports"
@@ -61,37 +65,54 @@ def discover_port(simulator=None):
     """Auto-discover Pepper port from port files written by the dylib.
 
     If simulator UDID is given, reads that specific port file.
-    Otherwise, if exactly one port file exists, uses it.
+    Otherwise, if exactly one live port file exists, uses it.
     Falls back to 8765 for backwards compatibility.
+    Validates port liveness — cleans stale port files automatically.
     """
     if simulator:
         path = os.path.join(PORT_DIR, f"{simulator}.port")
         if os.path.exists(path):
             try:
-                return int(open(path).read().strip())
+                port = int(open(path).read().strip())
+                if pepper_sessions.quick_port_check(port):
+                    return port
+                # Stale — clean up
+                try:
+                    os.remove(path)
+                except OSError:
+                    pass
+                print(f"Warning: Stale port file for {simulator} (cleaned up), falling back to 8765", file=sys.stderr)
             except (ValueError, OSError):
                 pass
         print(f"Warning: No port file for simulator {simulator}, falling back to 8765", file=sys.stderr)
         return 8765
 
-    # Auto-discover: look for port files
+    # Auto-discover: look for live port files
     if os.path.isdir(PORT_DIR):
-        port_files = [f for f in os.listdir(PORT_DIR) if f.endswith(".port")]
-        if len(port_files) == 1:
+        live_ports = []
+        for f in sorted(os.listdir(PORT_DIR)):
+            if not f.endswith(".port"):
+                continue
+            port_path = os.path.join(PORT_DIR, f)
             try:
-                path = os.path.join(PORT_DIR, port_files[0])
-                return int(open(path).read().strip())
+                port = int(open(port_path).read().strip())
             except (ValueError, OSError):
-                pass
-        elif len(port_files) > 1:
-            print(f"Multiple simulators running ({len(port_files)}). Use --simulator <UDID> to pick one:", file=sys.stderr)
-            for f in sorted(port_files):
-                udid = f.replace(".port", "")
+                continue
+            if pepper_sessions.quick_port_check(port):
+                live_ports.append((f.replace(".port", ""), port))
+            else:
+                # Stale — clean up
                 try:
-                    port = int(open(os.path.join(PORT_DIR, f)).read().strip())
-                    print(f"  {udid} → port {port}", file=sys.stderr)
-                except (ValueError, OSError):
+                    os.remove(port_path)
+                except OSError:
                     pass
+
+        if len(live_ports) == 1:
+            return live_ports[0][1]
+        elif len(live_ports) > 1:
+            print(f"Multiple simulators running ({len(live_ports)}). Use --simulator <UDID> to pick one:", file=sys.stderr)
+            for udid, port in live_ports:
+                print(f"  {udid} → port {port}", file=sys.stderr)
             sys.exit(1)
 
     return 8765

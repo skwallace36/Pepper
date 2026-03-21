@@ -22,6 +22,9 @@ python3 tools/pepper-ctl raw '{"cmd":"heap","params":{"action":"classes","patter
 
 Multi-sim: `--simulator <UDID>` auto-discovers port from `/tmp/pepper-ports/`.
 
+### `pepper_sessions.py` (Python)
+File-based session management for multi-agent simulator coordination. Each MCP server process claims a simulator exclusively via session files in `/tmp/pepper-sessions/`. Handles liveness detection (PID + heartbeat), stale cleanup, and reuse-first simulator provisioning with a configurable cap (`PEPPER_MAX_SIMS`, default 3). Imported by `pepper-mcp` and `pepper-ctl`.
+
 ### `pepper-stream` (Python)
 Real-time event stream viewer. Connects to Pepper's WebSocket and prints events as they arrive.
 
