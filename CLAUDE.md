@@ -74,7 +74,6 @@ pepper/
 ├── test-app/              # Integration test app → see test-app/TEST-APP.md
 ├── scripts/               # Build/CI scripts → see scripts/SCRIPTS.md
 ├── docs/                  # Reference docs → see docs/DOCS.md
-├── skills/                # Claude Code skills (/pepper, /stream)
 ├── build/                 # gitignored
 └── .gitignore
 ```
