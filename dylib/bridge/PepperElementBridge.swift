@@ -331,11 +331,6 @@ extension UIView {
         return success
     }
 
-    /// Clear the text content of a UITextField or UITextView.
-    @discardableResult
-    func pepper_clearText() -> Bool {
-        return pepper_simulateTextInput("")
-    }
 }
 
 // MARK: - Switch toggle simulation
@@ -360,66 +355,6 @@ extension UIView {
             pepperLog.debug("Toggled switch to \(newValue): \(self.accessibilityIdentifier ?? "unknown")", category: .bridge)
         }
         return success
-    }
-}
-
-// MARK: - Scroll control
-
-extension UIView {
-
-    /// Scroll a UIScrollView to a specific offset.
-    ///
-    /// - Returns: `true` if the scroll was applied.
-    @discardableResult
-    func pepper_scroll(to offset: CGPoint, animated: Bool = true) -> Bool {
-        var success = false
-        pepper_ensureMainThread {
-            guard let scrollView = self as? UIScrollView else {
-                pepperLog.warning("View is not a UIScrollView: \(self.accessibilityIdentifier ?? "unknown")", category: .bridge)
-                return
-            }
-            scrollView.setContentOffset(offset, animated: animated)
-            success = true
-            pepperLog.debug("Scrolled to offset (\(offset.x), \(offset.y)): \(self.accessibilityIdentifier ?? "unknown")", category: .bridge)
-        }
-        return success
-    }
-
-    /// Scroll a UIScrollView by a relative delta.
-    ///
-    /// - Returns: `true` if the scroll was applied.
-    @discardableResult
-    func pepper_scrollBy(dx: CGFloat, dy: CGFloat, animated: Bool = true) -> Bool {
-        guard let scrollView = self as? UIScrollView else {
-            pepperLog.warning("View is not a UIScrollView: \(self.accessibilityIdentifier ?? "unknown")", category: .bridge)
-            return false
-        }
-        let current = scrollView.contentOffset
-        let newOffset = CGPoint(
-            x: max(0, min(current.x + dx, scrollView.contentSize.width - scrollView.bounds.width)),
-            y: max(0, min(current.y + dy, scrollView.contentSize.height - scrollView.bounds.height))
-        )
-        return pepper_scroll(to: newOffset, animated: animated)
-    }
-
-    /// Scroll a UIScrollView so that a specific subview is visible.
-    ///
-    /// - Returns: `true` if the scroll was applied.
-    @discardableResult
-    func pepper_scrollToVisible(elementID: String, animated: Bool = true) -> Bool {
-        guard let scrollView = self as? UIScrollView else {
-            pepperLog.warning("View is not a UIScrollView: \(self.accessibilityIdentifier ?? "unknown")", category: .bridge)
-            return false
-        }
-        guard let target = scrollView.pepper_findElement(id: elementID) else {
-            pepperLog.warning("Element not found for scroll: \(elementID)", category: .bridge)
-            return false
-        }
-        let targetFrame = target.convert(target.bounds, to: scrollView)
-        pepper_ensureMainThread {
-            scrollView.scrollRectToVisible(targetFrame, animated: animated)
-        }
-        return true
     }
 }
 
