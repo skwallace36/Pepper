@@ -53,6 +53,24 @@ make ping     # Verify control plane
 
 Source of truth is `dylib/`. Changes go here. `make build` compiles to `build/Pepper.framework`.
 
+```
+┌──────────────────────────────────────────┐
+│       iOS App (Simulator)                │
+│  ┌─────────┐  ┌──────────┐  ┌────────┐  │
+│  │ ViewCtrl │  │ TabBar   │  │ Models │  │  ← target app (unmodified)
+│  └────┬─────┘  └────┬─────┘  └────────┘  │
+│  ═════╪══════════════╪════════════════════│  ← dylib injection boundary
+│  ┌────▼──────────────▼─────────────────┐  │
+│  │   Pepper.framework (injected dylib) │  │
+│  │  WS Server · Cmd Dispatcher         │  │
+│  │  UI Bridge · HID Synthesizer        │  │
+│  └─────────────────────────────────────┘  │
+└──────────────────┬───────────────────────┘
+                   │ WebSocket
+                   ▼
+     MCP Server · pepper-ctl · test-client
+```
+
 Configuration via `.env`:
 ```bash
 APP_BUNDLE_ID=com.pepper.testapp    # Target app bundle ID
@@ -93,16 +111,21 @@ Commit early and often. Don't let uncommitted changes pile up across many files 
 - **Dylib injection** — no source patches needed. `DYLD_INSERT_LIBRARIES` loads the dylib at launch.
 - **Bundle ID**: Set via `APP_BUNDLE_ID` in `.env` file. Required for deploy/iterate.
 
+### Design Decisions
+
+- **Single HID pipeline** — all touch interactions (taps, swipes, scrolls) use IOHIDEvent injection. One code path for UIKit and SwiftUI.
+- **Extensions, not subclasses** — all UIKit integration via extensions on UIView, UIViewController, etc. No subclassing. Minimizes coupling.
+- **Main-thread execution** — all command handlers run on main thread (required for UIKit safety).
+
 ### Adding a Command
 
 See `dylib/DYLIB.md` for the full guide. Short version:
 1. Create handler in `dylib/commands/handlers/`
 2. Register in `PepperDispatcher.swift`
 3. Add MCP tool in `tools/pepper-mcp`
-4. Add entry to `docs/COMMANDS.md` summary table (with category)
-5. Add test surface + status entry to `test-app/coverage-status.json`
-6. Run `make coverage` to regenerate `test-app/COVERAGE.md`
-7. `make build` and test
+4. Add test surface + status entry to `test-app/coverage-status.json`
+5. Run `make docs` to regenerate `COMMANDS.md` + `COVERAGE.md`
+6. `make build` and test
 
 ---
 
