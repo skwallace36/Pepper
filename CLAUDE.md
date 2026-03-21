@@ -51,7 +51,7 @@ make deploy   # Build + launch with injection
 make ping     # Verify control plane
 ```
 
-Source of truth is `control/`. Changes go here. `make build` compiles to `build/Pepper.framework`.
+Source of truth is `dylib/`. Changes go here. `make build` compiles to `build/Pepper.framework`.
 
 Configuration via `.env`:
 ```bash
@@ -69,7 +69,7 @@ pepper/
 ├── ROADMAP.md             # Project status, bugs, what's next
 ├── Makefile               # Build/deploy
 ├── .mcp.json              # MCP server config for Claude Code
-├── control/               # Dylib Swift source → see control/CONTROL.md
+├── dylib/                 # Dylib Swift source → see dylib/DYLIB.md
 ├── tools/                 # CLI, MCP server, utilities → see tools/TOOLS.md
 ├── test-app/              # Integration test app → see test-app/TEST-APP.md
 ├── scripts/               # Build/CI scripts → see scripts/SCRIPTS.md
@@ -96,8 +96,8 @@ Commit early and often. Don't let uncommitted changes pile up across many files 
 
 ### Adding a Command
 
-See `control/CONTROL.md` for the full guide. Short version:
-1. Create handler in `control/commands/handlers/`
+See `dylib/DYLIB.md` for the full guide. Short version:
+1. Create handler in `dylib/commands/handlers/`
 2. Register in `PepperDispatcher.swift`
 3. Add MCP tool in `tools/pepper-mcp`
 4. `make build` and test

@@ -122,7 +122,7 @@ def load_adapter_preamble() -> str:
 
     Searches (in order):
     1. ADAPTER_PATH/mcp-preamble.md (external adapter repo)
-    2. control/{adapter_type}/mcp-preamble.md (in-tree fallback)
+    2. dylib/{adapter_type}/mcp-preamble.md (in-tree fallback)
     Returns the content or empty string if no preamble found.
     """
     env = load_env()
@@ -142,7 +142,7 @@ def load_adapter_preamble() -> str:
                 pass
 
     # Fallback: in-tree
-    preamble = os.path.join(PEPPER_DIR, "control", adapter_type, "mcp-preamble.md")
+    preamble = os.path.join(PEPPER_DIR, "dylib", adapter_type, "mcp-preamble.md")
     if os.path.exists(preamble):
         try:
             with open(preamble) as f:

@@ -35,7 +35,7 @@ pepper is a **dylib** injected into any iOS app at simulator launch via `DYLD_IN
 
 ## Injection Mechanism
 
-**Zero source patches.** The dylib is compiled from `control/` into `build/Pepper.framework/Pepper` and injected at launch via:
+**Zero source patches.** The dylib is compiled from `dylib/` into `build/Pepper.framework/Pepper` and injected at launch via:
 
 ```bash
 DYLD_INSERT_LIBRARIES=build/Pepper.framework/Pepper xcrun simctl launch ...
@@ -46,7 +46,7 @@ The target app source is completely unmodified — no `#if` flags, no workspace 
 ## Source Layout
 
 ```
-control/
+dylib/
 ├── server/
 │   ├── PepperPlane.swift                    # Singleton, lifecycle, event routing
 │   ├── PepperServer.swift                   # NWListener WebSocket server
