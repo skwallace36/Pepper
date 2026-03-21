@@ -66,8 +66,9 @@ Flight recorder for event timeline debugging.
 
 1. Create `commands/handlers/MyHandler.swift` implementing `PepperHandler`
 2. Register in `commands/PepperDispatcher.swift` → `registerBuiltins()`
-3. Add MCP tool wrapper in `tools/pepper-mcp` (async function with `@mcp.tool()`)
-4. `make build` to compile, relaunch app to test
+3. Add MCP tool wrapper in `tools/pepper-mcp` (`@mcp.tool()`)
+
+Pre-commit handles the rest — coverage auto-discovers new commands, build runs automatically.
 
 ## Design Principles
 
