@@ -16,7 +16,7 @@ PORT          ?= $(shell echo "$(SIMULATOR_ID)" | python3 -c "import sys,hashlib
 
 PROJECT_DIR := $(shell pwd)
 TOOLS_DIR   := $(PROJECT_DIR)/tools
-CONTROL_DIR := $(PROJECT_DIR)/control
+CONTROL_DIR := $(PROJECT_DIR)/dylib
 DYLIB_PATH  := $(PROJECT_DIR)/build/Pepper.framework/Pepper
 
 LOGS_DIR    := $(PROJECT_DIR)/build/logs
