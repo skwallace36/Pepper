@@ -75,3 +75,7 @@ Flight recorder for event timeline debugging.
 - **Single HID pipeline** — all touch interactions use IOHIDEvent injection. One code path for UIKit and SwiftUI.
 - **One concern per file** — file names are self-documenting.
 - **`extension TypeName`** in separate files for large types (stored properties stay on core class).
+
+---
+
+**Routing:** Bugs → `../BUGS.md` | Work items → `../ROADMAP.md` | Test coverage → `../test-app/COVERAGE.md` | Research → `../docs/RESEARCH.md`

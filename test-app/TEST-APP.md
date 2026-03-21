@@ -44,3 +44,7 @@ The app provides surfaces for: element discovery (`look`), all tap strategies, t
 ## Adding Test Surfaces
 
 When adding a new Pepper command or fixing a bug, add the corresponding UI surface here and update `COVERAGE.md`. The test app should always cover everything Pepper can do.
+
+---
+
+**Routing:** Bugs → `../BUGS.md` | Work items → `../ROADMAP.md` | Test coverage → `COVERAGE.md` | Research → `../docs/RESEARCH.md`
