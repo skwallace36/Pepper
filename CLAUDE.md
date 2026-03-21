@@ -24,9 +24,9 @@ APP_ADAPTER_TYPE=generic
 
 ## MCP Tools
 
-46 tools exposed via `.mcp.json`. Usage rules are in the MCP server's built-in instructions. Tool docstrings and parameters are in `tools/pepper-mcp` — that's the reference.
+46 tools via `.mcp.json`. Docstrings and parameters live in `tools/pepper-mcp`.
 
-CLI fallback: `python3 tools/pepper-ctl look`
+look, tap, scroll, scroll_to, swipe, gesture, input_text, toggle, navigate, back, dismiss, dismiss_keyboard, dialog, screen, vars_inspect, heap, layers, console, network, timeline, crash_log, animations, lifecycle, find, read_element, tree, highlight, hook, defaults, clipboard, keychain, cookies, locale, flags, push, orientation, status, wait_for, wait_idle, record, raw, simulator, build, build_device, deploy, iterate
 
 ## Code Conventions
 
