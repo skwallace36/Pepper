@@ -6,8 +6,7 @@ Reference documentation.
 
 - `COMMANDS.md` — auto-generated command reference from MCP tool definitions (`make commands`)
 - `SETUP.md` — troubleshooting guide (setup itself is `make setup`)
-- `RESEARCH.md` — ideas from analyzing other tools (FLEX, Chisel, Maestro, etc.)
-- `COMPETITIVE.md` — feature-by-feature comparison with competitors
+- `RESEARCH.md` — competitive analysis, ideas worth building, unique differentiators
 
 ---
 
