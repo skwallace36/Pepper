@@ -272,19 +272,6 @@ struct PepperIntrospectionResult {
     }
 }
 
-// MARK: - Main thread helper
-
-/// Ensure a block runs on the main thread. Executes synchronously if already on main.
-func pepper_ensureMainThread(_ block: @escaping () -> Void) {
-    if Thread.isMainThread {
-        block()
-    } else {
-        DispatchQueue.main.async {
-            block()
-        }
-    }
-}
-
 // MARK: - Visibility helpers
 
 extension CGRect {

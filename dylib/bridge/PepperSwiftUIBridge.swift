@@ -107,24 +107,6 @@ final class PepperSwiftUIBridge {
         return root.pepper_findElement(id: id)
     }
 
-    /// Collect all SwiftUI elements with accessibility identifiers from hosting controllers.
-    func collectSwiftUIElements() -> [PepperElementInfo] {
-        let hostingControllers = findHostingControllers()
-        var results: [PepperElementInfo] = []
-
-        for vc in hostingControllers {
-            let elements = vc.view.pepper_interactiveElements()
-            results.append(contentsOf: elements)
-        }
-
-        return results
-    }
-
-    /// Collect SwiftUI elements from a specific hosting controller's view.
-    func collectElements(from view: UIView) -> [PepperElementInfo] {
-        return view.pepper_interactiveElements()
-    }
-
     // MARK: - SwiftUI text input
 
     /// Set text on a SwiftUI TextField identified by accessibility ID.
