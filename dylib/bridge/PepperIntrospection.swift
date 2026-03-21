@@ -199,24 +199,4 @@ extension PepperSwiftUIBridge {
         }
     }
 
-    // MARK: - Text Discovery
-
-    /// Find all text content visible on screen by walking the accessibility tree.
-    /// Returns text elements with their labels and positions.
-    func discoverText(from rootView: UIView? = nil) -> [(label: String, frame: CGRect, type: String)] {
-        let elements = collectAccessibilityElements(from: rootView)
-        return elements.compactMap { element in
-            guard let label = element.label, !label.isEmpty else { return nil }
-            return (label: label, frame: element.frame, type: element.type)
-        }
-    }
-
-    // MARK: - Tappable Element Discovery
-
-    /// Find all tappable elements on the current screen by combining accessibility
-    /// tree (buttons, links) with view hierarchy (gesture recognizers).
-    func discoverTappableElements(from rootView: UIView? = nil) -> [PepperAccessibilityElement] {
-        let allElements = collectAccessibilityElements(from: rootView)
-        return allElements.filter { $0.isInteractive }
-    }
 }
