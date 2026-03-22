@@ -33,40 +33,16 @@ except ImportError:
     sys.exit(1)
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from pepper_common import DEFAULT_HOST, PORT_DIR
+from pepper_common import DEFAULT_HOST, discover_port as _discover_port
 
 
 def discover_port(simulator=None):
-    """Auto-discover Pepper port from port files written by the dylib."""
-    if simulator:
-        path = os.path.join(PORT_DIR, f"{simulator}.port")
-        if os.path.exists(path):
-            try:
-                return int(open(path).read().strip())
-            except (ValueError, OSError):
-                pass
-        print(f"Warning: No port file for simulator {simulator}, falling back to 8765", file=sys.stderr)
-        return 8765
-
-    if os.path.isdir(PORT_DIR):
-        port_files = [f for f in os.listdir(PORT_DIR) if f.endswith(".port")]
-        if len(port_files) == 1:
-            try:
-                return int(open(os.path.join(PORT_DIR, port_files[0])).read().strip())
-            except (ValueError, OSError):
-                pass
-        elif len(port_files) > 1:
-            print(f"Multiple simulators running ({len(port_files)}). Use --simulator <UDID> to pick one:", file=sys.stderr)
-            for f in sorted(port_files):
-                udid = f.replace(".port", "")
-                try:
-                    port = int(open(os.path.join(PORT_DIR, f)).read().strip())
-                    print(f"  {udid} → port {port}", file=sys.stderr)
-                except (ValueError, OSError):
-                    pass
-            sys.exit(1)
-
-    return 8765
+    """Auto-discover Pepper port, falling back to 8765 for CLI use."""
+    try:
+        return _discover_port(simulator=simulator, fallback=8765)
+    except RuntimeError as e:
+        print(str(e), file=sys.stderr)
+        sys.exit(1)
 
 
 # --- Colors ---
