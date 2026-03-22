@@ -269,6 +269,73 @@ extension UIWindow {
     }
 }
 
+// MARK: - SwiftUI NavigationStack support
+
+extension UINavigationController {
+
+    /// Whether the navigation controller is managed by SwiftUI's NavigationStack.
+    /// SwiftUI sets its own delegate whose class name contains "SwiftUI".
+    var pepper_isSwiftUIManaged: Bool {
+        guard let delegate = delegate else { return false }
+        let delegateType = String(describing: type(of: delegate))
+        return delegateType.contains("SwiftUI") || delegateType.contains("NavigationStack")
+    }
+
+    /// Effective navigation depth, accounting for SwiftUI NavigationStack which may
+    /// not fully populate viewControllers. Uses the navigation bar's items count as
+    /// a secondary signal — the bar accurately reflects what the user sees.
+    var pepper_effectiveDepth: Int {
+        let vcCount = viewControllers.count
+        let barCount = navigationBar.items?.count ?? 0
+        return max(vcCount, barCount)
+    }
+
+    /// Whether we can pop the navigation stack.
+    /// Checks both viewControllers and navigation bar items for SwiftUI compatibility.
+    var pepper_canPop: Bool {
+        return pepper_effectiveDepth > 1
+    }
+
+    /// Pop the top of the navigation stack, handling both UIKit and SwiftUI NavigationStack.
+    /// When viewControllers has the full stack, uses standard popViewController.
+    /// For SwiftUI-managed nav where viewControllers may be short, taps the back button
+    /// via HID event synthesis so SwiftUI properly updates its NavigationPath.
+    func pepper_popBack(animated: Bool = true) {
+        if viewControllers.count > 1 {
+            pepper_popTop(animated: animated)
+            return
+        }
+
+        // SwiftUI fallback: tap the navigation bar's back button via HID synthesis.
+        // This is the same approach Pepper uses for tab bar taps — the back button
+        // is rendered by UIKit even when SwiftUI manages the navigation state.
+        pepper_dispatchToMain {
+            guard let backButton = self.pepper_findBackButtonView(),
+                  let window = backButton.window else { return }
+            let center = backButton.convert(
+                CGPoint(x: backButton.bounds.midX, y: backButton.bounds.midY),
+                to: window
+            )
+            _ = PepperHIDEventSynthesizer.shared.performTap(at: center, in: window)
+        }
+    }
+
+    /// Find the back button view in the navigation bar.
+    private func pepper_findBackButtonView() -> UIView? {
+        func findBack(in view: UIView) -> UIView? {
+            let typeName = String(describing: type(of: view))
+            if typeName.contains("BackButton") || typeName.contains("_UINavigationBarBack") {
+                return view
+            }
+            for sub in view.subviews {
+                if let found = findBack(in: sub) { return found }
+            }
+            return nil
+        }
+        return findBack(in: navigationBar)
+    }
+}
+
 // MARK: - Main thread helper
 
 /// Dispatch a block to the main thread. If already on main, execute immediately.

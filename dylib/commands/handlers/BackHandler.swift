@@ -38,8 +38,8 @@ struct BackHandler: PepperHandler {
 
         // Try popping the navigation controller
         if let navController = topVC.navigationController {
-            if navController.viewControllers.count > 1 {
-                navController.pepper_popTop(animated: true)
+            if navController.pepper_canPop {
+                navController.pepper_popBack(animated: true)
                 return .ok(id: command.id, data: [
                     "action": AnyCodable("pop"),
                     "popped_screen": AnyCodable(previousScreen),
