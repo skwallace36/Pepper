@@ -52,15 +52,12 @@ fi
 # Daily budget enforcement
 # Per-type: $10/day, Total: $30/day
 TODAY=$(date -u +%Y-%m-%d)
-TYPE_COST_TODAY=$(grep "\"agent\":\"${TYPE}\"" "$EVENTS" 2>/dev/null \
-  | grep "\"ts\":\"${TODAY}" \
-  | grep -oE '"cost_usd":[0-9.]+' \
-  | cut -d: -f2 \
-  | awk '{s+=$1} END {printf "%.2f", s+0}')
-TOTAL_COST_TODAY=$(grep "\"ts\":\"${TODAY}" "$EVENTS" 2>/dev/null \
-  | grep -oE '"cost_usd":[0-9.]+' \
-  | cut -d: -f2 \
-  | awk '{s+=$1} END {printf "%.2f", s+0}')
+sum_cost() {
+  # Sum cost_usd from events matching a pattern. Returns 0.00 if no matches.
+  awk -F'"cost_usd":' "/$1/"'{split($2,a,/[^0-9.]/); s+=a[1]} END{printf "%.2f",s+0}' "$EVENTS" 2>/dev/null || echo "0.00"
+}
+TYPE_COST_TODAY=$(sum_cost "\"agent\":\"${TYPE}\".*${TODAY}")
+TOTAL_COST_TODAY=$(sum_cost "${TODAY}")
 
 if [ "$(echo "$TYPE_COST_TODAY > 10" | bc)" = "1" ]; then
   emit "failed" ",\"detail\":\"daily budget exceeded for ${TYPE}: \$${TYPE_COST_TODAY}\""
