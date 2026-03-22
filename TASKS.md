@@ -113,7 +113,7 @@ Restructure the iOS dylib for platform abstraction. Each phase is independently 
 - **TASK-111** `[P3]` `status:pr-open` — Create `IOSElementDiscovery` wrapping `PepperSwiftUIBridge.shared` + `PepperAccessibilityCollector` + `PepperElementResolver`. *(blocked by TASK-110)*
 - **TASK-112** `[P3]` `status:pr-open` — Create `IOSInputSynthesis` wrapping `PepperHIDEventSynthesizer.shared` (tap, doubleTap, scroll, swipe, gesture, inputText, toggle). *(blocked by TASK-110)*
 - **TASK-113** `[P3]` `status:pr-open` — Create `IOSStateObservation` wrapping `PepperState.shared` + `PepperIdleMonitor.shared` + `PepperScreenRegistry`. *(blocked by TASK-110)*
-- **TASK-114** `[P3]` `status:in-progress` — Create `IOSNetworkInterception` wrapping `PepperNetworkInterceptor.shared`. *(blocked by TASK-110)*
+- **TASK-114** `[P3]` `status:pr-open` — Create `IOSNetworkInterception` wrapping `PepperNetworkInterceptor.shared`. *(blocked by TASK-110)*
 - **TASK-115** `[P3]` `status:unstarted` — Create `IOSDialogDetection` wrapping `PepperDialogInterceptor.shared` + `IOSNavigationBridge` wrapping `PepperNavBridge` + `IOSViewIntrospection` wrapping existing layer/heap code. *(blocked by TASK-110)*
 
 ### Phase C: Migrate handlers to platform abstraction
