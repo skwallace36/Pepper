@@ -13,7 +13,7 @@ import os
 /// 2. **Transient animation detection** — CALayer tree walk filtering out infinite/decorative
 ///    loops and video player layers. Only checked when Layer 1 is clear.
 ///
-/// 3. **Dispatch queue tracking** — fishhook-based interposition of dispatch_async/dispatch_after
+/// 3. **Dispatch queue tracking** — DYLD_INTERPOSE-based interposition of dispatch_async/dispatch_after
 ///    on the main queue (via PepperDispatchTracker). Counts pending async blocks so we know
 ///    the app has settled after async cascades complete.
 ///

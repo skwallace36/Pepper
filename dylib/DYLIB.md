@@ -57,7 +57,7 @@ App adapter configuration.
 HTTP traffic interception via URLProtocol swizzling.
 
 ### `hooks/`
-ObjC method hooking engine (fishhook + runtime swizzling), dispatch tracking.
+ObjC method hooking engine (runtime swizzling), dispatch interposition tracking.
 
 ### `recorder/`
 Flight recorder for event timeline debugging.
