@@ -180,6 +180,9 @@ final class PepperDispatcher {
 
     // MARK: - Built-in handlers
 
+    /// Shared platform instance used by all handlers that accept platform injection.
+    private let platform: PepperPlatform = IOSPlatform()
+
     private func registerBuiltins() {
         // Ping — basic connectivity check
         register("ping") { cmd in
@@ -206,7 +209,7 @@ final class PepperDispatcher {
         register(ToggleHandler())
         register(ScrollHandler())
         register(TreeHandler())
-        register(ReadHandler())
+        register(ReadHandler(platform: platform))
 
         register(WaitHandler())
         register(BatchHandler(dispatcher: self))
@@ -224,7 +227,7 @@ final class PepperDispatcher {
         register(DialogHandler())
         register(DismissHandler())
         register(StatusHandler())
-        register(HighlightHandler())
+        register(HighlightHandler(platform: platform))
         register(IdentifySelectedHandler())
         register(IdentifyIconsHandler())
         register(IdleWaitHandler())
@@ -232,14 +235,14 @@ final class PepperDispatcher {
         register(DismissKeyboardHandler())
         register(GestureHandler())
         register(MemoryHandler())
-        register(OrientationHandler())
-        register(LifecycleHandler())
-        register(PushHandler())
+        register(OrientationHandler(platform: platform))
+        register(LifecycleHandler(platform: platform))
+        register(PushHandler(platform: platform))
         register(LocaleHandler())
-        register(VarsHandler())
+        register(VarsHandler(platform: platform))
         register(LayersHandler())
         register(ConsoleHandler())
-        register(AnimationsHandler())
+        register(AnimationsHandler(platform: platform))
         register(HeapHandler())
         register(HeapSnapshotHandler())
         register(DefaultsHandler())

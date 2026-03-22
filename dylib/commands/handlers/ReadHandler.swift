@@ -6,6 +6,7 @@ import os
 /// type, and state information.
 struct ReadHandler: PepperHandler {
     let commandName = "read"
+    let platform: PepperPlatform
     private var logger: Logger { PepperLogger.logger(category: "read") }
 
     func handle(_ command: PepperCommand) -> PepperResponse {
