@@ -25,6 +25,14 @@ Run every Pepper command against the test app. Each task covers a command family
 - **TASK-023** `[P2]` `status:unstarted` — Test `dialog` + `hook` + `locale` + `push` commands *(21 untested)*
 - **TASK-024** `[P2]` `status:unstarted` — Test `navigate` deeplink + `batch` + `dismiss` + remaining *(~10 untested)*
 
+## Real App Smoke Test — Ice Cubes (P2)
+
+Inject Pepper into Ice Cubes (open source SwiftUI Mastodon client) to pressure-test against a complex real-world UI. Clone from https://github.com/Dimillian/IceCubesApp, build, inject Pepper, run core commands.
+
+- **TASK-027** `[P2]` `status:unstarted` — Clone Ice Cubes, build for simulator, inject Pepper, verify `look` works. Record what the element tree looks like for a real SwiftUI app (lazy lists, navigation stacks, tab bars, async images).
+- **TASK-028** `[P2]` `status:unstarted` — Run `tap`, `scroll`, `navigate` against Ice Cubes. Document which commands work, which fail, and file bugs for failures.
+- **TASK-029** `[P2]` `status:unstarted` — Run `heap`, `vars`, `layers`, `network` against Ice Cubes. These are the deep introspection commands — stress test them against a real app's object graph and network traffic.
+
 ## Test App Gaps (P2 prerequisite)
 
 Test app changes needed before blocked commands can be tested. Unblocks ~20 untested variants.
