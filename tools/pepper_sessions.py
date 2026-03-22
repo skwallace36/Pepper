@@ -236,45 +236,53 @@ def claim_simulator_deploying(udid: str, label: Optional[str] = None) -> bool:
     Writes a session with state=deploying. This is considered live for 60s,
     giving the deploy process time to launch the app and update to state=active.
 
-    Uses atomic write for race safety: two agents both calling this will race
-    on os.rename(), and only one can win.
+    Uses fcntl.flock on a lockfile for true mutual exclusion between processes.
 
     Returns True if pre-claim succeeded, False if another session owns it.
     """
-    existing = _read_session(udid)
-    if existing and _is_session_live(existing):
-        return False
-    if existing:
-        _remove_session(udid)
+    import fcntl
 
-    now = datetime.now(timezone.utc).isoformat()
-    data = {
-        "udid": udid,
-        "pid": 0,
-        "claimed_at": now,
-        "heartbeat": now,
-        "state": "deploying",
-        "bundle_id": "",
-        "port": 0,
-        "label": label or os.environ.get("PEPPER_SESSION_LABEL", "make-deploy"),
-    }
     _ensure_session_dir()
-    path = _session_path(udid)
-    tmp_path = f"{path}.{os.getpid()}.tmp"
+    lock_path = os.path.join(SESSION_DIR, f"{udid}.lock")
+
     try:
-        with open(tmp_path, "w") as f:
-            json.dump(data, f)
-        os.rename(tmp_path, path)
-        # Verify we won the race
-        verify = _read_session(udid)
-        if verify and verify.get("claimed_at") == now:
-            return True
-        return False
-    except OSError:
+        lock_fd = os.open(lock_path, os.O_CREAT | os.O_RDWR)
         try:
-            os.remove(tmp_path)
-        except OSError:
-            pass
+            # Non-blocking exclusive lock — if another process holds it, fail immediately
+            fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except (OSError, BlockingIOError):
+            os.close(lock_fd)
+            return False
+
+        try:
+            # Inside the lock: check-then-write is now atomic
+            existing = _read_session(udid)
+            if existing and _is_session_live(existing):
+                return False
+            if existing:
+                _remove_session(udid)
+
+            now = datetime.now(timezone.utc).isoformat()
+            data = {
+                "udid": udid,
+                "pid": 0,
+                "claimed_at": now,
+                "heartbeat": now,
+                "state": "deploying",
+                "bundle_id": "",
+                "port": 0,
+                "label": label or os.environ.get("PEPPER_SESSION_LABEL", "make-deploy"),
+            }
+            path = _session_path(udid)
+            tmp_path = f"{path}.{os.getpid()}.tmp"
+            with open(tmp_path, "w") as f:
+                json.dump(data, f)
+            os.rename(tmp_path, path)
+            return True
+        finally:
+            fcntl.flock(lock_fd, fcntl.LOCK_UN)
+            os.close(lock_fd)
+    except OSError:
         return False
 
 
