@@ -309,9 +309,16 @@ extension UINavigationController {
         // SwiftUI fallback: tap the navigation bar's back button via HID synthesis.
         // This is the same approach Pepper uses for tab bar taps — the back button
         // is rendered by UIKit even when SwiftUI manages the navigation state.
+        let logger = PepperLogger.logger(category: "nav-bridge")
         pepper_dispatchToMain {
-            guard let backButton = self.pepper_findBackButtonView(),
-                  let window = backButton.window else { return }
+            guard let backButton = self.pepper_findBackButtonView() else {
+                logger.warning("pepper_popBack: back button view not found in navigation bar — SwiftUI pop will silently fail")
+                return
+            }
+            guard let window = backButton.window else {
+                logger.warning("pepper_popBack: back button has no window — cannot synthesize tap")
+                return
+            }
             let center = backButton.convert(
                 CGPoint(x: backButton.bounds.midX, y: backButton.bounds.midY),
                 to: window
