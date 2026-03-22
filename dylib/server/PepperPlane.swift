@@ -107,10 +107,10 @@ public final class PepperPlane {
         // and command events. Auto-starts network + console capture.
         PepperFlightRecorder.shared.install()
 
-        // Pre-build icon catalog on a background thread so first icon match
-        // doesn't block for 200-300ms. Safe to call from background — catalog
-        // only reads UIImage assets and computes dHashes, no UIKit views.
-        DispatchQueue.global(qos: .utility).async {
+        // Pre-build icon catalog asynchronously so first icon match doesn't
+        // block startup. Must run on main thread — UIImage(named:in:with:)
+        // requires it for asset catalog access on iOS 26+.
+        DispatchQueue.main.async {
             PepperIconCatalog.shared.ensureBuilt()
         }
 
