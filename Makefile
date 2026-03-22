@@ -190,22 +190,19 @@ agent-status:
 agent-trigger:
 	@./scripts/agent-trigger.sh "$(EVENT)"
 
-## agents-install: Install heartbeat (2h) + post-merge trigger
+## agents-install: Install post-merge trigger hook
 agents-install:
-	@sed "s|REPO_ROOT|$(PROJECT_DIR)|g" scripts/launchd/com.pepper.agent-heartbeat.plist > ~/Library/LaunchAgents/com.pepper.agent-heartbeat.plist
-	@launchctl load ~/Library/LaunchAgents/com.pepper.agent-heartbeat.plist 2>/dev/null || true
 	@ln -sf ../../scripts/hooks/post-merge-trigger.sh .git/hooks/post-merge
+	@ln -sf ../../scripts/hooks/pre-push-rebase.sh .git/hooks/pre-push
 	@echo "Installed:"
-	@echo "  Heartbeat: tester/builder/researcher every 2h (launchd)"
-	@echo "  Triggers:  bug-filed/pr-opened via post-merge hook"
-	@echo "  Monitor:   make agent-monitor"
+	@echo "  Post-merge: code changes → trigger tester"
+	@echo "  Pre-push: auto-rebase agent branches"
+	@echo "  Auto-chain: agent opens PR → verifier launches"
 
-## agents-uninstall: Remove heartbeat + hooks
+## agents-uninstall: Remove hooks
 agents-uninstall:
-	@launchctl unload ~/Library/LaunchAgents/com.pepper.agent-heartbeat.plist 2>/dev/null || true
-	@rm -f ~/Library/LaunchAgents/com.pepper.agent-heartbeat.plist
-	@rm -f .git/hooks/post-merge
-	@echo "Agent heartbeat and triggers uninstalled."
+	@rm -f .git/hooks/post-merge .git/hooks/pre-push
+	@echo "Agent hooks uninstalled."
 
 ## agent-cleanup: Kill orphaned agent processes, worktrees, and extra sims
 agent-cleanup:
