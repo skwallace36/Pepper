@@ -12,10 +12,48 @@ cd "$REPO_ROOT"
 EVENTS="$REPO_ROOT/build/logs/events.jsonl"
 mkdir -p build/logs
 
+# Timeout: 15 minutes max per agent run
+TIMEOUT_S=900
+
+AGENT_PID=""
+
 emit() {
   local event="$1"; shift
   echo "{\"ts\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"agent\":\"${TYPE}\",\"event\":\"${event}\"$*}" >> "$EVENTS"
 }
+
+# Cleanup function — runs on ANY exit (normal, error, signal, timeout)
+cleanup() {
+  local exit_code=$?
+
+  # Kill the agent process tree if still running
+  if [ -n "$AGENT_PID" ] && kill -0 "$AGENT_PID" 2>/dev/null; then
+    echo "Cleaning up agent process $AGENT_PID..."
+    kill -TERM "$AGENT_PID" 2>/dev/null || true
+    sleep 2
+    kill -9 "$AGENT_PID" 2>/dev/null || true
+    # Also kill any child processes (swift-frontend, xcodebuild, etc.)
+    pkill -P "$AGENT_PID" 2>/dev/null || true
+  fi
+
+  # Worktree cleanup — remove ALL agent worktrees (not just ours)
+  for wt in $(git worktree list --porcelain 2>/dev/null | grep "^worktree .*/\.claude/worktrees/" | sed 's/^worktree //'); do
+    git worktree remove --force "$wt" 2>/dev/null || true
+  done
+  git worktree prune 2>/dev/null || true
+
+  # Transcript retention: keep last 20 per type
+  local transcripts
+  transcripts=$(ls -1t build/logs/transcript-${TYPE}-*.json 2>/dev/null || true)
+  local count
+  count=$(echo "$transcripts" | grep -c . 2>/dev/null || echo 0)
+  if [ "$count" -gt 20 ]; then
+    echo "$transcripts" | tail -n +21 | xargs rm -f
+  fi
+
+  exit $exit_code
+}
+trap cleanup EXIT INT TERM
 
 # Prerequisites check
 MISSING=""
@@ -53,7 +91,6 @@ fi
 # Per-type: $20/day, Total: $75/day
 TODAY=$(date -u +%Y-%m-%d)
 sum_cost() {
-  # Sum cost_usd from events matching a pattern. Returns 0.00 if no matches.
   awk -F'"cost_usd":' "/$1/"'{split($2,a,/[^0-9.]/); s+=a[1]} END{printf "%.2f",s+0}' "$EVENTS" 2>/dev/null || echo "0.00"
 }
 TYPE_COST_TODAY=$(sum_cost "\"agent\":\"${TYPE}\".*${TODAY}")
@@ -87,7 +124,7 @@ TRANSCRIPT="build/logs/transcript-${TYPE}-${START}.json"
 
 PROMPT=$(cat "$PROMPT_FILE")
 
-# Per-agent budget (verifier needs more for build+deploy)
+# Per-agent budget (verifier/tester need more for build+deploy)
 case "$TYPE" in
   verifier) BUDGET=5.00 ;;
   tester)   BUDGET=5.00 ;;
@@ -95,44 +132,61 @@ case "$TYPE" in
   *)        BUDGET=2.00 ;;
 esac
 
-# Launch the agent
-set +e
+# Launch the agent in background so we can enforce timeout
 claude -p \
   "You are the ${TYPE} agent. Follow your instructions." \
   --append-system-prompt "$PROMPT" \
   --max-budget-usd "$BUDGET" \
   --output-format json \
   --worktree \
-  > "$TRANSCRIPT" 2>&1
+  > "$TRANSCRIPT" 2>&1 &
+AGENT_PID=$!
+
+# Wait with timeout
+TIMED_OUT=false
+ELAPSED=0
+while kill -0 "$AGENT_PID" 2>/dev/null; do
+  sleep 5
+  ELAPSED=$(( $(date +%s) - START ))
+  if [ "$ELAPSED" -ge "$TIMEOUT_S" ]; then
+    TIMED_OUT=true
+    echo "Timeout (${TIMEOUT_S}s) — killing agent..."
+    kill -TERM "$AGENT_PID" 2>/dev/null || true
+    sleep 3
+    kill -9 "$AGENT_PID" 2>/dev/null || true
+    pkill -P "$AGENT_PID" 2>/dev/null || true
+    break
+  fi
+  # Check kill switch mid-run
+  if [ -f .pepper-kill ]; then
+    echo "Kill switch activated mid-run — stopping agent..."
+    kill -TERM "$AGENT_PID" 2>/dev/null || true
+    sleep 3
+    kill -9 "$AGENT_PID" 2>/dev/null || true
+    break
+  fi
+done
+
+wait "$AGENT_PID" 2>/dev/null
 EXIT_CODE=$?
-set -e
+AGENT_PID=""  # Clear so cleanup doesn't try to kill again
 
 END=$(date +%s)
 DURATION=$((END - START))
 
-# Extract cost from transcript (field is total_cost_usd in --output-format json)
+# Extract cost from transcript
 COST=$(jq -r '.total_cost_usd // .cost_usd // 0' "$TRANSCRIPT" 2>/dev/null || echo 0)
 
 # Emit final event based on outcome
-if [ -f .pepper-kill ]; then
-  emit "killed" ",\"detail\":\"kill switch found after run\",\"cost_usd\":${COST},\"duration_s\":${DURATION}"
+if [ "$TIMED_OUT" = true ]; then
+  emit "timeout" ",\"detail\":\"killed after ${TIMEOUT_S}s\",\"cost_usd\":${COST},\"duration_s\":${DURATION}"
+elif [ -f .pepper-kill ]; then
+  emit "killed" ",\"detail\":\"kill switch activated mid-run\",\"cost_usd\":${COST},\"duration_s\":${DURATION}"
 elif [ $EXIT_CODE -ne 0 ]; then
   DETAIL=$(jq -r '.error // "exit code '${EXIT_CODE}'"' "$TRANSCRIPT" 2>/dev/null || echo "exit code ${EXIT_CODE}")
   emit "failed" ",\"detail\":$(echo "$DETAIL" | jq -Rs '.'),\"cost_usd\":${COST},\"duration_s\":${DURATION}"
 else
   emit "done" ",\"cost_usd\":${COST},\"duration_s\":${DURATION},\"transcript\":\"${TRANSCRIPT}\""
-fi
-
-# Worktree cleanup — remove completed agent worktrees
-for wt in $(git worktree list --porcelain 2>/dev/null | grep "^worktree .claude/worktrees/" | cut -d' ' -f2); do
-  git worktree remove "$wt" 2>/dev/null || true
-done
-
-# Transcript retention: keep last 20 per type
-TRANSCRIPTS=$(ls -1t build/logs/transcript-${TYPE}-*.json 2>/dev/null || true)
-COUNT=$(echo "$TRANSCRIPTS" | grep -c . 2>/dev/null || echo 0)
-if [ "$COUNT" -gt 20 ]; then
-  echo "$TRANSCRIPTS" | tail -n +21 | xargs rm -f
 fi
 
 echo "Done. Transcript: $TRANSCRIPT"
