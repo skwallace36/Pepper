@@ -201,6 +201,17 @@ emit "started" ",\"detail\":\"picking work from queue (\$${TYPE_COST_TODAY} spen
 export PEPPER_EVENTS_LOG="$EVENTS"
 export PEPPER_AGENT_TYPE="$TYPE"
 
+# Pin agents to the FIRST booted simulator — prevents booting extra sims
+FIRST_SIM=$(xcrun simctl list devices booted -j 2>/dev/null | python3 -c "
+import json, sys
+devs = json.load(sys.stdin)['devices']
+booted = [d for r in devs.values() for d in r if d['state'] == 'Booted']
+print(booted[0]['udid'] if booted else '')
+" 2>/dev/null || true)
+if [ -n "$FIRST_SIM" ]; then
+  export SIMULATOR_ID="$FIRST_SIM"
+fi
+
 # Agent git identity — agents commit as themselves, not as the user
 export GIT_AUTHOR_NAME="pepper-${TYPE}-agent"
 export GIT_AUTHOR_EMAIL="pepper-${TYPE}-agent@noreply.pepper.dev"
