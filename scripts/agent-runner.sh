@@ -261,12 +261,14 @@ WORKTREES_BEFORE=$(git worktree list --porcelain 2>/dev/null | grep "^worktree .
 sleep $(( RANDOM % 4 ))
 
 # Launch the agent in background so we can enforce timeout
+# --name is our stable marker for process identification (make agent-kill uses it)
 claude -p \
   "You are the ${TYPE} agent. Follow your instructions." \
   --append-system-prompt "$PROMPT" \
   --max-budget-usd "$BUDGET" \
   --output-format json \
   --worktree \
+  --name "pepper-agent-${TYPE}" \
   > "$TRANSCRIPT" 2>&1 &
 AGENT_PID=$!
 

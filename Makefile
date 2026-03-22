@@ -219,7 +219,7 @@ agent-cleanup:
 ## agent-kill: Kill all running agents immediately + prevent new launches
 agent-kill:
 	@touch .pepper-kill
-	@ps aux | grep 'claude.*append-system' | grep -v grep | awk '{print $$2}' | while read pid; do \
+	@pgrep -f 'pepper-agent-' 2>/dev/null | while read pid; do \
 		echo "Killing agent PID $$pid"; \
 		kill -TERM "$$pid" 2>/dev/null || true; \
 	done
