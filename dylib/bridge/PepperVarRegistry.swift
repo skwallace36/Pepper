@@ -2,12 +2,26 @@ import Foundation
 import UIKit
 import ObjectiveC
 
+/// C function — find live instances of specific classes on the heap.
+/// Implemented in PepperHeapScan.c.
+@_silgen_name("pepper_heap_find_instances")
+func pepper_heap_find_instances(
+    _ target_classes: UnsafePointer<UnsafeRawPointer?>,
+    _ target_count: Int32,
+    _ out_instances: UnsafeMutablePointer<UnsafeMutablePointer<UnsafeRawPointer?>?>,
+    _ out_classes: UnsafeMutablePointer<UnsafeMutablePointer<UnsafeRawPointer?>?>,
+    _ out_count: UnsafeMutablePointer<Int32>
+) -> Int32
+
 /// Discovers and catalogs @Published properties on ObservableObject instances at runtime.
 /// Supports reading and writing values, triggering SwiftUI re-renders on mutation.
 ///
 /// Discovery is triggered automatically from `pepper_viewDidAppear` — each VC's view
 /// hierarchy is walked to find UIHostingController rootViews and regular VC stored properties
 /// that conform to ObservableObject.
+///
+/// Additionally, `discoverFromHeap()` scans the process heap for @Observable instances
+/// (classes with a `_$observationRegistrar` ivar) — independent of SwiftUI view tree structure.
 final class PepperVarRegistry {
 
     static let shared = PepperVarRegistry()
@@ -48,6 +62,9 @@ final class PepperVarRegistry {
 
     /// Property catalog cache keyed by class name — avoids re-cataloging the same class.
     private var catalogCache: [String: [PropertyInfo]] = [:]
+
+    /// Whether the initial heap scan for @Observable has run.
+    private var didInitialHeapScan = false
 
     private init() {}
 
@@ -96,9 +113,15 @@ final class PepperVarRegistry {
                 }
             }
         }
+
+        // Run heap-based @Observable discovery once on first viewDidAppear
+        if !didInitialHeapScan {
+            didInitialHeapScan = true
+            discoverFromHeap()
+        }
     }
 
-    /// Force re-scan: discover from all visible VCs.
+    /// Force re-scan: discover from all visible VCs + heap scan for @Observable.
     func forceDiscover() {
         lock.lock()
         tracked.removeAll { $0.instance == nil }
@@ -112,6 +135,9 @@ final class PepperVarRegistry {
                 discoverFromVCTree(rootVC)
             }
         }
+
+        // Heap-based discovery for @Observable instances (bypasses SwiftUI view tree)
+        discoverFromHeap()
     }
 
     private func discoverFromVCTree(_ vc: UIViewController) {
@@ -122,6 +148,98 @@ final class PepperVarRegistry {
         for child in vc.children {
             discoverFromVCTree(child)
         }
+    }
+
+    // MARK: - Heap-based @Observable Discovery (BUG-003)
+
+    /// Scan the heap for live instances of @Observable classes.
+    /// Uses ObjC runtime to find classes with `_$observationRegistrar` ivar,
+    /// then the C heap scanner to find live instances. Independent of SwiftUI view tree.
+    func discoverFromHeap() {
+        // Step 1: Find all ObjC classes that have a _$observationRegistrar ivar
+        let observableClasses = findObservableClasses()
+        guard !observableClasses.isEmpty else { return }
+
+        pepperLog.info("Vars: heap scan found \(observableClasses.count) @Observable class(es)", category: .bridge)
+
+        // Step 2: Use the heap scanner to find live instances
+        var targetPtrs: [UnsafeRawPointer?] = observableClasses.map { unsafeBitCast($0, to: UnsafeRawPointer.self) }
+
+        var instancesPtr: UnsafeMutablePointer<UnsafeRawPointer?>?
+        var classesPtr: UnsafeMutablePointer<UnsafeRawPointer?>?
+        var count: Int32 = 0
+
+        let result = targetPtrs.withUnsafeMutableBufferPointer { buf in
+            pepper_heap_find_instances(buf.baseAddress!, Int32(buf.count), &instancesPtr, &classesPtr, &count)
+        }
+
+        guard result == 0, count > 0, let instances = instancesPtr, let classes = classesPtr else { return }
+        defer {
+            free(instances)
+            free(classes)
+        }
+
+        // Step 3: Track each found instance (deduplicated in trackInstance)
+        // Use a set to avoid tracking multiple instances of the same pointer
+        var seen = Set<UnsafeRawPointer>()
+        for i in 0..<Int(count) {
+            guard let instancePtr = instances[i] else { continue }
+            guard seen.insert(instancePtr).inserted else { continue }
+
+            // Convert raw pointer to AnyObject — this is the live instance
+            let obj: AnyObject = Unmanaged<AnyObject>.fromOpaque(instancePtr).takeUnretainedValue()
+            trackInstance(obj)
+        }
+    }
+
+    /// Find all ObjC classes that have a `_$observationRegistrar` stored property.
+    /// This ivar is added by the @Observable macro (Observation framework).
+    private func findObservableClasses() -> [AnyClass] {
+        let totalCount = Int(objc_getClassList(nil, 0))
+        guard totalCount > 0 else { return [] }
+
+        let buffer = UnsafeMutablePointer<AnyClass>.allocate(capacity: totalCount)
+        let actualCount = Int(objc_getClassList(AutoreleasingUnsafeMutablePointer(buffer), Int32(totalCount)))
+        defer { buffer.deallocate() }
+
+        // System class prefixes to skip (optimization — avoids scanning Apple framework classes)
+        let skipPrefixes = ["NS", "UI", "CA", "CF", "CG", "AV", "MK", "WK", "SK",
+                            "_", "OS_", "PK", "NW", "Pepper", "Swift.", "dispatch_",
+                            "xpc_", "os_", "objc_", "NWHTTP"]
+
+        var result: [AnyClass] = []
+        for i in 0..<actualCount {
+            let cls = buffer[i]
+            let name = NSStringFromClass(cls)
+
+            // Quick skip for system classes
+            var skip = false
+            for prefix in skipPrefixes {
+                if name.hasPrefix(prefix) { skip = true; break }
+            }
+            if skip { continue }
+
+            // Check if this class has _$observationRegistrar ivar
+            if classHasObservationRegistrar(cls) {
+                result.append(cls)
+            }
+        }
+        return result
+    }
+
+    /// Check if a class (not superclasses) declares a `_$observationRegistrar` ivar.
+    private func classHasObservationRegistrar(_ cls: AnyClass) -> Bool {
+        var ivarCount: UInt32 = 0
+        guard let ivars = class_copyIvarList(cls, &ivarCount) else { return false }
+        defer { free(ivars) }
+
+        for i in 0..<Int(ivarCount) {
+            guard let cName = ivar_getName(ivars[i]) else { continue }
+            if strcmp(cName, "_$observationRegistrar") == 0 {
+                return true
+            }
+        }
+        return false
     }
 
     /// Recursively mirror a SwiftUI view tree looking for ObservableObject refs.
