@@ -87,12 +87,19 @@ TRANSCRIPT="build/logs/transcript-${TYPE}-${START}.json"
 
 PROMPT=$(cat "$PROMPT_FILE")
 
+# Per-agent budget (verifier needs more for build+deploy)
+case "$TYPE" in
+  verifier) BUDGET=5.00 ;;
+  bugfix)   BUDGET=3.00 ;;
+  *)        BUDGET=2.00 ;;
+esac
+
 # Launch the agent
 set +e
 claude -p \
   "You are the ${TYPE} agent. Follow your instructions." \
   --append-system-prompt "$PROMPT" \
-  --max-budget-usd 2.00 \
+  --max-budget-usd "$BUDGET" \
   --output-format json \
   --worktree \
   > "$TRANSCRIPT" 2>&1
