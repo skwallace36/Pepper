@@ -89,7 +89,7 @@ final class PepperState {
 
         // Record to flight recorder
         let vcType = String(describing: Swift.type(of: viewController))
-        let depth = viewController.navigationController?.pepper_effectiveDepth ?? 0
+        let depth = viewController.pepper_effectiveNavController?.pepper_effectiveDepth ?? 0
         PepperFlightRecorder.shared.record(type: .screen, summary: "\u{2192} \(screenID) (\(vcType), depth: \(depth))")
 
         let data = buildScreenEventData(for: viewController, screenID: screenID, stack: currentStack)
@@ -155,7 +155,7 @@ final class PepperState {
         ]
 
         // Navigation stack depth
-        if let nav = viewController.navigationController {
+        if let nav = viewController.pepper_effectiveNavController {
             data["nav_stack_depth"] = AnyCodable(nav.pepper_effectiveDepth)
             data["can_go_back"] = AnyCodable(nav.pepper_canPop)
         } else {

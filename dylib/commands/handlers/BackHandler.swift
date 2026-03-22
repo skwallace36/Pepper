@@ -26,7 +26,7 @@ struct BackHandler: PepperHandler {
         }
 
         // Check if we should dismiss a modal first
-        if topVC.presentingViewController != nil && topVC.navigationController == nil {
+        if topVC.presentingViewController != nil && topVC.pepper_effectiveNavController == nil {
             // This VC was presented modally and isn't inside a nav controller
             topVC.dismiss(animated: true)
             return .ok(id: command.id, data: [
@@ -36,8 +36,10 @@ struct BackHandler: PepperHandler {
             ])
         }
 
-        // Try popping the navigation controller
-        if let navController = topVC.navigationController {
+        // Try popping the navigation controller.
+        // Use pepper_effectiveNavController to also find SwiftUI NavigationStack's
+        // UINavigationController (which is a child VC, not a parent).
+        if let navController = topVC.pepper_effectiveNavController {
             if navController.pepper_canPop {
                 navController.pepper_popBack(animated: true)
                 return .ok(id: command.id, data: [

@@ -269,6 +269,29 @@ extension UIWindow {
     }
 }
 
+// MARK: - SwiftUI NavigationStack discovery
+
+extension UIViewController {
+
+    /// Find the effective navigation controller for this view controller.
+    /// First checks the standard `navigationController` property (walks up the parent chain).
+    /// If nil, walks the child VC tree to find a SwiftUI-managed UINavigationController
+    /// (SwiftUI NavigationStack creates a UINavigationController as a child, not a parent).
+    var pepper_effectiveNavController: UINavigationController? {
+        if let nav = navigationController { return nav }
+        return pepper_findChildNavController()
+    }
+
+    /// Walk child VCs to find a UINavigationController (used for SwiftUI NavigationStack).
+    private func pepper_findChildNavController() -> UINavigationController? {
+        for child in children {
+            if let nav = child as? UINavigationController { return nav }
+            if let found = child.pepper_findChildNavController() { return found }
+        }
+        return nil
+    }
+}
+
 // MARK: - SwiftUI NavigationStack support
 
 extension UINavigationController {
