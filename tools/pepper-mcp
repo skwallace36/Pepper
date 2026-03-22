@@ -21,9 +21,11 @@ import sys
 import tempfile
 from typing import Optional
 
-# Session management for multi-agent simulator coordination
+# Shared modules from tools/
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import pepper_sessions
+from pepper_websocket import CrashError, make_command
+from pepper_websocket import send_command as ws_send_command
 
 # Suppress all stdout except MCP protocol — critical for stdio transport
 import logging
@@ -243,42 +245,24 @@ async def capture_screenshot(udid: str, quality: str = "standard") -> Optional[s
 # ---------------------------------------------------------------------------
 
 async def send_command(port: int, cmd: str, params: Optional[dict] = None, timeout: float = 10) -> dict:
-    """Send a command to Pepper's WebSocket server and return the response."""
-    import uuid
-    url = f"ws://localhost:{port}"
-    msg = {"id": str(uuid.uuid4())[:8], "cmd": cmd}
-    if params:
-        msg["params"] = params
+    """Send a command to Pepper's WebSocket server and return the response.
 
+    Wraps pepper_websocket.send_command with MCP-appropriate error handling
+    (returns error dicts instead of raising).
+    """
+    msg = make_command(cmd, params)
     try:
-        async with websockets.client.connect(url, close_timeout=2) as ws:
-            await ws.send(json.dumps(msg))
-            while True:
-                raw = await asyncio.wait_for(ws.recv(), timeout=timeout)
-                resp = json.loads(raw)
-                if resp.get("id") == msg["id"]:
-                    return resp
-                # Skip event messages
+        return await ws_send_command("localhost", port, msg, timeout=timeout)
     except asyncio.TimeoutError:
         return {"status": "error", "error": f"Command timed out after {timeout}s"}
     except ConnectionRefusedError:
         return {"status": "error", "error": f"Connection refused on port {port}. Is Pepper running?"}
-    except websockets.exceptions.ConnectionClosedError as e:
+    except CrashError as e:
         return {
             "status": "error",
-            "error": f"APP CRASHED. The '{cmd}' command caused the app to crash "
-                     f"(WebSocket connection lost: {e}). "
-                     f"Crash log will be auto-attached below. Investigate before retrying."
-        }
-    except (websockets.exceptions.ConnectionClosed, ConnectionResetError, BrokenPipeError) as e:
-        return {
-            "status": "error",
-            "error": f"APP CRASHED. Connection to Pepper lost after sending '{cmd}' "
-                     f"({type(e).__name__}: {e}). The app process likely died. "
-                     f"Crash log will be auto-attached below. Investigate before retrying."
+            "error": f"{e} Crash log will be auto-attached below."
         }
     except Exception as e:
-        # Catch-all: if connection drops unexpectedly, it's probably a crash
         err_str = str(e)
         if "close frame" in err_str or "connection" in err_str.lower():
             return {
