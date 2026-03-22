@@ -21,10 +21,14 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Python dependencies
-        run: pip3 install websockets
+        run: |
+          python3 -m venv .venv
+          .venv/bin/pip install websockets
 
       - name: Run CI
-        run: make ci
+        run: |
+          source .venv/bin/activate
+          make ci
 
       - name: Upload results
         if: always()
