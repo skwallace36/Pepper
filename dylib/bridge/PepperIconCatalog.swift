@@ -60,7 +60,7 @@ final class PepperIconCatalog {
             let image = UIImage(named: name, in: bundle, with: nil)
                 ?? UIImage(named: name, in: Bundle.main, with: nil)
                 ?? UIImage(named: name)
-            guard let image = image else {
+            guard let image = image, image.cgImage != nil else {
                 failedLoad.append(name)
                 continue
             }
