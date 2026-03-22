@@ -5,7 +5,7 @@ High-level priorities and project direction.
 For research/ideas, see `docs/RESEARCH.md`.
 For test results, see `test-app/COVERAGE.md` (auto-generated).
 For known bugs, see GitHub Issues (`gh issue list --label bug`).
-For agent-parseable work items, see `TASKS.md`.
+For work items, see GitHub Issues (`gh issue list`).
 
 ## Current State
 
@@ -21,31 +21,31 @@ A purpose-built test app (`test-app/`, bundle ID `com.pepper.testapp`) exists fo
 All bugs tracked in GitHub Issues (`gh issue list --label bug`). Agent-addressable. PRs open for all 3.
 
 ### P2: Complete test app coverage
-Run every Pepper command against the test app. 132 untested command variants. Broken into discrete tasks in `TASKS.md`. Will surface more bugs.
+Run every Pepper command against the test app. 132 untested command variants. Tracked as GitHub Issues. Will surface more bugs.
 
 ### P3: Platform abstraction + Android port prep
-Restructure the iOS dylib so shared logic (command protocol, dispatcher, connection management, config, flight recorder) is cleanly separated from iOS-specific code (UIKit bridge, HID synthesis, method swizzling, Network.framework). Define platform protocols, wrap existing iOS code as the first implementation, migrate handlers to use the abstraction. This is pure refactoring — iOS keeps working at every step. Unblocks a future Android port. Full plan in `docs/plans/ANDROID-PORT.md`, 18 tasks in `TASKS.md`.
+Restructure the iOS dylib so shared logic (command protocol, dispatcher, connection management, config, flight recorder) is cleanly separated from iOS-specific code (UIKit bridge, HID synthesis, method swizzling, Network.framework). Define platform protocols, wrap existing iOS code as the first implementation, migrate handlers to use the abstraction. This is pure refactoring — iOS keeps working at every step. Unblocks a future Android port. Full plan in `docs/plans/ANDROID-PORT.md`. Tracked as GitHub Issues.
 
 ### P3: Modularize `tools/` and clean up `pepper-mcp`
-`pepper-mcp` is a 2865-line monolith. Split into logical modules, extract shared code (`discover_port`, `load_env`, `format_look`) used by pepper-ctl/pepper-stream/test-client into a common library, and clean up the tools directory (inconsistent error handling, hardcoded paths, broad exception swallowing). Tasks in `TASKS.md`.
+`pepper-mcp` is a 2865-line monolith. Split into logical modules, extract shared code (`discover_port`, `load_env`, `format_look`) used by pepper-ctl/pepper-stream/test-client into a common library, and clean up the tools directory (inconsistent error handling, hardcoded paths, broad exception swallowing). Tracked as GitHub Issues.
 
 ### P4: CI/CD integration
-GitHub Actions workflow that boots a simulator, injects Pepper, runs tests, and reports results. Proves the tool works end-to-end without anyone trusting your word for it. `DYLD_INSERT_LIBRARIES` works as-is on macOS runners — main gaps are a health check command, workflow template, and JUnit/JSON result export. Tasks in `TASKS.md`.
+GitHub Actions workflow that boots a simulator, injects Pepper, runs tests, and reports results. Proves the tool works end-to-end without anyone trusting your word for it. `DYLD_INSERT_LIBRARIES` works as-is on macOS runners — main gaps are a health check command, workflow template, and JUnit/JSON result export. Tracked as GitHub Issues.
 
 ### P5: Device support
-Extend Pepper from simulator-only to real iOS devices via build-time framework embedding (xcframework). The WebSocket server already uses Network.framework (works on device). Needs xcframework packaging, Bonjour/local network configuration, and a non-simulator port resolution path. No one else in this space works on devices either. Tasks in `TASKS.md`.
+Extend Pepper from simulator-only to real iOS devices via build-time framework embedding (xcframework). The WebSocket server already uses Network.framework (works on device). Needs xcframework packaging, Bonjour/local network configuration, and a non-simulator port resolution path. No one else in this space works on devices either. Tracked as GitHub Issues.
 
 ### P6: Packaging & distribution
-README with animated demo + 3-step install + architecture diagram. Homebrew tap for installation. Listings on MCP directories (mcp.so, awesome-mcp-servers, Cline marketplace, official MCP registry, Glama, PulseMCP). Tasks in `TASKS.md`.
+README with animated demo + 3-step install + architecture diagram. Homebrew tap for installation. Listings on MCP directories (mcp.so, awesome-mcp-servers, Cline marketplace, official MCP registry, Glama, PulseMCP). Tracked as GitHub Issues.
 
 ### P7: Generic mode cleanup
-Running without an adapter exposed build failures and app-specific assumptions. Tasks in `TASKS.md`.
+Running without an adapter exposed build failures and app-specific assumptions. Tracked as GitHub Issues.
 
 ### P8: Real-world app testing
 After the test app is green, inject into Wikipedia, Ice Cubes, etc. to pressure-test against real UIs.
 
 ### P9: New capabilities
-Accessibility audit, touch failure debugging, layout inspector, performance profiling, in-process view capture. Concrete tasks in `TASKS.md`.
+Accessibility audit, touch failure debugging, layout inspector, performance profiling, in-process view capture. Tracked as GitHub Issues.
 
 ### P10: Agent token optimization
 Current agents use Opus for everything and re-read the full codebase each run. Opportunities: model selection per agent type (Haiku for pr-responder/researcher), pre-warmed context summaries, smaller focused prompts, skip redundant CLAUDE.md reads, caching-friendly prompt ordering. Track token usage per agent run.
@@ -59,4 +59,4 @@ Current agents use Opus for everything and re-read the full codebase each run. O
 
 ---
 
-**Routing:** Bugs → GitHub Issues (`gh issue list --label bug`) | Tasks → `TASKS.md` | Test results → `test-app/COVERAGE.md` | Research → `docs/RESEARCH.md`
+**Routing:** Bugs → GitHub Issues (`gh issue list --label bug`) | Tasks → GitHub Issues (`gh issue list`) | Test results → `test-app/COVERAGE.md` | Research → `docs/RESEARCH.md`

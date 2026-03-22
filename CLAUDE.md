@@ -22,6 +22,18 @@ look, tap, scroll, scroll_to, swipe, gesture, input_text, toggle, navigate, back
 - All command handlers run on main thread (required for UIKit safety).
 - Adding a command: see `dylib/DYLIB.md`.
 
+## Work Tracking
+
+Everything is GitHub-native. No markdown databases.
+
+- **Bugs**: `gh issue list --label bug`
+- **Tasks**: `gh issue list --state open` / [Project board](https://github.com/users/skwallace36/projects/2)
+- **Agent task claims**: `./scripts/pepper-task next [--area LABEL]`
+
+**Area labels:** area:ci-cd, area:packaging, area:device-support, area:android-port, area:system-dialogs, area:generic-mode, area:real-world-testing, area:new-capabilities, area:test-coverage, area:ice-cubes
+
+**Priority labels:** priority:p3 → p4 → p6 → p7 → p8 → p9
+
 ---
 
-**Routing:** Bugs → GitHub Issues (`gh issue list --label bug`) | Work items → `ROADMAP.md` | Test results → `test-app/COVERAGE.md` (auto-generated) | Research → `docs/RESEARCH.md`
+**Routing:** Priorities → `ROADMAP.md` | Test results → `test-app/COVERAGE.md` (auto-generated) | Research → `docs/RESEARCH.md`
