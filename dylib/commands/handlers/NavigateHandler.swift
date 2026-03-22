@@ -194,6 +194,9 @@ struct NavigateHandler: PepperHandler {
 
     private func handleDeeplink(_ deeplink: String, params: [String: AnyCodable]?, command: PepperCommand) -> PepperResponse {
         let scheme = PepperAppConfig.shared.deeplinkScheme
+        guard !scheme.isEmpty else {
+            return .error(id: command.id, message: "Deep links are not available — no URL scheme configured. This app may not have a Pepper adapter, or the adapter does not define a deeplinkScheme. Use 'tab', 'to', or 'action' params for navigation instead.")
+        }
         var urlString = "\(scheme)://\(deeplink)"
 
         // Append query parameters from deeplink_params

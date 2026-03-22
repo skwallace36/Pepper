@@ -31,11 +31,12 @@ struct CurrentScreenHandler: PepperHandler {
             data["can_go_back"] = AnyCodable(topVC.presentingViewController != nil)
         }
 
-        // Tab bar info — custom tab bar container
+        // Tab bar info — custom tab bar or standard UITabBarController
         if let tabBar = UIWindow.pepper_tabBarController {
+            let tabInfo = tabBar.pepper_tabInfo
             data["tab"] = AnyCodable(tabBar.pepper_selectedTabName)
-            data["tab_count"] = AnyCodable(PepperAppConfig.shared.tabBarProvider?.tabNames().count ?? 0)
-            data["tabs"] = AnyCodable(tabBar.pepper_tabInfo.map { AnyCodable($0) })
+            data["tab_count"] = AnyCodable(tabInfo.count)
+            data["tabs"] = AnyCodable(tabInfo.map { AnyCodable($0) })
         }
 
         // Is modal?
