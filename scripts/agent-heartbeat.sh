@@ -45,6 +45,9 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
+# Redirect all output to log file so nothing is lost when backgrounded
+exec >> build/logs/heartbeat.log 2>&1
+
 echo "$(date +%H:%M) Heartbeat started (PID $$, interval ${INTERVAL}s)"
 
 # Check if an agent type is currently running
