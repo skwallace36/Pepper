@@ -152,33 +152,59 @@ extension UIViewController {
 
     /// Get info about all tabs for the control plane.
     var pepper_tabInfo: [[String: AnyCodable]] {
-        guard let provider = PepperAppConfig.shared.tabBarProvider,
-              provider.isTabBarContainer(self) else {
-            return []
+        // Custom tab bar provider (adapter mode)
+        if let provider = PepperAppConfig.shared.tabBarProvider,
+           provider.isTabBarContainer(self) {
+            let selectedName = pepper_selectedTabName
+            let names = provider.tabNames()
+            let titles = provider.visibleTabTitles()
+
+            return names.enumerated().map { index, name in
+                let title = index < titles.count ? titles[index] : "Unknown"
+                return [
+                    "index": AnyCodable(index),
+                    "name": AnyCodable(name),
+                    "title": AnyCodable(title),
+                    "selected": AnyCodable(name == selectedName)
+                ]
+            }
         }
 
-        let selectedName = pepper_selectedTabName
-        let names = provider.tabNames()
-        let titles = provider.visibleTabTitles()
-
-        return names.enumerated().map { index, name in
-            let title = index < titles.count ? titles[index] : "Unknown"
-            return [
-                "index": AnyCodable(index),
-                "name": AnyCodable(name),
-                "title": AnyCodable(title),
-                "selected": AnyCodable(name == selectedName)
-            ]
+        // Standard UITabBarController (generic mode fallback)
+        if let tabBarController = self as? UITabBarController {
+            let selectedIndex = tabBarController.selectedIndex
+            return (tabBarController.viewControllers ?? []).enumerated().map { index, vc in
+                let title = vc.tabBarItem.title ?? vc.title ?? "Tab \(index)"
+                let name = title.lowercased().replacingOccurrences(of: " ", with: "_")
+                return [
+                    "index": AnyCodable(index),
+                    "name": AnyCodable(name),
+                    "title": AnyCodable(title),
+                    "selected": AnyCodable(index == selectedIndex)
+                ]
+            }
         }
+
+        return []
     }
 
     /// Get the currently selected tab name.
     var pepper_selectedTabName: String {
-        guard let provider = PepperAppConfig.shared.tabBarProvider,
-              provider.isTabBarContainer(self) else {
-            return "unknown"
+        // Custom tab bar provider (adapter mode)
+        if let provider = PepperAppConfig.shared.tabBarProvider,
+           provider.isTabBarContainer(self) {
+            return provider.selectedTabName() ?? "unknown"
         }
-        return provider.selectedTabName() ?? "unknown"
+
+        // Standard UITabBarController (generic mode fallback)
+        if let tabBarController = self as? UITabBarController,
+           let selectedVC = tabBarController.selectedViewController {
+            return selectedVC.tabBarItem.title?.lowercased().replacingOccurrences(of: " ", with: "_")
+                ?? selectedVC.title?.lowercased().replacingOccurrences(of: " ", with: "_")
+                ?? "tab_\(tabBarController.selectedIndex)"
+        }
+
+        return "unknown"
     }
 }
 
@@ -186,10 +212,12 @@ extension UIViewController {
 
 extension UIViewController {
 
-    /// Walk up the view controller hierarchy to find the custom tab bar controller.
+    /// Walk up the view controller hierarchy to find the tab bar controller.
+    /// Checks for custom tab bar provider first, then standard UITabBarController.
     var pepper_tabBarController: UIViewController? {
         if let provider = PepperAppConfig.shared.tabBarProvider,
            provider.isTabBarContainer(self) { return self }
+        if self is UITabBarController { return self }
         if let parent = parent { return parent.pepper_tabBarController }
         if let presenting = presentingViewController { return presenting.pepper_tabBarController }
         return nil
@@ -198,7 +226,7 @@ extension UIViewController {
 
 extension UIWindow {
 
-    /// Find the custom tab bar controller from the window's root VC hierarchy.
+    /// Find the tab bar controller from the window's root VC hierarchy.
     static var pepper_tabBarController: UIViewController? {
         guard let root = pepper_rootViewController else { return nil }
         return root.pepper_findTabBarController()
@@ -209,6 +237,7 @@ private extension UIViewController {
     func pepper_findTabBarController() -> UIViewController? {
         if let provider = PepperAppConfig.shared.tabBarProvider,
            provider.isTabBarContainer(self) { return self }
+        if self is UITabBarController { return self }
         // Search presented
         if let presented = presentedViewController,
            let found = presented.pepper_findTabBarController() {
