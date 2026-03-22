@@ -162,15 +162,34 @@ final class PepperVarRegistry {
                 continue
             }
 
+            // _EnvironmentKeyWritingModifier — the writer side of .environment(obj).
+            // This is where the injected @Observable object actually lives in the
+            // view modifier chain. The modifier has a `value` property.
+            if typeName.contains("EnvironmentKeyWritingModifier") {
+                let modMirror = Mirror(reflecting: child.value)
+                for modChild in modMirror.children {
+                    if (modChild.label == "value" || modChild.label == "_value"),
+                       "\(modChild.value)" != "nil" {
+                        let obj = modChild.value as AnyObject
+                        if isObservableClass(obj) {
+                            trackInstance(obj)
+                        }
+                    }
+                }
+                // Still recurse into the modifier's content
+                discoverFromSwiftUIView(child.value, depth: depth + 1)
+                continue
+            }
+
             // Also check if the child itself is an ObservableObject (stored property)
             let childObj = child.value as AnyObject
             if isObservableObject(childObj) {
                 trackInstance(childObj)
             }
 
-            // Recurse into view body/content
-            if label == "content" || label == "body" || label == "_tree" || label == "_root" ||
-               label.hasPrefix("_") {
+            // Recurse into view body/content/modifier chain
+            if label == "content" || label == "body" || label == "modifier" ||
+               label == "_tree" || label == "_root" || label.hasPrefix("_") {
                 discoverFromSwiftUIView(child.value, depth: depth + 1)
             }
         }
