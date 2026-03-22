@@ -84,12 +84,18 @@ format_line() {
     icon=$(icon_for "$agent")
     acol=$(color_for "$agent")
 
-    # Skip noisy pepper events in replay (collapse them)
+    # Skip noisy tool-level events in replay (show in live mode only)
+    bytes=$(echo "$line" | jq -r '.bytes // empty' 2>/dev/null)
+    file=$(echo "$line" | jq -r '.file // empty' 2>/dev/null)
     case "$event" in
-      pepper|pepper-fail)
-        # Only show pepper events in live mode, not replay
+      pepper|pepper-fail|read|edit|write|grep|glob|gh)
         if [ "$REPLAY" = true ]; then continue; fi
-        printf "\033[2m%s  \033[${acol}m[%s]\033[0;2m %-12s %s %s\033[0m\n" "$ts_local" "$icon" "$agent" "$event" "$detail"
+        # In live mode, show with file/pattern info
+        extra=""
+        [ -n "$file" ] && extra="$(basename "$file")"
+        [ -n "$detail" ] && [ -z "$extra" ] && extra="$detail"
+        [ -n "$bytes" ] && [ "$bytes" != "0" ] && extra="$extra (${bytes}B)"
+        printf "\033[2m%s  \033[${acol}m[%s]\033[0;2m %-12s %-9s %s\033[0m\n" "$ts_local" "$icon" "$agent" "$event" "$extra"
         continue
         ;;
     esac
