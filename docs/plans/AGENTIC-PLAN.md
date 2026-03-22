@@ -522,10 +522,25 @@ Retention: keep last 20 transcripts per agent type. Runner cleans up older ones.
 
 ---
 
-**Status:** Milestone 1 complete. All tasks built, validated, and integration-tested. First agent run: BUG-001 fixed, PR #1 opened. Runner has prereqs check, daily budget enforcement, and transcript retention.
+**Status:** Milestones 1 + 2 complete. System battle-tested with 49 agent runs in first session.
 
-**Integration test results (2026-03-22):**
-- Agent: 40 turns, $1.91, ~10 min, 3 commits, 6 files changed
-- Events: STARTED → BRANCH → 3x COMMIT → PUSH → DONE (all captured live)
-- Issue found: `gh` CLI must be installed + authed (added prereqs check)
-- Issue found: cost extraction path was wrong (fixed to `.total_cost_usd`)
+**First session results (2026-03-22):**
+- 49 agent runs, 15 PRs opened, 17 PRs merged, $57 agent spend
+- 7 bugs found (3 original + 4 discovered by tester agent)
+- 7 bugs fixed (all merged)
+- 6 test coverage tasks completed (tap, scroll, scroll_to, swipe, input/toggle, wait_for)
+- 2 builder tasks completed (generic mode fix, generic mode audit)
+- 1 research task completed (touch failure debugging)
+- Full bugfix → verifier → pr-responder → verifier feedback loop demonstrated
+- GitHub App identity configured for distinct agent PR authorship
+
+**Architecture evolution during session:**
+- Added 15-minute hard timeout with process tree kill
+- Added lockfile to prevent concurrent same-type runs
+- Added trap cleanup safety net (always emits final event)
+- Added pre-push git hook for automatic rebase of agent branches
+- Replaced polling scheduler with event-driven triggers + heartbeat
+- Added per-agent color-coded monitor with EST timezone
+- Added cleanup script for orphaned processes/sims/worktrees
+
+**Known issue:** Intermittent `claude -p --worktree` session failures when running concurrent agents. Likely CLI session state conflict, not API auth. Safety net catches and logs. Workaround: retry or heartbeat auto-relaunches.
