@@ -13,6 +13,10 @@ Statuses: `open` → `in-progress` → `pr-open` → `fixed`.
 
 - **BUG-004** `[dylib/scroll_to]` `status:open` — `ScrollUntilVisibleHandler` does not override `var timeout: TimeInterval`, so the server-side dispatch timeout (10s) fires before long scrolls complete. The handler keeps running and the scroll succeeds, but the client receives a premature timeout error. Fix: override `timeout` to match or exceed `timeout_ms` parameter (default 10s → should be ~15-20s to account for max_scrolls * swipe+settle time). *(found: 2026-03-21)*
 
+- **BUG-005** `[dylib/tap]` `status:open` — `tap.tab` fails with SwiftUI `TabView`: "No tab bar found in view hierarchy". `findTabBarButtons()` only searches for `UITabBar` and class names containing "TabBar", but SwiftUI `TabView` renders tab buttons as accessibility elements, not UIKit views. Workaround: use `tap text:"TabName"`. *(found: 2026-03-22, GH #8)*
+
+- **BUG-006** `[dylib/tap]` `status:open` — `tap.element` cannot find SwiftUI `.accessibilityIdentifier()` elements. `pepper_findElement(id:)` searches `UIView.accessibilityIdentifier` recursively, but SwiftUI identifiers live in the accessibility system, not on backing UIViews. Works correctly for UIKit elements. *(found: 2026-03-22, GH #9)*
+
 ---
 
 **Routing:** Work items → `ROADMAP.md` | Test coverage → `test-app/COVERAGE.md` | Research → `docs/RESEARCH.md`
