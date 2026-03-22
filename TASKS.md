@@ -22,7 +22,7 @@ Run every Pepper command against the test app. Each task covers a command family
 - **TASK-020** `[P2]` `status:pr-open` — Test `console` + `network` + `timeline` commands *(13 pass, 1 prior pass)*
 - **TASK-021** `[P2]` `status:pr-open` — Test `lifecycle` + `orientation` commands *(8 pass)*
 - **TASK-022** `[P2]` `status:pr-open` — Test `defaults` + `keychain` + `cookies` + `clipboard` commands *(16 pass)*
-- **TASK-023** `[P2]` `status:in-progress` — Test `dialog` + `hook` + `locale` + `push` commands *(21 untested)*
+- **TASK-023** `[P2]` `status:pr-open` — Test `dialog` + `hook` + `locale` + `push` commands *(14 pass, 2 blocked)*
 - **TASK-024** `[P2]` `status:unstarted` — Test `navigate` deeplink + `batch` + `dismiss` + remaining *(~10 untested)*
 
 ## Real App Smoke Test — Ice Cubes (P2)
