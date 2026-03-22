@@ -172,7 +172,7 @@ pass "App launched on port $CI_PORT"
 
 # --- Step 6: Wait for Pepper server ---
 step "Waiting for Pepper server (timeout: ${CI_TIMEOUT}s)"
-python3 "$PROJECT_DIR/tools/pepper-ctl" --port "$CI_PORT" \
+python3 "$PROJECT_DIR/tools/pepper-ctl" --host 127.0.0.1 --port "$CI_PORT" \
     wait-for-server --wait-timeout "$CI_TIMEOUT"
 pass "Server ready"
 
@@ -184,7 +184,7 @@ if [ ! -f "$SMOKE_FILE" ]; then
     exit 1
 fi
 
-python3 "$PROJECT_DIR/tools/pepper-ctl" --port "$CI_PORT" \
+python3 "$PROJECT_DIR/tools/pepper-ctl" --host 127.0.0.1 --port "$CI_PORT" \
     test-report --file "$SMOKE_FILE" \
     --format json --output "$RESULTS_DIR/smoke-results.json" \
     --continue-on-error
