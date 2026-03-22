@@ -21,13 +21,16 @@ All bugs tracked in `BUGS.md`. Agent-addressable. PRs open for all 3.
 ### P2: Complete test app coverage
 Run every Pepper command against the test app. 132 untested command variants. Broken into discrete tasks in `TASKS.md`. Will surface more bugs.
 
-### P3: Generic mode cleanup
-Running without an adapter exposed build failures and app-specific assumptions. Tasks in `TASKS.md`.
+### P3: Modularize `tools/` and clean up `pepper-mcp`
+`pepper-mcp` is a 2865-line monolith. Split into logical modules, extract shared code (`discover_port`, `load_env`, `format_look`) used by pepper-ctl/pepper-stream/test-client into a common library, and clean up the tools directory (inconsistent error handling, hardcoded paths, broad exception swallowing). Tasks in `TASKS.md`.
 
-### P4: Real-world app testing
+### P4: Generic mode cleanup
+Running without an adapter exposed build failures and app-specific assumptions. Tasks in `TASKS.md`. *(was P3)*
+
+### P5: Real-world app testing
 After the test app is green, inject into Wikipedia, Ice Cubes, etc. to pressure-test against real UIs.
 
-### P5: New capabilities
+### P6: New capabilities
 Accessibility audit, touch failure debugging, layout inspector, performance profiling, in-process view capture. Concrete tasks in `TASKS.md`.
 
 ## Done
