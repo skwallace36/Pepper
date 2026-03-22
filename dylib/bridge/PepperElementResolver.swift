@@ -57,7 +57,20 @@ enum PepperElementResolver {
                 return (Result(view: tabBarButtons[tabIndex], strategy: .tabIndex, description: "tab[\(tabIndex)]"), nil)
             }
 
-            // Second try: UITabBarController programmatic selection
+            // Second try: SwiftUI TabView — scan accessibility tree for tab bar buttons.
+            // SwiftUI TabView renders tabs as accessibility elements, not UIKit views.
+            if tabBarButtons.isEmpty {
+                let accTabButtons = findAccessibilityTabButtons()
+                if tabIndex >= 0, tabIndex < accTabButtons.count {
+                    let btn = accTabButtons[tabIndex]
+                    let tapPoint = CGPoint(x: btn.frame.midX, y: btn.frame.midY)
+                    let label = btn.label ?? "tab[\(tabIndex)]"
+                    return (Result(view: window, strategy: .tabIndex,
+                                   description: "tab[\(tabIndex)] '\(label)'", tapPoint: tapPoint), nil)
+                }
+            }
+
+            // Third try: UITabBarController programmatic selection
             if let tabBarVC = findTabBarController() {
                 guard let vcs = tabBarVC.viewControllers, tabIndex >= 0, tabIndex < vcs.count else {
                     return (nil, "Tab index out of range: \(tabIndex) (found \(tabBarButtons.count) tab buttons)")
@@ -288,5 +301,32 @@ enum PepperElementResolver {
             current = vc.presentedViewController
         }
         return nil
+    }
+
+    /// Find tab buttons via the accessibility tree (for SwiftUI TabView).
+    /// SwiftUI TabView renders tabs as accessibility elements with `.button` trait
+    /// inside a container with `.tabBar` trait, rather than as UITabBarButton views.
+    /// Returns buttons sorted left-to-right by x position.
+    private static func findAccessibilityTabButtons() -> [PepperAccessibilityElement] {
+        let bridge = PepperSwiftUIBridge.shared
+        let elements = bridge.collectAccessibilityElements()
+
+        // Find the tab bar container (has tabBar trait)
+        guard let tabBarElement = elements.first(where: { $0.traits.contains("tabBar") }) else {
+            return []
+        }
+
+        let tabBarFrame = tabBarElement.frame
+        guard tabBarFrame.width > 0, tabBarFrame.height > 0 else { return [] }
+
+        // Find button elements whose center falls within the tab bar's frame
+        let buttons = elements.filter { elem in
+            elem.isInteractive &&
+            elem.traits.contains("button") &&
+            elem.frame.width > 0 && elem.frame.height > 0 &&
+            tabBarFrame.contains(CGPoint(x: elem.frame.midX, y: elem.frame.midY))
+        }.sorted { $0.frame.midX < $1.frame.midX }
+
+        return buttons
     }
 }
