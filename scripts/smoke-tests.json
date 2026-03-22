@@ -1,0 +1,14 @@
+{
+  "suite": "pepper-smoke",
+  "tests": [
+    {"name": "server responds to ping", "cmd": "ping"},
+    {"name": "look returns screen map", "cmd": "introspect", "params": {"mode": "map"}},
+    {"name": "tree returns hierarchy", "cmd": "tree"},
+    {"name": "screen returns info", "cmd": "screen"},
+    {"name": "help lists commands", "cmd": "help"},
+    {"name": "console returns logs", "cmd": "console"},
+    {"name": "network returns requests", "cmd": "network"},
+    {"name": "status returns state", "cmd": "status"},
+    {"name": "lifecycle returns events", "cmd": "lifecycle"}
+  ]
+}
