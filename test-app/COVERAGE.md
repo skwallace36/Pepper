@@ -110,12 +110,12 @@ Bugs: see [`BUGS.md`](../BUGS.md)
 | `locale` | reset | untested | After set |  |
 | `locale` | lookup | untested | NEEDS: Localizable.strings |  |
 | `locale` | languages | untested | Any state |  |
-| `vars` | list | fail | AppState (@Observable) | BUG-003 |
-| `vars` | get | untested | AppState properties | Blocked by list |
-| `vars` | set | untested | AppState properties | Blocked by list |
-| `vars` | discover | untested | AppState properties |  |
-| `vars` | dump | untested | AppState |  |
-| `vars` | mirror | untested | AppState |  |
+| `vars` | list | pass | AppState (@Observable) | BUG-003 FIXED: now returns 2 instances (AppState + NestedState) with all properties, types, writable flags. Previously returned 0 instances for @Observable classes. |
+| `vars` | get | pass | AppState properties | Returns single property value by path (ClassName.propertyName). Tested: AppState.tapCount=3, NestedState.innerValue='nested-hello'. Error cases: nonexistent property returns proper error, missing path param returns proper error. |
+| `vars` | set | pass | AppState properties | Sets property value by path. Tested: set tapCount to 99 (confirmed via get), set NestedState.innerCount to 100. Returns {ok:true, value:newVal}. NOTE: does not trigger @Observable re-rendering — UI shows stale value until next natural update. Read-only properties return proper error. |
+| `vars` | discover | pass | AppState properties | Force re-scans VC hierarchy for @Observable instances. Returns 2 instances (AppState with 17 properties, NestedState with 2 properties). Reports type, writable, value for each. |
+| `vars` | dump | pass | AppState | Returns flat key-value dict of all properties for a class. Tested: dump AppState returns all 17 properties. Error case: nonexistent class returns proper error. |
+| `vars` | mirror | pass | AppState | Returns detailed Mirror-based property list with type, writable, published flags. Tested: mirror NestedState shows innerValue, innerCount, plus $observationRegistrar. More detail than list/dump. |
 | `layers` | — | crash | Gradient + shadow on Misc tab | BUG-002 |
 | `console` | start | pass | Any state |  |
 | `console` | stop | untested | After start |  |
@@ -168,10 +168,10 @@ Bugs: see [`BUGS.md`](../BUGS.md)
 
 **141 test points** across 49 commands.
 
-- pass: 31
-- fail: 8
+- pass: 37
+- fail: 7
 - crash: 1
-- untested: 98
+- untested: 93
 
 ## Test App Gaps
 
