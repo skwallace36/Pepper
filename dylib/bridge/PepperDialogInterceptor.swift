@@ -72,6 +72,31 @@ final class PepperDialogInterceptor {
         installPhotoLibrarySwizzle()
     }
 
+    /// Re-resolve the UNUserNotificationCenter runtime class and ensure our
+    /// swizzle is installed there. Called from didFinishLaunching as a safety
+    /// net — at constructor time, .current() may return a placeholder class
+    /// that differs from the one used at runtime.
+    static func reinforceNotificationSwizzle() {
+        let originalSel = NSSelectorFromString("requestAuthorizationWithOptions:completionHandler:")
+        let swizzledSel = #selector(UNUserNotificationCenter.pepper_requestAuthorization(options:completionHandler:))
+
+        guard let swizzledMethod = class_getInstanceMethod(UNUserNotificationCenter.self, swizzledSel) else { return }
+
+        let replacementIMP = method_getImplementation(swizzledMethod)
+        let typeEncoding = method_getTypeEncoding(swizzledMethod)
+
+        let instance = UNUserNotificationCenter.current()
+        let runtimeCls: AnyClass = type(of: instance)
+
+        if runtimeCls !== UNUserNotificationCenter.self {
+            class_addMethod(runtimeCls, originalSel, replacementIMP, typeEncoding)
+            if let runtimeMethod = class_getInstanceMethod(runtimeCls, originalSel) {
+                method_setImplementation(runtimeMethod, replacementIMP)
+            }
+            pepperLog.info("Notification authorization reinforced on runtime class \(runtimeCls)", category: .lifecycle)
+        }
+    }
+
     private static func installPhotoLibrarySwizzle() {
         let cls: AnyClass = PHPhotoLibrary.self
 
@@ -101,29 +126,43 @@ final class PepperDialogInterceptor {
     }
 
     private static func installNotificationSwizzle() {
-        // Resolve the actual runtime class — UNUserNotificationCenter.current()
-        // returns a private subclass (class cluster). Swizzling on the base class
-        // misses calls dispatched to the subclass's override.
-        let instance = UNUserNotificationCenter.current()
-        let cls: AnyClass = type(of: instance)
-
         let originalSel = NSSelectorFromString("requestAuthorizationWithOptions:completionHandler:")
         let swizzledSel = #selector(UNUserNotificationCenter.pepper_requestAuthorization(options:completionHandler:))
-
-        guard let originalMethod = class_getInstanceMethod(cls, originalSel) else {
-            pepperLog.error("Failed to find UNUserNotificationCenter.requestAuthorization on \(cls)", category: .lifecycle)
-            return
-        }
 
         guard let swizzledMethod = class_getInstanceMethod(UNUserNotificationCenter.self, swizzledSel) else {
             pepperLog.error("Failed to find pepper_requestAuthorization replacement", category: .lifecycle)
             return
         }
 
-        // Replace implementation directly — we intentionally skip the original
-        // (calling it would show the SpringBoard permission dialog).
-        method_setImplementation(originalMethod, method_getImplementation(swizzledMethod))
-        pepperLog.info("Notification authorization auto-grant installed (class: \(cls))", category: .lifecycle)
+        let replacementIMP = method_getImplementation(swizzledMethod)
+        let typeEncoding = method_getTypeEncoding(swizzledMethod)
+
+        // 1. Swizzle the base class — always resolvable at constructor time.
+        //    This catches calls when no subclass overrides the method.
+        guard let baseMethod = class_getInstanceMethod(UNUserNotificationCenter.self, originalSel) else {
+            pepperLog.error("Failed to find requestAuthorization on UNUserNotificationCenter", category: .lifecycle)
+            return
+        }
+        method_setImplementation(baseMethod, replacementIMP)
+        pepperLog.info("Notification authorization auto-grant installed on UNUserNotificationCenter", category: .lifecycle)
+
+        // 2. Also install on the runtime subclass (class cluster pattern).
+        //    UNUserNotificationCenter.current() may return a private subclass
+        //    that overrides requestAuthorization. class_addMethod installs our
+        //    IMP directly on the subclass (no-op if it already has the method),
+        //    then method_setImplementation ensures it points to our replacement
+        //    regardless. This covers both "subclass inherits" and "subclass
+        //    overrides" cases.
+        let instance = UNUserNotificationCenter.current()
+        let runtimeCls: AnyClass = type(of: instance)
+
+        if runtimeCls !== UNUserNotificationCenter.self {
+            class_addMethod(runtimeCls, originalSel, replacementIMP, typeEncoding)
+            if let runtimeMethod = class_getInstanceMethod(runtimeCls, originalSel) {
+                method_setImplementation(runtimeMethod, replacementIMP)
+            }
+            pepperLog.info("Notification authorization auto-grant installed on runtime class \(runtimeCls)", category: .lifecycle)
+        }
     }
 
     // MARK: - Installation
