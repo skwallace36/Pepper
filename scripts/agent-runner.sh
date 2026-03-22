@@ -145,6 +145,20 @@ AGENT_PID=$!
 # Wait with timeout
 TIMED_OUT=false
 ELAPSED=0
+# Quick check: if agent dies in first 3 seconds, it's likely an auth/startup failure
+sleep 3
+if ! kill -0 "$AGENT_PID" 2>/dev/null; then
+  wait "$AGENT_PID" 2>/dev/null
+  EXIT_CODE=$?
+  AGENT_PID=""
+  END=$(date +%s)
+  DURATION=$((END - START))
+  COST=$(jq -r '.total_cost_usd // .cost_usd // 0' "$TRANSCRIPT" 2>/dev/null || echo 0)
+  DETAIL=$(head -c 200 "$TRANSCRIPT" 2>/dev/null | tr '\n' ' ' || echo "agent died immediately")
+  emit "failed" ",\"detail\":\"agent died in <3s (auth? crash?): $(echo "$DETAIL" | jq -Rs '.'| head -c 150)\",\"cost_usd\":${COST},\"duration_s\":${DURATION}"
+  echo "Agent died immediately. Transcript: $TRANSCRIPT"
+  exit 1
+fi
 while kill -0 "$AGENT_PID" 2>/dev/null; do
   sleep 5
   ELAPSED=$(( $(date +%s) - START ))
