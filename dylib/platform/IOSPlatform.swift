@@ -16,8 +16,8 @@ final class IOSPlatform: PepperPlatform {
     /// iOS input synthesis — wraps PepperHIDEventSynthesizer + UITextInput.
     let input: InputSynthesis = IOSInputSynthesis()
 
-    /// Placeholder — replaced by IOSStateObservation (TASK-113).
-    let state: StateObservation = IOSStateObservationStub()
+    /// iOS state observation — wraps PepperState + PepperIdleMonitor.
+    let state: StateObservation = IOSStateObservation()
 
     /// Placeholder — replaced by IOSNetworkInterception (TASK-114).
     let network: NetworkInterception = IOSNetworkInterceptionStub()
@@ -37,26 +37,6 @@ final class IOSPlatform: PepperPlatform {
 // These exist solely so IOSPlatform compiles and conforms to PepperPlatform
 // before the real wrapper types are created. Nothing calls through the
 // platform abstraction yet — handlers still use singletons directly.
-
-private final class IOSStateObservationStub: StateObservation {
-    func currentScreen() -> ScreenInfo {
-        fatalError("IOSStateObservation not yet implemented — see TASK-113")
-    }
-
-    func waitForIdle(
-        timeout: TimeInterval,
-        includeNetwork: Bool,
-        checkAnimations: Bool
-    ) -> (idle: Bool, elapsedMs: Int) {
-        fatalError("IOSStateObservation not yet implemented — see TASK-113")
-    }
-
-    func install() {
-        fatalError("IOSStateObservation not yet implemented — see TASK-113")
-    }
-
-    var onScreenChange: ((ScreenInfo) -> Void)?
-}
 
 private final class IOSNetworkInterceptionStub: NetworkInterception {
     func install(bufferSize: Int?) {
