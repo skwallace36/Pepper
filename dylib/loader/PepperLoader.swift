@@ -25,6 +25,14 @@ public func pepperBootstrap() {
     // BEFORE main() and before the app's own initialization code runs.
     PepperAppConfig.shared.preMainHook?()
 
+    // Install authorization auto-grant swizzles early — BEFORE didFinishLaunchingWithOptions.
+    // Apps commonly call UNUserNotificationCenter.requestAuthorization or
+    // PHPhotoLibrary.requestAuthorization during launch. If we wait until
+    // didFinishLaunchingNotification (which fires AFTER the delegate method returns),
+    // the system dialog has already appeared. Installing here ensures the swizzle
+    // is in place before any app code runs.
+    PepperDialogInterceptor.installAuthorizationSwizzles()
+
     NotificationCenter.default.addObserver(
         forName: UIApplication.didFinishLaunchingNotification,
         object: nil,
