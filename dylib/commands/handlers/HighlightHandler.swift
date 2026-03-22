@@ -12,6 +12,7 @@ import UIKit
 ///   {"cmd": "highlight", "params": {"clear": true}}
 struct HighlightHandler: PepperHandler {
     let commandName = "highlight"
+    let platform: PepperPlatform
 
     // Named color presets
     private static let colors: [String: UIColor] = [
