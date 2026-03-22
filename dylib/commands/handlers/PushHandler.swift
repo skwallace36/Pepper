@@ -18,6 +18,7 @@ import os
 ///     → Clear all delivered notifications
 struct PushHandler: PepperHandler {
     let commandName = "push"
+    let platform: PepperPlatform
     private var logger: Logger { PepperLogger.logger(category: "push") }
 
     func handle(_ command: PepperCommand) -> PepperResponse {
