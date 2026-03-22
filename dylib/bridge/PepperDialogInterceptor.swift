@@ -53,8 +53,78 @@ final class PepperDialogInterceptor {
     private var pendingShareSheets: [PendingShareSheet] = []
     private let lock = NSLock()
     private var installed = false
+    private static var authSwizzlesInstalled = false
 
     private init() {}
+
+    // MARK: - Early authorization swizzles
+
+    /// Install authorization auto-grant swizzles for system permission dialogs.
+    /// Called from pepperBootstrap() at dylib load time — BEFORE didFinishLaunchingWithOptions,
+    /// so we intercept requestAuthorization calls that apps make during launch.
+    /// These swizzles suppress SpringBoard-rendered dialogs that our UIViewController.present
+    /// swizzle can't intercept.
+    static func installAuthorizationSwizzles() {
+        guard !authSwizzlesInstalled else { return }
+        authSwizzlesInstalled = true
+
+        installNotificationSwizzle()
+        installPhotoLibrarySwizzle()
+    }
+
+    private static func installPhotoLibrarySwizzle() {
+        let cls: AnyClass = PHPhotoLibrary.self
+
+        // Swizzle requestAuthorization(for:handler:) — iOS 14+ API.
+        // Uses method_setImplementation (not exchange) because we intentionally
+        // skip the original — calling it would show the SpringBoard dialog.
+        let originalSel = NSSelectorFromString("requestAuthorizationForAccessLevel:handler:")
+        let swizzledSel = #selector(PHPhotoLibrary.pepper_requestAuthorization(for:handler:))
+
+        if let originalMethod = class_getClassMethod(cls, originalSel),
+           let swizzledMethod = class_getClassMethod(cls, swizzledSel) {
+            method_setImplementation(originalMethod, method_getImplementation(swizzledMethod))
+            pepperLog.info("Photo library authorization auto-grant installed", category: .lifecycle)
+        } else {
+            pepperLog.error("Failed to swizzle PHPhotoLibrary.requestAuthorization(for:handler:)", category: .lifecycle)
+        }
+
+        // Swizzle legacy requestAuthorization(_:) — pre-iOS 14 API
+        let legacySel = NSSelectorFromString("requestAuthorization:")
+        let legacySwizzledSel = #selector(PHPhotoLibrary.pepper_requestAuthorizationLegacy(handler:))
+
+        if let originalMethod = class_getClassMethod(cls, legacySel),
+           let swizzledMethod = class_getClassMethod(cls, legacySwizzledSel) {
+            method_setImplementation(originalMethod, method_getImplementation(swizzledMethod))
+            pepperLog.info("Photo library legacy authorization auto-grant installed", category: .lifecycle)
+        }
+    }
+
+    private static func installNotificationSwizzle() {
+        // Resolve the actual runtime class — UNUserNotificationCenter.current()
+        // returns a private subclass (class cluster). Swizzling on the base class
+        // misses calls dispatched to the subclass's override.
+        let instance = UNUserNotificationCenter.current()
+        let cls: AnyClass = type(of: instance)
+
+        let originalSel = NSSelectorFromString("requestAuthorizationWithOptions:completionHandler:")
+        let swizzledSel = #selector(UNUserNotificationCenter.pepper_requestAuthorization(options:completionHandler:))
+
+        guard let originalMethod = class_getInstanceMethod(cls, originalSel) else {
+            pepperLog.error("Failed to find UNUserNotificationCenter.requestAuthorization on \(cls)", category: .lifecycle)
+            return
+        }
+
+        guard let swizzledMethod = class_getInstanceMethod(UNUserNotificationCenter.self, swizzledSel) else {
+            pepperLog.error("Failed to find pepper_requestAuthorization replacement", category: .lifecycle)
+            return
+        }
+
+        // Replace implementation directly — we intentionally skip the original
+        // (calling it would show the SpringBoard permission dialog).
+        method_setImplementation(originalMethod, method_getImplementation(swizzledMethod))
+        pepperLog.info("Notification authorization auto-grant installed (class: \(cls))", category: .lifecycle)
+    }
 
     // MARK: - Installation
 
@@ -74,56 +144,10 @@ final class PepperDialogInterceptor {
         method_exchangeImplementations(originalMethod, swizzledMethod)
         pepperLog.info("Dialog interceptor installed", category: .lifecycle)
 
-        // Swizzle UNUserNotificationCenter.requestAuthorization to auto-grant
-        // without showing the system dialog. The dialog is a SpringBoard alert
-        // that our UIViewController.present swizzle can't intercept.
-        installNotificationSwizzle()
-
-        // Swizzle PHPhotoLibrary.requestAuthorization to auto-grant photo access.
-        // The "additional access" dialog is rendered by SpringBoard/PhotoUI in a
-        // remote view — untouchable by our HID events or present() swizzle.
-        installPhotoLibrarySwizzle()
-    }
-
-    private func installPhotoLibrarySwizzle() {
-        let cls: AnyClass = PHPhotoLibrary.self
-
-        // Swizzle requestAuthorization(for:handler:) — iOS 14+ API
-        let originalSel = NSSelectorFromString("requestAuthorizationForAccessLevel:handler:")
-        let swizzledSel = #selector(PHPhotoLibrary.pepper_requestAuthorization(for:handler:))
-
-        if let originalMethod = class_getClassMethod(cls, originalSel),
-           let swizzledMethod = class_getClassMethod(cls, swizzledSel) {
-            method_exchangeImplementations(originalMethod, swizzledMethod)
-            pepperLog.info("Photo library authorization auto-grant installed", category: .lifecycle)
-        } else {
-            pepperLog.error("Failed to swizzle PHPhotoLibrary.requestAuthorization(for:handler:)", category: .lifecycle)
-        }
-
-        // Swizzle legacy requestAuthorization(_:) — pre-iOS 14 API
-        let legacySel = NSSelectorFromString("requestAuthorization:")
-        let legacySwizzledSel = #selector(PHPhotoLibrary.pepper_requestAuthorizationLegacy(handler:))
-
-        if let originalMethod = class_getClassMethod(cls, legacySel),
-           let swizzledMethod = class_getClassMethod(cls, legacySwizzledSel) {
-            method_exchangeImplementations(originalMethod, swizzledMethod)
-            pepperLog.info("Photo library legacy authorization auto-grant installed", category: .lifecycle)
-        }
-    }
-
-    private func installNotificationSwizzle() {
-        let cls: AnyClass = UNUserNotificationCenter.self
-        // requestAuthorization(options:completionHandler:)
-        let originalSel = NSSelectorFromString("requestAuthorizationWithOptions:completionHandler:")
-        let swizzledSel = #selector(UNUserNotificationCenter.pepper_requestAuthorization(options:completionHandler:))
-
-        guard let originalMethod = class_getInstanceMethod(cls, originalSel),
-              let swizzledMethod = class_getInstanceMethod(cls, swizzledSel) else {
-            pepperLog.error("Failed to swizzle UNUserNotificationCenter.requestAuthorization", category: .lifecycle)
-            return
-        }
-        method_exchangeImplementations(originalMethod, swizzledMethod)
-        pepperLog.info("Notification authorization auto-grant installed", category: .lifecycle)
+        // Authorization swizzles (notification + photo library) are installed
+        // earlier from pepperBootstrap() via installAuthorizationSwizzles().
+        // Ensure they're in place even if the loader path is bypassed (e.g. SPM link).
+        Self.installAuthorizationSwizzles()
     }
 
     // MARK: - Dialog tracking
