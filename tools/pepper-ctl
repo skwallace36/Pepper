@@ -40,25 +40,9 @@ except ImportError:
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import pepper_sessions
 
-DEFAULT_HOST = "localhost"
+from pepper_common import DEFAULT_HOST, PORT_DIR, load_env
+
 DEFAULT_PORT = None  # Auto-discover from port files
-PORT_DIR = "/tmp/pepper-ports"
-
-
-def load_env():
-    """Load .env file from project root for default configuration."""
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    env_file = os.path.join(os.path.dirname(script_dir), ".env")
-    env = {}
-    if os.path.isfile(env_file):
-        with open(env_file) as f:
-            for line in f:
-                line = line.strip()
-                if not line or line.startswith("#") or "=" not in line:
-                    continue
-                key, _, val = line.partition("=")
-                env[key.strip()] = val.strip().strip("'\"")
-    return env
 
 
 def discover_port(simulator=None):
