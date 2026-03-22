@@ -12,8 +12,12 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 CONTROL_DIR="$PROJECT_DIR/dylib"
-BUILD_DIR="$PROJECT_DIR/build/dylib"
-FRAMEWORK_DIR="$PROJECT_DIR/build/Pepper.framework"
+
+# Use worktree-local build dir to avoid collisions with concurrent builds.
+# git rev-parse --show-toplevel gives the worktree root (not the main repo).
+WORKTREE_ROOT=$(git -C "$PROJECT_DIR" rev-parse --show-toplevel 2>/dev/null || echo "$PROJECT_DIR")
+BUILD_DIR="$WORKTREE_ROOT/build/dylib"
+FRAMEWORK_DIR="$WORKTREE_ROOT/build/Pepper.framework"
 
 # Colors
 GREEN='\033[0;32m'
