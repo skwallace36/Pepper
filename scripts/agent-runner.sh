@@ -212,6 +212,9 @@ emit "started" ",\"detail\":\"picking work from queue (\$${TYPE_COST_TODAY} spen
 export PEPPER_EVENTS_LOG="$EVENTS"
 export PEPPER_AGENT_TYPE="$TYPE"
 
+# Disable auto-memory — agents don't need user preferences or project memories
+export CLAUDE_CODE_DISABLE_AUTO_MEMORY=1
+
 # Claim a simulator via pepper_sessions (flock-based, multi-agent safe)
 CLAIMED_SIM=$(python3 -c "
 import sys; sys.path.insert(0, '$REPO_ROOT/tools')
