@@ -1,7 +1,7 @@
 {
   "mcpServers": {
     "pepper": {
-      "command": "${PEPPER_PYTHON:-python3}",
+      "command": "./.venv/bin/python3",
       "args": ["./tools/pepper-mcp"],
       "env": {
         "PYTHONUNBUFFERED": "1"
