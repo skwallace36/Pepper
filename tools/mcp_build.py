@@ -236,7 +236,8 @@ async def deploy_app(simulator: str, send_fn: SendFn,
                      bundle_id: Optional[str] = None,
                      dylib_path: Optional[str] = None,
                      install_path: Optional[str] = None,
-                     workspace: Optional[str] = None) -> str:
+                     workspace: Optional[str] = None,
+                     skip_privacy: bool = False) -> str:
     """Deploy (terminate + install + launch with Pepper). Returns status message + screen."""
     cfg = get_config()
     bid = bundle_id or cfg["bundle_id"]
@@ -284,6 +285,15 @@ async def deploy_app(simulator: str, send_fn: SendFn,
         )
         if result.returncode != 0:
             return f"Install failed: {result.stderr.strip()}"
+
+    # Auto-grant common privacy permissions (opt-out with skip_privacy=True)
+    if not skip_privacy:
+        for perm in ("photos", "photos-add", "camera", "microphone",
+                     "contacts", "calendar", "location-always"):
+            subprocess.run(
+                ["xcrun", "simctl", "privacy", simulator, "grant", perm, bid],
+                capture_output=True, text=True
+            )
 
     # Launch with injection + adapter env vars
     env = os.environ.copy()
