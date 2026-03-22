@@ -734,7 +734,7 @@ async def act_and_look(simulator: Optional[str], cmd: str, params: Optional[dict
         # Element not found — show what IS on screen
         if "not found" in err.lower() or "no hit-reachable" in err.lower():
             await asyncio.sleep(0.2)
-            look_resp = await send_command(port, "introspect", {"mode": "map"}, timeout=5)
+            look_resp = await send_command(port, "look", {}, timeout=5)
             screen_summary = format_look(look_resp) if look_resp.get("status") == "ok" else "(look failed)"
             return f"Error: {err}\n\n--- What's actually on screen ---\n{screen_summary}"
 
@@ -749,7 +749,7 @@ async def act_and_look(simulator: Optional[str], cmd: str, params: Optional[dict
 
     # Auto-look + telemetry in parallel
     look_task = asyncio.create_task(
-        send_command(port, "introspect", {"mode": "map"}, timeout=5)
+        send_command(port, "look", {}, timeout=5)
     )
     telemetry_task = asyncio.create_task(
         gather_telemetry(port, pre_counts)
@@ -1062,12 +1062,12 @@ async def look(
         # Run introspect and screenshot in parallel
         quality = screenshot_quality if screenshot_quality in ("standard", "high") else "standard"
         introspect_task = asyncio.create_task(
-            send_command(port, "introspect", {"mode": "map"})
+            send_command(port, "look", {})
         )
         screenshot_task = asyncio.create_task(capture_screenshot(udid, quality=quality))
         resp, screenshot_b64 = await asyncio.gather(introspect_task, screenshot_task)
     else:
-        resp = await send_command(port, "introspect", {"mode": "map"})
+        resp = await send_command(port, "look", {})
         screenshot_b64 = None
 
     if raw:
@@ -2587,7 +2587,7 @@ async def _deploy_app(simulator: str, bundle_id: Optional[str] = None,
                 resp = await send_command(port, "ping", timeout=2)
                 if resp.get("status") == "ok":
                     await asyncio.sleep(1)  # let UI settle
-                    look_resp = await send_command(port, "introspect", {"mode": "map"}, timeout=5)
+                    look_resp = await send_command(port, "look", {}, timeout=5)
                     screen_summary = format_look(look_resp) if look_resp.get("status") == "ok" else "(look not ready yet)"
                     # Claim this simulator for our session
                     pepper_sessions.claim_simulator(simulator, bundle_id=bid, port=port)
