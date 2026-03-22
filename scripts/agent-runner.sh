@@ -50,7 +50,7 @@ if [ ! -f "$PROMPT_FILE" ]; then
 fi
 
 # Daily budget enforcement
-# Per-type: $10/day, Total: $30/day
+# Per-type: $20/day, Total: $75/day
 TODAY=$(date -u +%Y-%m-%d)
 sum_cost() {
   # Sum cost_usd from events matching a pattern. Returns 0.00 if no matches.
@@ -59,14 +59,14 @@ sum_cost() {
 TYPE_COST_TODAY=$(sum_cost "\"agent\":\"${TYPE}\".*${TODAY}")
 TOTAL_COST_TODAY=$(sum_cost "${TODAY}")
 
-if [ "$(echo "$TYPE_COST_TODAY > 10" | bc)" = "1" ]; then
+if [ "$(echo "$TYPE_COST_TODAY > 20" | bc)" = "1" ]; then
   emit "failed" ",\"detail\":\"daily budget exceeded for ${TYPE}: \$${TYPE_COST_TODAY}\""
-  echo "Daily budget exceeded for ${TYPE}: \$${TYPE_COST_TODAY}/\$10. Skipping."
+  echo "Daily budget exceeded for ${TYPE}: \$${TYPE_COST_TODAY}/\$20. Skipping."
   exit 0
 fi
-if [ "$(echo "$TOTAL_COST_TODAY > 30" | bc)" = "1" ]; then
+if [ "$(echo "$TOTAL_COST_TODAY > 75" | bc)" = "1" ]; then
   emit "failed" ",\"detail\":\"total daily budget exceeded: \$${TOTAL_COST_TODAY}\""
-  echo "Total daily budget exceeded: \$${TOTAL_COST_TODAY}/\$30. Skipping."
+  echo "Total daily budget exceeded: \$${TOTAL_COST_TODAY}/\$75. Skipping."
   exit 0
 fi
 
