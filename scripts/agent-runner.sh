@@ -38,6 +38,8 @@ TIMEOUT_S=900
 AGENT_PID=""
 FINAL_EVENT_EMITTED=false
 OUR_WORKTREE=""  # Track which worktree belongs to THIS agent
+START=""  # Set before agent launch; empty means pre-launch exit (no safety net needed)
+TRANSCRIPT=""
 
 emit() {
   local event="$1"; shift
