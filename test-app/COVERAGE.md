@@ -61,10 +61,10 @@ Bugs: see [`BUGS.md`](../BUGS.md)
 | `introspect` | mirror | untested | Any view |  |
 | `introspect` | platform | untested | UIKitControlsView |  |
 | `introspect` | map | untested | Any screen (this is 'look') |  |
-| `swipe` | down | untested | Any scrollable view |  |
-| `swipe` | up | untested | Any scrollable view |  |
-| `swipe` | left | untested | List rows with swipe actions |  |
-| `swipe` | right | untested | List rows with swipe actions |  |
+| `swipe` | down | pass | List tab (30 rows) | Swiped down from center (201,437) to (201,837). List scrolled back to top showing Item 0. Swipe down = finger moves down = content scrolls down. |
+| `swipe` | up | pass | List tab (30 rows) | Swiped up from center (201,437) to (201,37). List scrolled from Items 0-9 to Items 11-24. Swipe up = finger moves up = content scrolls up. |
+| `swipe` | left | pass | List tab (30 rows) | Swiped left from center (201,437) to (-199,437). Command executed without error. No swipe-action rows in test app to reveal delete/actions, but gesture injected correctly. |
+| `swipe` | right | pass | List tab (30 rows) | Swiped right from center (201,437) to (601,437). Command executed without error. Gesture injected correctly. |
 | `watch` | — | untested | Watch counter label, then tap |  |
 | `unwatch` | — | untested | After watch |  |
 | `network` | start | untested | Before HTTP fetch |  |
@@ -168,10 +168,10 @@ Bugs: see [`BUGS.md`](../BUGS.md)
 
 **141 test points** across 49 commands.
 
-- pass: 18
+- pass: 22
 - fail: 4
 - crash: 1
-- untested: 115
+- untested: 111
 
 ## Test App Gaps
 
