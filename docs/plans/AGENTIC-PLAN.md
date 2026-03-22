@@ -42,13 +42,13 @@ The monitor tails `build/logs/events.jsonl` — a structured event stream writte
 
 Ordered. Each task has details in the section below.
 
-- [ ] **T1: BUGS.md status markers** — add inline `status:open` to each bug so agents can parse/update atomically
-- [ ] **T2: Log directory + .gitignore** — `build/logs/`, `.pepper-kill` in .gitignore, verify `build/` coverage
-- [ ] **T3: Kill switch** — `.pepper-kill` file check in runner + agent prompt, test it works
-- [ ] **T4: Event hook** — `scripts/hooks/agent-events.sh` PostToolUse hook that emits live events to `events.jsonl`. Wire into `.claude/settings.json`. Test by running a `-p` agent that does a commit and verifying events appear.
-- [ ] **T5: Agent monitor** — `scripts/agent-monitor.sh` that tails `events.jsonl` with color-coded formatting
-- [ ] **T6: Bug fixer prompt** — `scripts/prompts/bugfix.md` with full agent instructions
-- [ ] **T7: Agent runner** — `scripts/agent-runner.sh` that checks kill switch, sets env vars, launches `claude -p`, emits start/done events, saves transcript
+- [x] **T1: BUGS.md status markers** — add inline `status:open` to each bug so agents can parse/update atomically
+- [x] **T2: Log directory + .gitignore** — `build/logs/`, `.pepper-kill` in .gitignore, verify `build/` coverage
+- [x] **T3: Kill switch** — `.pepper-kill` file check in runner + agent prompt, test it works
+- [x] **T4: Event hook** — `scripts/hooks/agent-events.sh` PostToolUse hook that emits live events to `events.jsonl`. Wire into `.claude/settings.json`. Test by running a `-p` agent that does a commit and verifying events appear.
+- [x] **T5: Agent monitor** — `scripts/agent-monitor.sh` that tails `events.jsonl` with color-coded formatting
+- [x] **T6: Bug fixer prompt** — `scripts/prompts/bugfix.md` with full agent instructions
+- [x] **T7: Agent runner** — `scripts/agent-runner.sh` that checks kill switch, sets env vars, launches `claude -p`, emits start/done events, saves transcript
 - [ ] **T8: Integration test** — run the full pipeline end-to-end: runner launches a `-p` agent on a test task, monitor shows live events, agent opens a real PR. Verify everything works together.
 
 ---
@@ -128,57 +128,11 @@ Checked by runner before launching agent. Checked by agent prompt at startup and
 | `gh pr create` | `pr` | PR number + URL from stdout |
 | `git push` | `push` | Remote/branch from command args |
 
-**Hook script:**
-
-```bash
-#!/bin/bash
-# scripts/hooks/agent-events.sh
-# PostToolUse hook: emit agent lifecycle events to events.jsonl
-# Env vars set by runner: PEPPER_EVENTS_LOG, PEPPER_AGENT_TYPE, PEPPER_AGENT_ITEM
-# When env vars are absent (normal interactive use), exits immediately — zero overhead.
-
-trap 'exit 0' ERR
-
-EVENTS_LOG="${PEPPER_EVENTS_LOG:-}"
-AGENT="${PEPPER_AGENT_TYPE:-unknown}"
-[ -z "$EVENTS_LOG" ] && exit 0
-
-INPUT=$(cat)
-CMD=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
-STDOUT=$(echo "$INPUT" | jq -r '.tool_response.stdout // empty')
-EXIT_CODE=$(echo "$INPUT" | jq -r '.tool_response.exit_code // 0')
-TS=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-
-emit() {
-  echo "{\"ts\":\"${TS}\",\"agent\":\"${AGENT}\",$1}" >> "$EVENTS_LOG"
-}
-
-# Branch creation
-if echo "$CMD" | grep -qE 'git (checkout -b|switch -c|branch )'; then
-  BRANCH=$(echo "$CMD" | grep -oE 'agent/[^ "]+' || echo "$CMD" | awk '{print $NF}')
-  [ -n "$BRANCH" ] && emit "\"event\":\"branch\",\"detail\":\"${BRANCH}\""
-fi
-
-# Commit
-if echo "$CMD" | grep -qE 'git commit' && [ "$EXIT_CODE" = "0" ]; then
-  MSG=$(echo "$STDOUT" | grep -oE '\] .+' | head -1 | sed 's/^\] //')
-  [ -n "$MSG" ] && emit "\"event\":\"commit\",\"detail\":$(echo "$MSG" | jq -Rs '.')}"
-fi
-
-# PR creation
-if echo "$CMD" | grep -qE 'gh pr create' && [ "$EXIT_CODE" = "0" ]; then
-  URL=$(echo "$STDOUT" | grep -oE 'https://github.com/[^ ]+pull/[0-9]+' | head -1)
-  PR_NUM=$(echo "$URL" | grep -oE '[0-9]+$')
-  [ -n "$URL" ] && emit "\"event\":\"pr\",\"detail\":\"#${PR_NUM}\",\"url\":\"${URL}\""
-fi
-
-# Push
-if echo "$CMD" | grep -qE 'git push' && [ "$EXIT_CODE" = "0" ]; then
-  emit "\"event\":\"push\",\"detail\":$(echo "$CMD" | jq -Rs '.')"
-fi
-
-exit 0
-```
+**Hook script:** See built version at `scripts/hooks/agent-events.sh`. Key fixes from the original design:
+- Added `tool_name` check — only processes Bash tool calls, exits immediately for Read/Edit/etc.
+- Fixed JSON bug: removed stray `}` in commit event emit (would produce `}}`)
+- Fixed push event: extracts remote/branch cleanly instead of dumping raw command
+- Added `tr -d '\n'` to commit message extraction to strip trailing newlines
 
 **Settings integration** — add to `.claude/settings.json`:
 ```json
@@ -264,7 +218,7 @@ Usage:
 
 ### T6: Bug fixer prompt
 
-`scripts/prompts/bugfix.md` — appended via `--append-system-prompt-file`.
+`scripts/prompts/bugfix.md` — appended via `--append-system-prompt "$(cat file)"` (no `--append-system-prompt-file` flag exists).
 
 ```
 You are a Pepper bug fix agent. You work on a branch, never main.
@@ -290,55 +244,14 @@ DO NOT modify: ROADMAP.md, docs/, .claude/, .mcp.json, .env.
 
 ### T7: Agent runner
 
-`scripts/agent-runner.sh` — orchestration wrapper. Sets env vars for the hook, emits bookend events, launches `claude -p`, saves transcript.
+`scripts/agent-runner.sh` — orchestration wrapper. Sets env vars for the hook, emits bookend events, launches `claude -p`, saves transcript. See built version for final code.
 
-```bash
-#!/bin/bash
-set -euo pipefail
-
-TYPE="${1:?Usage: agent-runner.sh <type>}"
-REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-cd "$REPO_ROOT"
-
-EVENTS="$REPO_ROOT/build/logs/events.jsonl"
-mkdir -p build/logs
-
-emit() {
-  local event="$1"; shift
-  echo "{\"ts\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"agent\":\"${TYPE}\",\"event\":\"${event}\"$@}" >> "$EVENTS"
-}
-
-# Kill switch
-if [ -f .pepper-kill ]; then
-  emit "killed" ",\"detail\":\"kill switch active at startup\""
-  exit 0
-fi
-
-emit "started" ",\"detail\":\"picking work from queue\""
-
-# Export env vars for the PostToolUse hook
-export PEPPER_EVENTS_LOG="$EVENTS"
-export PEPPER_AGENT_TYPE="$TYPE"
-export PEPPER_AGENT_ITEM=""  # hook can update if needed
-
-START=$(date +%s)
-TRANSCRIPT="build/logs/transcript-${TYPE}-${START}.json"
-
-claude -p \
-  "You are the ${TYPE} agent. Follow your instructions." \
-  --append-system-prompt-file "scripts/prompts/${TYPE}.md" \
-  --max-turns 50 \
-  --max-budget-usd 2.00 \
-  --output-format json \
-  --worktree \
-  > "$TRANSCRIPT" 2>&1 || true
-
-END=$(date +%s)
-DURATION=$((END - START))
-COST=$(jq -r '.usage.cost.total // 0' "$TRANSCRIPT" 2>/dev/null || echo 0)
-
-emit "done" ",\"cost_usd\":${COST},\"duration_s\":${DURATION},\"transcript\":\"${TRANSCRIPT}\""
-```
+**CLI flags verified (2026-03-22):**
+- `--append-system-prompt` — YES (inline text, NOT file path — use `$(cat file)`)
+- `--max-turns` — **NO** (does not exist; use `--max-budget-usd` as only cap)
+- `--max-budget-usd` — YES
+- `--output-format json` — YES
+- `--worktree [name]` — YES (accepts optional name for branch control)
 
 ### T8: Integration test
 
@@ -441,7 +354,7 @@ Prevents two agents from grabbing the same work item.
 
 The branch name is the lock. `git push` is the atomic compare-and-swap.
 
-**Open question:** With `claude --worktree`, does the agent control branch naming? Or does it auto-generate? If auto-generated, we may need to use `claude -p` in a manually-created worktree instead. Needs testing.
+**Resolved:** `claude --worktree [name]` exists and accepts an optional name. The agent creates its own branch within the worktree (the worktree name and git branch are separate). The agent prompt instructs it to `git checkout -b agent/bugfix/BUG-NNN`, which the hook detects. Option A is viable.
 
 ### Branch Naming
 
@@ -608,4 +521,4 @@ Retention: keep last 20 transcripts per agent type. Runner cleans up older ones.
 
 ---
 
-**Status:** Design phase. Task list defined. Nothing built yet.
+**Status:** T1-T7 built and validated. T8 (integration test) pending — run `./scripts/agent-runner.sh bugfix` to execute.
