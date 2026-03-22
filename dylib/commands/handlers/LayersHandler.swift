@@ -98,7 +98,7 @@ struct LayersHandler: PepperHandler {
 
         // Type-specific properties
         if let gradient = layer as? CAGradientLayer {
-            props["colors"] = AnyCodable(gradient.colors?.compactMap { cgColorToHex(unsafeBitCast($0, to: CGColor.self)) } ?? [])
+            props["colors"] = AnyCodable((gradient.colors as? [CGColor])?.map { cgColorToHex($0) } ?? [])
             if let locations = gradient.locations {
                 props["locations"] = AnyCodable(locations.map { Double(truncating: $0) })
             }
