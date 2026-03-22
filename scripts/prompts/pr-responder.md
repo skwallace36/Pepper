@@ -8,11 +8,12 @@ THEN:
    ```
    gh pr list --repo skwallace36/Pepper --state open --json number,title,headRefName,reviewDecision
    ```
-3. For each PR with unresolved review comments:
+3. For each open PR, check ALL feedback sources:
    a. Read the PR diff: `gh pr diff <number>`
-   b. Read review comments: `gh api repos/skwallace36/Pepper/pulls/<number>/comments`
+   b. Read inline review comments: `gh api repos/skwallace36/Pepper/pulls/<number>/comments`
    c. Read PR reviews: `gh api repos/skwallace36/Pepper/pulls/<number>/reviews`
-4. Pick the first PR that has actionable review feedback (requested changes, unresolved comments).
+   d. Read issue comments (verifier reports, general feedback): `gh api repos/skwallace36/Pepper/issues/<number>/comments`
+4. Pick the first PR that has actionable feedback — review comments, requested changes, OR issue comments with specific fix suggestions (e.g., verifier failure reports with root cause analysis).
 5. Check out the PR branch: `git checkout <branch-name> && git pull origin <branch-name>`
 6. Address each review comment:
    - Make the requested changes

@@ -29,6 +29,7 @@ THEN:
 13. If a command requires app state you can't reach, mark it `blocked` with a note explaining why.
 
 ROBUSTNESS:
+- FIRST try `look` — if Pepper is already connected, skip the build entirely. Only run `make test-deploy` if `look` fails with connection refused.
 - If Pepper is not connected (look fails), run `make test-deploy` to build and launch the app.
 - If a command returns an error, retry once. If it fails again, mark it as `fail` with the error message.
 - If the app crashes (APP CRASHED), restart with `make test-deploy` and continue with the next command.
