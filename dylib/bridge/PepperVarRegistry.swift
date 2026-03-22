@@ -32,11 +32,12 @@ final class PepperVarRegistry {
         let ivarOffset: Int?      // byte offset for raw memory access
     }
 
-    /// A tracked ObservableObject instance with its class name and property catalog.
+    /// A tracked ObservableObject or @Observable instance with its class name and property catalog.
     struct TrackedInstance {
         let className: String
         weak var instance: AnyObject?
         let properties: [PropertyInfo]
+        let isObservable: Bool  // true = @Observable (Observation framework), false = ObservableObject + @Published
     }
 
     // MARK: - State
@@ -144,6 +145,14 @@ final class PepperVarRegistry {
                 continue
             }
 
+            // @State can hold @Observable objects (Swift 5.9+ Observation framework)
+            if typeName.hasPrefix("State<") {
+                if let obj = extractStateValue(from: child.value), isObservableClass(obj) {
+                    trackInstance(obj)
+                }
+                continue
+            }
+
             // Also check if the child itself is an ObservableObject (stored property)
             let childObj = child.value as AnyObject
             if isObservableObject(childObj) {
@@ -190,9 +199,20 @@ final class PepperVarRegistry {
             if typeName.hasPrefix(prefix) { return false }
         }
         // Known ObservableObject naming patterns
-        return typeName.contains("ViewModel") || typeName.contains("Store") ||
-               typeName.contains("Manager") || typeName.contains("Observable") ||
-               typeName.contains("Model") || typeName.contains("State")
+        if typeName.contains("ViewModel") || typeName.contains("Store") ||
+           typeName.contains("Manager") || typeName.contains("Observable") ||
+           typeName.contains("Model") || typeName.contains("State") {
+            return true
+        }
+        // Fallback: check for @Observable (Observation framework)
+        return isObservableClass(obj)
+    }
+
+    /// Check if an object uses the Observation framework (@Observable macro).
+    /// Detects the _$observationRegistrar stored property added by the macro.
+    private func isObservableClass(_ obj: AnyObject) -> Bool {
+        let mirror = Mirror(reflecting: obj)
+        return mirror.children.contains { $0.label == "_$observationRegistrar" }
     }
 
     /// Extract the ObservableObject from a StateObject/ObservedObject wrapper.
@@ -224,6 +244,27 @@ final class PepperVarRegistry {
         return nil
     }
 
+    /// Extract the value from a SwiftUI State<T> wrapper.
+    private func extractStateValue(from wrapper: Any) -> AnyObject? {
+        let mirror = Mirror(reflecting: wrapper)
+        for child in mirror.children {
+            let label = child.label ?? ""
+            if label == "_value" || label == "wrappedValue" || label == "_wrappedValue" {
+                return child.value as AnyObject
+            }
+            if label == "storage" || label == "_storage" {
+                let innerMirror = Mirror(reflecting: child.value)
+                for inner in innerMirror.children {
+                    let innerLabel = inner.label ?? ""
+                    if innerLabel == "value" || innerLabel == "_value" || innerLabel == ".0" {
+                        return inner.value as AnyObject
+                    }
+                }
+            }
+        }
+        return nil
+    }
+
     /// Track an instance if not already tracked.
     private func trackInstance(_ obj: AnyObject) {
         let className = String(describing: type(of: obj))
@@ -237,9 +278,16 @@ final class PepperVarRegistry {
             return
         }
 
-        let props = catalogProperties(of: obj, className: className)
-        tracked.append(TrackedInstance(className: className, instance: obj, properties: props))
-        pepperLog.info("Vars: tracked \(className) with \(props.count) @Published properties", category: .bridge)
+        let observable = isObservableClass(obj)
+        let props: [PropertyInfo]
+        if observable {
+            props = catalogObservableProperties(of: obj, className: className)
+        } else {
+            props = catalogProperties(of: obj, className: className)
+        }
+        tracked.append(TrackedInstance(className: className, instance: obj, properties: props, isObservable: observable))
+        let framework = observable ? "@Observable" : "@Published"
+        pepperLog.info("Vars: tracked \(className) with \(props.count) \(framework) properties", category: .bridge)
     }
 
     // MARK: - Property Cataloging
@@ -271,6 +319,46 @@ final class PepperVarRegistry {
                 type: varType,
                 innerType: innerType,
                 typeName: innerTypeName,
+                ivarName: label,
+                ivarOffset: ivarOffset
+            ))
+        }
+
+        catalogCache[className] = props
+        return props
+    }
+
+    /// Catalog properties for an @Observable instance (Observation framework).
+    /// Unlike @Published, properties are stored directly with an underscore prefix.
+    private func catalogObservableProperties(of obj: AnyObject, className: String) -> [PropertyInfo] {
+        if let cached = catalogCache[className] {
+            return cached
+        }
+
+        var props: [PropertyInfo] = []
+        let mirror = Mirror(reflecting: obj)
+
+        for child in mirror.children {
+            guard let label = child.label else { continue }
+            // Skip Observation framework infrastructure (_$observationRegistrar, _$id, etc.)
+            if label.hasPrefix("_$") { continue }
+            // @ObservationTracked properties have underscore-prefixed backing storage
+            guard label.hasPrefix("_") else { continue }
+
+            let propertyName = String(label.dropFirst())
+            let childTypeName = String(describing: Mirror(reflecting: child.value).subjectType)
+
+            // Skip if it looks like a Published wrapper (hybrid class)
+            if childTypeName.hasPrefix("Published<") { continue }
+
+            let (varType, innerType) = classifyType(childTypeName)
+            let ivarOffset = findIvarOffset(named: label, in: type(of: obj))
+
+            props.append(PropertyInfo(
+                name: propertyName,
+                type: varType,
+                innerType: innerType,
+                typeName: childTypeName,
                 ivarName: label,
                 ivarOffset: ivarOffset
             ))
@@ -499,15 +587,19 @@ final class PepperVarRegistry {
         guard let entry = entry, let instance = entry.instance else { return nil }
         guard let prop = entry.properties.first(where: { $0.name == propertyName }) else { return nil }
 
-        // Mirror the instance, find the _propertyName child (Published<T>)
         let mirror = Mirror(reflecting: instance)
-        guard let publishedChild = mirror.children.first(where: { $0.label == prop.ivarName }) else {
+        guard let child = mirror.children.first(where: { $0.label == prop.ivarName }) else {
             return nil
         }
 
-        // Extract value from Published<T>
-        let value = extractPublishedValue(publishedChild.value)
-        return serializeValue(value, type: prop.type, innerType: prop.innerType)
+        if entry.isObservable {
+            // @Observable: value is stored directly, no Published<T> unwrap needed
+            return serializeValue(child.value, type: prop.type, innerType: prop.innerType)
+        } else {
+            // ObservableObject + @Published: unwrap Published<T> storage
+            let value = extractPublishedValue(child.value)
+            return serializeValue(value, type: prop.type, innerType: prop.innerType)
+        }
     }
 
     /// Extract the wrapped value from a Published<T> instance.
