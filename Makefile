@@ -24,7 +24,7 @@ LOGS_DIR    := $(PROJECT_DIR)/build/logs
 
 .PHONY: help build deploy launch kill relaunch ping check \
         logs clean test-client pepper-ctl test-app coverage coverage-check \
-        docs setup ci agent agent-monitor agent-status agent-trigger agents-install agents-uninstall agent-cleanup agent-kill agent-resume
+        docs setup ci agent agent-monitor agent-status agent-trigger agents-install agents-uninstall agent-cleanup agents-start agents-stop
 
 # ============================================================
 # Help
@@ -216,19 +216,27 @@ agents-uninstall:
 agent-cleanup:
 	@./scripts/agent-cleanup.sh
 
-## agent-kill: Kill all running agents immediately + prevent new launches
-agent-kill:
+## agents-start: Start the heartbeat supervisor (launches + monitors all agents)
+agents-start:
+	@rm -f .pepper-kill
+	@./scripts/agent-heartbeat.sh &
+	@echo "Heartbeat started. Agents launching. Monitor: make agent-monitor"
+
+## agents-stop: Stop heartbeat + kill all running agents
+agents-stop:
 	@touch .pepper-kill
+	@if [ -f build/logs/heartbeat.pid ]; then \
+		kill -TERM $$(cat build/logs/heartbeat.pid) 2>/dev/null || true; \
+		rm -f build/logs/heartbeat.pid; \
+	fi
 	@pgrep -f 'pepper-agent-' 2>/dev/null | while read pid; do \
-		echo "Killing agent PID $$pid"; \
+		kill -TERM "$$pid" 2>/dev/null || true; \
+	done
+	@pgrep -f 'agent-runner.sh' 2>/dev/null | while read pid; do \
 		kill -TERM "$$pid" 2>/dev/null || true; \
 	done
 	@rm -f build/logs/.lock-* 2>/dev/null || true
-	@echo "All agents killed. Kill switch active — no new launches until 'make agent-resume'."
-
-## agent-resume: Deactivate kill switch, allow new agent launches
-agent-resume:
-	@rm -f .pepper-kill && echo "Kill switch deactivated. Agents can run."
+	@echo "All agents stopped."
 
 ## clean: Clean build artifacts
 clean:
