@@ -188,12 +188,15 @@ final class PepperVarRegistry {
 
             // Convert raw pointer to AnyObject — this is the live instance
             let obj: AnyObject = Unmanaged<AnyObject>.fromOpaque(instancePtr).takeUnretainedValue()
-            trackInstance(obj)
+            trackInstance(obj, knownObservable: true)
         }
     }
 
     /// Find all ObjC classes that have a `_$observationRegistrar` stored property.
     /// This ivar is added by the @Observable macro (Observation framework).
+    /// Only returns classes from the app's main executable — system framework
+    /// @Observable classes (e.g. SwiftUI internals) are excluded to avoid crashes
+    /// when Mirror touches read-only __DATA_CONST memory.
     private func findObservableClasses() -> [AnyClass] {
         let totalCount = Int(objc_getClassList(nil, 0))
         guard totalCount > 0 else { return [] }
@@ -202,22 +205,22 @@ final class PepperVarRegistry {
         let actualCount = Int(objc_getClassList(AutoreleasingUnsafeMutablePointer(buffer), Int32(totalCount)))
         defer { buffer.deallocate() }
 
-        // System class prefixes to skip (optimization — avoids scanning Apple framework classes)
-        let skipPrefixes = ["NS", "UI", "CA", "CF", "CG", "AV", "MK", "WK", "SK",
-                            "_", "OS_", "PK", "NW", "Pepper.", "Swift.", "dispatch_",
-                            "xpc_", "os_", "objc_", "NWHTTP"]
+        // Only include classes from the app's main bundle — skip all system frameworks.
+        // This avoids SwiftUI internal @Observable classes (NavigationSelectionHost,
+        // ScrollEnvironmentStorage, etc.) whose fields can point to read-only memory.
+        let mainBundlePath = Bundle.main.bundlePath
 
         var result: [AnyClass] = []
         for i in 0..<actualCount {
             let cls = buffer[i]
-            let name = NSStringFromClass(cls)
 
-            // Quick skip for system classes
-            var skip = false
-            for prefix in skipPrefixes {
-                if name.hasPrefix(prefix) { skip = true; break }
-            }
-            if skip { continue }
+            // Filter to app bundle classes only
+            let classBundle = Bundle(for: cls)
+            guard classBundle.bundlePath.hasPrefix(mainBundlePath) else { continue }
+
+            // Skip Pepper dylib's own classes
+            let name = NSStringFromClass(cls)
+            if name.hasPrefix("Pepper.") { continue }
 
             // Check if this class has _$observationRegistrar ivar
             if classHasObservationRegistrar(cls) {
@@ -455,7 +458,10 @@ final class PepperVarRegistry {
     }
 
     /// Track an instance if not already tracked.
-    private func trackInstance(_ obj: AnyObject) {
+    /// - Parameter knownObservable: If true, skip the Mirror-based `isObservableClass` check
+    ///   (already verified at the C/ObjC runtime level). This avoids crashes when Mirror
+    ///   touches objects with fields in read-only memory.
+    private func trackInstance(_ obj: AnyObject, knownObservable: Bool = false) {
         let className = String(describing: type(of: obj))
 
         lock.lock()
@@ -467,7 +473,7 @@ final class PepperVarRegistry {
             return
         }
 
-        let observable = isObservableClass(obj)
+        let observable = knownObservable || isObservableClass(obj)
         let props: [PropertyInfo]
         if observable {
             props = catalogObservableProperties(of: obj, className: className)
