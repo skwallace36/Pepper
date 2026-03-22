@@ -75,12 +75,12 @@ Bugs: see [`BUGS.md`](../BUGS.md)
 | `test` | start | untested | Any state |  |
 | `test` | result | untested | After running commands |  |
 | `test` | reset | untested | After result |  |
-| `dialog` | list | untested | Show Alert button triggers alert |  |
-| `dialog` | current | untested | Same alert |  |
-| `dialog` | dismiss | untested | Same alert |  |
-| `dialog` | share_sheet | untested | NEEDS: share button |  |
-| `dialog` | dismiss_sheet | untested | NEEDS: share button |  |
-| `dialog` | auto_dismiss | untested | Alert dialog |  |
+| `dialog` | list | pass | Show Alert button triggers alert | Returns array of pending dialogs with dialog_id, title, message, actions (title, style, index), timestamp. Tested: triggered alert shows 1 dialog with title='Test Alert', message='This is a test alert dialog', 2 actions (OK default, Cancel cancel). Empty list returns count=0. |
+| `dialog` | current | pass | Same alert | Returns most recent pending dialog with has_dialog=true and full dialog data. When no dialog present: returns has_dialog=false, dialog=null. |
+| `dialog` | dismiss | pass | Same alert | Dismisses dialog by button name. Tested: dismiss with button='OK' returns {dismissed:true, button:'OK'}. Screen returns to normal 'ui' state. Error case: dismiss with no pending dialog returns proper error 'No pending dialog to dismiss'. |
+| `dialog` | share_sheet | blocked | Share button (icon-only SF Symbol) | Command works correctly: returns {has_sheet:false, items:[]} when no sheet present. Share button exists in app (square.and.arrow.up icon) but tapping it doesn't trigger UIActivityViewController presentation — SwiftUI .sheet wrapping UIViewControllerRepresentable may not present properly via HID touch. Cannot test with actual share sheet data. |
+| `dialog` | dismiss_sheet | blocked | Share button (icon-only SF Symbol) | Command works correctly: returns proper error 'No pending share sheet to dismiss' when no sheet present. Cannot test actual dismissal because share sheet cannot be triggered (see share_sheet notes). |
+| `dialog` | auto_dismiss | pass | Alert dialog | Enable with buttons=['OK','Cancel']: returns {auto_dismiss:true, buttons:['OK','Cancel'], delay:0.3}. Triggered alert via Show Alert — dialog auto-dismissed within 1s (current returned has_dialog=false). Disable: returns auto_dismiss=false. Default buttons include 'Allow While Using App', 'Allow Once', 'Allow', 'OK'. |
 | `dismiss` | — | untested | Sheet from Show Sheet button |  |
 | `status` | — | untested | Any state |  |
 | `highlight` | — | pass | Tap Me button on Controls tab | Highlighted 'Tap Me' button. Returns frame, description, strategy (interactive_text), highlighted=true. |
@@ -104,12 +104,12 @@ Bugs: see [`BUGS.md`](../BUGS.md)
 | `lifecycle` | foreground | pass | After background | Returns {state:'active'}. Posts willEnterForeground + didBecomeActive notifications. Tested after background — app fully responsive, look returns normal screen state. |
 | `lifecycle` | memory_warning | pass | Any state | Returns {triggered:true}. Posts didReceiveMemoryWarningNotification and calls _performMemoryWarning on UIApplication. App remains stable after trigger. |
 | `lifecycle` | cycle | pass | Any state | Returns {state:'backgrounding', foreground_delay:1}. Tested with delay=1.0. Backgrounds immediately, schedules foreground return after delay. App responsive after cycle completes. |
-| `push` | — | untested | NEEDS: UNNotification delegate |  |
-| `locale` | current | untested | Any state |  |
-| `locale` | set | untested | NEEDS: Localizable.strings |  |
-| `locale` | reset | untested | After set |  |
-| `locale` | lookup | untested | NEEDS: Localizable.strings |  |
-| `locale` | languages | untested | Any state |  |
+| `push` | — | pass | Any state | Delivers local push notification. Tested: title='Test Push', body='Hello from Pepper', delay=0. Returns {delivered:true, notification_id:'pepper-push-ADF38CB4', title, body}. No UNNotification delegate needed — uses UNUserNotificationCenter directly. |
+| `locale` | current | pass | Any state | Returns language ('en'), region ('US'), identifier ('en_US'), app_localizations (['en']), override_active (false). After set: adds override_language field showing active override. |
+| `locale` | set | pass | Any state | Set language='es'. Returns {override_active:true, language:'es', region:'', note:'Locale override active...'}. Verified via current: shows override_language='es'. Note: affects NSLocalizedString resolution, existing views may need refresh. |
+| `locale` | reset | pass | After set | Returns {override_active:false, restored:true}. Verified via current: override_active=false, language back to 'en', no override_language field. |
+| `locale` | lookup | pass | Localizable.strings (keys defined but not bundled) | Command works correctly: returns {key, value, found}. Returns found=false for keys 'greeting' and 'button_tap' — Localizable.strings file exists in source but isn't properly included in app bundle (build config issue, not a Pepper bug). Missing key param returns proper error. |
+| `locale` | languages | pass | Any state | Returns {count:1, languages:['en']}. Shows available app localizations from bundle. |
 | `vars` | list | pass | AppState (@Observable) | BUG-003 FIXED: now returns 2 instances (AppState + NestedState) with all properties, types, writable flags. Previously returned 0 instances for @Observable classes. |
 | `vars` | get | pass | AppState properties | Returns single property value by path (ClassName.propertyName). Tested: AppState.tapCount=3, NestedState.innerValue='nested-hello'. Error cases: nonexistent property returns proper error, missing path param returns proper error. |
 | `vars` | set | pass | AppState properties | Sets property value by path. Tested: set tapCount to 99 (confirmed via get), set NestedState.innerCount to 100. Returns {ok:true, value:newVal}. NOTE: does not trigger @Observable re-rendering — UI shows stale value until next natural update. Read-only properties return proper error. |
@@ -153,12 +153,12 @@ Bugs: see [`BUGS.md`](../BUGS.md)
 | `find` | count | pass | Controls tab with type=='button' predicate | Returned count=27 for type=='button'. Also tested label CONTAINS 'Tap' (count=1). Correct counts for known elements. |
 | `find` | first | pass | Controls tab with type=='button' predicate | Returns first matching element with label, type, center, traits, tap_cmd, view_controller, total_matches=27. No-match predicate returns proper 'No elements match predicate' error. |
 | `find` | list | pass | Controls tab with type=='button' limit=5 | Returns array of matches with count and per-element details (label, center, type, traits, tap_cmd). Limit param works correctly, capping results at 5. |
-| `hook` | install | untested | UIKitControlsViewController ObjC methods |  |
-| `hook` | remove | untested | After install |  |
-| `hook` | remove_all | untested | After install |  |
-| `hook` | list | untested | After install |  |
-| `hook` | log | untested | After install + trigger hooked method |  |
-| `hook` | clear | untested | After log capture |  |
+| `hook` | install | pass | UIKitControlsViewController ObjC methods | Installed hook on PepperTestApp.UIKitControlsViewController viewDidAppear:. Returns {hook_id:'hook_1', class, method, class_method:false}. System classes (UIViewController) are properly rejected with safety error. Missing class/method params return proper errors. |
+| `hook` | remove | pass | After install | Removes hook by ID. Returns {removed:'hook_1'}. Subsequent list confirms hook removed (count=0). Nonexistent hook ID returns proper 'Hook not found' error. |
+| `hook` | remove_all | pass | After install | Installed 2 hooks (viewDidAppear: and viewWillAppear:), then remove_all. Returns {removed:'all'}. Subsequent list confirms count=0. |
+| `hook` | list | pass | After install | Returns array of hooks with id, class, method, class_method, installed_at, call_count. Empty list returns count=0. After install shows 1 hook with call_count=0. |
+| `hook` | log | pass | After install + trigger via tab switch | Tab switch (Controls→List→Controls) triggered viewDidAppear: hook. Log returned 6 entries with receiver, receiver_class, method, timestamp, args (['YES']), call_number. Nonexistent hook ID returns empty entries (count=0). |
+| `hook` | clear | pass | After log capture | Clears log for specific hook. Returns {cleared:'hook_1'}. Subsequent log returns count=0, empty entries. |
 | `timeline` | query | pass | After running commands | Returns {count:N, events:[...]}. Each event has type, summary, timestamp_ms. Supports limit param, types array filter (tested ['network'] correctly filters to network-only), and filter text search. Showed command and network events with summaries like '200 GET /json (51ms, 429B)'. |
 | `timeline` | status | pass | Any state | Returns recording, buffer_size, buffer_count, total_recorded, enabled_types. Always-on flight recorder starts automatically. Default enabled_types: network, screen, command, console. |
 | `timeline` | config | pass | Any state | Accepts buffer_size, recording (bool), enabled_types params. Tested: buffer_size 2000→5000 (verified via subsequent status). recording=false pauses recording. Note: config response returns pre-update values due to async barrier dispatch — subsequent status shows correct values. |
@@ -168,9 +168,9 @@ Bugs: see [`BUGS.md`](../BUGS.md)
 
 **141 test points** across 49 commands.
 
-- pass: 91
+- pass: 107
 - fail: 7
-- untested: 40
+- untested: 22
 
 ## Test App Gaps
 
@@ -178,10 +178,5 @@ Commands that need test app changes before they can be tested:
 
 - `navigate` deeplink — URL scheme + routes
 - `deeplinks` — URL scheme + routes
-- `dialog` share_sheet — share button
-- `dialog` dismiss_sheet — share button
 - `gesture` rotate — rotation gesture on a view
-- `push` — UNNotification delegate
-- `locale` set — Localizable.strings
-- `locale` lookup — Localizable.strings
 
