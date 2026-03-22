@@ -19,8 +19,8 @@ final class IOSPlatform: PepperPlatform {
     /// iOS state observation — wraps PepperState + PepperIdleMonitor.
     let state: StateObservation = IOSStateObservation()
 
-    /// Placeholder — replaced by IOSNetworkInterception (TASK-114).
-    let network: NetworkInterception = IOSNetworkInterceptionStub()
+    /// iOS network interception — wraps PepperNetworkInterceptor.
+    let network: NetworkInterception = IOSNetworkInterception()
 
     /// Placeholder — replaced by IOSDialogDetection (TASK-115).
     let dialog: DialogDetection = IOSDialogDetectionStub()
@@ -32,52 +32,11 @@ final class IOSPlatform: PepperPlatform {
     let introspection: ViewIntrospection = IOSViewIntrospectionStub()
 }
 
-// MARK: - Stubs (replaced as TASK-111 through TASK-115 land)
+// MARK: - Stubs (replaced as TASK-115 lands)
 
 // These exist solely so IOSPlatform compiles and conforms to PepperPlatform
 // before the real wrapper types are created. Nothing calls through the
 // platform abstraction yet — handlers still use singletons directly.
-
-private final class IOSNetworkInterceptionStub: NetworkInterception {
-    func install(bufferSize: Int?) {
-        fatalError("IOSNetworkInterception not yet implemented — see TASK-114")
-    }
-
-    func uninstall() {
-        fatalError("IOSNetworkInterception not yet implemented — see TASK-114")
-    }
-
-    var isIntercepting: Bool { false }
-    var transactionCount: Int { 0 }
-    var totalRecorded: Int { 0 }
-
-    func recentTransactions(limit: Int, filter: String?, sinceMs: Int64?)
-        -> [NetworkTransactionInfo] {
-        fatalError("IOSNetworkInterception not yet implemented — see TASK-114")
-    }
-
-    func recentDuplicates(limit: Int) -> [DuplicateRequestInfo] {
-        fatalError("IOSNetworkInterception not yet implemented — see TASK-114")
-    }
-
-    func clearBuffer() {
-        fatalError("IOSNetworkInterception not yet implemented — see TASK-114")
-    }
-
-    func addOverride(_ rule: NetworkOverrideRule) {
-        fatalError("IOSNetworkInterception not yet implemented — see TASK-114")
-    }
-
-    func removeOverride(id: String) {
-        fatalError("IOSNetworkInterception not yet implemented — see TASK-114")
-    }
-
-    func removeAllOverrides() {
-        fatalError("IOSNetworkInterception not yet implemented — see TASK-114")
-    }
-
-    var activeOverrides: [NetworkOverrideRule] { [] }
-}
 
 private final class IOSDialogDetectionStub: DialogDetection {
     func install() {
