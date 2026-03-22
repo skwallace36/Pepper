@@ -23,7 +23,7 @@ LOGS_DIR    := $(PROJECT_DIR)/build/logs
 
 .PHONY: help build deploy launch kill relaunch ping check \
         logs clean test-client pepper-ctl test-app coverage coverage-check \
-        docs setup agent agent-monitor agent-status agent-cleanup agent-kill agent-resume
+        docs setup agent agent-monitor agent-status agent-cycle agent-cleanup agent-kill agent-resume
 
 # ============================================================
 # Help
@@ -185,6 +185,16 @@ agent-monitor:
 ## agent-status: Replay all agent events
 agent-status:
 	@./scripts/agent-monitor.sh --replay
+
+## agent-cycle: Run one of each agent type sequentially (safe, no conflicts)
+agent-cycle:
+	@echo "Running agent cycle (sequential)..."
+	@./scripts/agent-runner.sh bugfix || true
+	@./scripts/agent-runner.sh builder || true
+	@./scripts/agent-runner.sh tester || true
+	@./scripts/agent-runner.sh pr-verifier || true
+	@./scripts/agent-runner.sh pr-responder || true
+	@echo "Cycle complete."
 
 ## agent-cleanup: Kill orphaned agent processes, worktrees, and extra sims
 agent-cleanup:
