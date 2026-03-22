@@ -20,6 +20,9 @@ __pycache__/
 *.swp
 *~
 
+# Agent kill switch
+.pepper-kill
+
 # Screenshots (never track)
 *.png
 
