@@ -13,6 +13,10 @@ struct ScrollUntilVisibleHandler: PepperHandler {
     let commandName = "scroll_to"
     private var logger: Logger { PepperLogger.logger(category: "scroll_to") }
 
+    /// Server-side dispatch timeout must exceed the handler's own deadline
+    /// (timeout_ms param, default 10s) plus swipe+settle overhead per scroll.
+    var timeout: TimeInterval { 20.0 }
+
     func handle(_ command: PepperCommand) -> PepperResponse {
         guard let text = command.params?["text"]?.stringValue else {
             return .error(id: command.id, message: "Missing required param: text")
