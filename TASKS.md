@@ -105,7 +105,7 @@ Restructure the iOS dylib for platform abstraction. Each phase is independently 
 
 - **TASK-100** `[P3]` `status:pr-open` — Create `dylib/platform/` with `PepperPlatform.swift` (factory protocol), `ElementDiscovery.swift`, `InputSynthesis.swift`, `StateObservation.swift`. Pure addition, no existing code changes.
 - **TASK-101** `[P3]` `status:pr-open` — Add remaining platform protocols: `NetworkInterception.swift`, `DialogDetection.swift`, `NavigationBridge.swift`, `ViewIntrospection.swift`, `WebSocketTransport.swift`. *(blocked by TASK-100)*
-- **TASK-102** `[P3]` `status:unstarted` — Create `dylib/core/PepperGeometry.swift` with platform-agnostic `PepperPoint`/`PepperRect` (midX/midY, contains, intersects). Add `#if canImport(UIKit)` CGRect/CGPoint bridging extensions.
+- **TASK-102** `[P3]` `status:pr-open` — Create `dylib/core/PepperGeometry.swift` with platform-agnostic `PepperPoint`/`PepperRect` (midX/midY, contains, intersects). Add `#if canImport(UIKit)` CGRect/CGPoint bridging extensions.
 
 ### Phase B: iOS platform wrappers
 
