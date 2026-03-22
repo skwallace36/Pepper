@@ -38,7 +38,7 @@ Inject Pepper into Ice Cubes (open source SwiftUI Mastodon client) to pressure-t
 Test app changes needed before blocked commands can be tested. Unblocks ~20 untested variants.
 
 - **TASK-025** `[P2]` `status:pr-open` — Add test app surfaces for blocked commands: URL scheme + deeplink routes, share button, rotation gesture view, UNNotification delegate, Localizable.strings, seed UserDefaults on launch, WKWebView with cookie, seed keychain entry
-- **TASK-026** `[P2]` `status:unstarted` — Add horizontal scroll view to test app (unblocks `scroll left/right`, `scroll_to left/right`)
+- **TASK-026** `[P2]` `status:in-progress` — Add horizontal scroll view to test app (unblocks `scroll left/right`, `scroll_to left/right`)
 
 ## Modularize `tools/` (P3)
 
