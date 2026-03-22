@@ -80,6 +80,7 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `dialog` | dismiss | pass | Same alert | Dismisses dialog by button name. Tested: dismiss with button='OK' returns {dismissed:true, button:'OK'}. Screen returns to normal 'ui' state. Error case: dismiss with no pending dialog returns proper error 'No pending dialog to dismiss'. |
 | `dialog` | share_sheet | blocked | Share button (icon-only SF Symbol) | Command works correctly: returns {has_sheet:false, items:[]} when no sheet present. Share button exists in app (square.and.arrow.up icon) but tapping it doesn't trigger UIActivityViewController presentation — SwiftUI .sheet wrapping UIViewControllerRepresentable may not present properly via HID touch. Cannot test with actual share sheet data. |
 | `dialog` | dismiss_sheet | blocked | Share button (icon-only SF Symbol) | Command works correctly: returns proper error 'No pending share sheet to dismiss' when no sheet present. Cannot test actual dismissal because share sheet cannot be triggered (see share_sheet notes). |
+| `dialog` | detect_system | untested |  |  |
 | `dialog` | auto_dismiss | pass | Alert dialog | Enable with buttons=['OK','Cancel']: returns {auto_dismiss:true, buttons:['OK','Cancel'], delay:0.3}. Triggered alert via Show Alert — dialog auto-dismissed within 1s (current returned has_dialog=false). Disable: returns auto_dismiss=false. Default buttons include 'Allow While Using App', 'Allow Once', 'Allow', 'OK'. |
 | `dismiss` | — | fail | Sheet from Show Sheet button | BUG-008: Returns 'Nothing to dismiss — only the home view is presented' even when SwiftUI .sheet() is presented and screen reports is_modal=true. GH #40. |
 | `status` | — | pass | Any state | Returns port, connections count, and connectionDetails array (id, connectedAt, lastActivity, subscriptions). Tested via direct WebSocket. |
@@ -166,10 +167,11 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 
 ## Summary
 
-**141 test points** across 49 commands.
+**142 test points** across 49 commands.
 
 - pass: 123
 - fail: 11
+- untested: 1
 
 ## Test App Gaps
 
