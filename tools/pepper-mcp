@@ -48,7 +48,10 @@ except ImportError:
 # Config from .env (shared via pepper_common)
 # ---------------------------------------------------------------------------
 
-from pepper_common import PEPPER_DIR, PORT_DIR, load_env, get_config
+from pepper_common import (
+    PEPPER_DIR, PORT_DIR, load_env, get_config,
+    discover_port, discover_simulator, list_simulators,
+)
 
 
 def load_adapter_tools() -> list[dict]:
@@ -126,96 +129,6 @@ def load_adapter_preamble() -> str:
         except OSError:
             pass
     return ""
-
-
-# ---------------------------------------------------------------------------
-# Port discovery (shared with pepper-ctl)
-# ---------------------------------------------------------------------------
-
-
-def _resolve_port_file(simulator: Optional[str] = None) -> tuple[str, int]:
-    """Resolve a single (udid, port) from port files.
-
-    If simulator is given, looks up that specific UDID.
-    Otherwise auto-discovers from PORT_DIR (must have exactly one).
-    Validates port liveness — cleans stale port files automatically.
-    """
-    if simulator:
-        path = os.path.join(PORT_DIR, f"{simulator}.port")
-        if os.path.exists(path):
-            try:
-                port = int(open(path).read().strip())
-                if pepper_sessions.quick_port_check(port):
-                    return simulator, port
-                # Port is dead — clean up stale file
-                try:
-                    os.remove(path)
-                except OSError:
-                    pass
-                raise RuntimeError(
-                    f"Stale port file for {simulator} (app not responding on port {port}). "
-                    f"Cleaned up. Re-deploy with `deploy`."
-                )
-            except ValueError:
-                pass
-        raise RuntimeError(f"No port file for simulator {simulator}")
-
-    if os.path.isdir(PORT_DIR):
-        # Filter to only live port files
-        live_ports = []
-        for f in sorted(os.listdir(PORT_DIR)):
-            if not f.endswith(".port"):
-                continue
-            udid = f.replace(".port", "")
-            port_path = os.path.join(PORT_DIR, f)
-            try:
-                port = int(open(port_path).read().strip())
-            except (ValueError, OSError):
-                continue
-            if pepper_sessions.quick_port_check(port):
-                live_ports.append((udid, port))
-            else:
-                # Stale — clean up
-                try:
-                    os.remove(port_path)
-                except OSError:
-                    pass
-
-        if len(live_ports) == 1:
-            return live_ports[0]
-        elif len(live_ports) > 1:
-            sims = [f"  {udid} → port {port}" for udid, port in live_ports]
-            raise RuntimeError(
-                f"Multiple simulators running ({len(live_ports)}). "
-                f"Pass simulator=UDID to pick one:\n" + "\n".join(sims)
-            )
-    raise RuntimeError("No Pepper instances found. Is the app running with dylib injection?")
-
-
-def discover_port(simulator: Optional[str] = None) -> int:
-    """Auto-discover Pepper port from port files."""
-    _, port = _resolve_port_file(simulator)
-    return port
-
-
-def discover_simulator(simulator: Optional[str] = None) -> tuple[str, int]:
-    """Resolve simulator UDID and port. Returns (udid, port)."""
-    return _resolve_port_file(simulator)
-
-
-def list_simulators() -> list[dict]:
-    """List all simulators with active Pepper connections."""
-    sims = []
-    if os.path.isdir(PORT_DIR):
-        for f in sorted(os.listdir(PORT_DIR)):
-            if f.endswith(".port"):
-                udid = f.replace(".port", "")
-                try:
-                    port = int(open(os.path.join(PORT_DIR, f)).read().strip())
-                    sims.append({"udid": udid, "port": port})
-                except (ValueError, OSError):
-                    pass
-    return sims
 
 
 # ---------------------------------------------------------------------------
