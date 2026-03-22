@@ -23,6 +23,9 @@ All bugs tracked in `BUGS.md`. Agent-addressable. PRs open for all 3.
 ### P2: Complete test app coverage
 Run every Pepper command against the test app. 132 untested command variants. Broken into discrete tasks in `TASKS.md`. Will surface more bugs.
 
+### P3: Platform abstraction + Android port prep
+Restructure the iOS dylib so shared logic (command protocol, dispatcher, connection management, config, flight recorder) is cleanly separated from iOS-specific code (UIKit bridge, HID synthesis, method swizzling, Network.framework). Define platform protocols, wrap existing iOS code as the first implementation, migrate handlers to use the abstraction. This is pure refactoring — iOS keeps working at every step. Unblocks a future Android port. Full plan in `docs/plans/ANDROID-PORT.md`, 18 tasks in `TASKS.md`.
+
 ### P3: Modularize `tools/` and clean up `pepper-mcp`
 `pepper-mcp` is a 2865-line monolith. Split into logical modules, extract shared code (`discover_port`, `load_env`, `format_look`) used by pepper-ctl/pepper-stream/test-client into a common library, and clean up the tools directory (inconsistent error handling, hardcoded paths, broad exception swallowing). Tasks in `TASKS.md`.
 
