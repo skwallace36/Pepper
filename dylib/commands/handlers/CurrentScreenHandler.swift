@@ -20,8 +20,9 @@ struct CurrentScreenHandler: PepperHandler {
             "title": AnyCodable(topVC.title ?? "")
         ]
 
-        // Navigation stack
-        if let nav = topVC.navigationController {
+        // Navigation stack (pepper_effectiveNavController finds SwiftUI NavigationStack's
+        // child UINavigationController when topVC.navigationController is nil)
+        if let nav = topVC.pepper_effectiveNavController {
             data["navigation_stack"] = AnyCodable(
                 nav.pepper_stackScreenIDs.map { AnyCodable($0) }
             )

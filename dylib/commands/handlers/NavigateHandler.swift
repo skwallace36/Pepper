@@ -63,7 +63,7 @@ struct NavigateHandler: PepperHandler {
 
         // Try popping to the screen in the current nav stack
         if let topVC = UIWindow.pepper_topViewController,
-           let navController = topVC.navigationController {
+           let navController = topVC.pepper_effectiveNavController {
             if navController.pepper_pop(to: screenID) {
                 return .ok(id: command.id, data: buildScreenData())
             }
@@ -81,7 +81,7 @@ struct NavigateHandler: PepperHandler {
         guard let topVC = UIWindow.pepper_topViewController else {
             return .error(id: command.id, message: "No top view controller found")
         }
-        guard let navController = topVC.navigationController else {
+        guard let navController = topVC.pepper_effectiveNavController else {
             // Try dismissing a modal presentation instead
             if topVC.presentingViewController != nil {
                 topVC.dismiss(animated: true)
