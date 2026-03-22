@@ -19,7 +19,7 @@ Statuses: `open` → `in-progress` → `pr-open` → `fixed`.
 
 - **BUG-007** `[dylib/wait_for]` `status:pr-open` — `wait_for` handler's main-thread polling loop blocks SwiftUI re-rendering. The handler polls with `RunLoop.current.run(until:)` on the main thread, but SwiftUI `@Observable` state changes don't re-render during nested RunLoop iterations. Result: wait_for works for already-visible conditions but cannot detect async UI state changes (e.g., 3s timer firing). *(found: 2026-03-22, GH #18)*
 
-- **BUG-008** `[dylib/dismiss]` `status:open` — `dismiss` and `navigate dismiss` fail to detect/dismiss SwiftUI `.sheet()` presentations. `screen` correctly reports `is_modal: true` and `screen_id: "presentation"` with `PresentationHostingController<AnyView>`, but `dismiss` returns "Nothing to dismiss — only the home view is presented" and `navigate dismiss` returns "Already at root of navigation stack". Likely the dismiss handler doesn't walk the VC tree correctly for SwiftUI sheet presentations. *(found: 2026-03-22, GH #40)*
+- **BUG-008** `[dylib/dismiss]` `status:pr-open` — `dismiss` and `navigate dismiss` fail to detect/dismiss SwiftUI `.sheet()` presentations. `screen` correctly reports `is_modal: true` and `screen_id: "presentation"` with `PresentationHostingController<AnyView>`, but `dismiss` returns "Nothing to dismiss — only the home view is presented" and `navigate dismiss` returns "Already at root of navigation stack". Likely the dismiss handler doesn't walk the VC tree correctly for SwiftUI sheet presentations. *(found: 2026-03-22, GH #40)*
 
 ---
 
