@@ -16,12 +16,12 @@
   "deeplinks":           { "status": "untested",  "surface": "NEEDS: URL scheme + routes",               "notes": "" },
 
   "tap.text":            { "status": "pass",     "surface": "Tap Me button, tab bar items",             "notes": "" },
-  "tap.element":         { "status": "untested",  "surface": "Buttons with a11y IDs",                    "notes": "" },
-  "tap.point":           { "status": "untested",  "surface": "Any tappable coordinate",                  "notes": "" },
-  "tap.icon_name":       { "status": "untested",  "surface": "SF Symbol icon-only buttons",              "notes": "" },
-  "tap.tab":             { "status": "untested",  "surface": "Tab bar",                                  "notes": "" },
-  "tap.heuristic":       { "status": "untested",  "surface": "Any labeled element",                      "notes": "" },
-  "tap.predicate":       { "status": "untested",  "surface": "Elements matching NSPredicate",             "notes": "" },
+  "tap.element":         { "status": "fail",      "surface": "Buttons with a11y IDs",                    "notes": "BUG-006: Works for UIKit views (uikit_button found and tapped), but fails for SwiftUI .accessibilityIdentifier() elements (tap_button not found). SwiftUI identifiers not stored as UIView.accessibilityIdentifier." },
+  "tap.point":           { "status": "pass",      "surface": "Tap Me button at (201,232)",               "notes": "Tapped Tap Me button by coordinate. Count incremented from 0 to 1. Strategy: point." },
+  "tap.icon_name":       { "status": "blocked",   "surface": "SF Symbol icon-only buttons",              "notes": "icon_name matching uses perceptual hashing against app-bundled icon assets. Test app only uses SF Symbols (system icons), not custom icon assets. Cannot test without adding custom icon assets to test app." },
+  "tap.tab":             { "status": "fail",      "surface": "Tab bar",                                  "notes": "BUG-005: Returns 'No tab bar found in view hierarchy'. findTabBarButtons() searches for UITabBar but SwiftUI TabView does not expose UITabBar views in the hierarchy." },
+  "tap.heuristic":       { "status": "pass",      "surface": "Slider element on Controls tab",           "notes": "Tapped slider via heuristic:'slider'. Found at (116,790). Error case also tested: nonexistent heuristic returns proper error." },
+  "tap.predicate":       { "status": "pass",      "surface": "Tap Me button via NSPredicate",            "notes": "Predicate \"label == 'Tap Me' AND type == 'button'\" found and tapped correctly. Count incremented. Error case tested: no-match predicate returns proper error." },
   "input":               { "status": "untested",  "surface": "TextField (text_field), TextEditor (text_editor)", "notes": "" },
   "toggle":              { "status": "untested",  "surface": "Toggle (toggle_switch), Segmented (segment_control)", "notes": "" },
 
