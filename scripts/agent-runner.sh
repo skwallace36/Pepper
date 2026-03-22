@@ -42,6 +42,9 @@ cleanup() {
   done
   git worktree prune 2>/dev/null || true
 
+  # Release lockfile
+  rm -f "build/logs/.lock-${TYPE}" 2>/dev/null || true
+
   # Transcript retention: keep last 20 per type
   local transcripts
   transcripts=$(ls -1t build/logs/transcript-${TYPE}-*.json 2>/dev/null || true)
@@ -66,6 +69,21 @@ if [ -n "$MISSING" ]; then
   echo "Run: make setup"
   exit 1
 fi
+# Prevent concurrent runs of the same agent type (lockfile)
+LOCKFILE="build/logs/.lock-${TYPE}"
+if [ -f "$LOCKFILE" ]; then
+  LOCK_PID=$(cat "$LOCKFILE" 2>/dev/null)
+  if kill -0 "$LOCK_PID" 2>/dev/null; then
+    emit "failed" ",\"detail\":\"${TYPE} agent already running (PID $LOCK_PID)\""
+    echo "Error: ${TYPE} agent already running (PID $LOCK_PID). Use 'make agent-cleanup' to force."
+    exit 1
+  else
+    # Stale lockfile — previous run crashed without cleanup
+    rm -f "$LOCKFILE"
+  fi
+fi
+echo $$ > "$LOCKFILE"
+
 if ! gh auth status &>/dev/null; then
   emit "failed" ",\"detail\":\"gh not authenticated\""
   echo "Error: gh not authenticated. Run: gh auth login"

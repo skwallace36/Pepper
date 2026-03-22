@@ -23,7 +23,7 @@ LOGS_DIR    := $(PROJECT_DIR)/build/logs
 
 .PHONY: help build deploy launch kill relaunch ping check \
         logs clean test-client pepper-ctl test-app coverage coverage-check \
-        docs setup agent agent-monitor agent-status
+        docs setup agent agent-monitor agent-status agent-cleanup agent-kill agent-resume
 
 # ============================================================
 # Help
@@ -185,6 +185,19 @@ agent-monitor:
 ## agent-status: Replay all agent events
 agent-status:
 	@./scripts/agent-monitor.sh --replay
+
+## agent-cleanup: Kill orphaned agent processes, worktrees, and extra sims
+agent-cleanup:
+	@./scripts/agent-cleanup.sh
+
+## agent-kill: Activate kill switch (stops all agents within 5s)
+agent-kill:
+	@touch .pepper-kill && echo "Kill switch activated. Agents will stop within 5 seconds."
+	@echo "Run 'make agent-resume' to deactivate."
+
+## agent-resume: Deactivate kill switch
+agent-resume:
+	@rm -f .pepper-kill && echo "Kill switch deactivated. Agents can run."
 
 ## clean: Clean build artifacts
 clean:
