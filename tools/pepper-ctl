@@ -595,16 +595,18 @@ async def cmd_help(args):
 async def cmd_wait_for_server(args):
     """Poll WebSocket with ping until the server responds or timeout expires."""
     import time
+    from pepper_ws_raw import RawWebSocket
+
     deadline = time.monotonic() + args.wait_timeout
     attempt = 0
     while True:
         attempt += 1
         try:
             msg = make_command("ping")
-            url = f"ws://{args.host}:{args.port}"
-            async with websockets.connect(url, close_timeout=2, compression=None) as ws:
-                await ws.send(json.dumps(msg))
-                raw = await asyncio.wait_for(ws.recv(), timeout=3)
+            ws = RawWebSocket.connect(args.host, args.port, timeout=3)
+            try:
+                ws.send(json.dumps(msg))
+                raw = ws.recv(timeout=3)
                 resp = json.loads(raw)
                 if resp.get("status") == "ok":
                     if not args.raw_json:
@@ -612,11 +614,9 @@ async def cmd_wait_for_server(args):
                     else:
                         print(json.dumps({"status": "ok", "attempts": attempt}))
                     return
-        except (ConnectionRefusedError, OSError, asyncio.TimeoutError,
-                websockets.exceptions.ConnectionClosed,
-                websockets.exceptions.ConnectionClosedError,
-                websockets.exceptions.InvalidURI,
-                websockets.exceptions.InvalidHandshake):
+            finally:
+                ws.close()
+        except (ConnectionRefusedError, ConnectionError, OSError, TimeoutError):
             pass
 
         if time.monotonic() >= deadline:
