@@ -266,7 +266,7 @@ WORKTREES_BEFORE=$(git worktree list --porcelain 2>/dev/null | grep "^worktree .
 sleep $(( RANDOM % 4 ))
 
 # Launch the agent in background so we can enforce timeout
-# --name is our stable marker for process identification (make agent-kill uses it)
+# --name is our stable marker for process identification (agents-stop uses pgrep on it)
 claude -p \
   "You are the ${TYPE} agent. Follow your instructions." \
   --append-system-prompt "$PROMPT" \
@@ -312,8 +312,8 @@ while kill -0 "$AGENT_PID" 2>/dev/null; do
     break
   fi
   # Kill switch: .pepper-kill prevents new launches (checked at startup).
-  # Running agents are killed via `make agent-kill` which sends SIGTERM
-  # directly to PIDs in lockfiles. The trap handles cleanup.
+  # Running agents are killed via `make agents-stop` which sends SIGTERM
+  # to processes matched by pgrep. The trap handles cleanup.
 done
 
 wait "$AGENT_PID" 2>/dev/null
