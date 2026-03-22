@@ -24,7 +24,7 @@ LOGS_DIR    := $(PROJECT_DIR)/build/logs
 
 .PHONY: help build deploy launch kill relaunch ping check \
         logs clean test-client pepper-ctl test-app coverage coverage-check \
-        docs setup ci agent agent-monitor agent-status agent-trigger agents-install agents-uninstall agent-cleanup agents-start agents-stop
+        docs setup ci agent agent-monitor agent-status agent-trigger agents-install agents-uninstall agent-cleanup agents-start agents-stop agent-analyze
 
 # ============================================================
 # Help
@@ -237,6 +237,10 @@ agents-stop:
 	done
 	@rm -f build/logs/.lock-* 2>/dev/null || true
 	@echo "All agents stopped."
+
+## agent-analyze: Analyze agent session context usage and re-reads
+agent-analyze:
+	@./scripts/agent-analyze.sh $(ANALYZE_ARGS)
 
 ## clean: Clean build artifacts
 clean:
