@@ -254,14 +254,9 @@ while kill -0 "$AGENT_PID" 2>/dev/null; do
     pkill -P "$AGENT_PID" 2>/dev/null || true
     break
   fi
-  # Check kill switch mid-run
-  if [ -f .pepper-kill ]; then
-    echo "Kill switch activated mid-run — stopping agent..."
-    kill -TERM "$AGENT_PID" 2>/dev/null || true
-    sleep 3
-    kill -9 "$AGENT_PID" 2>/dev/null || true
-    break
-  fi
+  # Kill switch: .pepper-kill prevents new launches (checked at startup).
+  # Running agents are killed via `make agent-kill` which sends SIGTERM
+  # directly to PIDs in lockfiles. The trap handles cleanup.
 done
 
 wait "$AGENT_PID" 2>/dev/null
