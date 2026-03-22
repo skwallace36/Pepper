@@ -23,7 +23,7 @@ Statuses: `open` → `in-progress` → `pr-open` → `fixed`.
 
 - **BUG-009** `[dylib/startup]` `status:pr-open` — `PepperIconCatalog.build()` crashes on background thread when injected into real-world apps. `UIImage(named:in:with:)` is called from a dispatch queue in `PepperPlane.start()`, but iOS 26/Xcode 26 added an assertion requiring image loading from asset catalogs to happen on the main thread. Crashes Ice Cubes (SwiftUI Mastodon client) within ~2s of launch. PepperTestApp unaffected (simpler asset catalog). Fix: dispatch `PepperIconCatalog.build()` to `DispatchQueue.main`. *(found: 2026-03-22, GH #46)*
 
-- **BUG-010** `[dylib/startup]` `status:open` — `PepperIconCatalog.build()` crashes with "Need an imageRef" assertion when loading icons from real-world app bundles. After BUG-009 fix moved icon loading to main thread, `discoverIconNames(in:)` finds asset catalog entries that resolve to nil CGImages. UIKit's `_UIImageCGImageContent initWithCGImageSource:CGImage:scale:` asserts. Fix: guard `UIImage(named:in:with:)` result for nil before using. Blocks TASK-029. *(found: 2026-03-22, GH #52)*
+- **BUG-010** `[dylib/startup]` `status:pr-open` — `PepperIconCatalog.build()` crashes with "Need an imageRef" assertion when loading icons from real-world app bundles. After BUG-009 fix moved icon loading to main thread, `discoverIconNames(in:)` finds asset catalog entries that resolve to nil CGImages. UIKit's `_UIImageCGImageContent initWithCGImageSource:CGImage:scale:` asserts. Fix: guard `UIImage(named:in:with:)` result for nil before using. Blocks TASK-029. *(found: 2026-03-22, GH #52)*
 
 ---
 
