@@ -204,7 +204,7 @@ final class PepperVarRegistry {
 
         // System class prefixes to skip (optimization — avoids scanning Apple framework classes)
         let skipPrefixes = ["NS", "UI", "CA", "CF", "CG", "AV", "MK", "WK", "SK",
-                            "_", "OS_", "PK", "NW", "Pepper", "Swift.", "dispatch_",
+                            "_", "OS_", "PK", "NW", "Pepper.", "Swift.", "dispatch_",
                             "xpc_", "os_", "objc_", "NWHTTP"]
 
         var result: [AnyClass] = []
