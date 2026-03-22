@@ -58,6 +58,28 @@
           {
             "type": "command",
             "command": "input=$(cat); cmd=$(echo \"$input\" | jq -r '.tool_input.command // empty'); if echo \"$cmd\" | grep -qE 'git push' && echo \"$cmd\" | grep -qE '(main|master)'; then echo 'DENY: push to main blocked — use a branch + PR'; exit 0; fi"
+          },
+          {
+            "type": "command",
+            "command": "./scripts/hooks/agent-guardrails.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./scripts/hooks/agent-guardrails.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./scripts/hooks/agent-guardrails.sh"
           }
         ]
       }
