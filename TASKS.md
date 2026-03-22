@@ -53,7 +53,7 @@ Test app changes needed before blocked commands can be tested. Unblocks ~20 unte
 
 - **TASK-064** `[P3]` `status:pr-open` — Extract `mcp_screenshot.py`: `capture_screenshot()` + quality modes (~80 lines)
 - **TASK-065** `[P3]` `status:pr-open` — Extract `mcp_crash.py`: `_parse_crash_report()`, `_fetch_crash_info()` (~135 lines)
-- **TASK-066** `[P3]` `status:in-progress` — Extract `mcp_telemetry.py`: `snapshot_counts()`, `gather_telemetry()`, `act_and_look()` (~230 lines)
+- **TASK-066** `[P3]` `status:pr-open` — Extract `mcp_telemetry.py`: `snapshot_counts()`, `gather_telemetry()`, `act_and_look()` (~230 lines)
 - **TASK-067** `[P3]` `status:unstarted` — Extract `mcp_build.py`: simulator resolution, `_build_app()`, `_deploy_app()`, device build/deploy, `iterate()` (~560 lines)
 - **TASK-068** `[P3]` `status:unstarted` — Extract `mcp_tools_nav.py`: tool definitions for look, tap, scroll, input, navigate, back, dismiss, swipe, screen, scroll_to, dismiss_keyboard (~200 lines)
 - **TASK-069** `[P3]` `status:unstarted` — Extract `mcp_tools_state.py`: tool definitions for vars_inspect, defaults, clipboard, keychain, cookies (~120 lines)
