@@ -19,7 +19,7 @@ Run every Pepper command against the test app. Each task covers a command family
 - **TASK-017** `[P2]` `status:pr-open` — Test `vars` variants: discover, list, get, set, dump, mirror *(6 pass, BUG-003 verified fixed)*
 - **TASK-018** `[P2]` `status:pr-open` — Test `heap` + `heap_snapshot` commands *(8 pass)*
 - **TASK-019** `[P2]` `status:pr-open` — Test `layers` + `introspect` commands *(8 pass introspect, 1 pass layers, BUG-002 verified fixed)*
-- **TASK-020** `[P2]` `status:in-progress` — Test `console` + `network` + `timeline` commands *(14 untested)*
+- **TASK-020** `[P2]` `status:pr-open` — Test `console` + `network` + `timeline` commands *(13 pass, 1 prior pass)*
 - **TASK-021** `[P2]` `status:unstarted` — Test `lifecycle` + `orientation` commands *(8 untested)*
 - **TASK-022** `[P2]` `status:unstarted` — Test `defaults` + `keychain` + `cookies` + `clipboard` commands *(17 untested)*
 - **TASK-023** `[P2]` `status:unstarted` — Test `dialog` + `hook` + `locale` + `push` commands *(21 untested)*
