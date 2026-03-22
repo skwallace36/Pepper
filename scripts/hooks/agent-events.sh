@@ -12,6 +12,19 @@ AGENT="${PEPPER_AGENT_TYPE:-unknown}"
 
 INPUT=$(cat)
 TOOL=$(echo "$INPUT" | jq -r '.tool_name // empty')
+
+# Track MCP Pepper tool calls (look, tap, scroll, etc.)
+if echo "$TOOL" | grep -qE '^mcp__pepper__'; then
+  SUBCMD=$(echo "$TOOL" | sed 's/^mcp__pepper__//')
+  EXIT_CODE=$(echo "$INPUT" | jq -r '.tool_response.exit_code // 0')
+  if [ "$EXIT_CODE" = "0" ]; then
+    emit "\"event\":\"pepper\",\"detail\":\"${SUBCMD}\""
+  else
+    emit "\"event\":\"pepper-fail\",\"detail\":\"${SUBCMD}\""
+  fi
+  exit 0
+fi
+
 [ "$TOOL" = "Bash" ] || exit 0
 
 CMD=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
@@ -46,6 +59,32 @@ fi
 if echo "$CMD" | grep -qE 'git push' && [ "$EXIT_CODE" = "0" ]; then
   REMOTE_BRANCH=$(echo "$CMD" | grep -oE 'origin [^ ]+' | head -1 || true)
   emit "\"event\":\"push\",\"detail\":\"${REMOTE_BRANCH:-push}\""
+fi
+
+# Build (xcodebuild or make build)
+if echo "$CMD" | grep -qE '(xcodebuild|make.*build|make.*deploy)'; then
+  if [ "$EXIT_CODE" = "0" ]; then
+    emit "\"event\":\"build\",\"detail\":\"success\""
+  else
+    emit "\"event\":\"build-fail\",\"detail\":\"exit code ${EXIT_CODE}\""
+  fi
+fi
+
+# Sim launch (simctl launch or make launch/deploy)
+if echo "$CMD" | grep -qE 'simctl (launch|boot)' && [ "$EXIT_CODE" = "0" ]; then
+  SIM_ID=$(echo "$CMD" | grep -oE '[A-F0-9-]{36}' | head -1 || true)
+  emit "\"event\":\"sim-launch\",\"detail\":\"${SIM_ID:-simulator}\""
+fi
+
+# Sim install
+if echo "$CMD" | grep -qE 'simctl install' && [ "$EXIT_CODE" = "0" ]; then
+  emit "\"event\":\"sim-install\",\"detail\":\"app installed\""
+fi
+
+# MCP tool calls (pepper look, tap, etc.)
+if [ "$TOOL" = "Bash" ] && echo "$CMD" | grep -qE 'pepper-ctl'; then
+  SUBCMD=$(echo "$CMD" | grep -oE 'pepper-ctl [a-z_]+' | awk '{print $2}')
+  [ -n "$SUBCMD" ] && emit "\"event\":\"pepper\",\"detail\":\"${SUBCMD}\""
 fi
 
 exit 0
