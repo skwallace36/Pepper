@@ -250,6 +250,7 @@ case "$TYPE" in
   verifier|pr-verifier) BUDGET=5.00 ;;
   tester)   BUDGET=5.00 ;;
   bugfix)   BUDGET=3.00 ;;
+  builder)  BUDGET=3.00 ;;
   *)        BUDGET=2.00 ;;
 esac
 
