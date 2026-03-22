@@ -219,14 +219,11 @@ agent-cleanup:
 ## agent-kill: Kill all running agents immediately + prevent new launches
 agent-kill:
 	@touch .pepper-kill
-	@for lock in build/logs/.lock-*; do \
-		[ -f "$$lock" ] || continue; \
-		pid=$$(cat "$$lock" 2>/dev/null); \
-		if kill -0 "$$pid" 2>/dev/null; then \
-			echo "Killing $$lock (PID $$pid)"; \
-			kill -TERM "$$pid" 2>/dev/null || true; \
-		fi; \
+	@ps aux | grep 'claude.*append-system' | grep -v grep | awk '{print $$2}' | while read pid; do \
+		echo "Killing agent PID $$pid"; \
+		kill -TERM "$$pid" 2>/dev/null || true; \
 	done
+	@rm -f build/logs/.lock-* 2>/dev/null || true
 	@echo "All agents killed. Kill switch active — no new launches until 'make agent-resume'."
 
 ## agent-resume: Deactivate kill switch, allow new agent launches
