@@ -1,8 +1,10 @@
-/// Heap instance counting via malloc zone enumeration.
+/// Heap instance scanning via malloc zone enumeration.
 /// Written in C because the zone enumerator requires @convention(c) callbacks
 /// that can't capture context in Swift. Uses the same technique as FLEX.
 ///
-/// Called from Swift via @_silgen_name("pepper_heap_scan").
+/// Two entry points:
+///   pepper_heap_scan            — count instances per class (existing)
+///   pepper_heap_find_instances  — collect instance pointers for target classes (BUG-003)
 
 #include <malloc/malloc.h>
 #include <mach/mach.h>
@@ -226,5 +228,154 @@ int pepper_heap_scan(
 
     *out_entries = results;
     *out_count = result_count;
+    return 0;
+}
+
+// ---------------------------------------------------------------------------
+// pepper_heap_find_instances — collect actual instance pointers for target classes
+// ---------------------------------------------------------------------------
+
+#define MAX_FOUND_INSTANCES 256
+
+// Context for instance-collecting scan
+typedef struct {
+    CFMutableSetRef registered_classes;  // all ObjC classes (for isa validation)
+    CFMutableSetRef target_classes;      // classes we want instances of
+    const void **found_instances;        // output array
+    const void **found_classes;          // parallel array: class ptr for each instance
+    int found_count;
+    int max_found;
+    uint64_t isa_mask;
+} PepperFindContext;
+
+// Range recorder that collects instance pointers
+static void find_recorder(
+    task_t task,
+    void *context,
+    unsigned type,
+    vm_range_t *ranges,
+    unsigned count
+) {
+    if (type != MALLOC_PTR_IN_USE_RANGE_TYPE || !context || !ranges) return;
+    PepperFindContext *ctx = (PepperFindContext *)context;
+
+    for (unsigned i = 0; i < count; i++) {
+        if (ctx->found_count >= ctx->max_found) return;
+
+        vm_range_t range = ranges[i];
+        if (range.size < sizeof(void *)) continue;
+
+        uint64_t isa_raw = *(uint64_t *)range.address;
+        uint64_t isa_masked = isa_raw & ctx->isa_mask;
+
+        const void *class_ptr = (const void *)(uintptr_t)isa_masked;
+        if (!class_ptr) continue;
+
+        // Must be a registered ObjC class AND one of our targets
+        if (CFSetContainsValue(ctx->registered_classes, class_ptr) &&
+            CFSetContainsValue(ctx->target_classes, class_ptr)) {
+            ctx->found_instances[ctx->found_count] = (const void *)range.address;
+            ctx->found_classes[ctx->found_count] = class_ptr;
+            ctx->found_count++;
+        }
+    }
+}
+
+/// Find live instances of specific target classes on the heap.
+///
+/// target_classes: array of Class pointers to search for
+/// target_count:   number of entries in target_classes
+/// out_instances:  receives malloc'd array of instance pointers (caller frees)
+/// out_classes:    receives malloc'd parallel array of class pointers (caller frees)
+/// out_count:      receives number of found instances
+///
+/// Returns 0 on success, -1 on failure.
+int pepper_heap_find_instances(
+    const void **target_classes,
+    int target_count,
+    const void ***out_instances,
+    const void ***out_classes,
+    int *out_count
+) {
+    *out_instances = NULL;
+    *out_classes = NULL;
+    *out_count = 0;
+
+    if (!target_classes || target_count == 0) return -1;
+
+    // Build set of all registered ObjC classes
+    unsigned int total_class_count = 0;
+    Class *all_classes = objc_copyClassList(&total_class_count);
+    if (!all_classes || total_class_count == 0) return -1;
+
+    CFMutableSetRef registered = CFSetCreateMutable(NULL, total_class_count, NULL);
+    for (unsigned int i = 0; i < total_class_count; i++) {
+        CFSetAddValue(registered, (const void *)all_classes[i]);
+    }
+    free(all_classes);
+
+    // Build set of target classes
+    CFMutableSetRef targets = CFSetCreateMutable(NULL, target_count, NULL);
+    for (int i = 0; i < target_count; i++) {
+        CFSetAddValue(targets, target_classes[i]);
+    }
+
+    // Set up context
+    PepperFindContext ctx;
+    memset(&ctx, 0, sizeof(ctx));
+    ctx.registered_classes = registered;
+    ctx.target_classes = targets;
+    ctx.max_found = MAX_FOUND_INSTANCES;
+    ctx.found_instances = (const void **)malloc(sizeof(void *) * MAX_FOUND_INSTANCES);
+    ctx.found_classes = (const void **)malloc(sizeof(void *) * MAX_FOUND_INSTANCES);
+    ctx.found_count = 0;
+
+    if (&objc_debug_isa_class_mask) {
+        ctx.isa_mask = objc_debug_isa_class_mask;
+    } else {
+        ctx.isa_mask = 0x007ffffffffffff8ULL;
+    }
+
+    // Enumerate all malloc zones
+    vm_address_t *zones = NULL;
+    unsigned int zone_count = 0;
+    kern_return_t kr = malloc_get_all_zones(mach_task_self(), heap_reader, &zones, &zone_count);
+
+    if (kr == KERN_SUCCESS && zones) {
+        for (unsigned int i = 0; i < zone_count; i++) {
+            if (ctx.found_count >= ctx.max_found) break;
+
+            malloc_zone_t *zone = (malloc_zone_t *)zones[i];
+            if (!zone) continue;
+            malloc_introspection_t *introspect = zone->introspect;
+            if (!introspect || !introspect->enumerator) continue;
+
+            if (introspect->force_lock) introspect->force_lock(zone);
+
+            introspect->enumerator(
+                mach_task_self(),
+                &ctx,
+                MALLOC_PTR_IN_USE_RANGE_TYPE,
+                (vm_address_t)zone,
+                heap_reader,
+                find_recorder
+            );
+
+            if (introspect->force_unlock) introspect->force_unlock(zone);
+        }
+    }
+
+    CFRelease(registered);
+    CFRelease(targets);
+
+    if (ctx.found_count == 0) {
+        free(ctx.found_instances);
+        free(ctx.found_classes);
+        return 0;
+    }
+
+    *out_instances = ctx.found_instances;
+    *out_classes = ctx.found_classes;
+    *out_count = ctx.found_count;
     return 0;
 }
