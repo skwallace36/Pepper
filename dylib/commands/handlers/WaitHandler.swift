@@ -31,20 +31,59 @@ struct WaitHandler: PepperHandler {
 
         logger.info("Wait started, timeout \(timeoutMs)ms, condition: \(String(describing: condition))")
 
-        // Poll until condition met or timeout
-        while Date() < deadline {
-            if evaluate(condition) {
-                let elapsedMs = Int(Date().timeIntervalSince(startTime) * 1000)
-                logger.info("Wait condition met after \(elapsedMs)ms")
-                return .ok(id: command.id, data: [
-                    "waited_ms": AnyCodable(elapsedMs)
-                ])
-            }
-            RunLoop.current.run(until: Date(timeIntervalSinceNow: Self.pollInterval))
+        // Check immediately — if already satisfied, return without waiting.
+        if evaluate(condition) {
+            logger.info("Wait condition already met")
+            return .ok(id: command.id, data: [
+                "waited_ms": AnyCodable(0)
+            ])
         }
 
-        logger.warning("Wait timed out after \(timeoutMs)ms")
-        return .error(id: command.id, message: "Timeout after \(timeoutMs)ms")
+        // Poll on a background thread so the main thread's RunLoop can process
+        // SwiftUI rendering between condition evaluations. The original approach
+        // used RunLoop.current.run(until:) in a tight loop on the main thread,
+        // which created nested RunLoop iterations that blocked SwiftUI @Observable
+        // state changes from triggering re-renders. (BUG-007)
+        var pollResult: PepperResponse?
+        let group = DispatchGroup()
+        group.enter()
+        let handler = self
+
+        DispatchQueue.global(qos: .userInitiated).async {
+            while Date() < deadline {
+                // Sleep on background thread — main thread is free for rendering
+                Thread.sleep(forTimeInterval: Self.pollInterval)
+
+                // Brief hop to main thread for UIKit-safe condition evaluation
+                var conditionMet = false
+                DispatchQueue.main.sync {
+                    conditionMet = handler.evaluate(condition)
+                }
+
+                if conditionMet {
+                    let elapsedMs = Int(Date().timeIntervalSince(startTime) * 1000)
+                    handler.logger.info("Wait condition met after \(elapsedMs)ms")
+                    pollResult = .ok(id: command.id, data: [
+                        "waited_ms": AnyCodable(elapsedMs)
+                    ])
+                    group.leave()
+                    return
+                }
+            }
+
+            handler.logger.warning("Wait timed out after \(timeoutMs)ms")
+            pollResult = .error(id: command.id, message: "Timeout after \(timeoutMs)ms")
+            group.leave()
+        }
+
+        // Cooperatively yield the main thread while the background thread polls.
+        // Short RunLoop spins service the DispatchQueue.main.sync calls from above
+        // and allow SwiftUI, CADisplayLink, and Core Animation to process normally.
+        while group.wait(timeout: .now()) == .timedOut {
+            RunLoop.current.run(mode: .default, before: Date(timeIntervalSinceNow: 0.01))
+        }
+
+        return pollResult!
     }
 
     // MARK: - Condition Parsing
