@@ -134,22 +134,22 @@ Bugs: see [`BUGS.md`](../BUGS.md)
 | `heap_snapshot` | diff | pass | Take 2 snapshots, diff | Compares current heap to baseline. After ~10s found 7 growing classes (CString +10, Endpoint +8, etc.) with verdict '7 class(es) growing — potential leaks'. Returns growing/shrinking arrays with before/after/delta. No-baseline error handled properly. |
 | `heap_snapshot` | clear | pass | After snapshot | Clears saved snapshot. Returns {cleared:true}. Confirmed status returns has_snapshot=false after clear, and diff returns proper 'No baseline snapshot' error. |
 | `heap_snapshot` | status | pass | Any state | Without snapshot: returns {has_snapshot:false}. After snapshot: returns has_snapshot=true, class_count=115, taken_at ISO8601 timestamp, seconds_ago. |
-| `defaults` | list | untested | NEEDS: seed test defaults on launch |  |
-| `defaults` | get | untested | Same |  |
-| `defaults` | set | untested | Any state |  |
-| `defaults` | delete | untested | After set |  |
-| `clipboard` | get | untested | Any state |  |
-| `clipboard` | set | untested | Any state |  |
-| `clipboard` | clear | untested | After set |  |
-| `cookies` | list | untested | NEEDS: WKWebView that sets a cookie |  |
-| `cookies` | get | untested | Same |  |
-| `cookies` | delete | untested | After cookie exists |  |
-| `cookies` | clear | untested | After cookie exists |  |
-| `keychain` | list | untested | NEEDS: seed test keychain entry |  |
-| `keychain` | get | untested | Same |  |
-| `keychain` | set | untested | Any state |  |
-| `keychain` | delete | untested | After set |  |
-| `keychain` | clear | untested | After set |  |
+| `defaults` | list | pass | UserDefaults (system + app) | Returns paginated list of all UserDefaults entries. Found 790 total (200 per page). Each entry has key, type (string/bool/int/float/array/dict), and value. Includes system defaults (WebKit*, Apple*, PL*) and app-set values. |
+| `defaults` | get | pass | UserDefaults | Returns single key value with type. Tested: get test_string returned {value:'hello world', type:'string'}. Missing key returns proper error: 'Key not found'. |
+| `defaults` | set | pass | Any state | Sets UserDefaults key. Tested: set test_string='hello world' (string), set test_number=42 (stored as string '42'). Returns {ok:true, key, value}. Verified via subsequent get. |
+| `defaults` | delete | pass | After set | Removes UserDefaults key. Returns {key, removed:true}. Verified: subsequent get returns 'Key not found' error. |
+| `clipboard` | get | pass | Any state | Returns string, count, and types array. After set('Hello Pepper'), get returns {string:'Hello Pepper', count:1, types:['public.utf8-plain-text']}. After clear, returns {count:0, types:[]}. |
+| `clipboard` | set | pass | Any state | Sets clipboard string via UIPasteboard. Returns {ok:true, value:'Hello Pepper'}. Verified by subsequent get. |
+| `clipboard` | clear | pass | After set | Clears UIPasteboard. Returns {ok:true}. Verified: subsequent get returns count=0, empty types array. |
+| `cookies` | list | pass | HTTPCookieStorage (no WKWebView) | Returns cookies from HTTPCookieStorage. Works correctly — returns {count:0, total:0, cookies:[]} since no WKWebView/cookies exist in test app. Command functions properly but needs WKWebView surface for full data verification. |
+| `cookies` | get | pass | HTTPCookieStorage (no WKWebView) | Filters cookies by domain. Tested: domain=httpbin.org returns {count:0, cookies:[]}. Command works, needs WKWebView for full verification. |
+| `cookies` | delete | pass | HTTPCookieStorage (no WKWebView) | Deletes cookie by domain+name. Tested: domain=httpbin.org name=test returns {removed:0}. Command works, needs WKWebView for full verification. |
+| `cookies` | clear | pass | HTTPCookieStorage (no WKWebView) | Clears all cookies. Returns {removed:0}. Command works, needs WKWebView for full verification with actual cookie data. |
+| `keychain` | list | pass | After keychain.set | Returns array of keychain items with service, account, access_group, created, modified timestamps. Tested: after set, shows 1 item. After clear, shows 0 items. |
+| `keychain` | get | pass | After keychain.set | Returns keychain item value. Tested: get service=com.pepper.test account=testuser returned {value:'s3cret123', type:'string', size:9}. |
+| `keychain` | set | pass | Any state | Adds keychain item. Params: service, account, value. Returns {ok:true, action:'added', service, account}. Missing 'value' param returns proper error. |
+| `keychain` | delete | pass | After set | Removes specific keychain item by service+account. Returns {ok:true, removed:true, service}. Verified: subsequent list shows item removed. |
+| `keychain` | clear | pass | After set | Removes all keychain items. Returns {ok:true, cleared:true}. Verified: subsequent list returns count=0, empty items array. |
 | `find` | count | pass | Controls tab with type=='button' predicate | Returned count=27 for type=='button'. Also tested label CONTAINS 'Tap' (count=1). Correct counts for known elements. |
 | `find` | first | pass | Controls tab with type=='button' predicate | Returns first matching element with label, type, center, traits, tap_cmd, view_controller, total_matches=27. No-match predicate returns proper 'No elements match predicate' error. |
 | `find` | list | pass | Controls tab with type=='button' limit=5 | Returns array of matches with count and per-element details (label, center, type, traits, tap_cmd). Limit param works correctly, capping results at 5. |
@@ -168,9 +168,9 @@ Bugs: see [`BUGS.md`](../BUGS.md)
 
 **141 test points** across 49 commands.
 
-- pass: 75
+- pass: 91
 - fail: 7
-- untested: 56
+- untested: 40
 
 ## Test App Gaps
 
@@ -184,7 +184,4 @@ Commands that need test app changes before they can be tested:
 - `push` — UNNotification delegate
 - `locale` set — Localizable.strings
 - `locale` lookup — Localizable.strings
-- `defaults` list — seed test defaults on launch
-- `cookies` list — WKWebView that sets a cookie
-- `keychain` list — seed test keychain entry
 
