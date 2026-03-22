@@ -29,10 +29,12 @@ import UIKit
 ///     → Dismisses the current share sheet
 ///
 /// Events broadcast:
-///   dialog_appeared       — when a system dialog is presented (title, message, actions)
-///   dialog_dismissed      — when a dialog is dismissed (dialog_id, button tapped)
-///   share_sheet_appeared  — when a UIActivityViewController is presented (items)
-///   share_sheet_dismissed — when a share sheet is dismissed
+///   dialog_appeared          — when a system dialog is presented (title, message, actions)
+///   dialog_dismissed         — when a dialog is dismissed (dialog_id, button tapped)
+///   share_sheet_appeared     — when a UIActivityViewController is presented (items)
+///   share_sheet_dismissed    — when a share sheet is dismissed
+///   system_dialog_detected   — when a system dialog (SpringBoard) is suspected blocking
+///   system_dialog_cleared    — when the system dialog is no longer blocking
 final class DialogHandler: PepperHandler {
     let commandName = "dialog"
 
@@ -50,18 +52,21 @@ final class DialogHandler: PepperHandler {
             }
             return .ok(id: command.id, data: [
                 "dialogs": AnyCodable(dialogs.map { AnyCodable($0) }),
-                "count": AnyCodable(dialogs.count)
+                "count": AnyCodable(dialogs.count),
+                "system_dialog_suspected": AnyCodable(interceptor.systemDialogSuspected)
             ])
 
         case "current":
             guard let dialog = interceptor.current else {
                 return .ok(id: command.id, data: [
                     "dialog": AnyCodable(NSNull()),
-                    "has_dialog": AnyCodable(false)
+                    "has_dialog": AnyCodable(false),
+                    "system_dialog_suspected": AnyCodable(interceptor.systemDialogSuspected)
                 ])
             }
             var data = dialogData(dialog)
             data["has_dialog"] = AnyCodable(true)
+            data["system_dialog_suspected"] = AnyCodable(interceptor.systemDialogSuspected)
             return .ok(id: command.id, data: data)
 
         case "dismiss":
