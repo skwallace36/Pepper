@@ -318,7 +318,7 @@ async def deploy_app(simulator: str, send_fn: SendFn,
                     # Claim this simulator for our session
                     pepper_sessions.claim_simulator(simulator, bundle_id=bid, port=port)
                     return f"Deployed to {simulator} (PID {pid}, port {port}). Pepper is connected.\n\n--- Screen ---\n{screen_summary}"
-            except Exception:
+            except (OSError, ValueError, asyncio.TimeoutError):
                 pass
 
     return f"App launched (PID {pid}) but Pepper didn't respond within 10s. Check dylib injection. Port file exists: {os.path.exists(port_file)}"

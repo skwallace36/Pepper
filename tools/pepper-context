@@ -25,8 +25,14 @@ from typing import Dict, List, Optional, Tuple
 # Config
 # ---------------------------------------------------------------------------
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from pepper_common import require_tool
+
 FI_ROOT = Path(os.environ.get("FI_ROOT", os.path.expanduser("~/Developer/ios")))
 PEPPER_CTL = Path(__file__).parent / "pepper-ctl"
+
+# Validate ripgrep is available (used for all source lookups)
+require_tool("rg", install_hint="brew install ripgrep")
 
 
 def rg(pattern: str, *extra_args: str, glob: Optional[str] = None) -> List[str]:
@@ -59,7 +65,7 @@ def rg_files(pattern: str, **kwargs) -> List[str]:
 def read_file(path: str) -> str:
     try:
         return Path(path).read_text()
-    except Exception:
+    except OSError:
         return ""
 
 
@@ -84,7 +90,7 @@ def get_current_vc(port: Optional[int]) -> Optional[Dict]:
     try:
         out = subprocess.check_output(cmd, text=True, stderr=subprocess.DEVNULL)
         return json.loads(out)
-    except Exception:
+    except (subprocess.CalledProcessError, json.JSONDecodeError, OSError):
         return None
 
 

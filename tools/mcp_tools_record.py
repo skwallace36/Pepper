@@ -51,7 +51,7 @@ def register_record_tools(mcp):
                 try:
                     _active_recordings[udid]["proc"].send_signal(signal.SIGINT)
                     _active_recordings[udid]["proc"].wait(timeout=5)
-                except Exception:
+                except OSError:
                     pass
                 del _active_recordings[udid]
 
