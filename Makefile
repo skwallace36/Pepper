@@ -23,7 +23,7 @@ LOGS_DIR    := $(PROJECT_DIR)/build/logs
 
 .PHONY: help build deploy launch kill relaunch ping check \
         logs clean test-client pepper-ctl test-app coverage coverage-check \
-        docs setup
+        docs setup agent agent-monitor agent-status
 
 # ============================================================
 # Help
@@ -169,6 +169,22 @@ docs: coverage
 ## setup: Install deps, verify env, set up git hooks
 setup:
 	@bash "$(PROJECT_DIR)/scripts/setup.sh"
+
+# ============================================================
+# Agent System
+# ============================================================
+
+## agent: Run an agent (e.g. make agent TYPE=bugfix)
+agent:
+	@./scripts/agent-runner.sh "$(TYPE)"
+
+## agent-monitor: Live tail of agent events
+agent-monitor:
+	@./scripts/agent-monitor.sh
+
+## agent-status: Replay all agent events
+agent-status:
+	@./scripts/agent-monitor.sh --replay
 
 ## clean: Clean build artifacts
 clean:
