@@ -162,7 +162,7 @@ if [ ! -f "$PROMPT_FILE" ]; then
 fi
 
 # Daily budget enforcement
-# Per-type: $40/day, Total: $150/day
+# Per-type: $75/day, Total: $300/day
 TODAY=$(date -u +%Y-%m-%d)
 sum_cost() {
   awk -F'"cost_usd":' "/$1/"'{split($2,a,/[^0-9.]/); s+=a[1]} END{printf "%.2f",s+0}' "$EVENTS" 2>/dev/null || echo "0.00"
@@ -170,14 +170,14 @@ sum_cost() {
 TYPE_COST_TODAY=$(sum_cost "\"agent\":\"${TYPE}\".*${TODAY}")
 TOTAL_COST_TODAY=$(sum_cost "${TODAY}")
 
-if [ "$(echo "$TYPE_COST_TODAY > 40" | bc)" = "1" ]; then
+if [ "$(echo "$TYPE_COST_TODAY > 75" | bc)" = "1" ]; then
   emit "failed" ",\"detail\":\"daily budget exceeded for ${TYPE}: \$${TYPE_COST_TODAY}\""
-  echo "Daily budget exceeded for ${TYPE}: \$${TYPE_COST_TODAY}/\$40. Skipping."
+  echo "Daily budget exceeded for ${TYPE}: \$${TYPE_COST_TODAY}/\$75. Skipping."
   exit 0
 fi
-if [ "$(echo "$TOTAL_COST_TODAY > 150" | bc)" = "1" ]; then
+if [ "$(echo "$TOTAL_COST_TODAY > 300" | bc)" = "1" ]; then
   emit "failed" ",\"detail\":\"total daily budget exceeded: \$${TOTAL_COST_TODAY}\""
-  echo "Total daily budget exceeded: \$${TOTAL_COST_TODAY}/\$150. Skipping."
+  echo "Total daily budget exceeded: \$${TOTAL_COST_TODAY}/\$300. Skipping."
   exit 0
 fi
 
