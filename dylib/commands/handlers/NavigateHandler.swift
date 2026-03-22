@@ -93,6 +93,16 @@ struct NavigateHandler: PepperHandler {
             return .error(id: command.id, message: "No navigation controller or presenting VC to pop from")
         }
         guard navController.pepper_canPop else {
+            // Can't pop the nav stack — try dismissing a modal presentation instead.
+            // This handles SwiftUI .sheet() with an embedded NavigationStack: the nav
+            // controller is found as a child but has depth 1, so we dismiss the sheet.
+            if topVC.presentingViewController != nil {
+                topVC.dismiss(animated: true)
+                return .ok(id: command.id, data: [
+                    "action": AnyCodable("dismiss"),
+                    "dismissed": AnyCodable(String(describing: type(of: topVC)))
+                ])
+            }
             return .error(id: command.id, message: "Already at root of navigation stack")
         }
 
