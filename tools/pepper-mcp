@@ -500,15 +500,17 @@ async def deploy(
     simulator: Optional[str] = Field(default=None, description="Simulator UDID"),
     bundle_id: Optional[str] = Field(default=None, description="App bundle ID (default: from .env)"),
     dylib_path: Optional[str] = Field(default=None, description="Path to Pepper dylib (default: from .env)"),
+    skip_privacy: bool = Field(default=False, description="Skip auto-granting privacy permissions (photos, camera, microphone, contacts, calendar, location)"),
 ) -> str:
     """Terminate and relaunch the app with Pepper dylib injection.
     Does NOT rebuild — use `build` or `iterate` for that.
-    Use this when you just need to restart the app (e.g. after a crash)."""
+    Use this when you just need to restart the app (e.g. after a crash).
+    By default, grants common privacy permissions before launch (opt out with skip_privacy=true)."""
     try:
         sim = _resolve_simulator(simulator)
     except RuntimeError as e:
         return str(e)
-    return await _deploy_app(sim, send_fn=send_command, bundle_id=bundle_id, dylib_path=dylib_path)
+    return await _deploy_app(sim, send_fn=send_command, bundle_id=bundle_id, dylib_path=dylib_path, skip_privacy=skip_privacy)
 
 
 if __name__ == "__main__":
