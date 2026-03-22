@@ -2,15 +2,15 @@
 
 Current state of the project, known issues, and prioritized work.
 
-For research/ideas from other tools, see `docs/RESEARCH.md`.
-For command-by-command test results, see `test-app/COVERAGE.md` (auto-generated).
+For research/ideas, see `docs/RESEARCH.md`.
+For test results, see `test-app/COVERAGE.md` (auto-generated).
 For known bugs, see `BUGS.md`.
 
 ## Current State
 
-Pepper works well as a dylib injected into iOS simulator apps. The MCP server exposes 40+ commands. Core functionality — `look`, `tap`, `scroll`, `heap` — is solid against UIKit-heavy apps (tested extensively against Fi).
+Pepper works well as a dylib injected into iOS simulator apps. The MCP server exposes 46 tools. Core functionality — `look`, `tap`, `scroll`, `heap` — is solid against UIKit-heavy apps.
 
-**What's new:** A purpose-built test app (`test-app/`, bundle ID `com.pepper.testapp`) now exists to test Pepper against generic SwiftUI/UIKit patterns without any Fi dependency. First test run (2026-03-21) surfaced 3 bugs.
+A purpose-built test app (`test-app/`, bundle ID `com.pepper.testapp`) exists for testing Pepper against generic SwiftUI/UIKit patterns. First test run (2026-03-21) surfaced 3 bugs (see `BUGS.md`).
 
 ## Next Up
 
@@ -18,10 +18,10 @@ Pepper works well as a dylib injected into iOS simulator apps. The MCP server ex
 BUG-001 through BUG-003. Each represents a category of SwiftUI app that Pepper can't handle properly.
 
 ### Priority 2: Complete test app coverage
-Run every command against the test app and update `test-app/COVERAGE.md`. Most commands are still `untested`. This will likely surface more bugs.
+Run every command against the test app and update `test-app/coverage-status.json`. Most commands are still `untested`. This will likely surface more bugs.
 
 ### Priority 3: Generic mode cleanup
-Running without an adapter exposed that the build script fails if `APP_ADAPTER_TYPE` isn't set in `.env` (`set -u` + unbound var). There may be other Fi assumptions baked into core code that break in generic mode.
+Running without an adapter exposed that the build script fails if `APP_ADAPTER_TYPE` isn't set in `.env` (`set -u` + unbound var). There may be other app-specific assumptions baked into core code that break in generic mode.
 
 ### Priority 4: Test against open source apps
 After the test app is green, inject into a real app (Wikipedia, Ice Cubes, etc.) to pressure-test element discovery and interaction against complex real-world UIs.
@@ -34,4 +34,4 @@ After the test app is green, inject into a real app (Wikipedia, Ice Cubes, etc.)
 
 ---
 
-**Routing:** Bugs → `BUGS.md` | Test results → `test-app/COVERAGE.md` (auto-generated, run `make coverage`) | Research ideas → `docs/RESEARCH.md`
+**Routing:** Bugs → `BUGS.md` | Test results → `test-app/COVERAGE.md` (auto-generated) | Research → `docs/RESEARCH.md`
