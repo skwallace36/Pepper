@@ -138,6 +138,16 @@ else
     pass "Pre-commit hook installed (just now)"
 fi
 
+# Pre-push hook (auto-rebase agent branches)
+PUSH_HOOK_PATH="$REPO_DIR/.git/hooks/pre-push"
+PUSH_SCRIPT_PATH="../../scripts/hooks/pre-push-rebase.sh"
+if [ -L "$PUSH_HOOK_PATH" ] && [ "$(readlink "$PUSH_HOOK_PATH")" = "$PUSH_SCRIPT_PATH" ]; then
+    pass "Pre-push hook installed (auto-rebase)"
+else
+    ln -sf "$PUSH_SCRIPT_PATH" "$PUSH_HOOK_PATH"
+    pass "Pre-push hook installed (just now)"
+fi
+
 echo ""
 
 # --- Build test ---
