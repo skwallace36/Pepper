@@ -606,17 +606,20 @@ async def cmd_wait_for_server(args):
             ws = RawWebSocket.connect(args.host, args.port, timeout=10)
             try:
                 ws.send(json.dumps(msg))
-                raw = ws.recv(timeout=10)
-                resp = json.loads(raw)
-                if resp.get("status") == "ok":
-                    if not args.raw_json:
-                        print(green(f"Server ready (attempt {attempt})"))
-                    else:
-                        print(json.dumps({"status": "ok", "attempts": attempt}))
-                    return
-                # Got a response but not "ok" — might be an event, keep trying
-                if not args.raw_json:
-                    print(dim(f"[attempt {attempt}] got response: {raw[:100]}"), file=sys.stderr)
+                # Read frames until we get the ping response (skip events)
+                inner_deadline = time.monotonic() + 10
+                while time.monotonic() < inner_deadline:
+                    raw = ws.recv(timeout=max(0.5, inner_deadline - time.monotonic()))
+                    resp = json.loads(raw)
+                    if "event" in resp:
+                        continue  # skip broadcast events
+                    if resp.get("status") == "ok":
+                        if not args.raw_json:
+                            print(green(f"Server ready (attempt {attempt})"))
+                        else:
+                            print(json.dumps({"status": "ok", "attempts": attempt}))
+                        return
+                    break  # non-event, non-ok response
             finally:
                 ws.close()
         except (ConnectionRefusedError, ConnectionError, OSError, TimeoutError) as e:
