@@ -41,6 +41,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import pepper_sessions
 
 from pepper_common import DEFAULT_HOST, PORT_DIR, load_env, discover_port as _discover_port
+import pepper_format
+from pepper_format import format_look
 
 DEFAULT_PORT = None  # Auto-discover from port files
 
@@ -53,39 +55,17 @@ def discover_port(simulator=None):
         print(str(e), file=sys.stderr)
         sys.exit(1)
 
-# --- Colors ---
+# --- Colors (from pepper_format) ---
 
 USE_COLOR = sys.stdout.isatty()
+pepper_format.USE_COLOR = USE_COLOR
 
-
-def _c(code, text):
-    if USE_COLOR:
-        return f"\033[{code}m{text}\033[0m"
-    return text
-
-
-def green(text):
-    return _c("32", text)
-
-
-def red(text):
-    return _c("31", text)
-
-
-def yellow(text):
-    return _c("33", text)
-
-
-def cyan(text):
-    return _c("36", text)
-
-
-def dim(text):
-    return _c("2", text)
-
-
-def bold(text):
-    return _c("1", text)
+green = pepper_format.green
+red = pepper_format.red
+yellow = pepper_format.yellow
+cyan = pepper_format.cyan
+dim = pepper_format.dim
+bold = pepper_format.bold
 
 
 # --- Protocol helpers ---
@@ -387,121 +367,7 @@ async def cmd_look(args):
     msg = make_command("introspect", {"mode": "map"})
     resp = await send_command(args.host, args.port, msg, args.timeout, args.verbose)
     if not args.raw_json and resp.get("status") == "ok":
-        data = resp.get("data", {})
-        screen = data.get("screen", "unknown")
-        rows = data.get("rows", [])
-        ni = data.get("non_interactive", [])
-
-        # Count interactive elements across rows
-        interactive_count = sum(len(r.get("elements", [])) for r in rows)
-
-        # Simplify screen name — strip SwiftUI modifier noise
-        simple_screen = screen
-        # Extract the innermost view name from nested modifier wrappers
-        import re
-        m = re.search(r'<(_\w+_view)', screen)
-        if m:
-            simple_screen = m.group(1)
-        elif len(screen) > 60:
-            simple_screen = screen[:57] + "..."
-
-        # Detect tab bar (last row often has tab elements)
-        tab_info = ""
-        for row in rows:
-            for e in row.get("elements", []):
-                traits = e.get("traits", [])
-                label = e.get("label", "")
-                # Tab bar items: bottom of screen, have "selected" trait
-                if "selected" in traits and e.get("center", [0, 0])[1] > 700:
-                    tab_info = label
-                    break
-            if tab_info:
-                break
-
-        # Header
-        header = f"Screen: {bold(simple_screen)}"
-        if tab_info:
-            header += f" | Tab: {bold(tab_info)}"
-        header += f"  ({interactive_count} interactive, {len(ni)} text)"
-        print(header)
-        print()
-
-        for row in rows:
-            elements = row.get("elements", [])
-            if not elements:
-                continue
-            y_range = row.get("y_range", [0, 0])
-            print(dim(f"[y={y_range[0]}-{y_range[1]}]"))
-            for e in elements:
-                etype = e.get("type", "?")
-                label = e.get("label", "")
-                tap_cmd = e.get("tap_cmd", "")
-                icon = e.get("icon_name", "")
-                heuristic = e.get("heuristic", "")
-                badge = e.get("badge", "")
-                traits = e.get("traits", [])
-                suggested = e.get("suggested_tap", "")
-
-                # Status flags
-                flags = ""
-                if e.get("selected") or "selected" in traits:
-                    flags += green(" [selected]")
-                toggle_state = e.get("toggle_state", "")
-                if toggle_state:
-                    flags += green(f" [{toggle_state}]") if toggle_state == "on" else yellow(f" [{toggle_state}]")
-                if "notEnabled" in traits:
-                    flags += yellow(" [disabled]")
-                if not e.get("hit_reachable", True):
-                    flags += red(" [blocked]")
-
-                # Element description
-                idx = e.get("index")  # ordinal index for duplicate labels
-                value = e.get("value", "")
-                if icon and not label:
-                    desc = f"[{icon}]"
-                elif label:
-                    # Truncate long labels
-                    disp = label if len(label) <= 50 else label[:47] + "..."
-                    idx_suffix = f" [{idx}]" if idx else ""
-                    val_suffix = f" = {value}" if value and etype in ("textField", "searchField", "textView") else ""
-                    desc = f'"{disp}"{idx_suffix}{val_suffix}'
-                else:
-                    desc = f"({heuristic or etype})"
-
-                # Type prefix
-                type_abbrev = {"button": "btn", "staticText": "txt", "textField": "fld",
-                               "switch": "tog", "segment": "seg", "cell": "cell",
-                               "slider": "sld", "image": "img"}
-                prefix = badge if badge else type_abbrev.get(etype, etype[:4])
-
-                # Tap instruction
-                if tap_cmd == "text" and label:
-                    if idx:
-                        tap = f'tap text:"{label}" index:{idx}'
-                    elif len(label) <= 40:
-                        tap = f'tap text:"{label}"'
-                    else:
-                        tap = f'tap point:{e["center"][0]},{e["center"][1]}'
-                elif tap_cmd == "icon_name" and (icon or suggested):
-                    tap = f"tap icon:{icon or suggested}"
-                elif tap_cmd == "heuristic" and (heuristic or suggested):
-                    tap = f"tap heuristic:{suggested or heuristic}"
-                elif tap_cmd == "point" or tap_cmd == "":
-                    cx, cy = e.get("center", [0, 0])
-                    tap = f"tap point:{cx},{cy}"
-                else:
-                    tap = f"tap {tap_cmd}"
-
-                print(f"  {cyan(prefix):>8s}  {desc:<52s} → {tap}{flags}")
-            print()
-
-        # Non-interactive text (compact)
-        if ni:
-            print(dim("--- text ---"))
-            for e in ni:
-                label = e.get("label", "")
-                if label:
-                    print(f"  {dim(label)}")
+        print(format_look(resp))
         return
     output_response(resp, args.raw_json)
 
@@ -788,6 +654,7 @@ def main():
     if args.no_color:
         global USE_COLOR
         USE_COLOR = False
+        pepper_format.USE_COLOR = False
 
     # Load .env defaults — CLI flags take precedence
     env = load_env()
