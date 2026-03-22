@@ -1,5 +1,10 @@
 import SwiftUI
 import UserNotifications
+import AVFoundation
+import CoreLocation
+import Contacts
+import EventKit
+import AppTrackingTransparency
 
 @main
 struct PepperTestApp: App {
@@ -45,13 +50,58 @@ extension String: @retroactive Identifiable {
 // MARK: - App Delegate (notifications + seeding)
 
 class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
+    let locationManager = CLLocationManager()
+
     func application(
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
         UNUserNotificationCenter.current().delegate = self
         AppSeeding.seedAll()
+        requestAllPermissions()
         return true
+    }
+
+    /// Request all permission types so Pepper's authorization swizzles can be tested.
+    /// On a fresh simctl install, each of these triggers a system dialog.
+    /// If Pepper's swizzles are working, the dialogs are auto-granted silently.
+    private func requestAllPermissions() {
+        // Notifications
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, _ in
+            print("[PepperTest] Notification auth: \(granted)")
+        }
+
+        // Camera
+        AVCaptureDevice.requestAccess(for: .video) { granted in
+            print("[PepperTest] Camera auth: \(granted)")
+        }
+
+        // Microphone
+        AVCaptureDevice.requestAccess(for: .audio) { granted in
+            print("[PepperTest] Microphone auth: \(granted)")
+        }
+
+        // Location
+        locationManager.requestWhenInUseAuthorization()
+
+        // Contacts
+        CNContactStore().requestAccess(for: .contacts) { granted, _ in
+            print("[PepperTest] Contacts auth: \(granted)")
+        }
+
+        // Calendar
+        if #available(iOS 17.0, *) {
+            EKEventStore().requestFullAccessToEvents { granted, _ in
+                print("[PepperTest] Calendar auth: \(granted)")
+            }
+        }
+
+        // Tracking (must be called after a short delay — requires UI to be visible)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            ATTrackingManager.requestTrackingAuthorization { status in
+                print("[PepperTest] Tracking auth: \(status.rawValue)")
+            }
+        }
     }
 
     // Show notifications even when app is in foreground
