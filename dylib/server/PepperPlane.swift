@@ -113,6 +113,10 @@ public final class PepperPlane {
         // without showing system dialogs (SpringBoard remote alerts).
         PepperEventKitInterceptor.shared.install()
 
+        // Install window key-status monitor — detects system dialogs (SpringBoard alerts)
+        // that our present() swizzle can't intercept.
+        PepperWindowMonitor.shared.install()
+
         // Install inline overlay scroll observer — swizzles UIScrollView.setContentOffset
         // to auto-refresh builder highlights when scrolling stops.
         PepperInlineOverlay.shared.install()
