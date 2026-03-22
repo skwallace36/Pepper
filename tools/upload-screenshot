@@ -21,7 +21,13 @@ import subprocess
 import sys
 from urllib.parse import quote
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from pepper_common import require_tool
+
 RELEASE_TAG = "pr-screenshots"
+
+# Validate gh CLI is available (used for all GitHub operations)
+require_tool("gh", install_hint="brew install gh")
 
 
 def detect_repo() -> str:
