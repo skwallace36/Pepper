@@ -172,8 +172,22 @@ pass "App launched on port $CI_PORT"
 
 # --- Step 6: Wait for Pepper server ---
 step "Waiting for Pepper server (timeout: ${CI_TIMEOUT}s)"
-python3 "$PROJECT_DIR/tools/pepper-ctl" --host 127.0.0.1 --port "$CI_PORT" \
-    wait-for-server --wait-timeout "$CI_TIMEOUT"
+python3 -c "
+import socket, time, sys
+deadline = time.monotonic() + int(sys.argv[1])
+attempt = 0
+while time.monotonic() < deadline:
+    attempt += 1
+    try:
+        s = socket.create_connection(('127.0.0.1', int(sys.argv[2])), timeout=2)
+        s.close()
+        print(f'Server reachable (attempt {attempt})')
+        sys.exit(0)
+    except (ConnectionRefusedError, OSError):
+        time.sleep(1)
+print(f'Timeout: port not reachable after {sys.argv[1]}s ({attempt} attempts)', file=sys.stderr)
+sys.exit(1)
+" "$CI_TIMEOUT" "$CI_PORT"
 pass "Server ready"
 
 # --- Step 7: Smoke tests ---
