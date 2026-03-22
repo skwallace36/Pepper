@@ -19,7 +19,6 @@ import UIKit
 ///     → Background, wait 2s, then foreground
 struct LifecycleHandler: PepperHandler {
     let commandName = "lifecycle"
-    let platform: PepperPlatform
 
     func handle(_ command: PepperCommand) -> PepperResponse {
         guard let action = command.params?["action"]?.stringValue else {

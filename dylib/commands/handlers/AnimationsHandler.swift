@@ -17,7 +17,6 @@ import QuartzCore
 ///   {"cmd":"animations","params":{"action":"speed","speed":0}}
 struct AnimationsHandler: PepperHandler {
     let commandName = "animations"
-    let platform: PepperPlatform
 
     func handle(_ command: PepperCommand) -> PepperResponse {
         let action = command.params?["action"]?.stringValue ?? "scan"
