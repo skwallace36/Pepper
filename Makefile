@@ -62,10 +62,10 @@ launch:
 		exit 1; \
 	fi
 	@python3 "$(TOOLS_DIR)/check-sim-available.py" "$(SIMULATOR_ID)" "$(TOOLS_DIR)"
-	@echo "Launching $(BUNDLE_ID) with Pepper injection..."
+	@echo "Launching $(BUNDLE_ID) on $(SIMULATOR_ID) with Pepper injection..."
 	-@xcrun simctl terminate "$(SIMULATOR_ID)" "$(BUNDLE_ID)" 2>/dev/null
 	@open -a Simulator --args -CurrentDeviceUDID "$(SIMULATOR_ID)" 2>/dev/null || true
-	@sleep 2
+	@xcrun simctl bootstatus "$(SIMULATOR_ID)" -b 2>/dev/null || sleep 2
 	@xcrun simctl privacy "$(SIMULATOR_ID)" grant all "$(BUNDLE_ID)" 2>/dev/null || true
 	@xcrun simctl privacy "$(SIMULATOR_ID)" grant photos "$(BUNDLE_ID)" 2>/dev/null || true
 	@xcrun simctl privacy "$(SIMULATOR_ID)" grant photos-add "$(BUNDLE_ID)" 2>/dev/null || true
