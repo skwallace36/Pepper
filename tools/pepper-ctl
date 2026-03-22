@@ -40,66 +40,18 @@ except ImportError:
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import pepper_sessions
 
-from pepper_common import DEFAULT_HOST, PORT_DIR, load_env
+from pepper_common import DEFAULT_HOST, PORT_DIR, load_env, discover_port as _discover_port
 
 DEFAULT_PORT = None  # Auto-discover from port files
 
 
 def discover_port(simulator=None):
-    """Auto-discover Pepper port from port files written by the dylib.
-
-    If simulator UDID is given, reads that specific port file.
-    Otherwise, if exactly one live port file exists, uses it.
-    Falls back to 8765 for backwards compatibility.
-    Validates port liveness — cleans stale port files automatically.
-    """
-    if simulator:
-        path = os.path.join(PORT_DIR, f"{simulator}.port")
-        if os.path.exists(path):
-            try:
-                port = int(open(path).read().strip())
-                if pepper_sessions.quick_port_check(port):
-                    return port
-                # Stale — clean up
-                try:
-                    os.remove(path)
-                except OSError:
-                    pass
-                print(f"Warning: Stale port file for {simulator} (cleaned up), falling back to 8765", file=sys.stderr)
-            except (ValueError, OSError):
-                pass
-        print(f"Warning: No port file for simulator {simulator}, falling back to 8765", file=sys.stderr)
-        return 8765
-
-    # Auto-discover: look for live port files
-    if os.path.isdir(PORT_DIR):
-        live_ports = []
-        for f in sorted(os.listdir(PORT_DIR)):
-            if not f.endswith(".port"):
-                continue
-            port_path = os.path.join(PORT_DIR, f)
-            try:
-                port = int(open(port_path).read().strip())
-            except (ValueError, OSError):
-                continue
-            if pepper_sessions.quick_port_check(port):
-                live_ports.append((f.replace(".port", ""), port))
-            else:
-                # Stale — clean up
-                try:
-                    os.remove(port_path)
-                except OSError:
-                    pass
-
-        if len(live_ports) == 1:
-            return live_ports[0][1]
-        elif len(live_ports) > 1:
-            print(f"Multiple simulators running ({len(live_ports)}). Use --simulator <UDID> to pick one:", file=sys.stderr)
-            for udid, port in live_ports:
-                print(f"  {udid} → port {port}", file=sys.stderr)
-            sys.exit(1)
-
-    return 8765
+    """Auto-discover Pepper port, falling back to 8765 for CLI use."""
+    try:
+        return _discover_port(simulator=simulator, fallback=8765)
+    except RuntimeError as e:
+        print(str(e), file=sys.stderr)
+        sys.exit(1)
 
 # --- Colors ---
 
