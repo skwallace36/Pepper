@@ -67,11 +67,11 @@ Bugs: see [`BUGS.md`](../BUGS.md)
 | `swipe` | right | pass | List tab (30 rows) | Swiped right from center (201,437) to (601,437). Command executed without error. Gesture injected correctly. |
 | `watch` | — | untested | Watch counter label, then tap |  |
 | `unwatch` | — | untested | After watch |  |
-| `network` | start | untested | Before HTTP fetch |  |
-| `network` | stop | untested | After start |  |
-| `network` | status | untested | Any state |  |
-| `network` | log | untested | After start + Fetch HTTP button |  |
-| `network` | clear | untested | After log capture |  |
+| `network` | start | pass | Any state | Returns {active:true, buffer_size:500}. Accepts buffer_size param. URLProtocol-based interception activates correctly. |
+| `network` | stop | pass | After start | Returns {active:false, transactions_captured:N}. Correctly deactivates interception. |
+| `network` | status | pass | Any state | Returns active, buffer_size, buffer_count, total_recorded. All fields accurate across start/stop/clear lifecycle. |
+| `network` | log | pass | After start + Fetch HTTP button | Returns {count:N, transactions:[...]}. Each transaction has request (method, url, headers), response (status_code, headers, body, content_length), timing, and id. Captured GET https://httpbin.org/json → 200 with full JSON body. Limit param works correctly. |
+| `network` | clear | pass | After log capture | Returns {cleared:true}. Verified buffer_count drops to 0 after clear, total_recorded preserved. |
 | `test` | start | untested | Any state |  |
 | `test` | result | untested | After running commands |  |
 | `test` | reset | untested | After result |  |
@@ -118,10 +118,10 @@ Bugs: see [`BUGS.md`](../BUGS.md)
 | `vars` | mirror | pass | AppState | Returns detailed Mirror-based property list with type, writable, published flags. Tested: mirror NestedState shows innerValue, innerCount, plus $observationRegistrar. More detail than list/dump. |
 | `layers` | — | pass | Misc tab (gradient + shadow), List tab | BUG-002 FIXED: no longer crashes on gradient views. Returns full CALayer tree with properties (cornerRadius, shadow, gradient colors/locations, opacity, masks). Tested: Misc tab gradient area returned GradientLayer with colors [#0088FF, #9069EF, #CB30E0], shadow properties. List tab returned CellHostingView layer tree. Controls tab times out (deep hierarchy) — not a crash, just slow. Error case: missing point param returns proper error. |
 | `console` | start | pass | Any state |  |
-| `console` | stop | untested | After start |  |
-| `console` | status | untested | Any state |  |
-| `console` | log | untested | After start + trigger log output |  |
-| `console` | clear | untested | After log capture |  |
+| `console` | stop | pass | After start | Returns {active:false, total_captured:N}. Correctly deactivates capture. Verified status shows active=false after stop. |
+| `console` | status | pass | Any state | Returns active, buffer_size, buffer_count, total_captured. Tested before/after start/stop/clear. State transitions are correct. |
+| `console` | log | pass | After start + trigger log output | Returns {count:N, lines:[]}. Supports limit and filter params. Test app produces no stdout/stderr output so lines are always empty, but command structure and params work correctly. |
+| `console` | clear | pass | After log capture | Returns {cleared:true}. Verified buffer_count and total_captured reset to 0 after clear. |
 | `animations` | scan | untested | PulsingDot + SpinnerView on Misc tab |  |
 | `animations` | trace | untested | Same animated views |  |
 | `animations` | speed | untested | Same animated views |  |
@@ -159,18 +159,18 @@ Bugs: see [`BUGS.md`](../BUGS.md)
 | `hook` | list | untested | After install |  |
 | `hook` | log | untested | After install + trigger hooked method |  |
 | `hook` | clear | untested | After log capture |  |
-| `timeline` | query | untested | Run commands first, then query |  |
-| `timeline` | status | untested | Any state |  |
-| `timeline` | config | untested | Any state |  |
-| `timeline` | clear | untested | Any state |  |
+| `timeline` | query | pass | After running commands | Returns {count:N, events:[...]}. Each event has type, summary, timestamp_ms. Supports limit param, types array filter (tested ['network'] correctly filters to network-only), and filter text search. Showed command and network events with summaries like '200 GET /json (51ms, 429B)'. |
+| `timeline` | status | pass | Any state | Returns recording, buffer_size, buffer_count, total_recorded, enabled_types. Always-on flight recorder starts automatically. Default enabled_types: network, screen, command, console. |
+| `timeline` | config | pass | Any state | Accepts buffer_size, recording (bool), enabled_types params. Tested: buffer_size 2000→5000 (verified via subsequent status). recording=false pauses recording. Note: config response returns pre-update values due to async barrier dispatch — subsequent status shows correct values. |
+| `timeline` | clear | pass | Any state | Returns {cleared:true}. Verified buffer_count drops to 0 after clear. total_recorded preserved (historical count). Error case: unknown action returns proper error listing available actions. |
 
 ## Summary
 
 **141 test points** across 49 commands.
 
-- pass: 54
+- pass: 67
 - fail: 7
-- untested: 77
+- untested: 64
 
 ## Test App Gaps
 
