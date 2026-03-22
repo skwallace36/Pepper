@@ -48,14 +48,31 @@ cleanup() {
   done
   git worktree prune 2>/dev/null || true
 
-  # Safety net: if no final event was emitted, emit one now
+  # Safety net: if no final event was emitted, emit one now with diagnostic info
   if [ "$FINAL_EVENT_EMITTED" = false ] && [ -n "$START" ]; then
     local end_ts
     end_ts=$(date +%s)
     local dur=$((end_ts - START))
     local cost
     cost=$(jq -r '.total_cost_usd // 0' "$TRANSCRIPT" 2>/dev/null || echo 0)
-    emit "failed" ",\"detail\":\"runner exited without final event (trap cleanup)\",\"cost_usd\":${cost},\"duration_s\":${dur}"
+    # Diagnose the failure reason
+    local reason="unknown"
+    if [ -f "$TRANSCRIPT" ] && [ ! -s "$TRANSCRIPT" ]; then
+      reason="empty transcript (likely auth failure — run 'claude auth status')"
+    elif [ -f "$TRANSCRIPT" ]; then
+      local first_line
+      first_line=$(head -c 100 "$TRANSCRIPT" 2>/dev/null | tr '\n' ' ')
+      if echo "$first_line" | grep -qi "not logged in\|login\|auth"; then
+        reason="auth failure: $first_line"
+      elif echo "$first_line" | grep -qi "rate limit\|429"; then
+        reason="rate limited"
+      else
+        reason="unexpected exit (transcript: ${#first_line} chars)"
+      fi
+    else
+      reason="no transcript file created"
+    fi
+    emit "failed" ",\"detail\":\"${reason}\",\"cost_usd\":${cost},\"duration_s\":${dur}"
   fi
 
   # Release lockfile
