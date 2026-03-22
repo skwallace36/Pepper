@@ -15,7 +15,7 @@ Statuses: `open` → `in-progress` → `pr-open` → `fixed`.
 
 - **BUG-005** `[dylib/tap]` `status:open` — `tap.tab` fails with SwiftUI `TabView`: "No tab bar found in view hierarchy". `findTabBarButtons()` only searches for `UITabBar` and class names containing "TabBar", but SwiftUI `TabView` renders tab buttons as accessibility elements, not UIKit views. Workaround: use `tap text:"TabName"`. *(found: 2026-03-22, GH #8)*
 
-- **BUG-006** `[dylib/tap]` `status:open` — `tap.element` cannot find SwiftUI `.accessibilityIdentifier()` elements. `pepper_findElement(id:)` searches `UIView.accessibilityIdentifier` recursively, but SwiftUI identifiers live in the accessibility system, not on backing UIViews. Works correctly for UIKit elements. *(found: 2026-03-22, GH #9)*
+- **BUG-006** `[dylib/tap]` `status:in-progress` — `tap.element` cannot find SwiftUI `.accessibilityIdentifier()` elements. `pepper_findElement(id:)` searches `UIView.accessibilityIdentifier` recursively, but SwiftUI identifiers live in the accessibility system, not on backing UIViews. Works correctly for UIKit elements. *(found: 2026-03-22, GH #9)*
 
 ---
 
