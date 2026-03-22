@@ -211,12 +211,20 @@ agents-uninstall:
 agent-cleanup:
 	@./scripts/agent-cleanup.sh
 
-## agent-kill: Activate kill switch (stops all agents within 5s)
+## agent-kill: Kill all running agents immediately + prevent new launches
 agent-kill:
-	@touch .pepper-kill && echo "Kill switch activated. Agents will stop within 5 seconds."
-	@echo "Run 'make agent-resume' to deactivate."
+	@touch .pepper-kill
+	@for lock in build/logs/.lock-*; do \
+		[ -f "$$lock" ] || continue; \
+		pid=$$(cat "$$lock" 2>/dev/null); \
+		if kill -0 "$$pid" 2>/dev/null; then \
+			echo "Killing $$lock (PID $$pid)"; \
+			kill -TERM "$$pid" 2>/dev/null || true; \
+		fi; \
+	done
+	@echo "All agents killed. Kill switch active — no new launches until 'make agent-resume'."
 
-## agent-resume: Deactivate kill switch
+## agent-resume: Deactivate kill switch, allow new agent launches
 agent-resume:
 	@rm -f .pepper-kill && echo "Kill switch deactivated. Agents can run."
 
