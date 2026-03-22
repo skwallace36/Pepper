@@ -341,7 +341,7 @@ _register_adapter_tools()
 register_nav_tools(mcp, send_command, resolve_and_send, act_and_look)
 register_state_tools(mcp, resolve_and_send)
 register_debug_tools(mcp, resolve_and_send)
-register_system_tools(mcp, resolve_and_send, act_and_look)
+register_system_tools(mcp, resolve_and_send, act_and_look, _resolve_simulator)
 register_record_tools(mcp)
 register_sim_tools(mcp, resolve_and_send, _resolve_simulator)
 
