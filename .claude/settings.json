@@ -1,0 +1,62 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(*)",
+      "Read(*)",
+      "Edit(*)",
+      "Write(*)",
+      "mcp__pepper__*",
+      "mcp__playwright__*",
+      "WebFetch(*)",
+      "WebSearch(*)"
+    ],
+    "deny": [
+      "Bash(git push --force*)",
+      "Bash(git push -f*)",
+      "Bash(git push*main*)",
+      "Bash(git push*master*)",
+      "Bash(git push origin main*)",
+      "Bash(git push origin master*)",
+      "Bash(git reset --hard*)",
+      "Bash(git checkout -- *)",
+      "Bash(git clean -f*)",
+      "Bash(git branch -D *)",
+      "Bash(rm -rf /*)",
+      "Bash(rm -rf ~*)",
+      "Bash(rm -rf .*)",
+      "Bash(sudo *)",
+      "Bash(chmod -R 777*)",
+      "Bash(chown *)",
+      "Bash(launchctl *)",
+      "Bash(defaults write *)",
+      "Bash(networksetup *)",
+      "Bash(diskutil *)",
+      "Bash(killall *)",
+      "Bash(pkill *)",
+      "Bash(brew uninstall*)",
+      "Bash(brew remove*)",
+      "Bash(pip install*)",
+      "Bash(pip3 install*)",
+      "Bash(npm install -g*)",
+      "Bash(npx -y*)",
+      "Read(~/.ssh/*)",
+      "Read(~/.gnupg/*)",
+      "Read(~/.aws/*)",
+      "Read(*/.env)",
+      "Read(*/.env.*)",
+      "Write(~/.zshrc)",
+      "Write(~/.bashrc)",
+      "Write(~/.gitconfig)",
+      "Write(~/.ssh/*)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "type": "command",
+        "matcher": "Bash",
+        "command": "input=$(cat); cmd=$(echo \"$input\" | jq -r '.tool_input.command // empty'); if echo \"$cmd\" | grep -qE 'git push' && echo \"$cmd\" | grep -qE '(main|master)'; then echo 'DENY: push to main blocked — use a branch + PR'; exit 0; fi"
+      }
+    ]
+  }
+}
