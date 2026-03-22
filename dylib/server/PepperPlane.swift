@@ -27,12 +27,6 @@ public final class PepperPlane {
     /// Resolved simulator UDID (from env var or auto-detection).
     private var resolvedUDID: String?
 
-    // MARK: - Platform abstraction
-
-    /// The platform factory, providing access to all platform-specific subsystems.
-    /// Set during `start()` — nil before the control plane is running.
-    private(set) var platform: PepperPlatform?
-
     // MARK: - Internal components
 
     private var server: PepperServer?
@@ -66,10 +60,6 @@ public final class PepperPlane {
 
         // Wire app-specific configuration before anything else
         PepperAppConfig.shared.appBootstrap?()
-
-        // Create the platform factory — provides access to all iOS subsystems
-        // through the platform abstraction layer.
-        self.platform = IOSPlatform()
 
         // Register adapter-provided command handlers
         for handler in PepperAppConfig.shared.additionalHandlers {
@@ -153,7 +143,6 @@ public final class PepperPlane {
 
         server?.stop()
         server = nil
-        platform = nil
         currentPort = nil
         pepperLog.eventSink = nil
         PepperState.shared.eventSink = nil

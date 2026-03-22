@@ -11,7 +11,6 @@ import UIKit
 ///     → Query current orientation without changing it
 struct OrientationHandler: PepperHandler {
     let commandName = "orientation"
-    let platform: PepperPlatform
 
     func handle(_ command: PepperCommand) -> PepperResponse {
         if let value = command.params?["value"]?.stringValue {

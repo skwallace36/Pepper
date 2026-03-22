@@ -23,10 +23,8 @@ All bugs tracked in GitHub Issues (`gh issue list --label bug`). Agent-addressab
 ### P2: Complete test app coverage
 Run every Pepper command against the test app. 132 untested command variants. Tracked as GitHub Issues. Will surface more bugs.
 
-### P3: Platform abstraction + Android port prep
-Restructure the iOS dylib so shared logic (command protocol, dispatcher, connection management, config, flight recorder) is cleanly separated from iOS-specific code (UIKit bridge, HID synthesis, method swizzling, Network.framework). Define platform protocols, wrap existing iOS code as the first implementation, migrate handlers to use the abstraction. This is pure refactoring — iOS keeps working at every step. Unblocks a future Android port. Full plan in `docs/plans/ANDROID-PORT.md`. Tracked as GitHub Issues.
-
 ### P3: Modularize `tools/` and clean up `pepper-mcp`
+
 `pepper-mcp` is a 2865-line monolith. Split into logical modules, extract shared code (`discover_port`, `load_env`, `format_look`) used by pepper-ctl/pepper-stream/test-client into a common library, and clean up the tools directory (inconsistent error handling, hardcoded paths, broad exception swallowing). Tracked as GitHub Issues.
 
 ### P4: CI/CD integration
@@ -49,6 +47,9 @@ Accessibility audit, touch failure debugging, layout inspector, performance prof
 
 ### P10: Agent token optimization
 Current agents use Opus for everything and re-read the full codebase each run. Opportunities: model selection per agent type (Haiku for pr-responder/researcher), pre-warmed context summaries, smaller focused prompts, skip redundant CLAUDE.md reads, caching-friendly prompt ordering. Track token usage per agent run.
+
+### P11: Android port (deferred)
+Not pursuing yet. A premature platform abstraction layer (~1,500 lines of unused protocols/wrappers) was built and deleted — zero handler migration completed. When Android is actually on the table, design the abstraction with real Android constraints in hand. Research plan in `docs/plans/ANDROID-PORT.md`. Related GitHub Issues closed as not-planned.
 
 ## Done
 
