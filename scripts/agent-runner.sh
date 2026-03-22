@@ -16,10 +16,16 @@ mkdir -p build/logs
 TIMEOUT_S=900
 
 AGENT_PID=""
+FINAL_EVENT_EMITTED=false
 
 emit() {
   local event="$1"; shift
   echo "{\"ts\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"agent\":\"${TYPE}\",\"event\":\"${event}\"$*}" >> "$EVENTS"
+}
+
+emit_final() {
+  FINAL_EVENT_EMITTED=true
+  emit "$@"
 }
 
 # Cleanup function — runs on ANY exit (normal, error, signal, timeout)
@@ -41,6 +47,16 @@ cleanup() {
     git worktree remove --force "$wt" 2>/dev/null || true
   done
   git worktree prune 2>/dev/null || true
+
+  # Safety net: if no final event was emitted, emit one now
+  if [ "$FINAL_EVENT_EMITTED" = false ] && [ -n "$START" ]; then
+    local end_ts
+    end_ts=$(date +%s)
+    local dur=$((end_ts - START))
+    local cost
+    cost=$(jq -r '.total_cost_usd // 0' "$TRANSCRIPT" 2>/dev/null || echo 0)
+    emit "failed" ",\"detail\":\"runner exited without final event (trap cleanup)\",\"cost_usd\":${cost},\"duration_s\":${dur}"
+  fi
 
   # Release lockfile
   rm -f "build/logs/.lock-${TYPE}" 2>/dev/null || true
@@ -173,7 +189,7 @@ if ! kill -0 "$AGENT_PID" 2>/dev/null; then
   DURATION=$((END - START))
   COST=$(jq -r '.total_cost_usd // .cost_usd // 0' "$TRANSCRIPT" 2>/dev/null || echo 0)
   DETAIL=$(head -c 200 "$TRANSCRIPT" 2>/dev/null | tr '\n' ' ' || echo "agent died immediately")
-  emit "failed" ",\"detail\":\"agent died in <3s (auth? crash?): $(echo "$DETAIL" | jq -Rs '.'| head -c 150)\",\"cost_usd\":${COST},\"duration_s\":${DURATION}"
+  emit_final "failed" ",\"detail\":\"agent died in <3s (auth? crash?): $(echo "$DETAIL" | jq -Rs '.'| head -c 150)\",\"cost_usd\":${COST},\"duration_s\":${DURATION}"
   echo "Agent died immediately. Transcript: $TRANSCRIPT"
   exit 1
 fi
@@ -211,14 +227,14 @@ COST=$(jq -r '.total_cost_usd // .cost_usd // 0' "$TRANSCRIPT" 2>/dev/null || ec
 
 # Emit final event based on outcome
 if [ "$TIMED_OUT" = true ]; then
-  emit "timeout" ",\"detail\":\"killed after ${TIMEOUT_S}s\",\"cost_usd\":${COST},\"duration_s\":${DURATION}"
+  emit_final "timeout" ",\"detail\":\"killed after ${TIMEOUT_S}s\",\"cost_usd\":${COST},\"duration_s\":${DURATION}"
 elif [ -f .pepper-kill ]; then
-  emit "killed" ",\"detail\":\"kill switch activated mid-run\",\"cost_usd\":${COST},\"duration_s\":${DURATION}"
+  emit_final "killed" ",\"detail\":\"kill switch activated mid-run\",\"cost_usd\":${COST},\"duration_s\":${DURATION}"
 elif [ $EXIT_CODE -ne 0 ]; then
   DETAIL=$(jq -r '.error // "exit code '${EXIT_CODE}'"' "$TRANSCRIPT" 2>/dev/null || echo "exit code ${EXIT_CODE}")
-  emit "failed" ",\"detail\":$(echo "$DETAIL" | jq -Rs '.'),\"cost_usd\":${COST},\"duration_s\":${DURATION}"
+  emit_final "failed" ",\"detail\":$(echo "$DETAIL" | jq -Rs '.'),\"cost_usd\":${COST},\"duration_s\":${DURATION}"
 else
-  emit "done" ",\"cost_usd\":${COST},\"duration_s\":${DURATION},\"transcript\":\"${TRANSCRIPT}\""
+  emit_final "done" ",\"cost_usd\":${COST},\"duration_s\":${DURATION},\"transcript\":\"${TRANSCRIPT}\""
 fi
 
 echo "Done. Transcript: $TRANSCRIPT"
