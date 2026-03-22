@@ -1,27 +1,24 @@
 import Foundation
-import Network
 
-/// Lightweight WebSocket server using Network.framework.
-/// Accepts connections, parses JSON commands, routes to dispatcher,
-/// and supports broadcasting events to all connected clients.
+/// Lightweight WebSocket server that accepts connections, parses JSON commands,
+/// routes to dispatcher, and supports broadcasting events to all connected clients.
+///
+/// Transport-agnostic: receives connection lifecycle events through `TransportDelegate`.
+/// The concrete transport (e.g. `NWListenerTransport`) is injected at init.
 final class PepperServer {
 
-    let port: UInt16
     let dispatcher: PepperDispatcher
     let connectionManager = PepperConnectionManager()
 
-    /// NWListener for accepting incoming WebSocket connections.
-    private var listener: NWListener?
+    /// The pluggable WebSocket transport layer.
+    private var transport: WebSocketTransport
 
-    /// Serial queue for listener and connection handling.
+    /// Serial queue for command processing and timeout scheduling.
     private let serverQueue = DispatchQueue(label: "com.pepper.control.server", qos: .userInitiated)
 
     /// JSON decoder/encoder for command protocol.
     private let decoder = JSONDecoder()
     private let encoder = JSONEncoder()
-
-    /// Counter for generating unique connection IDs.
-    private var nextConnectionID: Int = 0
 
     /// Fallback timeout when no handler-specific timeout is defined.
     private let defaultTimeoutInterval: TimeInterval = 10.0
@@ -31,11 +28,15 @@ final class PepperServer {
     /// Rate limit window in seconds (60 messages per 10 seconds).
     private static let rateLimitWindow: TimeInterval = 10.0
 
-    init(port: UInt16, dispatcher: PepperDispatcher) {
-        self.port = port
+    init(transport: WebSocketTransport, dispatcher: PepperDispatcher) {
+        self.transport = transport
         self.dispatcher = dispatcher
+        self.transport.delegate = self
         registerServerHandlers()
     }
+
+    /// The port the underlying transport is listening on.
+    var port: UInt16 { transport.port }
 
     /// Register handlers that need access to the server (e.g. subscribe/unsubscribe).
     private func registerServerHandlers() {
@@ -57,37 +58,14 @@ final class PepperServer {
     // MARK: - Server Lifecycle
 
     func start() {
-        // Configure WebSocket protocol options
-        let wsOptions = NWProtocolWebSocket.Options()
-        wsOptions.autoReplyPing = true
-
-        let parameters = NWParameters.tcp
-        parameters.defaultProtocolStack.applicationProtocols.insert(wsOptions, at: 0)
-
-        do {
-            listener = try NWListener(using: parameters, on: NWEndpoint.Port(rawValue: port)!)
-        } catch {
-            pepperLog.error("Failed to create listener: \(error)", category: .server)
-            return
-        }
-
-        listener?.stateUpdateHandler = { [weak self] state in
-            self?.handleListenerState(state)
-        }
-
-        listener?.newConnectionHandler = { [weak self] connection in
-            self?.handleNewConnection(connection)
-        }
-
-        listener?.start(queue: serverQueue)
+        transport.start()
         connectionManager.startCleanupTimer()
         pepperLog.info("Server starting on port \(port)", category: .server)
     }
 
     func stop() {
         connectionManager.stopCleanupTimer()
-        listener?.cancel()
-        listener = nil
+        transport.stop()
         // Remove all tracked connections
         for id in connectionManager.connectionIDs {
             connectionManager.removeConnection(id: id)
@@ -100,119 +78,9 @@ final class PepperServer {
         connectionManager.broadcast(event: event)
     }
 
-    // MARK: - Listener State
-
-    private func handleListenerState(_ state: NWListener.State) {
-        switch state {
-        case .ready:
-            pepperLog.info("Server ready on port \(port)", category: .server)
-        case .failed(let error):
-            pepperLog.error("Server failed: \(error)", category: .server)
-            // Attempt restart after a short delay
-            serverQueue.asyncAfter(deadline: .now() + 2) { [weak self] in
-                self?.listener?.cancel()
-                self?.start()
-            }
-        case .cancelled:
-            pepperLog.info("Server cancelled", category: .server)
-        default:
-            break
-        }
-    }
-
-    // MARK: - Connection Handling
-
-    private func handleNewConnection(_ connection: NWConnection) {
-        let connectionID = generateConnectionID()
-        pepperLog.info("New connection: \(connectionID)", category: .server)
-
-        // Register in connection manager with send callbacks for text and binary frames
-        connectionManager.addConnection(
-            id: connectionID,
-            send: { [weak connection] data in
-                Self.sendData(data, on: connection)
-            },
-            sendBinary: { [weak connection] data in
-                Self.sendBinaryData(data, on: connection)
-            }
-        )
-
-        connection.stateUpdateHandler = { [weak self] state in
-            self?.handleConnectionState(state, id: connectionID, connection: connection)
-        }
-
-        connection.start(queue: serverQueue)
-        receiveMessage(on: connection, connectionID: connectionID)
-    }
-
-    private func handleConnectionState(_ state: NWConnection.State, id: String, connection: NWConnection) {
-        switch state {
-        case .ready:
-            pepperLog.debug("Connection \(id) ready", category: .server)
-        case .waiting(let error):
-            pepperLog.debug("Connection \(id) waiting: \(error)", category: .server)
-        case .failed(let error):
-            pepperLog.warning("Connection \(id) failed: \(error)", category: .server)
-            cleanupConnection(id: id, connection: connection)
-        case .cancelled:
-            pepperLog.debug("Connection \(id) cancelled", category: .server)
-            connectionManager.removeConnection(id: id)
-        default:
-            break
-        }
-    }
-
-    /// Centralized connection cleanup: removes from manager and cancels the NWConnection.
-    private func cleanupConnection(id: String, connection: NWConnection) {
-        connectionManager.removeConnection(id: id)
-        connection.cancel()
-    }
-
-    // MARK: - Message Receive Loop
-
-    private func receiveMessage(on connection: NWConnection, connectionID: String) {
-        connection.receiveMessage { [weak self] content, context, isComplete, error in
-            guard let self = self else { return }
-
-            if let error = error {
-                pepperLog.warning("Receive error on \(connectionID): \(error)", category: .server)
-                self.cleanupConnection(id: connectionID, connection: connection)
-                return
-            }
-
-            // Check if the connection is still tracked (may have been removed during cleanup)
-            guard self.connectionManager.connection(for: connectionID) != nil else {
-                pepperLog.debug("Receive loop ending for removed connection \(connectionID)", category: .server)
-                return
-            }
-
-            // Check if this is a WebSocket text message
-            if let content = content, !content.isEmpty,
-               let metadata = context?.protocolMetadata(definition: NWProtocolWebSocket.definition) as? NWProtocolWebSocket.Metadata {
-
-                switch metadata.opcode {
-                case .text:
-                    self.handleTextMessage(content, connectionID: connectionID, connection: connection)
-                case .binary:
-                    // Binary frames not supported; ignore
-                    pepperLog.debug("Ignoring binary frame from \(connectionID)", category: .server)
-                case .close:
-                    pepperLog.debug("Close frame from \(connectionID)", category: .server)
-                    self.cleanupConnection(id: connectionID, connection: connection)
-                    return
-                default:
-                    break
-                }
-            }
-
-            // Continue receiving
-            self.receiveMessage(on: connection, connectionID: connectionID)
-        }
-    }
-
     // MARK: - Command Processing
 
-    private func handleTextMessage(_ data: Data, connectionID: String, connection: NWConnection) {
+    private func handleTextMessage(_ data: Data, connectionID: String) {
         connectionManager.touchActivity(for: connectionID)
 
         // Guard against messages from already-disconnected clients
@@ -293,67 +161,34 @@ final class PepperServer {
         guard let data = try? encoder.encode(response) else { return }
         connectionManager.send(data: data, to: connectionID)
     }
+}
 
-    /// Send raw data on a connection as a WebSocket text frame.
-    /// Silently handles broken connections — will not crash if the connection is gone.
-    private static func sendData(_ data: Data, on connection: NWConnection?) {
-        guard let connection = connection else { return }
+// MARK: - TransportDelegate
 
-        // Don't attempt to send on a connection that is already cancelled or failed
-        guard connection.state == .ready else {
-            pepperLog.debug("Skipping send on non-ready connection (state: \(connection.state))", category: .server)
-            return
-        }
+extension PepperServer: TransportDelegate {
+    func transportDidAccept(_ connection: TransportConnection) {
+        let id = connection.connectionId
+        pepperLog.info("New connection: \(id)", category: .server)
 
-        let metadata = NWProtocolWebSocket.Metadata(opcode: .text)
-        let context = NWConnection.ContentContext(
-            identifier: "textFrame",
-            metadata: [metadata]
-        )
-
-        connection.send(
-            content: data,
-            contentContext: context,
-            isComplete: true,
-            completion: .contentProcessed { error in
-                if let error = error {
-                    pepperLog.warning("Send error: \(error)", category: .server)
-                }
+        // Register in connection manager with send callbacks routed to the transport connection
+        connectionManager.addConnection(
+            id: id,
+            send: { [weak connection] data in
+                connection?.send(data)
+            },
+            sendBinary: { [weak connection] data in
+                connection?.sendBinary(data)
             }
         )
     }
 
-    /// Send raw data on a connection as a WebSocket binary frame.
-    private static func sendBinaryData(_ data: Data, on connection: NWConnection?) {
-        guard let connection = connection else { return }
-        guard connection.state == .ready else {
-            pepperLog.debug("Skipping binary send on non-ready connection (state: \(connection.state))", category: .server)
-            return
-        }
-
-        let metadata = NWProtocolWebSocket.Metadata(opcode: .binary)
-        let context = NWConnection.ContentContext(
-            identifier: "binaryFrame",
-            metadata: [metadata]
-        )
-
-        connection.send(
-            content: data,
-            contentContext: context,
-            isComplete: true,
-            completion: .contentProcessed { error in
-                if let error = error {
-                    pepperLog.warning("Binary send error: \(error)", category: .server)
-                }
-            }
-        )
+    func transportDidClose(_ connection: TransportConnection) {
+        let id = connection.connectionId
+        connectionManager.removeConnection(id: id)
     }
 
-    // MARK: - Helpers
-
-    private func generateConnectionID() -> String {
-        nextConnectionID += 1
-        return "conn-\(nextConnectionID)"
+    func transportDidReceive(_ connection: TransportConnection, data: Data) {
+        handleTextMessage(data, connectionID: connection.connectionId)
     }
 }
 
@@ -376,4 +211,3 @@ final class LockedFlag {
         return false
     }
 }
-
