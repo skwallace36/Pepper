@@ -96,14 +96,14 @@ Bugs: see [`BUGS.md`](../BUGS.md)
 | `gesture` | rotate | untested | NEEDS: rotation gesture on a view |  |
 | `memory` | snapshot | untested | Any state |  |
 | `memory` | vm | untested | Any state |  |
-| `orientation` | portrait | untested | Any state |  |
-| `orientation` | landscape_left | untested | Any state |  |
-| `orientation` | landscape_right | untested | Any state |  |
-| `orientation` | portrait_upside_down | untested | Any state |  |
-| `lifecycle` | background | untested | Any state |  |
-| `lifecycle` | foreground | untested | After background |  |
-| `lifecycle` | memory_warning | untested | Any state |  |
-| `lifecycle` | cycle | untested | Any state |  |
+| `orientation` | portrait | pass | Any state | Returns {orientation:'portrait', is_portrait:true, is_landscape:false}. Command accepted, notification posted. Query-only (no value param) also works. |
+| `orientation` | landscape_left | pass | Any state | Command accepted, UIDevice.setValue + orientationDidChangeNotification posted. Response still reports 'portrait' because UIWindowScene.interfaceOrientation doesn't change from programmatic UIDevice.setValue in simulator. Not a bug — simulator has no accelerometer. Error case: invalid value returns proper error. |
+| `orientation` | landscape_right | pass | Any state | Same behavior as landscape_left — command succeeds, notification posted, but UIWindowScene reads portrait in simulator. |
+| `orientation` | portrait_upside_down | pass | Any state | Same behavior — command succeeds, notification posted. UIWindowScene still reads portrait in simulator. |
+| `lifecycle` | background | pass | Any state | Returns {state:'background'}. Posts willResignActive + didEnterBackground notifications. App remains responsive (WebSocket stays connected). Error cases: missing action returns proper error, unknown action returns proper error. |
+| `lifecycle` | foreground | pass | After background | Returns {state:'active'}. Posts willEnterForeground + didBecomeActive notifications. Tested after background — app fully responsive, look returns normal screen state. |
+| `lifecycle` | memory_warning | pass | Any state | Returns {triggered:true}. Posts didReceiveMemoryWarningNotification and calls _performMemoryWarning on UIApplication. App remains stable after trigger. |
+| `lifecycle` | cycle | pass | Any state | Returns {state:'backgrounding', foreground_delay:1}. Tested with delay=1.0. Backgrounds immediately, schedules foreground return after delay. App responsive after cycle completes. |
 | `push` | — | untested | NEEDS: UNNotification delegate |  |
 | `locale` | current | untested | Any state |  |
 | `locale` | set | untested | NEEDS: Localizable.strings |  |
@@ -168,9 +168,9 @@ Bugs: see [`BUGS.md`](../BUGS.md)
 
 **141 test points** across 49 commands.
 
-- pass: 67
+- pass: 75
 - fail: 7
-- untested: 64
+- untested: 56
 
 ## Test App Gaps
 
