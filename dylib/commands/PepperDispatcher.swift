@@ -192,6 +192,14 @@ final class PepperDispatcher {
             return .ok(id: cmd.id, data: ["commands": AnyCodable(commands.map { AnyCodable($0) })])
         }
 
+        // Look — alias for introspect mode:map (primary observation command)
+        register("look") { [weak self] cmd in
+            var params = cmd.params ?? [:]
+            params["mode"] = AnyCodable("map")
+            let introspectCmd = PepperCommand(id: cmd.id, cmd: "introspect", params: params)
+            return self?.dispatch(introspectCmd) ?? .error(id: cmd.id, message: "Dispatcher unavailable")
+        }
+
         // Register all built-in command handlers
         register(TapHandler())
         register(InputHandler())

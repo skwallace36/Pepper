@@ -3,6 +3,7 @@
 
   "ping":                { "status": "pass",     "surface": "Any state",                                "notes": "" },
   "help":                { "status": "untested",  "surface": "Any state",                                "notes": "" },
+  "look":                { "status": "pass",     "surface": "Any screen",                               "notes": "Alias for introspect map" },
   "status":              { "status": "untested",  "surface": "Any state",                                "notes": "" },
 
   "navigate.tab":        { "status": "pass",     "surface": "3-tab TabView (Controls, List, Misc)",     "notes": "" },

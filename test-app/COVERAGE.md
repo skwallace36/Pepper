@@ -24,6 +24,7 @@ Bugs: see [`BUGS.md`](../BUGS.md)
 |---------|---------|--------|-------------|-------|
 | `ping` | — | pass | Any state |  |
 | `help` | — | untested | Any state |  |
+| `look` | — | pass | Any screen | Alias for introspect map |
 | `tap` | text | pass | Tap Me button, tab bar items |  |
 | `tap` | element | untested | Buttons with a11y IDs |  |
 | `tap` | point | untested | Any tappable coordinate |  |
@@ -165,9 +166,9 @@ Bugs: see [`BUGS.md`](../BUGS.md)
 
 ## Summary
 
-**140 test points** across 48 commands.
+**141 test points** across 49 commands.
 
-- pass: 7
+- pass: 8
 - fail: 2
 - crash: 1
 - untested: 130
