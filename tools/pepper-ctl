@@ -18,6 +18,7 @@ Usage:
   pepper-ctl scroll --direction down --amount 300
   pepper-ctl batch --file commands.json
   pepper-ctl wait-for-server --wait-timeout 60
+  pepper-ctl test-report --file tests.json --format junit --output results.xml
   pepper-ctl help
   pepper-ctl raw '{"cmd":"ping"}'
 """
@@ -28,7 +29,9 @@ import base64
 import json
 import os
 import sys
+import time
 import uuid
+import xml.etree.ElementTree as ET
 
 try:
     import websockets
@@ -194,6 +197,8 @@ def build_parser():
   pepper-ctl read --id label_name            Read element value
   pepper-ctl batch --file commands.json      Run batch commands
   pepper-ctl wait-for-server                 Block until server is reachable
+  pepper-ctl test-report -f tests.json       Run tests, output JUnit XML
+  pepper-ctl test-report -f t.json --format json -o results.json
   pepper-ctl help                            List server commands
 """,
     )
@@ -276,6 +281,14 @@ def build_parser():
     p = sub.add_parser("wait-for-server", help="Wait until Pepper server is reachable (health check)")
     p.add_argument("--interval", type=float, default=1.0, help="Seconds between retries (default: 1.0)")
     p.add_argument("--wait-timeout", type=int, default=30, help="Max seconds to wait (default: 30)")
+
+    # test-report
+    p = sub.add_parser("test-report", help="Run test cases and export results as JUnit XML or JSON")
+    p.add_argument("--file", "-f", required=True, help="JSON file with test definitions")
+    p.add_argument("--format", choices=["junit", "json"], default="junit", dest="report_format", help="Output format (default: junit)")
+    p.add_argument("--output", "-o", default=None, help="Output file (default: stdout)")
+    p.add_argument("--continue-on-error", action="store_true", help="Continue running tests after failures")
+    p.add_argument("--classname", default="pepper", help="JUnit classname prefix (default: pepper)")
 
     # subscribe / wait
     p = sub.add_parser("wait", help="Subscribe to events and wait")
@@ -618,6 +631,203 @@ async def cmd_wait_for_server(args):
         await asyncio.sleep(args.interval)
 
 
+async def cmd_test_report(args):
+    """Run test cases from a definition file and export results as JUnit XML or JSON."""
+    # Load test definitions
+    try:
+        with open(args.file, "r") as f:
+            file_content = json.load(f)
+    except FileNotFoundError:
+        print(red(f"Error: File not found: {args.file}"), file=sys.stderr)
+        sys.exit(1)
+    except json.JSONDecodeError as e:
+        print(red(f"Error: Invalid JSON in {args.file}: {e}"), file=sys.stderr)
+        sys.exit(1)
+
+    # Accept {"suite": "...", "tests": [...]} or bare array
+    if isinstance(file_content, list):
+        suite_name = os.path.splitext(os.path.basename(args.file))[0]
+        tests = file_content
+    elif isinstance(file_content, dict):
+        suite_name = file_content.get("suite", os.path.splitext(os.path.basename(args.file))[0])
+        tests = file_content.get("tests", [])
+    else:
+        print(red("Error: File must contain a JSON array or {\"tests\": [...]}"), file=sys.stderr)
+        sys.exit(1)
+
+    if not tests:
+        print(red("Error: No test cases found"), file=sys.stderr)
+        sys.exit(1)
+
+    # Run each test case
+    results = []
+    suite_start = time.monotonic()
+    for i, test in enumerate(tests):
+        test_name = test.get("name", f"test_{i}")
+        cmd = test.get("cmd")
+        params = test.get("params")
+
+        if not cmd:
+            results.append({
+                "name": test_name,
+                "status": "error",
+                "time": 0.0,
+                "message": "Missing 'cmd' field in test definition",
+            })
+            if not args.continue_on_error:
+                break
+            continue
+
+        if not args.raw_json:
+            print(dim(f"  [{i+1}/{len(tests)}] {test_name} ..."), end="", flush=True, file=sys.stderr)
+
+        msg = make_command(cmd, params)
+        t0 = time.monotonic()
+        try:
+            # Use ws_send_command directly (not the CLI wrapper) to avoid sys.exit on errors
+            resp = await ws_send_command(args.host, args.port, msg, timeout=args.timeout)
+            elapsed = time.monotonic() - t0
+            resp_status = resp.get("status", "unknown")
+            if resp_status == "ok":
+                results.append({
+                    "name": test_name,
+                    "status": "pass",
+                    "time": elapsed,
+                    "cmd": cmd,
+                })
+                if not args.raw_json:
+                    print(green(" pass") + dim(f" ({elapsed:.2f}s)"), file=sys.stderr)
+            else:
+                data = resp.get("data", {})
+                err_msg = data.get("message", resp_status) if isinstance(data, dict) else str(resp_status)
+                results.append({
+                    "name": test_name,
+                    "status": "fail",
+                    "time": elapsed,
+                    "cmd": cmd,
+                    "message": err_msg,
+                })
+                if not args.raw_json:
+                    print(red(f" FAIL") + dim(f" ({elapsed:.2f}s) {err_msg}"), file=sys.stderr)
+                if not args.continue_on_error:
+                    break
+        except ConnectionRefusedError:
+            elapsed = time.monotonic() - t0
+            results.append({
+                "name": test_name,
+                "status": "error",
+                "time": elapsed,
+                "cmd": cmd,
+                "message": "Connection refused — is the server running?",
+            })
+            if not args.continue_on_error:
+                break
+        except asyncio.TimeoutError:
+            elapsed = time.monotonic() - t0
+            results.append({
+                "name": test_name,
+                "status": "error",
+                "time": elapsed,
+                "cmd": cmd,
+                "message": f"Timeout after {args.timeout}s",
+            })
+            if not args.continue_on_error:
+                break
+        except CrashError as e:
+            elapsed = time.monotonic() - t0
+            results.append({
+                "name": test_name,
+                "status": "error",
+                "time": elapsed,
+                "cmd": cmd,
+                "message": str(e),
+            })
+            # App crashed — stop regardless of continue-on-error
+            if not args.raw_json:
+                print(red(f" CRASH") + dim(f" ({elapsed:.2f}s)"), file=sys.stderr)
+            break
+
+    suite_time = time.monotonic() - suite_start
+    num_pass = sum(1 for r in results if r["status"] == "pass")
+    num_fail = sum(1 for r in results if r["status"] == "fail")
+    num_error = sum(1 for r in results if r["status"] == "error")
+
+    # Format output
+    if args.report_format == "junit":
+        output = _format_junit(suite_name, results, suite_time, args.classname)
+    else:
+        output = _format_json_report(suite_name, results, suite_time)
+
+    # Write output
+    if args.output:
+        with open(args.output, "w") as f:
+            f.write(output)
+        if not args.raw_json:
+            print(f"\nReport written to {args.output}", file=sys.stderr)
+    else:
+        print(output)
+
+    # Summary on stderr
+    if not args.raw_json:
+        total = len(results)
+        color = green if num_fail == 0 and num_error == 0 else red
+        print(color(f"\n{total} tests: {num_pass} passed, {num_fail} failed, {num_error} errors ({suite_time:.2f}s)"), file=sys.stderr)
+
+    # Exit with failure if any tests failed
+    if num_fail > 0 or num_error > 0:
+        sys.exit(1)
+
+
+def _format_junit(suite_name, results, suite_time, classname):
+    """Format test results as JUnit XML."""
+    testsuites = ET.Element("testsuites")
+    testsuite = ET.SubElement(testsuites, "testsuite", {
+        "name": suite_name,
+        "tests": str(len(results)),
+        "failures": str(sum(1 for r in results if r["status"] == "fail")),
+        "errors": str(sum(1 for r in results if r["status"] == "error")),
+        "time": f"{suite_time:.3f}",
+    })
+
+    for result in results:
+        testcase = ET.SubElement(testsuite, "testcase", {
+            "name": result["name"],
+            "classname": classname,
+            "time": f"{result['time']:.3f}",
+        })
+        if result["status"] == "fail":
+            failure = ET.SubElement(testcase, "failure", {
+                "message": result.get("message", "Test failed"),
+            })
+            failure.text = result.get("message", "")
+        elif result["status"] == "error":
+            error = ET.SubElement(testcase, "error", {
+                "message": result.get("message", "Test error"),
+            })
+            error.text = result.get("message", "")
+
+    ET.indent(testsuites, space="  ")
+    xml_str = ET.tostring(testsuites, encoding="unicode", xml_declaration=True)
+    return xml_str
+
+
+def _format_json_report(suite_name, results, suite_time):
+    """Format test results as JSON."""
+    report = {
+        "suite": suite_name,
+        "tests": len(results),
+        "passed": sum(1 for r in results if r["status"] == "pass"),
+        "failed": sum(1 for r in results if r["status"] == "fail"),
+        "errors": sum(1 for r in results if r["status"] == "error"),
+        "time": round(suite_time, 3),
+        "results": results,
+    }
+    # Round individual times
+    for r in report["results"]:
+        r["time"] = round(r["time"], 3)
+    return json.dumps(report, indent=2)
+
+
 async def cmd_wait(args):
     await wait_for_events(args.host, args.port, args.events, args.wait_timeout)
 
@@ -677,6 +887,7 @@ def main():
         "batch": cmd_batch,
         "help": cmd_help,
         "wait-for-server": cmd_wait_for_server,
+        "test-report": cmd_test_report,
         "wait": cmd_wait,
         "raw": cmd_raw,
     }
