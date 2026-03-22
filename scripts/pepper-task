@@ -59,8 +59,10 @@ case "$CMD" in
       break
     done < <(echo "$ISSUES" | jq -c '.')
 
-    [ -z "$FOUND" ] && echo '{"error": "no unclaimed tasks found"}'
-    exit 0
+    if [ -z "$FOUND" ]; then
+      echo '{"error": "no unclaimed tasks found"}' >&2
+      exit 1
+    fi
     ;;
 
   claim)
