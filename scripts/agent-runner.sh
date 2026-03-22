@@ -283,10 +283,11 @@ fi
 
 # Auto-chain: if this agent opened a PR, launch the verifier next
 if [ "$TYPE" != "pr-verifier" ] && [ "$TYPE" != "pr-responder" ]; then
-  # Check if a PR was created during this run
-  PR_CREATED=$(grep "\"agent\":\"${TYPE}\"" "$EVENTS" 2>/dev/null | grep "\"event\":\"pr\"" | tail -1 | grep -oE '"#[0-9]+"' || true)
-  if [ -n "$PR_CREATED" ]; then
-    echo "PR $PR_CREATED opened — chaining pr-verifier..."
+  # Check GitHub for any open PRs without 'verified' label
+  UNVERIFIED=$(gh pr list --repo skwallace36/Pepper --state open --json number,labels \
+    --jq '[.[] | select(.labels | map(.name) | index("verified") | not)] | length' 2>/dev/null || echo 0)
+  if [ "$UNVERIFIED" -gt 0 ]; then
+    echo "$UNVERIFIED unverified PR(s) — chaining pr-verifier..."
     nohup "$REPO_ROOT/scripts/agent-runner.sh" pr-verifier >> build/logs/chain.log 2>&1 &
   fi
 fi
