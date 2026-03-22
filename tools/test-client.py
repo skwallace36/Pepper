@@ -162,7 +162,7 @@ class PepperClient:
         """Connect to the server."""
         print(f"  Connecting to {self.url}...")
         try:
-            self.ws = await websockets.connect(self.url)
+            self.ws = await websockets.connect(self.url, compression=None)
             print(f"  Connected.")
             return True
         except (ConnectionRefusedError, OSError) as e:

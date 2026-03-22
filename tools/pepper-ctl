@@ -110,7 +110,7 @@ async def wait_for_events(host, port, events, timeout=30):
     """Subscribe to events and wait."""
     url = f"ws://{host}:{port}"
     try:
-        async with websockets.connect(url) as ws:
+        async with websockets.connect(url, compression=None) as ws:
             sub = make_command("subscribe", {"events": events})
             await ws.send(json.dumps(sub))
             await asyncio.wait_for(ws.recv(), timeout=5)
@@ -602,7 +602,7 @@ async def cmd_wait_for_server(args):
         try:
             msg = make_command("ping")
             url = f"ws://{args.host}:{args.port}"
-            async with websockets.client.connect(url, close_timeout=2) as ws:
+            async with websockets.connect(url, close_timeout=2, compression=None) as ws:
                 await ws.send(json.dumps(msg))
                 raw = await asyncio.wait_for(ws.recv(), timeout=3)
                 resp = json.loads(raw)
