@@ -87,9 +87,16 @@ struct MiscTab: View {
                         .accessibilityIdentifier("zoomable_image")
                 }
 
-                // MARK: - Web View
+                // MARK: - Rotation Gesture
+                GroupBox("Rotation Gesture") {
+                    RotatableView()
+                        .frame(height: 100)
+                        .accessibilityIdentifier("rotatable_view")
+                }
+
+                // MARK: - Web View (with cookie)
                 GroupBox("Web View") {
-                    WebViewWrapper(url: URL(string: "https://example.com")!)
+                    CookieWebView(url: URL(string: "https://example.com")!)
                         .frame(height: 200)
                         .clipShape(RoundedRectangle(cornerRadius: 8))
                         .accessibilityIdentifier("web_view")
@@ -200,14 +207,69 @@ struct ZoomableImage: UIViewRepresentable {
     }
 }
 
-// MARK: - Web View
+// MARK: - Rotatable View
 
-struct WebViewWrapper: UIViewRepresentable {
+struct RotatableView: UIViewRepresentable {
+    func makeUIView(context: Context) -> UIView {
+        let container = UIView()
+        container.backgroundColor = .systemTeal.withAlphaComponent(0.2)
+        container.layer.cornerRadius = 12
+
+        let label = UILabel()
+        label.text = "Rotate Me"
+        label.textAlignment = .center
+        label.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(label)
+        NSLayoutConstraint.activate([
+            label.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+            label.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+        ])
+
+        let rotationGesture = UIRotationGestureRecognizer(
+            target: context.coordinator, action: #selector(Coordinator.handleRotation(_:))
+        )
+        container.addGestureRecognizer(rotationGesture)
+        container.isUserInteractionEnabled = true
+
+        return container
+    }
+
+    func updateUIView(_ uiView: UIView, context: Context) {}
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    class Coordinator: NSObject {
+        @objc func handleRotation(_ gesture: UIRotationGestureRecognizer) {
+            guard let view = gesture.view else { return }
+            view.transform = view.transform.rotated(by: gesture.rotation)
+            gesture.rotation = 0
+            print("[PepperTest] Rotation gesture: \(view.transform)")
+        }
+    }
+}
+
+// MARK: - Web View (with cookie)
+
+struct CookieWebView: UIViewRepresentable {
     let url: URL
 
     func makeUIView(context: Context) -> WKWebView {
-        let webView = WKWebView()
-        webView.load(URLRequest(url: url))
+        let config = WKWebViewConfiguration()
+        let webView = WKWebView(frame: .zero, configuration: config)
+
+        // Seed a test cookie
+        let cookie = HTTPCookie(properties: [
+            .name: "pepper_session",
+            .value: "test-session-abc123",
+            .domain: "example.com",
+            .path: "/",
+            .expires: Date().addingTimeInterval(86400),
+        ])!
+        webView.configuration.websiteDataStore.httpCookieStore.setCookie(cookie) {
+            print("[PepperTest] Cookie seeded: pepper_session")
+            webView.load(URLRequest(url: self.url))
+        }
+
         return webView
     }
 
