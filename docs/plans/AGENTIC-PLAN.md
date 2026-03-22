@@ -314,11 +314,11 @@ Independent heartbeats. Each wakes on its own schedule, checks its queue, exits 
 
 | Agent | Queue | Cadence | What it does | Milestone |
 |-------|-------|---------|-------------|-----------|
-| Bug fixer | BUGS.md open items | ~2h | Investigates, fixes, opens PR | **1** |
-| PR responder | Open PRs with review comments | ~30m | Addresses feedback, pushes to branch | 2 |
-| Tester | COVERAGE.md untested commands | ~2h | Tests against test app, updates results | 2 |
-| Builder | ROADMAP.md unstarted items | ~1h | Implements feature, opens PR | 3 |
-| Researcher | RESEARCH.md ideas | ~6h | Explores one idea, adds findings | 3 |
+| Bug fixer | BUGS.md open items | ~2h | Investigates, fixes, opens PR | **1 ✓** |
+| PR responder | Open PRs with review comments | ~30m | Addresses feedback, pushes to branch | **2 ✓** |
+| Tester | COVERAGE.md untested commands | ~2h | Tests against test app, updates results | 2 (prompt ready, needs sim) |
+| Builder | ROADMAP.md unstarted items | ~1h | Implements feature, opens PR | 3 (needs ROADMAP restructure) |
+| Researcher | RESEARCH.md ideas | ~6h | Explores one idea, adds findings | **2 ✓** |
 
 ### Agent Prompts
 
