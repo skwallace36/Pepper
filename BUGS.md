@@ -21,7 +21,7 @@ Statuses: `open` → `in-progress` → `pr-open` → `fixed`.
 
 - **BUG-008** `[dylib/dismiss]` `status:pr-open` — `dismiss` and `navigate dismiss` fail to detect/dismiss SwiftUI `.sheet()` presentations. `screen` correctly reports `is_modal: true` and `screen_id: "presentation"` with `PresentationHostingController<AnyView>`, but `dismiss` returns "Nothing to dismiss — only the home view is presented" and `navigate dismiss` returns "Already at root of navigation stack". Likely the dismiss handler doesn't walk the VC tree correctly for SwiftUI sheet presentations. *(found: 2026-03-22, GH #40)*
 
-- **BUG-009** `[dylib/startup]` `status:open` — `PepperIconCatalog.build()` crashes on background thread when injected into real-world apps. `UIImage(named:in:with:)` is called from a dispatch queue in `PepperPlane.start()`, but iOS 26/Xcode 26 added an assertion requiring image loading from asset catalogs to happen on the main thread. Crashes Ice Cubes (SwiftUI Mastodon client) within ~2s of launch. PepperTestApp unaffected (simpler asset catalog). Fix: dispatch `PepperIconCatalog.build()` to `DispatchQueue.main`. *(found: 2026-03-22, GH #46)*
+- **BUG-009** `[dylib/startup]` `status:pr-open` — `PepperIconCatalog.build()` crashes on background thread when injected into real-world apps. `UIImage(named:in:with:)` is called from a dispatch queue in `PepperPlane.start()`, but iOS 26/Xcode 26 added an assertion requiring image loading from asset catalogs to happen on the main thread. Crashes Ice Cubes (SwiftUI Mastodon client) within ~2s of launch. PepperTestApp unaffected (simpler asset catalog). Fix: dispatch `PepperIconCatalog.build()` to `DispatchQueue.main`. *(found: 2026-03-22, GH #46)*
 
 ---
 
