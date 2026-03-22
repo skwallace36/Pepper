@@ -70,7 +70,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
                     with open(save_screenshot, 'wb') as f:
                         f.write(base64.b64decode(screenshot_b64))
                     result[0] = TextContent(type="text", text=f"{text}\n\n[Screenshot saved to {save_screenshot}]")
-                except Exception as e:
+                except OSError as e:
                     result[0] = TextContent(type="text", text=f"{text}\n\n[Screenshot save failed: {e}]")
         return result
 

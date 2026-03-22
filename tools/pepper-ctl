@@ -32,8 +32,7 @@ import uuid
 try:
     import websockets
 except ImportError:
-    print("Error: 'websockets' package required. Install with:", file=sys.stderr)
-    print("  pip install websockets", file=sys.stderr)
+    print("Error: 'websockets' package required. Install with: pip install websockets", file=sys.stderr)
     sys.exit(1)
 
 # Shared modules from tools/

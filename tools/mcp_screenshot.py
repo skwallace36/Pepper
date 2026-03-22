@@ -75,7 +75,7 @@ async def capture_screenshot(udid: str, quality: str = "standard") -> Optional[s
 
         with open(out_path, 'rb') as f:
             return base64.b64encode(f.read()).decode('ascii')
-    except Exception:
+    except (OSError, asyncio.TimeoutError):
         return None
     finally:
         for p in [png_path, out_path]:
