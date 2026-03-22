@@ -182,7 +182,7 @@ def generate_markdown(commands, variants_map, status):
         "3. Run `make coverage` to regenerate this file",
         "4. `make coverage-check` verifies this file is in sync (for CI/pre-commit)",
         "",
-        "Bugs: see [`BUGS.md`](../BUGS.md)",
+        "Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3Abug)",
         "",
         "## Coverage Matrix",
         "",

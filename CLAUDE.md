@@ -24,4 +24,4 @@ look, tap, scroll, scroll_to, swipe, gesture, input_text, toggle, navigate, back
 
 ---
 
-**Routing:** Bugs → `BUGS.md` | Work items → `ROADMAP.md` | Test results → `test-app/COVERAGE.md` (auto-generated) | Research → `docs/RESEARCH.md`
+**Routing:** Bugs → GitHub Issues (`gh issue list --label bug`) | Work items → `ROADMAP.md` | Test results → `test-app/COVERAGE.md` (auto-generated) | Research → `docs/RESEARCH.md`

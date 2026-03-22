@@ -12,6 +12,26 @@ cd "$REPO_ROOT"
 EVENTS="$REPO_ROOT/build/logs/events.jsonl"
 mkdir -p build/logs
 
+# Startup sweep: prune orphaned worktrees that no running agent owns.
+# Each running agent stores its worktree path in OUR_WORKTREE. If a worktree
+# exists but no agent lockfile references it, it's orphaned.
+for wt in $(git worktree list --porcelain 2>/dev/null | grep "^worktree .*/\.claude/worktrees/" | sed 's/^worktree //' || true); do
+  # Check if ANY lockfile's agent is still running
+  OWNED=false
+  for lock in build/logs/.lock-*; do
+    [ -f "$lock" ] || continue
+    pid=$(cat "$lock" 2>/dev/null)
+    if kill -0 "$pid" 2>/dev/null; then
+      OWNED=true
+      break
+    fi
+  done
+  if [ "$OWNED" = false ]; then
+    git worktree remove --force "$wt" 2>/dev/null || true
+  fi
+done
+git worktree prune 2>/dev/null || true
+
 # Timeout: 15 minutes max per agent run
 TIMEOUT_S=900
 

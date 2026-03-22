@@ -1,30 +1,23 @@
 # Bugs
 
-All known bugs go here. Referenced by `test-app/COVERAGE.md` (auto-generated) and `ROADMAP.md`.
+**Bugs are tracked as GitHub Issues.** This file is kept as a historical log only.
 
-Format: `BUG-NNN` ID, component tag, `status:<status>`, description, date found.
-Statuses: `open` → `in-progress` → `pr-open` → `fixed`.
+File new bugs: `gh issue create --repo skwallace36/Pepper --label bug --title "BUG-NNN: description"`
+View open bugs: `gh issue list --repo skwallace36/Pepper --label bug --state open`
 
-- **BUG-001** `[dylib/back]` `status:pr-open` — SwiftUI NavigationStack depth not correctly detected. After pushing 3 levels deep, first `back` pops but second reports "already at root" while still on the Detail screen. Pepper likely only checks UINavigationController's viewControllers count, which SwiftUI populates differently. *(found: 2026-03-21)*
+## Fixed (all merged)
 
-- **BUG-002** `[dylib/layers]` `status:pr-open` — Sending `layers` with a point targeting a SwiftUI gradient view crashes the app (WebSocket connection lost). Needs crash log investigation. *(found: 2026-03-21)*
-
-- **BUG-003** `[dylib/vars]` `status:pr-open` — `vars action:list` returns 0 instances because Pepper scans for `@Published` on `ObservableObject`. Swift 5.9 `@Observable` macro (Observation framework) uses a completely different mechanism — not detected. *(found: 2026-03-21)*
-
-- **BUG-004** `[dylib/scroll_to]` `status:pr-open` — `ScrollUntilVisibleHandler` does not override `var timeout: TimeInterval`, so the server-side dispatch timeout (10s) fires before long scrolls complete. The handler keeps running and the scroll succeeds, but the client receives a premature timeout error. Fix: override `timeout` to match or exceed `timeout_ms` parameter (default 10s → should be ~15-20s to account for max_scrolls * swipe+settle time). *(found: 2026-03-21)*
-
-- **BUG-005** `[dylib/tap]` `status:pr-open` — `tap.tab` fails with SwiftUI `TabView`: "No tab bar found in view hierarchy". `findTabBarButtons()` only searches for `UITabBar` and class names containing "TabBar", but SwiftUI `TabView` renders tab buttons as accessibility elements, not UIKit views. Workaround: use `tap text:"TabName"`. *(found: 2026-03-22, GH #8)*
-
-- **BUG-006** `[dylib/tap]` `status:pr-open` — `tap.element` cannot find SwiftUI `.accessibilityIdentifier()` elements. `pepper_findElement(id:)` searches `UIView.accessibilityIdentifier` recursively, but SwiftUI identifiers live in the accessibility system, not on backing UIViews. Works correctly for UIKit elements. *(found: 2026-03-22, GH #9)*
-
-- **BUG-007** `[dylib/wait_for]` `status:pr-open` — `wait_for` handler's main-thread polling loop blocks SwiftUI re-rendering. The handler polls with `RunLoop.current.run(until:)` on the main thread, but SwiftUI `@Observable` state changes don't re-render during nested RunLoop iterations. Result: wait_for works for already-visible conditions but cannot detect async UI state changes (e.g., 3s timer firing). *(found: 2026-03-22, GH #18)*
-
-- **BUG-008** `[dylib/dismiss]` `status:pr-open` — `dismiss` and `navigate dismiss` fail to detect/dismiss SwiftUI `.sheet()` presentations. `screen` correctly reports `is_modal: true` and `screen_id: "presentation"` with `PresentationHostingController<AnyView>`, but `dismiss` returns "Nothing to dismiss — only the home view is presented" and `navigate dismiss` returns "Already at root of navigation stack". Likely the dismiss handler doesn't walk the VC tree correctly for SwiftUI sheet presentations. *(found: 2026-03-22, GH #40)*
-
-- **BUG-009** `[dylib/startup]` `status:pr-open` — `PepperIconCatalog.build()` crashes on background thread when injected into real-world apps. `UIImage(named:in:with:)` is called from a dispatch queue in `PepperPlane.start()`, but iOS 26/Xcode 26 added an assertion requiring image loading from asset catalogs to happen on the main thread. Crashes Ice Cubes (SwiftUI Mastodon client) within ~2s of launch. PepperTestApp unaffected (simpler asset catalog). Fix: dispatch `PepperIconCatalog.build()` to `DispatchQueue.main`. *(found: 2026-03-22, GH #46)*
-
-- **BUG-010** `[dylib/startup]` `status:pr-open` — `PepperIconCatalog.build()` crashes with "Need an imageRef" assertion when loading icons from real-world app bundles. After BUG-009 fix moved icon loading to main thread, `discoverIconNames(in:)` finds asset catalog entries that resolve to nil CGImages. UIKit's `_UIImageCGImageContent initWithCGImageSource:CGImage:scale:` asserts. Fix: guard `UIImage(named:in:with:)` result for nil before using. Blocks TASK-029. *(found: 2026-03-22, GH #52)*
+- BUG-001 `[dylib/back]` SwiftUI NavigationStack depth *(PR #1)*
+- BUG-002 `[dylib/layers]` Gradient view crash *(PR #2)*
+- BUG-003 `[dylib/vars]` @Observable detection *(PR #3)*
+- BUG-004 `[dylib/scroll_to]` Premature timeout *(PR #11)*
+- BUG-005 `[dylib/tap]` SwiftUI TabView tab discovery *(PR #13)*
+- BUG-006 `[dylib/tap]` SwiftUI accessibilityIdentifier *(PR #15)*
+- BUG-007 `[dylib/wait_for]` Main thread blocking *(PR #20)*
+- BUG-008 `[dylib/dismiss]` SwiftUI .sheet() dismiss *(PR #43)*
+- BUG-009 `[dylib/startup]` Icon catalog background thread crash *(PR #48)*
+- BUG-010 `[dylib/startup]` Icon catalog nil imageRef crash *(PR #56)*
 
 ---
 
-**Routing:** Work items → `ROADMAP.md` | Test coverage → `test-app/COVERAGE.md` | Research → `docs/RESEARCH.md`
+**Routing:** Tasks → `TASKS.md` | Test coverage → `test-app/COVERAGE.md` | Research → `docs/RESEARCH.md`
