@@ -61,6 +61,31 @@ else
     fail "Could not create venv"
 fi
 
+# jq (used by agent hooks)
+if command -v jq &>/dev/null; then
+    pass "jq: $(jq --version)"
+else
+    warn "jq not installed — needed for agent hooks. Run: brew install jq"
+fi
+
+# gh CLI (used by agents to create PRs)
+if command -v gh &>/dev/null; then
+    if gh auth status &>/dev/null; then
+        pass "gh CLI: authenticated"
+    else
+        warn "gh CLI installed but not authenticated — run: gh auth login"
+    fi
+else
+    warn "gh CLI not installed — needed for agent PRs. Run: brew install gh"
+fi
+
+# claude CLI (used by agent runner)
+if command -v claude &>/dev/null; then
+    pass "claude CLI: $(claude --version 2>/dev/null | head -1)"
+else
+    warn "claude CLI not installed — needed for agent runner"
+fi
+
 # Simulator
 BOOTED_SIM=$(xcrun simctl list devices booted -j 2>/dev/null | python3 -c "
 import json, sys

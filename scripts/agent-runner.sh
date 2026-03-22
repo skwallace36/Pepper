@@ -17,6 +17,23 @@ emit() {
   echo "{\"ts\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"agent\":\"${TYPE}\",\"event\":\"${event}\"$*}" >> "$EVENTS"
 }
 
+# Prerequisites check
+MISSING=""
+command -v claude &>/dev/null || MISSING="$MISSING claude"
+command -v jq &>/dev/null || MISSING="$MISSING jq"
+command -v gh &>/dev/null || MISSING="$MISSING gh"
+if [ -n "$MISSING" ]; then
+  emit "failed" ",\"detail\":\"missing prerequisites:$MISSING\""
+  echo "Error: missing prerequisites:$MISSING"
+  echo "Run: make setup"
+  exit 1
+fi
+if ! gh auth status &>/dev/null; then
+  emit "failed" ",\"detail\":\"gh not authenticated\""
+  echo "Error: gh not authenticated. Run: gh auth login"
+  exit 1
+fi
+
 # Kill switch check
 if [ -f .pepper-kill ]; then
   emit "killed" ",\"detail\":\"kill switch active at startup\""
@@ -32,7 +49,31 @@ if [ ! -f "$PROMPT_FILE" ]; then
   exit 1
 fi
 
-emit "started" ",\"detail\":\"picking work from queue\""
+# Daily budget enforcement
+# Per-type: $10/day, Total: $30/day
+TODAY=$(date -u +%Y-%m-%d)
+TYPE_COST_TODAY=$(grep "\"agent\":\"${TYPE}\"" "$EVENTS" 2>/dev/null \
+  | grep "\"ts\":\"${TODAY}" \
+  | grep -oE '"cost_usd":[0-9.]+' \
+  | cut -d: -f2 \
+  | awk '{s+=$1} END {printf "%.2f", s+0}')
+TOTAL_COST_TODAY=$(grep "\"ts\":\"${TODAY}" "$EVENTS" 2>/dev/null \
+  | grep -oE '"cost_usd":[0-9.]+' \
+  | cut -d: -f2 \
+  | awk '{s+=$1} END {printf "%.2f", s+0}')
+
+if [ "$(echo "$TYPE_COST_TODAY > 10" | bc)" = "1" ]; then
+  emit "failed" ",\"detail\":\"daily budget exceeded for ${TYPE}: \$${TYPE_COST_TODAY}\""
+  echo "Daily budget exceeded for ${TYPE}: \$${TYPE_COST_TODAY}/\$10. Skipping."
+  exit 0
+fi
+if [ "$(echo "$TOTAL_COST_TODAY > 30" | bc)" = "1" ]; then
+  emit "failed" ",\"detail\":\"total daily budget exceeded: \$${TOTAL_COST_TODAY}\""
+  echo "Total daily budget exceeded: \$${TOTAL_COST_TODAY}/\$30. Skipping."
+  exit 0
+fi
+
+emit "started" ",\"detail\":\"picking work from queue (\$${TYPE_COST_TODAY} spent today)\""
 
 # Export env vars for the PostToolUse hook
 export PEPPER_EVENTS_LOG="$EVENTS"

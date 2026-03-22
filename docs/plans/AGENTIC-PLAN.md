@@ -49,7 +49,7 @@ Ordered. Each task has details in the section below.
 - [x] **T5: Agent monitor** — `scripts/agent-monitor.sh` that tails `events.jsonl` with color-coded formatting
 - [x] **T6: Bug fixer prompt** — `scripts/prompts/bugfix.md` with full agent instructions
 - [x] **T7: Agent runner** — `scripts/agent-runner.sh` that checks kill switch, sets env vars, launches `claude -p`, emits start/done events, saves transcript
-- [ ] **T8: Integration test** — run the full pipeline end-to-end: runner launches a `-p` agent on a test task, monitor shows live events, agent opens a real PR. Verify everything works together.
+- [x] **T8: Integration test** — run the full pipeline end-to-end: runner launches a `-p` agent on a test task, monitor shows live events, agent opens a real PR. Verify everything works together.
 
 ---
 
