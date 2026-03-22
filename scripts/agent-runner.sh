@@ -12,6 +12,11 @@ cd "$REPO_ROOT"
 EVENTS="$REPO_ROOT/build/logs/events.jsonl"
 mkdir -p build/logs
 
+# Rotate events.jsonl if >1MB — keeps analysis fast, archives old data
+if [ -f "$EVENTS" ] && [ "$(stat -f%z "$EVENTS" 2>/dev/null || echo 0)" -gt 1048576 ]; then
+  mv "$EVENTS" "$EVENTS.$(date +%Y%m%d-%H%M%S).bak"
+fi
+
 # Startup sweep: prune orphaned worktrees that no running agent owns.
 # Each running agent stores its worktree path in OUR_WORKTREE. If a worktree
 # exists but no agent lockfile references it, it's orphaned.
