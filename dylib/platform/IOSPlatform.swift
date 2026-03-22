@@ -10,8 +10,8 @@ final class IOSPlatform: PepperPlatform {
 
     // MARK: - Subsystems
 
-    /// Placeholder — replaced by IOSElementDiscovery (TASK-111).
-    let elementDiscovery: ElementDiscovery = IOSElementDiscoveryStub()
+    /// iOS element discovery — wraps PepperSwiftUIBridge + PepperElementResolver.
+    let elementDiscovery: ElementDiscovery = IOSElementDiscovery()
 
     /// Placeholder — replaced by IOSInputSynthesis (TASK-112).
     let input: InputSynthesis = IOSInputSynthesisStub()
@@ -37,21 +37,6 @@ final class IOSPlatform: PepperPlatform {
 // These exist solely so IOSPlatform compiles and conforms to PepperPlatform
 // before the real wrapper types are created. Nothing calls through the
 // platform abstraction yet — handlers still use singletons directly.
-
-private final class IOSElementDiscoveryStub: ElementDiscovery {
-    func discoverInteractiveElements(hitTestFilter: Bool, maxElements: Int)
-        -> [PepperInteractiveElement] {
-        fatalError("IOSElementDiscovery not yet implemented — see TASK-111")
-    }
-
-    func collectAccessibilityElements() -> [PepperAccessibilityElement] {
-        fatalError("IOSElementDiscovery not yet implemented — see TASK-111")
-    }
-
-    func resolveElement(params: [String: AnyCodable]) -> ElementResolution? {
-        fatalError("IOSElementDiscovery not yet implemented — see TASK-111")
-    }
-}
 
 private final class IOSInputSynthesisStub: InputSynthesis {
     func tap(at point: CGPoint, duration: TimeInterval) -> Bool {
