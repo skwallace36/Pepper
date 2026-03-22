@@ -90,6 +90,7 @@ PROMPT=$(cat "$PROMPT_FILE")
 # Per-agent budget (verifier needs more for build+deploy)
 case "$TYPE" in
   verifier) BUDGET=5.00 ;;
+  tester)   BUDGET=5.00 ;;
   bugfix)   BUDGET=3.00 ;;
   *)        BUDGET=2.00 ;;
 esac
