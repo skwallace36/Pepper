@@ -25,4 +25,4 @@ BEFORE OPENING THE PR: Check .pepper-kill again. If it exists, exit.
 IDENTITY: Your git commits will show as `pepper-bugfix-agent`. Do NOT change git config.
 
 SCOPE: You may modify files in dylib/, tools/, scripts/.
-DO NOT modify: ROADMAP.md, TASKS.md, docs/, .claude/, .mcp.json, .env.
+DO NOT modify: ROADMAP.md, docs/, .claude/, .mcp.json, .env.

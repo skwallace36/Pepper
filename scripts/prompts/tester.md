@@ -42,4 +42,4 @@ BEFORE OPENING THE PR: Check .pepper-kill again. If it exists, revert changes an
 IDENTITY: Your git commits will show as `pepper-tester-agent`. Do NOT change git config.
 
 SCOPE: You may modify test-app/coverage-status.json.
-DO NOT modify: dylib/, ROADMAP.md, TASKS.md, docs/plans/, .claude/, .mcp.json, .env.
+DO NOT modify: dylib/, ROADMAP.md, docs/plans/, .claude/, .mcp.json, .env.
