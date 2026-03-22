@@ -38,6 +38,11 @@ public func pepperBootstrap() {
         object: nil,
         queue: .main
     ) { _ in
+        // Re-resolve the notification center runtime class now that the app
+        // is fully launched. At constructor time, .current() may have returned
+        // a placeholder — this ensures the real subclass is swizzled too.
+        PepperDialogInterceptor.reinforceNotificationSwizzle()
+
         // Resolve port: explicit env var > auto-detect from simulator UDID > default 8765
         let port: UInt16
         let udid: String?
