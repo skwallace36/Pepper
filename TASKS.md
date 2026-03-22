@@ -67,37 +67,37 @@ Test app changes needed before blocked commands can be tested. Unblocks ~20 unte
 - **TASK-074** `[P3]` `status:pr-open` — Audit and fix error handling: replace broad `except Exception` in pepper-context, standardize import error messages across all tools, validate external tool deps (rg, gh, xcodebuild)
 - **TASK-075** `[P3]` `status:pr-open` — Update `tools/TOOLS.md` to document the new module layout and shared library
 
-## CI/CD Integration (P4)
+## CI/CD Integration (P3)
 
 GitHub Actions workflow that boots a simulator, injects Pepper, and runs tests with reported results.
 
-- **TASK-080** `[P4]` `status:unstarted` — Add `pepper-ctl wait-for-server` health check command (poll WebSocket until connected or timeout)
-- **TASK-081** `[P4]` `status:unstarted` — Add JUnit/JSON test result export to `pepper-ctl` for CI artifact collection
-- **TASK-082** `[P4]` `status:unstarted` — Create GitHub Actions workflow template: build dylib, boot headless sim, inject via `deploy`, run smoke tests, upload results
-- **TASK-083** `[P4]` `status:unstarted` — Add CI batch/headless mode — run a predefined test script and exit with pass/fail status code
-- **TASK-084** `[P4]` `status:unstarted` — Add `make ci` target that wraps the full boot → inject → test → teardown cycle
+- **TASK-080** `[P3]` `status:unstarted` — Add `pepper-ctl wait-for-server` health check command (poll WebSocket until connected or timeout)
+- **TASK-081** `[P3]` `status:unstarted` — Add JUnit/JSON test result export to `pepper-ctl` for CI artifact collection
+- **TASK-082** `[P3]` `status:unstarted` — Create GitHub Actions workflow template: build dylib, boot headless sim, inject via `deploy`, run smoke tests, upload results
+- **TASK-083** `[P3]` `status:unstarted` — Add CI batch/headless mode — run a predefined test script and exit with pass/fail status code
+- **TASK-084** `[P3]` `status:unstarted` — Add `make ci` target that wraps the full boot → inject → test → teardown cycle
 
-## Device Support (P5)
+## Device Support (P6)
 
 Extend Pepper from simulator-only to real iOS devices via build-time framework embedding.
 
-- **TASK-085** `[P5]` `status:unstarted` — Add `make xcframework` target — package Pepper dylib as an xcframework for device embedding
-- **TASK-086** `[P5]` `status:unstarted` — Add Bonjour service advertisement to `PepperServer` for device-to-host discovery (+ `NSLocalNetworkUsageDescription` docs)
-- **TASK-087** `[P5]` `status:unstarted` — Add non-simulator port resolution fallback — explicit env var, Info.plist key, or Bonjour browse
-- **TASK-088** `[P5]` `status:unstarted` — Update `pepper-ctl` and `pepper-mcp` to discover and connect to device-hosted Pepper instances (not just simulator ports)
-- **TASK-089** `[P5]` `status:unstarted` — Document device integration guide — how to embed Pepper framework in an Xcode project for on-device use
+- **TASK-085** `[P6]` `status:unstarted` — Add `make xcframework` target — package Pepper dylib as an xcframework for device embedding
+- **TASK-086** `[P6]` `status:unstarted` — Add Bonjour service advertisement to `PepperServer` for device-to-host discovery (+ `NSLocalNetworkUsageDescription` docs)
+- **TASK-087** `[P6]` `status:unstarted` — Add non-simulator port resolution fallback — explicit env var, Info.plist key, or Bonjour browse
+- **TASK-088** `[P6]` `status:unstarted` — Update `pepper-ctl` and `pepper-mcp` to discover and connect to device-hosted Pepper instances (not just simulator ports)
+- **TASK-089** `[P6]` `status:unstarted` — Document device integration guide — how to embed Pepper framework in an Xcode project for on-device use
 
-## Packaging & Distribution (P6)
+## Packaging & Distribution (P4)
 
 README, Homebrew, MCP directory listings.
 
-- **TASK-090** `[P6]` `status:unstarted` — Write README with animated demo GIF/video, 3-step install, architecture diagram, tool reference table
-- **TASK-091** `[P6]` `status:unstarted` — Create Homebrew tap repo (`homebrew-pepper`) with formula + GitHub Actions for automated bottle building
-- **TASK-092** `[P6]` `status:unstarted` — Submit to MCP directories: mcp.so, awesome-mcp-servers (wong2 + punkpeye), Cline marketplace, official MCP registry, Glama, PulseMCP
-- **TASK-093** `[P6]` `status:unstarted` — Record 60-second demo video showing Claude Code using Pepper to observe and interact with an iOS app
-- **TASK-094** `[P6]` `status:unstarted` — Write technical blog post: "How I Gave AI Eyes Inside iOS Apps" — dylib injection approach, MCP integration, what it enables
+- **TASK-090** `[P4]` `status:unstarted` — Write README with animated demo GIF/video, 3-step install, architecture diagram, tool reference table
+- **TASK-091** `[P4]` `status:unstarted` — Create Homebrew tap repo (`homebrew-pepper`) with formula + GitHub Actions for automated bottle building
+- **TASK-092** `[P4]` `status:unstarted` — Submit to MCP directories: mcp.so, awesome-mcp-servers (wong2 + punkpeye), Cline marketplace, official MCP registry, Glama, PulseMCP
+- **TASK-093** `[P4]` `status:unstarted` — Record 60-second demo video showing Claude Code using Pepper to observe and interact with an iOS app
+- **TASK-094** `[P4]` `status:unstarted` — Write technical blog post: "How I Gave AI Eyes Inside iOS Apps" — dylib injection approach, MCP integration, what it enables
 
-## Android Port Prep (P3)
+## Android Port Prep (P7)
 
 Restructure the iOS dylib for platform abstraction. Each phase is independently committable. iOS keeps working at every step. Full plan: `docs/plans/ANDROID-PORT.md`.
 
@@ -155,4 +155,4 @@ Ideas from `docs/RESEARCH.md` promoted to concrete tasks.
 
 ---
 
-**Routing:** Bugs → `BUGS.md` | Priorities → `ROADMAP.md` | Test results → `test-app/COVERAGE.md` | Research → `docs/RESEARCH.md`
+**Routing:** Bugs → GitHub Issues (`gh issue list --label bug`) | Priorities → `ROADMAP.md` | Test results → `test-app/COVERAGE.md` | Research → `docs/RESEARCH.md`

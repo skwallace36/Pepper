@@ -14,12 +14,8 @@ CHANGED=$(git diff-tree -r --name-only --no-commit-id HEAD@{1} HEAD 2>/dev/null 
 [ -z "$CHANGED" ] && exit 0
 
 # Trigger based on changed files (background, don't block the merge)
-if echo "$CHANGED" | grep -q "BUGS.md"; then
-  # New bugs may have been added
-  if grep -q 'status:open' BUGS.md 2>/dev/null; then
-    nohup ./scripts/agent-trigger.sh bug-filed >> build/logs/trigger.log 2>&1 &
-  fi
-fi
+# Note: bugs are now tracked in GitHub Issues, not BUGS.md. The bug-filed
+# trigger is no longer driven by file changes — remove this block.
 
 if echo "$CHANGED" | grep -q "dylib/\|tools/"; then
   # Code changes merged — run tester to check for regressions
