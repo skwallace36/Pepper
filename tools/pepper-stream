@@ -248,7 +248,7 @@ async def stream_events(host, port, event_filter, raw_json, max_events=0, durati
     deadline = (asyncio.get_event_loop().time() + duration) if duration > 0 else None
 
     try:
-        async with websockets.connect(url, ping_interval=20, ping_timeout=10) as ws:
+        async with websockets.connect(url, ping_interval=20, ping_timeout=10, compression=None) as ws:
             # Subscribe to specific events if filtered
             if event_filter:
                 sub_msg = {

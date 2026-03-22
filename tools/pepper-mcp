@@ -56,7 +56,6 @@ except ImportError:
 
 try:
     import websockets
-    import websockets.client
 except ImportError:
     print("Error: 'websockets' package required. Install with: pip install websockets", file=sys.stderr)
     sys.exit(1)

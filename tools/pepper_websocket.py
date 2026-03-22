@@ -9,7 +9,6 @@ import json
 import uuid
 
 import websockets
-import websockets.client
 
 
 def make_command(cmd, params=None):
@@ -79,7 +78,7 @@ async def send_command(host, port, msg, timeout=10, on_event=None, close_timeout
     url = f"ws://{host}:{port}"
     msg_id = msg.get("id")
     try:
-        async with websockets.client.connect(url, close_timeout=close_timeout) as ws:
+        async with websockets.connect(url, close_timeout=close_timeout, compression=None) as ws:
             await ws.send(json.dumps(msg))
             return await recv_response(ws, msg_id, timeout=timeout, on_event=on_event)
     except (
