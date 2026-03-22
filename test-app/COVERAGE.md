@@ -34,12 +34,12 @@ Bugs: see [`BUGS.md`](../BUGS.md)
 | `tap` | predicate | untested | Elements matching NSPredicate |  |
 | `input` | — | untested | TextField (text_field), TextEditor (text_editor) |  |
 | `toggle` | — | untested | Toggle (toggle_switch), Segmented (segment_control) |  |
-| `scroll` | top | untested | List tab (30 rows) |  |
-| `scroll` | bottom | untested | List tab (30 rows) |  |
+| `scroll` | top | pass | List tab (30 rows) | Scrolled to top from mid-list; Item 0 visible at top |
+| `scroll` | bottom | pass | List tab (30 rows) | Scrolled to bottom; Item 29 visible at bottom |
 | `scroll` | down | pass | List tab (30 rows) |  |
-| `scroll` | up | untested | List tab (30 rows) |  |
-| `scroll` | left | untested | Horizontal scroll if added |  |
-| `scroll` | right | untested | Horizontal scroll if added |  |
+| `scroll` | up | pass | List tab (30 rows) | Scrolled up 400pt from bottom; items shifted upward as expected |
+| `scroll` | left | blocked | Horizontal scroll if added | Command executes without error but no horizontal scroll view in test app to verify |
+| `scroll` | right | blocked | Horizontal scroll if added | Command executes without error but no horizontal scroll view in test app to verify |
 | `tree` | — | untested | Any screen |  |
 | `read` | — | untested | Elements with a11y IDs |  |
 | `wait_for` | visible | untested | Start 3s Timer → wait for FIRED text |  |
@@ -168,10 +168,10 @@ Bugs: see [`BUGS.md`](../BUGS.md)
 
 **141 test points** across 49 commands.
 
-- pass: 8
+- pass: 11
 - fail: 2
 - crash: 1
-- untested: 130
+- untested: 125
 
 ## Test App Gaps
 
