@@ -79,6 +79,22 @@ else
     warn "gh CLI not installed — needed for agent PRs. Run: brew install gh"
 fi
 
+# GitHub App for agent PRs (optional)
+if [ -f "$REPO_DIR/.env" ]; then
+    _APP_ID=$(grep "^GITHUB_APP_ID=" "$REPO_DIR/.env" 2>/dev/null | cut -d= -f2)
+    _INSTALL_ID=$(grep "^GITHUB_APP_INSTALLATION_ID=" "$REPO_DIR/.env" 2>/dev/null | cut -d= -f2)
+    if [ -n "$_APP_ID" ] && [ -n "$_INSTALL_ID" ]; then
+        if security find-generic-password -a "pepper-agent-app" -s "pepper-github-app-key" -w &>/dev/null; then
+            pass "GitHub App: configured (App ID: $_APP_ID)"
+        else
+            warn "GitHub App: .env has app IDs but private key not in Keychain"
+            info "  Run: security add-generic-password -a pepper-agent-app -s pepper-github-app-key -w \"\$(cat key.pem)\""
+        fi
+    else
+        info "GitHub App not configured (agents will use your gh auth for PRs)"
+    fi
+fi
+
 # claude CLI (used by agent runner)
 if command -v claude &>/dev/null; then
     pass "claude CLI: $(claude --version 2>/dev/null | head -1)"

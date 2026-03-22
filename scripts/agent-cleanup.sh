@@ -44,7 +44,7 @@ while IFS= read -r line; do
 done < <(ps aux | grep "agent-runner" | grep -v grep | grep -v "$$")
 [ "$RUNNER_KILLED" -gt 0 ] && echo "  Killed $RUNNER_KILLED runner(s)" || echo "  No orphaned runners"
 
-# Clean up worktrees
+# Clean up ALL worktrees (this is intentional — cleanup kills everything)
 WT_REMOVED=0
 for wt in $(git worktree list --porcelain 2>/dev/null | grep "^worktree .*/\.claude/worktrees/" | sed 's/^worktree //'); do
   echo "  Removing worktree: $(basename "$wt")"
