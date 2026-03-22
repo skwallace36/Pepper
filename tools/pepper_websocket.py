@@ -8,7 +8,7 @@ import asyncio
 import json
 import uuid
 
-import websockets
+from pepper_ws_raw import RawWebSocket
 
 
 def make_command(cmd, params=None):
@@ -32,59 +32,41 @@ class CrashError(Exception):
         )
 
 
-async def recv_response(ws, msg_id, timeout=10, on_event=None):
-    """Read from *ws* until a response matching *msg_id* arrives.
-
-    Filters out event messages.  If *on_event* is provided it is called
-    as ``on_event(event_name, event_data)`` for every event received.
-
-    Returns the response dict.
-
-    Raises ``asyncio.TimeoutError`` if *timeout* expires.
-    Raises ``CrashError`` if the connection drops (wraps ConnectionClosed).
-    """
-    deadline = asyncio.get_event_loop().time() + timeout
+def _send_command_sync(host, port, msg, timeout=10, on_event=None):
+    """Synchronous send_command using raw WebSocket (no external deps)."""
+    msg_id = msg.get("id")
+    ws = RawWebSocket.connect(host, port, timeout=timeout)
     try:
+        ws.send(json.dumps(msg))
+        import time
+        deadline = time.monotonic() + timeout
         while True:
-            remaining = deadline - asyncio.get_event_loop().time()
+            remaining = deadline - time.monotonic()
             if remaining <= 0:
                 raise asyncio.TimeoutError()
-            raw = await asyncio.wait_for(ws.recv(), timeout=remaining)
+            raw = ws.recv(timeout=remaining)
             data = json.loads(raw)
-            # Skip event messages
             if "event" in data:
                 if on_event:
                     on_event(data["event"], data.get("data", {}))
                 continue
-            # Accept response matching our id, or any non-event response
             if msg_id is None or data.get("id") == msg_id:
                 return data
-    except (
-        websockets.exceptions.ConnectionClosed,
-        websockets.exceptions.ConnectionClosedError,
-        ConnectionResetError,
-        BrokenPipeError,
-    ):
-        raise CrashError(msg_id or "unknown")
+    except (ConnectionError, ConnectionResetError, BrokenPipeError, OSError) as e:
+        raise CrashError(msg.get("cmd", "unknown"), detail=str(e))
+    finally:
+        ws.close()
 
 
 async def send_command(host, port, msg, timeout=10, on_event=None, close_timeout=2):
     """Open a connection, send *msg*, and return the matching response.
 
+    Uses a raw stdlib WebSocket client (no external library dependency).
+
     Raises ``CrashError`` on connection loss.
     Raises ``ConnectionRefusedError`` if the server is unreachable.
     Raises ``asyncio.TimeoutError`` if no response within *timeout*.
     """
-    url = f"ws://{host}:{port}"
-    msg_id = msg.get("id")
-    try:
-        async with websockets.connect(url, close_timeout=close_timeout, compression=None) as ws:
-            await ws.send(json.dumps(msg))
-            return await recv_response(ws, msg_id, timeout=timeout, on_event=on_event)
-    except (
-        websockets.exceptions.ConnectionClosed,
-        websockets.exceptions.ConnectionClosedError,
-        ConnectionResetError,
-        BrokenPipeError,
-    ):
-        raise CrashError(msg.get("cmd", "unknown"))
+    return await asyncio.get_event_loop().run_in_executor(
+        None, lambda: _send_command_sync(host, port, msg, timeout, on_event)
+    )
