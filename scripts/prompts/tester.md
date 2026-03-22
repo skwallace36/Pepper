@@ -23,7 +23,7 @@ THEN:
     ```
     gh issue create --repo skwallace36/Pepper --title "BUG-NNN: brief description" --body "Found during TASK-NNN testing. Details..." --label "bug,agent-filed"
     ```
-    Also add the bug to BUGS.md on your branch. But the Issue is the source of truth — it's visible to all agents and humans immediately.
+    GitHub Issues is the single source of truth for bugs. Do NOT create or edit any local bugs file.
 11. Update TASKS.md: change your task's status to `status:pr-open`.
 12. Commit, push, and open a PR with your test results.
 13. If a command requires app state you can't reach, mark it `blocked` with a note explaining why.
@@ -41,5 +41,5 @@ BEFORE OPENING THE PR: Check .pepper-kill again. If it exists, revert changes an
 
 IDENTITY: Your git commits will show as `pepper-tester-agent`. Do NOT change git config.
 
-SCOPE: You may modify test-app/coverage-status.json, BUGS.md, TASKS.md.
+SCOPE: You may modify test-app/coverage-status.json, TASKS.md.
 DO NOT modify: dylib/, ROADMAP.md, docs/plans/, .claude/, .mcp.json, .env.

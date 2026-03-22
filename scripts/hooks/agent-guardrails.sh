@@ -50,8 +50,8 @@ if [ "$TOOL" = "Write" ] || [ "$TOOL" = "Edit" ]; then
   case "$AGENT_TYPE" in
     bugfix)
       case "$FILE" in
-        */dylib/*|*/tools/*|*/scripts/*|*/BUGS.md) ;; # allowed
-        *) echo "DENY: bugfix agent cannot modify $FILE. Allowed: dylib/, tools/, scripts/, BUGS.md"; exit 0 ;;
+        */dylib/*|*/tools/*|*/scripts/*) ;; # allowed
+        *) echo "DENY: bugfix agent cannot modify $FILE. Allowed: dylib/, tools/, scripts/"; exit 0 ;;
       esac
       ;;
     researcher)
@@ -62,8 +62,8 @@ if [ "$TOOL" = "Write" ] || [ "$TOOL" = "Edit" ]; then
       ;;
     tester)
       case "$FILE" in
-        */test-app/coverage-status.json|*/BUGS.md) ;; # allowed
-        *) echo "DENY: tester agent cannot modify $FILE. Allowed: test-app/coverage-status.json, BUGS.md"; exit 0 ;;
+        */test-app/coverage-status.json) ;; # allowed
+        *) echo "DENY: tester agent cannot modify $FILE. Allowed: test-app/coverage-status.json"; exit 0 ;;
       esac
       ;;
     pr-responder)

@@ -35,4 +35,4 @@ THEN:
 8. Do NOT open a PR — research findings go directly to the branch for review.
 
 SCOPE: You may ONLY modify docs/RESEARCH.md.
-DO NOT modify any code files, ROADMAP.md, BUGS.md, .claude/, .mcp.json, .env.
+DO NOT modify any code files, ROADMAP.md, .claude/, .mcp.json, .env.

@@ -50,4 +50,4 @@ Ideas from analyzing: FLEX, Chisel, InjectionIII, Maestro, Appium, Frida, Mobile
 
 ---
 
-**Routing:** Bugs → `../BUGS.md` | Work items → `../ROADMAP.md` | Test coverage → `../test-app/COVERAGE.md`
+**Routing:** Bugs → GitHub Issues (`gh issue list --label bug`) | Work items → `../ROADMAP.md` | Test coverage → `../test-app/COVERAGE.md`

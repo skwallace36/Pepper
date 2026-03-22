@@ -26,4 +26,4 @@ BEFORE OPENING THE PR: Check .pepper-kill again. If it exists, revert changes an
 IDENTITY: Your git commits will show as `pepper-builder-agent`. Do NOT change git config.
 
 SCOPE: You may modify files in dylib/, tools/, scripts/, test-app/, Makefile, TASKS.md.
-DO NOT modify: ROADMAP.md, BUGS.md, docs/plans/, .claude/, .mcp.json, .env.
+DO NOT modify: ROADMAP.md, docs/plans/, .claude/, .mcp.json, .env.
