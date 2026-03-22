@@ -42,9 +42,9 @@ Bugs: see [`BUGS.md`](../BUGS.md)
 | `scroll` | right | blocked | Horizontal scroll if added | Command executes without error but no horizontal scroll view in test app to verify |
 | `tree` | — | untested | Any screen |  |
 | `read` | — | untested | Elements with a11y IDs |  |
-| `wait_for` | visible | untested | Start 3s Timer → wait for FIRED text |  |
-| `wait_for` | exists | untested | Same timer or navigation push |  |
-| `wait_for` | has_value | untested | Counter value after tap |  |
+| `wait_for` | visible | fail | Start 3s Timer → wait for FIRED text | BUG-007: Text condition works for already-visible text (returns 3-23ms). But fails to detect async state changes — 3s timer fires and text updates to 'Timer: FIRED', yet wait_for times out. Handler's main-thread polling loop blocks SwiftUI re-rendering. |
+| `wait_for` | exists | fail | Same timer or navigation push | BUG-006 + BUG-007: Element ID condition fails (SwiftUI identifiers not discoverable). Text condition works for already-present text but fails for async changes (same main-thread blocking as visible). |
+| `wait_for` | has_value | fail | Counter value after tap | BUG-006: has_value requires element ID, which fails for SwiftUI elements. Cannot test the has_value logic itself. Text-based workaround (wait_for text 'Count: N' after tap) works because tap updates synchronously before wait_for starts polling. |
 | `batch` | — | untested | Sequence of tap + look |  |
 | `navigate` | tab | pass | 3-tab TabView (Controls, List, Misc) |  |
 | `navigate` | deeplink | untested | NEEDS: URL scheme + routes |  |
@@ -169,9 +169,9 @@ Bugs: see [`BUGS.md`](../BUGS.md)
 **141 test points** across 49 commands.
 
 - pass: 23
-- fail: 5
+- fail: 8
 - crash: 1
-- untested: 109
+- untested: 106
 
 ## Test App Gaps
 
