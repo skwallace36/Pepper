@@ -2,9 +2,7 @@ import UIKit
 import os
 
 // MARK: - IOHIDEvent Private API Bindings
-// Adapted from Lyft's Hammer (https://github.com/lyft/Hammer)
 // Uses dlsym to load IOKit/BackBoardServices private functions at runtime.
-// Same APIs used by XCUITest, KIF, and Hammer for 10+ years.
 
 @objc protocol PepperHIDEvent: NSObjectProtocol {}
 
