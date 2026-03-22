@@ -23,7 +23,7 @@ jobs:
       - name: Install Python dependencies
         run: |
           python3 -m venv .venv
-          .venv/bin/pip install websockets
+          .venv/bin/pip install 'websockets>=14,<16'
 
       - name: Run CI
         run: |
