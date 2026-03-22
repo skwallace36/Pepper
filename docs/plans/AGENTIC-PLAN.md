@@ -301,7 +301,7 @@ Machine-parseable markdown files. Each item has a status agents can read and upd
 
 | Queue | File | Statuses | Parseable today? |
 |-------|------|----------|-----------------|
-| Bugs | `BUGS.md` | open / in-progress / pr-open / fixed | After T1 |
+| Bugs | `BUGS.md` | open / in-progress / pr-open / fixed | **Yes** (done in T1) |
 | Features/tasks | `ROADMAP.md` | unstarted / in-progress / pr-open / done | **No — needs restructure** |
 | Test coverage | `test-app/COVERAGE.md` | untested / pass / fail | Yes |
 | PR feedback | GitHub PR comments | unaddressed / resolved | Via `gh` CLI |
@@ -521,4 +521,10 @@ Retention: keep last 20 transcripts per agent type. Runner cleans up older ones.
 
 ---
 
-**Status:** T1-T7 built and validated. T8 (integration test) pending — run `./scripts/agent-runner.sh bugfix` to execute.
+**Status:** Milestone 1 complete. All tasks built, validated, and integration-tested. First agent run: BUG-001 fixed, PR #1 opened. Runner has prereqs check, daily budget enforcement, and transcript retention.
+
+**Integration test results (2026-03-22):**
+- Agent: 40 turns, $1.91, ~10 min, 3 commits, 6 files changed
+- Events: STARTED → BRANCH → 3x COMMIT → PUSH → DONE (all captured live)
+- Issue found: `gh` CLI must be installed + authed (added prereqs check)
+- Issue found: cost extraction path was wrong (fixed to `.total_cost_usd`)
