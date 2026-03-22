@@ -12,7 +12,6 @@ exactly as before. The session layer is purely additive.
 import json
 import os
 import socket
-import time
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -31,30 +30,6 @@ DEFAULT_MAX_SIMS = 3
 # ---------------------------------------------------------------------------
 # Liveness checks
 # ---------------------------------------------------------------------------
-
-def _is_pid_alive(pid: int) -> bool:
-    """Check if a process with the given PID exists. Does not send a signal."""
-    try:
-        os.kill(pid, 0)
-        return True
-    except (ProcessLookupError, PermissionError):
-        # ProcessLookupError: PID doesn't exist
-        # PermissionError: PID exists but we can't signal it (still alive)
-        return pid > 0 and not isinstance(
-            _safe_kill(pid), ProcessLookupError
-        )
-    except OSError:
-        return False
-
-
-def _safe_kill(pid: int) -> Optional[Exception]:
-    """Attempt os.kill(pid, 0), return the exception or None."""
-    try:
-        os.kill(pid, 0)
-        return None
-    except Exception as e:
-        return e
-
 
 def _is_pid_alive(pid: int) -> bool:
     """Check if a process with the given PID exists."""
@@ -109,9 +84,8 @@ def _write_session_atomic(udid: str, data: dict) -> bool:
     """Write a session file atomically (write tmp, rename).
 
     Returns True if we successfully wrote AND verified our PID is in the file.
-    This handles the race where two processes both try to claim the same sim:
-    both write tmp files, both rename — only one rename wins on the same inode,
-    and we re-read to confirm.
+    Used by claim_simulator() for MCP server sessions (long-running PID).
+    For deploy pre-claims, use claim_simulator_deploying() which uses flock.
     """
     _ensure_session_dir()
     path = _session_path(udid)
