@@ -14,7 +14,7 @@ Run every Pepper command against the test app. Each task covers a command family
 - **TASK-012** `[P2]` `status:pr-open` — Test `scroll_to` variants: element, text, predicate, edge *(4 tested → pass, BUG-004 filed)*
 - **TASK-013** `[P2]` `status:pr-open` — Test `swipe` variants: up, down, left, right *(4 pass)*
 - **TASK-014** `[P2]` `status:pr-open` — Test `input` + `toggle` commands *(1 pass, 1 fail)*
-- **TASK-015** `[P2]` `status:in-progress` — Test `wait_for` variants: visible, exists, has_value *(3 untested)*
+- **TASK-015** `[P2]` `status:pr-open` — Test `wait_for` variants: visible, exists, has_value *(3 fail — BUG-007, BUG-006)*
 - **TASK-016** `[P2]` `status:unstarted` — Test `tree` + `read` + `find` commands *(3+ untested)*
 - **TASK-017** `[P2]` `status:unstarted` — Test `vars` variants: discover, list, inspect, set *(5 untested)*
 - **TASK-018** `[P2]` `status:unstarted` — Test `heap` + `heap_snapshot` commands *(8 untested)*
