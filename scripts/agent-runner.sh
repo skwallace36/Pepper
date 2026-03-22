@@ -69,6 +69,20 @@ cleanup() {
   if [ -n "$OUR_WORKTREE" ]; then
     git worktree remove --force "$OUR_WORKTREE" 2>/dev/null || true
   fi
+
+  # Sim cleanup — shut down any sims this agent booted
+  if [ -n "$SIMS_BEFORE" ]; then
+    SIMS_AFTER=$(xcrun simctl list devices booted -j 2>/dev/null | python3 -c "
+import json, sys
+devs = json.load(sys.stdin)['devices']
+print(' '.join(d['udid'] for r in devs.values() for d in r if d['state'] == 'Booted'))
+" 2>/dev/null || true)
+    for sim in $SIMS_AFTER; do
+      if ! echo "$SIMS_BEFORE" | grep -q "$sim"; then
+        xcrun simctl shutdown "$sim" 2>/dev/null || true
+      fi
+    done
+  fi
   git worktree prune 2>/dev/null || true
 
   # Safety net: if no final event was emitted, emit one now with diagnostic info
@@ -192,6 +206,13 @@ export GIT_AUTHOR_NAME="pepper-${TYPE}-agent"
 export GIT_AUTHOR_EMAIL="pepper-${TYPE}-agent@noreply.pepper.dev"
 export GIT_COMMITTER_NAME="pepper-${TYPE}-agent"
 export GIT_COMMITTER_EMAIL="pepper-${TYPE}-agent@noreply.pepper.dev"
+
+# Snapshot booted sims before agent runs — shut down any new ones in cleanup
+SIMS_BEFORE=$(xcrun simctl list devices booted -j 2>/dev/null | python3 -c "
+import json, sys
+devs = json.load(sys.stdin)['devices']
+print(' '.join(d['udid'] for r in devs.values() for d in r if d['state'] == 'Booted'))
+" 2>/dev/null || true)
 
 START=$(date +%s)
 TRANSCRIPT="build/logs/transcript-${TYPE}-${START}.json"
