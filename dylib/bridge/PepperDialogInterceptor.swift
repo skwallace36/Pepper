@@ -46,6 +46,10 @@ final class PepperDialogInterceptor {
     /// Whether auto-dismiss is enabled.
     var autoDismissEnabled: Bool = false
 
+    /// Set by `PepperWindowMonitor` when the app's key window resigns key
+    /// and no app-side modal is pending — indicates a system dialog is likely blocking.
+    var systemDialogSuspected: Bool = false
+
     /// Delay before auto-dismiss (gives time for broadcast).
     var autoDismissDelay: TimeInterval = 0.3
 
