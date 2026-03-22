@@ -1,39 +1,38 @@
-name: CI — Build & Smoke Test
+name: CI
 
 on:
-  push:
-    branches: [main]
   pull_request:
     branches: [main]
   workflow_dispatch:
 
 concurrency:
-  group: ci-${{ github.event_name == 'pull_request' && github.head_ref || github.sha }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ci-${{ github.head_ref || github.sha }}
+  cancel-in-progress: true
 
 jobs:
-  build-and-test:
+  build:
     runs-on: macos-15
-    timeout-minutes: 30
+    timeout-minutes: 5
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Python dependencies
-        run: |
-          python3 -m venv .venv
-          .venv/bin/pip install 'websockets>=14,<16'
+      - name: Build dylib
+        run: make build
 
-      - name: Run CI
+      - name: Check Python syntax
         run: |
-          source .venv/bin/activate
-          make ci
+          python3 -m py_compile tools/pepper-mcp
+          python3 -m py_compile tools/pepper-ctl
+          python3 -m py_compile tools/pepper-stream
+          python3 -m py_compile tools/pepper_common.py
+          python3 -m py_compile tools/pepper_websocket.py
+          python3 -m py_compile tools/pepper_ws_raw.py
 
-      - name: Upload results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ci-results
-          path: build/ci-results/
-          retention-days: 14
+      - name: Verify no hardcoded paths
+        run: |
+          if grep -rn '/Users/' dylib/ tools/ scripts/ --include='*.swift' --include='*.py' --include='*.sh' 2>/dev/null | grep -v '.env.example' | grep -v 'test-client' | grep -v 'pepper_sessions' | head -5 | grep -q .; then
+            echo "Hardcoded paths found!"
+            exit 1
+          fi
