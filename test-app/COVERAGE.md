@@ -23,7 +23,7 @@ Bugs: see [`BUGS.md`](../BUGS.md)
 | Command | Variant | Status | Test Surface | Notes |
 |---------|---------|--------|-------------|-------|
 | `ping` | — | pass | Any state |  |
-| `help` | — | untested | Any state |  |
+| `help` | — | pass | Any state | Returns list of 50 available server commands. Tested via pepper-ctl and direct WebSocket. |
 | `look` | — | pass | Any screen | Alias for introspect map |
 | `tap` | text | pass | Tap Me button, tab bar items |  |
 | `tap` | element | fail | Buttons with a11y IDs | BUG-006: Works for UIKit views (uikit_button found and tapped), but fails for SwiftUI .accessibilityIdentifier() elements (tap_button not found). SwiftUI identifiers not stored as UIView.accessibilityIdentifier. |
@@ -45,12 +45,12 @@ Bugs: see [`BUGS.md`](../BUGS.md)
 | `wait_for` | visible | fail | Start 3s Timer → wait for FIRED text | BUG-007: Text condition works for already-visible text (returns 3-23ms). But fails to detect async state changes — 3s timer fires and text updates to 'Timer: FIRED', yet wait_for times out. Handler's main-thread polling loop blocks SwiftUI re-rendering. |
 | `wait_for` | exists | fail | Same timer or navigation push | BUG-006 + BUG-007: Element ID condition fails (SwiftUI identifiers not discoverable). Text condition works for already-present text but fails for async changes (same main-thread blocking as visible). |
 | `wait_for` | has_value | fail | Counter value after tap | BUG-006: has_value requires element ID, which fails for SwiftUI elements. Cannot test the has_value logic itself. Text-based workaround (wait_for text 'Count: N' after tap) works because tap updates synchronously before wait_for starts polling. |
-| `batch` | — | untested | Sequence of tap + look |  |
+| `batch` | — | pass | Sequence of ping + screen, tap + look | Executes array of commands sequentially, returns all responses. Tested: (1) ping+screen returns 2 responses with correct data. (2) tap+look returns tap result then screen state. (3) Empty array returns {executed:0, errors:0, responses:[]}. (4) Missing commands param returns proper error. |
 | `navigate` | tab | pass | 3-tab TabView (Controls, List, Misc) |  |
-| `navigate` | deeplink | untested | NEEDS: URL scheme + routes |  |
-| `navigate` | pop | untested | Detail nav stack |  |
-| `navigate` | dismiss | untested | Sheet from Show Sheet button |  |
-| `deeplinks` | — | untested | NEEDS: URL scheme + routes |  |
+| `navigate` | deeplink | blocked | NEEDS: URL scheme + routes | Returns 'Deep links are not available — no URL scheme configured'. Generic mode apps have no adapter deeplinkScheme. Cannot test without app adapter. |
+| `navigate` | pop | fail | Detail nav stack (pushed via Item 0 tap) | BUG-001 (same root cause): Returns 'Already at root of navigation stack' even when on a pushed SwiftUI NavigationStack detail view. screen shows can_go_back=false despite detail being visible. SwiftUI NavigationStack state not detectable through UIKit. |
+| `navigate` | dismiss | fail | Sheet from Show Sheet button | BUG-008: Returns 'Already at root of navigation stack' even when SwiftUI .sheet() is presented. screen correctly shows is_modal=true, screen_id=presentation, but dismiss logic doesn't detect it. GH #40. |
+| `deeplinks` | — | pass | Any state (generic mode) | Returns {count:0, deeplinks:[], note:'No deep links configured...'} in generic mode. Command works correctly; no adapter configured so no deeplinks available. |
 | `back` | — | fail | Detail → Deeper nav stack push | BUG-001 |
 | `screen` | — | pass | Any tab |  |
 | `introspect` | full | pass | List tab (all screens tested) | Returns combined accessibility (250 elements) + viewHierarchy (126 views) + hostingControllerCount (7). Default mode when no mode param given. Response ~52-96KB depending on tab. Tested on Controls and List tabs. |
@@ -65,37 +65,37 @@ Bugs: see [`BUGS.md`](../BUGS.md)
 | `swipe` | up | pass | List tab (30 rows) | Swiped up from center (201,437) to (201,37). List scrolled from Items 0-9 to Items 11-24. Swipe up = finger moves up = content scrolls up. |
 | `swipe` | left | pass | List tab (30 rows) | Swiped left from center (201,437) to (-199,437). Command executed without error. No swipe-action rows in test app to reveal delete/actions, but gesture injected correctly. |
 | `swipe` | right | pass | List tab (30 rows) | Swiped right from center (201,437) to (601,437). Command executed without error. Gesture injected correctly. |
-| `watch` | — | untested | Watch counter label, then tap |  |
-| `unwatch` | — | untested | After watch |  |
+| `watch` | — | pass | Watch counter label by label match | Returns {watch_id, initial:{center, type, label, frame}}. Tested: watch label='Count' found 'Count: 0' staticText. Point-based watch also works: returns initial={} for empty area. Missing target returns proper error. |
+| `unwatch` | — | pass | After watch | Stops watch by ID or all. Tested: unwatch all=true returns {stopped_count:1, stopped:['w2']}. Nonexistent watch_id returns proper error. |
 | `network` | start | pass | Any state | Returns {active:true, buffer_size:500}. Accepts buffer_size param. URLProtocol-based interception activates correctly. |
 | `network` | stop | pass | After start | Returns {active:false, transactions_captured:N}. Correctly deactivates interception. |
 | `network` | status | pass | Any state | Returns active, buffer_size, buffer_count, total_recorded. All fields accurate across start/stop/clear lifecycle. |
 | `network` | log | pass | After start + Fetch HTTP button | Returns {count:N, transactions:[...]}. Each transaction has request (method, url, headers), response (status_code, headers, body, content_length), timing, and id. Captured GET https://httpbin.org/json → 200 with full JSON body. Limit param works correctly. |
 | `network` | clear | pass | After log capture | Returns {cleared:true}. Verified buffer_count drops to 0 after clear, total_recorded preserved. |
-| `test` | start | untested | Any state |  |
-| `test` | result | untested | After running commands |  |
-| `test` | reset | untested | After result |  |
+| `test` | start | pass | Any state | Starts test session with test_id. Returns {test_id, status:'started'}. Missing test_id returns proper error. |
+| `test` | result | pass | After start | Records test result. Tested: result with test_id='task024', status='pass', notes='All good'. Returns {test_id, timestamp, status:'pass'}. |
+| `test` | reset | pass | After result | Resets test state. Returns {reset:true}. Works both with and without active test session. |
 | `dialog` | list | pass | Show Alert button triggers alert | Returns array of pending dialogs with dialog_id, title, message, actions (title, style, index), timestamp. Tested: triggered alert shows 1 dialog with title='Test Alert', message='This is a test alert dialog', 2 actions (OK default, Cancel cancel). Empty list returns count=0. |
 | `dialog` | current | pass | Same alert | Returns most recent pending dialog with has_dialog=true and full dialog data. When no dialog present: returns has_dialog=false, dialog=null. |
 | `dialog` | dismiss | pass | Same alert | Dismisses dialog by button name. Tested: dismiss with button='OK' returns {dismissed:true, button:'OK'}. Screen returns to normal 'ui' state. Error case: dismiss with no pending dialog returns proper error 'No pending dialog to dismiss'. |
 | `dialog` | share_sheet | blocked | Share button (icon-only SF Symbol) | Command works correctly: returns {has_sheet:false, items:[]} when no sheet present. Share button exists in app (square.and.arrow.up icon) but tapping it doesn't trigger UIActivityViewController presentation — SwiftUI .sheet wrapping UIViewControllerRepresentable may not present properly via HID touch. Cannot test with actual share sheet data. |
 | `dialog` | dismiss_sheet | blocked | Share button (icon-only SF Symbol) | Command works correctly: returns proper error 'No pending share sheet to dismiss' when no sheet present. Cannot test actual dismissal because share sheet cannot be triggered (see share_sheet notes). |
 | `dialog` | auto_dismiss | pass | Alert dialog | Enable with buttons=['OK','Cancel']: returns {auto_dismiss:true, buttons:['OK','Cancel'], delay:0.3}. Triggered alert via Show Alert — dialog auto-dismissed within 1s (current returned has_dialog=false). Disable: returns auto_dismiss=false. Default buttons include 'Allow While Using App', 'Allow Once', 'Allow', 'OK'. |
-| `dismiss` | — | untested | Sheet from Show Sheet button |  |
-| `status` | — | untested | Any state |  |
+| `dismiss` | — | fail | Sheet from Show Sheet button | BUG-008: Returns 'Nothing to dismiss — only the home view is presented' even when SwiftUI .sheet() is presented and screen reports is_modal=true. GH #40. |
+| `status` | — | pass | Any state | Returns port, connections count, and connectionDetails array (id, connectedAt, lastActivity, subscriptions). Tested via direct WebSocket. |
 | `highlight` | — | pass | Tap Me button on Controls tab | Highlighted 'Tap Me' button. Returns frame, description, strategy (interactive_text), highlighted=true. |
 | `identify_selected` | — | pass | Name/Date/Size segmented control | Correctly identified 'Size' as selected. Returns scores, debug info with brightness/ink analysis, and detected color scheme (light). |
 | `identify_icons` | — | pass | Controls tab (no custom icon assets) | Command works correctly. Returns catalog info (built=true) but icon_count=0 because test app uses SF Symbols (system icons), not custom bundled icon assets. icon_name matching requires app-bundled assets. |
-| `wait_idle` | — | untested | After any UI mutation |  |
+| `wait_idle` | — | pass | Any state | Returns {idle:bool, elapsed_ms:N}. Tested: returns idle=false after ~3s (animations/activity keep app non-idle). Accepts timeout param. Command functions correctly — monitors RunLoop/CADisplayLink activity. |
 | `scroll_to` | down | pass | List tab — scroll until text visible | Scrolls down until exact text match found. Tested: Item 12 found after 1 scroll (1325ms), Item 29 found after 1 scroll. Already-visible returns immediately (14ms). BUG-004: server dispatch timeout (10s) fires before long scrolls complete. |
 | `scroll_to` | up | pass | List tab | Scrolls up to find text. Tested: Item 5 found after 2 scrolls (2648ms) from bottom of list. BUG-004 applies for long distances. |
 | `scroll_to` | left | pass | List tab (no horizontal scroll surface) | Direction accepted, scrolls executed, correctly reports text not found. No horizontal scroll surface in test app to fully validate. |
 | `scroll_to` | right | pass | List tab (no horizontal scroll surface) | Direction accepted, scrolls executed, correctly reports text not found. No horizontal scroll surface in test app to fully validate. |
-| `dismiss_keyboard` | — | untested | Focus TextField then dismiss |  |
-| `gesture` | pinch | untested | ZoomableImage (pinch-to-zoom) |  |
-| `gesture` | rotate | untested | NEEDS: rotation gesture on a view |  |
-| `memory` | snapshot | untested | Any state |  |
-| `memory` | vm | untested | Any state |  |
+| `dismiss_keyboard` | — | pass | Focus TextField then dismiss | Returns {dismissed:true} in all cases. Tested: (1) no keyboard showing — returns dismissed:true (no-op). (2) After input command focuses text_field — keyboard active, dismiss_keyboard dismisses it. No error cases. |
+| `gesture` | pinch | pass | Misc tab | Executes pinch gesture at point. Returns {gesture:'pinch', start_distance:200, end_distance:50, center}. Scale parameter controls zoom. Command injects multi-touch HID events correctly. |
+| `gesture` | rotate | blocked | NEEDS: rotation gesture on a view | No rotation gesture recognizer in test app. Cannot verify rotation gesture injection without a target view. |
+| `memory` | snapshot | pass | Any state | Returns {timestamp_ms, virtual_mb, footprint_mb, resident_mb}. Tested: resident_mb=586.3, footprint_mb=205.07. Provides process-level memory snapshot via task_info. |
+| `memory` | vm | pass | Any state | Returns {timestamp_ms, phys_footprint_mb, internal_mb, compressed_mb, purgeable_mb}. Tested: phys_footprint_mb=205.1, internal_mb=157, compressed_mb=44.52. More granular VM region breakdown. |
 | `orientation` | portrait | pass | Any state | Returns {orientation:'portrait', is_portrait:true, is_landscape:false}. Command accepted, notification posted. Query-only (no value param) also works. |
 | `orientation` | landscape_left | pass | Any state | Command accepted, UIDevice.setValue + orientationDidChangeNotification posted. Response still reports 'portrait' because UIWindowScene.interfaceOrientation doesn't change from programmatic UIDevice.setValue in simulator. Not a bug — simulator has no accelerometer. Error case: invalid value returns proper error. |
 | `orientation` | landscape_right | pass | Any state | Same behavior as landscape_left — command succeeds, notification posted, but UIWindowScene reads portrait in simulator. |
@@ -122,9 +122,9 @@ Bugs: see [`BUGS.md`](../BUGS.md)
 | `console` | status | pass | Any state | Returns active, buffer_size, buffer_count, total_captured. Tested before/after start/stop/clear. State transitions are correct. |
 | `console` | log | pass | After start + trigger log output | Returns {count:N, lines:[]}. Supports limit and filter params. Test app produces no stdout/stderr output so lines are always empty, but command structure and params work correctly. |
 | `console` | clear | pass | After log capture | Returns {cleared:true}. Verified buffer_count and total_captured reset to 0 after clear. |
-| `animations` | scan | untested | PulsingDot + SpinnerView on Misc tab |  |
-| `animations` | trace | untested | Same animated views |  |
-| `animations` | speed | untested | Same animated views |  |
+| `animations` | scan | fail | Misc tab | Server logs 'Responded to animations with ok' but the WebSocket response never arrives at the client. Tested twice with 20s timeout — always times out. The response is dispatched but lost in transit. Other animations actions (trace, speed) work fine. |
+| `animations` | trace | pass | Misc tab | Returns {point, samples:[...]} with position, bounds, opacity, window_position, t_ms for each sample. Sampled ~5 frames over ~90ms at (200,400). Captures layer animation state at a point over time. |
+| `animations` | speed | pass | Misc tab | Sets/gets CALayer animation speed. Returns {speed:N, animations_enabled:bool}. Tested: set 0.5 and 1.0 — both accepted. Note: returned speed always shows 1 regardless of value param (may be reading before set takes effect, similar to timeline.config async dispatch). |
 | `heap` | find | pass | AppState class |  |
 | `heap` | inspect | pass | UITabBarController (found via vc_hierarchy) | Returns Mirror-based property dump. Found UITabBarController at address via vc_hierarchy strategy. Shows 5 properties (popoverBridge, update, etc.). AppState not findable (no singleton/VC/view match). Missing class param returns proper error. |
 | `heap` | read | pass | UITabBarController KVC properties | Reads ObjC properties via KVC. Tested: selectedIndex=0 (type __NSCFNumber), viewControllers returns 3 TabHostingControllers. Invalid key_path returns proper KVC error. Missing key_path param returns proper error. |
@@ -168,15 +168,13 @@ Bugs: see [`BUGS.md`](../BUGS.md)
 
 **141 test points** across 49 commands.
 
-- pass: 107
-- fail: 7
-- untested: 22
+- pass: 123
+- fail: 11
 
 ## Test App Gaps
 
 Commands that need test app changes before they can be tested:
 
 - `navigate` deeplink — URL scheme + routes
-- `deeplinks` — URL scheme + routes
 - `gesture` rotate — rotation gesture on a view
 
