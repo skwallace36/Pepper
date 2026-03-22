@@ -84,18 +84,17 @@ jobs:
 
       - name: Wait for Pepper server
         run: |
-          python3 tools/pepper-ctl wait-for-server \
-            --port "$PEPPER_PORT" \
-            --wait-timeout 30
+          python3 tools/pepper-ctl --port "$PEPPER_PORT" \
+            wait-for-server --wait-timeout 30
 
       - name: Smoke test — ping
         run: |
-          python3 tools/pepper-ctl ping --port "$PEPPER_PORT" --raw
+          python3 tools/pepper-ctl --port "$PEPPER_PORT" --json ping
 
       - name: Smoke test — look
         id: smoke_look
         run: |
-          python3 tools/pepper-ctl look --port "$PEPPER_PORT" --raw > build/smoke-look.json
+          python3 tools/pepper-ctl --port "$PEPPER_PORT" --json look > build/smoke-look.json
           echo "look output:"
           python3 -c "
           import json, sys
@@ -111,7 +110,7 @@ jobs:
 
       - name: Smoke test — tree
         run: |
-          python3 tools/pepper-ctl tree --port "$PEPPER_PORT" --raw > build/smoke-tree.json
+          python3 tools/pepper-ctl --port "$PEPPER_PORT" --json tree > build/smoke-tree.json
           echo "tree output:"
           python3 -c "
           import json
@@ -121,7 +120,7 @@ jobs:
 
       - name: Smoke test — status
         run: |
-          python3 tools/pepper-ctl raw '{"cmd":"status"}' --port "$PEPPER_PORT" > build/smoke-status.json
+          python3 tools/pepper-ctl --port "$PEPPER_PORT" raw '{"cmd":"status"}' > build/smoke-status.json
           echo "status output:"
           cat build/smoke-status.json | python3 -m json.tool 2>/dev/null | head -20
 
