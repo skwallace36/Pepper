@@ -41,7 +41,7 @@ def register_system_tools(mcp, resolve_and_send, act_and_look):
     @mcp.tool()
     async def dialog(
         simulator: Optional[str] = Field(default=None, description="Simulator UDID"),
-        action: str = Field(description="Action: list, current, dismiss, auto_dismiss, share_sheet, dismiss_sheet"),
+        action: str = Field(description="Action: list, current, dismiss, detect_system, auto_dismiss, share_sheet, dismiss_sheet"),
         button: Optional[str] = Field(default=None, description="Button title to tap (for dismiss action)"),
         enabled: Optional[bool] = Field(default=None, description="Enable/disable auto-dismiss (for auto_dismiss action)"),
         buttons: Optional[str] = Field(default=None, description="JSON array of button titles for auto-dismiss (e.g. '[\"Allow\",\"OK\"]')"),
@@ -50,6 +50,7 @@ def register_system_tools(mcp, resolve_and_send, act_and_look):
         - list: see all pending dialogs
         - current: get the topmost dialog
         - dismiss: tap a button on the current dialog
+        - detect_system: actively check for system dialog presence (key window status, hit-test probe, window hierarchy) with confidence level
         - auto_dismiss: auto-handle permission dialogs (Allow, OK, etc.)
         - share_sheet: check if a share sheet is showing
         - dismiss_sheet: close the share sheet"""
