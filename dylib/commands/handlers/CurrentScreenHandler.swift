@@ -25,7 +25,7 @@ struct CurrentScreenHandler: PepperHandler {
             data["navigation_stack"] = AnyCodable(
                 nav.pepper_stackScreenIDs.map { AnyCodable($0) }
             )
-            data["can_go_back"] = AnyCodable(nav.viewControllers.count > 1)
+            data["can_go_back"] = AnyCodable(nav.pepper_canPop)
         } else {
             data["can_go_back"] = AnyCodable(topVC.presentingViewController != nil)
         }
