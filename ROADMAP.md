@@ -47,6 +47,9 @@ After the test app is green, inject into Wikipedia, Ice Cubes, etc. to pressure-
 ### P9: New capabilities
 Accessibility audit, touch failure debugging, layout inspector, performance profiling, in-process view capture. Concrete tasks in `TASKS.md`.
 
+### P10: Agent token optimization
+Current agents use Opus for everything and re-read the full codebase each run. Opportunities: model selection per agent type (Haiku for pr-responder/researcher), pre-warmed context summaries, smaller focused prompts, skip redundant CLAUDE.md reads, caching-friendly prompt ordering. Track token usage per agent run.
+
 ## Done
 
 - [x] Test app scaffolded and building (`test-app/PepperTestApp`) *(2026-03-21)*
