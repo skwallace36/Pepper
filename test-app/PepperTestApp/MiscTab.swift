@@ -48,6 +48,31 @@ struct MiscTab: View {
                     }
                 }
 
+                // MARK: - Horizontal Scroll
+                GroupBox("Horizontal Scroll") {
+                    ScrollView(.horizontal, showsIndicators: true) {
+                        HStack(spacing: 12) {
+                            ForEach(0..<15) { index in
+                                VStack {
+                                    Image(systemName: "square.fill")
+                                        .font(.largeTitle)
+                                        .foregroundStyle(
+                                            [Color.red, .orange, .yellow, .green, .blue, .purple, .pink][index % 7]
+                                        )
+                                    Text("Item \(index)")
+                                        .font(.caption)
+                                }
+                                .frame(width: 80, height: 80)
+                                .background(.quaternary)
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                                .accessibilityIdentifier("hscroll_item_\(index)")
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    }
+                    .accessibilityIdentifier("horizontal_scroll")
+                }
+
                 // MARK: - Timer (for wait_for)
                 GroupBox("Timer") {
                     VStack(spacing: 8) {
