@@ -11,12 +11,6 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  SIMULATOR_DEVICE: "iPhone 16"
-  SIMULATOR_RUNTIME: "iOS-18-2"
-  TEST_APP_BUNDLE: "com.pepper.testapp"
-  PEPPER_PORT: 8765
-
 jobs:
   build-and-test:
     runs-on: macos-15
@@ -29,113 +23,8 @@ jobs:
       - name: Install Python dependencies
         run: pip3 install websockets
 
-      - name: Build dylib
-        run: make build
-
-      - name: Create simulator
-        id: sim
-        run: |
-          # Create a dedicated CI simulator
-          UDID=$(xcrun simctl create "PepperCI" \
-            "com.apple.CoreSimulator.SimDeviceType.$(echo "$SIMULATOR_DEVICE" | tr ' ' '-')" \
-            "com.apple.CoreSimulator.SimRuntime.$SIMULATOR_RUNTIME" 2>&1)
-          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
-          echo "Created simulator: $UDID"
-
-      - name: Boot simulator
-        run: |
-          xcrun simctl boot "${{ steps.sim.outputs.udid }}"
-          # Wait for the simulator to finish booting
-          xcrun simctl bootstatus "${{ steps.sim.outputs.udid }}" -b
-          echo "Simulator booted."
-
-      - name: Build and install test app
-        run: |
-          xcodebuild -project test-app/PepperTestApp.xcodeproj \
-            -scheme PepperTestApp -sdk iphonesimulator \
-            -destination "id=${{ steps.sim.outputs.udid }}" \
-            -configuration Debug build \
-            -quiet 2>&1 | tail -5
-
-          APP=$(find ~/Library/Developer/Xcode/DerivedData/PepperTestApp-*/Build/Products/Debug-iphonesimulator \
-            -name "PepperTestApp.app" -type d 2>/dev/null | head -1)
-          if [ -z "$APP" ]; then
-            echo "::error::Test app build failed — .app not found"
-            exit 1
-          fi
-
-          xcrun simctl install "${{ steps.sim.outputs.udid }}" "$APP"
-          echo "Test app installed."
-
-      - name: Launch app with Pepper injected
-        run: |
-          DYLIB_PATH="$(pwd)/build/Pepper.framework/Pepper"
-          if [ ! -f "$DYLIB_PATH" ]; then
-            echo "::error::Pepper.framework not built"
-            exit 1
-          fi
-
-          SIMCTL_CHILD_DYLD_INSERT_LIBRARIES="$DYLIB_PATH" \
-          SIMCTL_CHILD_PEPPER_PORT="$PEPPER_PORT" \
-          SIMCTL_CHILD_PEPPER_SIM_UDID="${{ steps.sim.outputs.udid }}" \
-          SIMCTL_CHILD_PEPPER_ADAPTER="generic" \
-            xcrun simctl launch "${{ steps.sim.outputs.udid }}" "$TEST_APP_BUNDLE"
-          echo "App launched with Pepper injection on port $PEPPER_PORT."
-
-      - name: Wait for Pepper server
-        run: |
-          python3 tools/pepper-ctl --port "$PEPPER_PORT" \
-            wait-for-server --wait-timeout 30
-
-      - name: Smoke test — ping
-        run: |
-          python3 tools/pepper-ctl --port "$PEPPER_PORT" --json ping
-
-      - name: Smoke test — look
-        id: smoke_look
-        run: |
-          python3 tools/pepper-ctl --port "$PEPPER_PORT" --json look > build/smoke-look.json
-          echo "look output:"
-          python3 -c "
-          import json, sys
-          data = json.load(open('build/smoke-look.json'))
-          status = data.get('status', 'unknown')
-          print(f'Status: {status}')
-          if status == 'ok':
-              d = data.get('data', {})
-              print(f'Screen: {d.get(\"screen\", \"?\")}')
-              elems = d.get('elements', d.get('interactive_elements', []))
-              print(f'Elements: {len(elems)}')
-          "
-
-      - name: Smoke test — tree
-        run: |
-          python3 tools/pepper-ctl --port "$PEPPER_PORT" --json tree > build/smoke-tree.json
-          echo "tree output:"
-          python3 -c "
-          import json
-          data = json.load(open('build/smoke-tree.json'))
-          print(f'Status: {data.get(\"status\", \"unknown\")}')
-          "
-
-      - name: Smoke test — status
-        run: |
-          python3 tools/pepper-ctl --port "$PEPPER_PORT" raw '{"cmd":"status"}' > build/smoke-status.json
-          echo "status output:"
-          cat build/smoke-status.json | python3 -m json.tool 2>/dev/null | head -20
-
-      - name: Collect results
-        if: always()
-        run: |
-          mkdir -p build/ci-results
-          # Copy any smoke test outputs
-          cp build/smoke-*.json build/ci-results/ 2>/dev/null || true
-          # Capture simulator log
-          xcrun simctl spawn "${{ steps.sim.outputs.udid }}" log show \
-            --predicate 'subsystem CONTAINS "pepper"' \
-            --last 5m --style compact \
-            > build/ci-results/pepper-log.txt 2>/dev/null || true
-          echo "Results collected in build/ci-results/"
+      - name: Run CI
+        run: make ci
 
       - name: Upload results
         if: always()
@@ -144,10 +33,3 @@ jobs:
           name: ci-results
           path: build/ci-results/
           retention-days: 14
-
-      - name: Cleanup simulator
-        if: always()
-        run: |
-          xcrun simctl shutdown "${{ steps.sim.outputs.udid }}" 2>/dev/null || true
-          xcrun simctl delete "${{ steps.sim.outputs.udid }}" 2>/dev/null || true
-          echo "Simulator cleaned up."
