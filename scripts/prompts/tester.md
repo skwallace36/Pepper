@@ -19,10 +19,22 @@ THEN:
    - Set status to `pass` or `fail`
    - Add notes describing what you tested and observed
 9. Run `make coverage` to regenerate COVERAGE.md.
-10. If you discover a bug, add it to BUGS.md with the next available BUG-NNN ID and `status:open`.
+10. If you discover a bug, file it IMMEDIATELY as a GitHub Issue — do this BEFORE continuing with other tests. This ensures the bug is recorded even if you hit budget or crash later:
+    ```
+    gh issue create --repo skwallace36/Pepper --title "BUG-NNN: brief description" --body "Found during TASK-NNN testing. Details..." --label "bug,agent-filed"
+    ```
+    Also add the bug to BUGS.md on your branch. But the Issue is the source of truth — it's visible to all agents and humans immediately.
 11. Update TASKS.md: change your task's status to `status:pr-open`.
 12. Commit, push, and open a PR with your test results.
 13. If a command requires app state you can't reach, mark it `blocked` with a note explaining why.
+
+ROBUSTNESS:
+- If Pepper is not connected (look fails), run `make test-deploy` to build and launch the app.
+- If a command returns an error, retry once. If it fails again, mark it as `fail` with the error message.
+- If the app crashes (APP CRASHED), restart with `make test-deploy` and continue with the next command.
+- If you can't reach a test surface (e.g., no horizontal scroll view for left/right scroll), mark the variant as `blocked` not `fail`.
+- Commit progress after each command family tested (don't batch all commits to the end).
+- If you hit budget mid-test, the partial results are still valuable — push what you have.
 
 BEFORE OPENING THE PR: Check .pepper-kill again. If it exists, revert changes and exit.
 
