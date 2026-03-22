@@ -4,42 +4,42 @@ FIRST: If the file .pepper-kill exists in the repo root, exit immediately with n
 
 THEN:
 1. Read CLAUDE.md for project conventions.
-2. Read TASKS.md. Find the first item with `status:unstarted` in the "Test Coverage" section. That is your task.
-3. Check if a branch already exists: `git ls-remote --heads origin agent/tester/TASK-NNN`. If it exists, skip to the next unstarted task.
-4. Create a branch: `git checkout -b agent/tester/TASK-NNN` (e.g. `agent/tester/TASK-010`).
-5. Change the task's status to `status:in-progress` in TASKS.md and commit.
-6. Read test-app/COVERAGE.md and test-app/coverage-status.json to understand the commands in your task.
-7. Test each untested command variant in your task:
+2. Claim the next available test task:
+   ```
+   ./scripts/pepper-task next --area area:test-coverage
+   ```
+   If no test tasks, try: `./scripts/pepper-task next --area area:ice-cubes`
+   If it returns an error, exit — no work available.
+3. Note the issue number. Create a branch: `git checkout -b agent/tester/TASK-NNN`.
+4. Read test-app/COVERAGE.md and test-app/coverage-status.json to understand the commands in your task.
+5. Test each untested command variant in your task:
    a. Use `look` to observe the current screen state.
    b. Navigate to the appropriate test surface (as noted in the Coverage Matrix).
    c. Execute the command being tested.
    d. Use `look` to verify the result.
    e. Test edge cases if applicable.
-8. Update test-app/coverage-status.json:
+6. Update test-app/coverage-status.json:
    - Set status to `pass` or `fail`
    - Add notes describing what you tested and observed
-9. Run `make coverage` to regenerate COVERAGE.md.
-10. If you discover a bug, file it IMMEDIATELY as a GitHub Issue — do this BEFORE continuing with other tests. This ensures the bug is recorded even if you hit budget or crash later:
-    ```
-    gh issue create --repo skwallace36/Pepper --title "BUG-NNN: brief description" --body "Found during TASK-NNN testing. Details..." --label "bug,agent-filed"
-    ```
-    GitHub Issues is the single source of truth for bugs. Do NOT create or edit any local bugs file.
-11. Update TASKS.md: change your task's status to `status:pr-open`.
-12. Commit, push, and open a PR with your test results.
-13. If a command requires app state you can't reach, mark it `blocked` with a note explaining why.
+7. Run `make coverage` to regenerate COVERAGE.md.
+8. If you discover a bug, file it IMMEDIATELY as a GitHub Issue:
+   ```
+   gh issue create --repo skwallace36/Pepper --title "BUG-NNN: description" --body "Details..." --label "bug,agent-filed"
+   ```
+9. Commit, push, and open a PR with `Fixes #NNN` in the body.
+10. If a command requires app state you can't reach, mark it `blocked` with a note.
 
 ROBUSTNESS:
-- FIRST try `look` — if Pepper is already connected, skip the build entirely. Only run `make test-deploy` if `look` fails with connection refused.
-- If Pepper is not connected (look fails), run `make test-deploy` to build and launch the app.
-- If a command returns an error, retry once. If it fails again, mark it as `fail` with the error message.
-- If the app crashes (APP CRASHED), restart with `make test-deploy` and continue with the next command.
-- If you can't reach a test surface (e.g., no horizontal scroll view for left/right scroll), mark the variant as `blocked` not `fail`.
-- Commit progress after each command family tested (don't batch all commits to the end).
-- If you hit budget mid-test, the partial results are still valuable — push what you have.
+- FIRST try `look` — if Pepper is already connected, skip the build entirely.
+- If Pepper is not connected, run `make test-deploy` to build and launch the app.
+- If a command returns an error, retry once. If it fails again, mark as `fail`.
+- If the app crashes, restart with `make test-deploy` and continue.
+- Commit progress after each command family tested.
+- If you hit budget mid-test, push what you have.
 
 BEFORE OPENING THE PR: Check .pepper-kill again. If it exists, revert changes and exit.
 
 IDENTITY: Your git commits will show as `pepper-tester-agent`. Do NOT change git config.
 
-SCOPE: You may modify test-app/coverage-status.json, TASKS.md.
-DO NOT modify: dylib/, ROADMAP.md, docs/plans/, .claude/, .mcp.json, .env.
+SCOPE: You may modify test-app/coverage-status.json.
+DO NOT modify: dylib/, ROADMAP.md, TASKS.md, docs/plans/, .claude/, .mcp.json, .env.

@@ -1,0 +1,106 @@
+#!/bin/bash
+set -euo pipefail
+
+# scripts/pepper-task — thin wrapper for agent task management via GitHub Issues
+# Replaces direct TASKS.md editing. Agents call this, not raw gh commands.
+#
+# Usage:
+#   pepper-task next [--area LABEL]     # claim next unassigned task, returns issue JSON
+#   pepper-task claim ISSUE_NUM         # assign + label an issue as in-progress
+#   pepper-task done ISSUE_NUM          # mark done (auto-closed by PR "Fixes #N")
+#   pepper-task list [--area LABEL]     # list open tasks
+#   pepper-task blocked ISSUE_NUM MSG   # mark as blocked with comment
+
+REPO="skwallace36/Pepper"
+CMD="${1:?Usage: pepper-task next|claim|list|done|blocked}"
+shift
+
+case "$CMD" in
+  next)
+    # Find next unassigned open issue with 'task' label, optionally filtered by area
+    AREA_FILTER=""
+    while [ $# -gt 0 ]; do
+      case "$1" in
+        --area) AREA_FILTER="$2"; shift 2 ;;
+        *) shift ;;
+      esac
+    done
+
+    # Get open issues sorted by priority (P3 before P4 before P6, etc.)
+    # Priority is encoded in labels as priority:p3, priority:p4, etc.
+    LABEL_FILTER=""
+    [ -n "$AREA_FILTER" ] && LABEL_FILTER="--label $AREA_FILTER"
+
+    ISSUES=$(gh issue list --repo "$REPO" --state open $LABEL_FILTER --json number,title,labels,body --limit 100 \
+      --jq '[.[] | . + {prio: ((.labels // []) | map(select(.name | startswith("priority:"))) | .[0].name // "priority:p99")}] | sort_by(.prio, .number) | .[]' 2>/dev/null)
+
+    FOUND=""
+    while IFS= read -r issue; do
+      [ -z "$issue" ] && continue
+      NUM=$(echo "$issue" | jq -r '.number')
+      TITLE=$(echo "$issue" | jq -r '.title')
+
+      # Skip if already claimed
+      LABELS=$(echo "$issue" | jq -r '.labels[].name' 2>/dev/null || true)
+      echo "$LABELS" | grep -q "in-progress" && continue
+      echo "$LABELS" | grep -q "^bug$" && continue
+      echo "$LABELS" | grep -q "blocked" && continue
+
+      # Check for existing agent branch
+      TASK_ID=$(echo "$TITLE" | grep -oE 'TASK-[0-9]+' | head -1 || true)
+      if [ -n "$TASK_ID" ] && git ls-remote --heads origin "agent/*/$TASK_ID" 2>/dev/null | grep -q .; then
+        continue
+      fi
+
+      # Found unclaimed task — claim it
+      gh issue edit "$NUM" --repo "$REPO" --add-label "in-progress" 2>/dev/null || true
+      echo "$issue" | jq -c '{number: .number, title: .title, body: .body}'
+      FOUND=1
+      break
+    done < <(echo "$ISSUES" | jq -c '.')
+
+    [ -z "$FOUND" ] && echo '{"error": "no unclaimed tasks found"}'
+    exit 0
+    ;;
+
+  claim)
+    NUM="${1:?Usage: pepper-task claim ISSUE_NUM}"
+    gh issue edit "$NUM" --repo "$REPO" --add-label "in-progress" 2>/dev/null
+    echo "Claimed #$NUM"
+    ;;
+
+  done)
+    NUM="${1:?Usage: pepper-task done ISSUE_NUM}"
+    gh issue edit "$NUM" --repo "$REPO" --remove-label "in-progress" --add-label "done" 2>/dev/null
+    echo "Marked #$NUM done"
+    ;;
+
+  blocked)
+    NUM="${1:?Usage: pepper-task blocked ISSUE_NUM MSG}"
+    shift
+    MSG="$*"
+    gh issue edit "$NUM" --repo "$REPO" --add-label "blocked" 2>/dev/null
+    gh issue comment "$NUM" --repo "$REPO" --body "Blocked: $MSG" 2>/dev/null
+    echo "Marked #$NUM blocked: $MSG"
+    ;;
+
+  list)
+    AREA_FILTER=""
+    while [ $# -gt 0 ]; do
+      case "$1" in
+        --area) AREA_FILTER="$2"; shift 2 ;;
+        *) shift ;;
+      esac
+    done
+    if [ -n "$AREA_FILTER" ]; then
+      gh issue list --repo "$REPO" --state open --label "$AREA_FILTER" --json number,title,labels --jq '.[] | "#\(.number) \(.title)"'
+    else
+      gh issue list --repo "$REPO" --state open --json number,title,labels --jq '.[] | "#\(.number) \(.title)"' --limit 100
+    fi
+    ;;
+
+  *)
+    echo "Usage: pepper-task next|claim|list|done|blocked"
+    exit 1
+    ;;
+esac
