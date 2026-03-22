@@ -17,6 +17,8 @@ Statuses: `open` → `in-progress` → `pr-open` → `fixed`.
 
 - **BUG-006** `[dylib/tap]` `status:pr-open` — `tap.element` cannot find SwiftUI `.accessibilityIdentifier()` elements. `pepper_findElement(id:)` searches `UIView.accessibilityIdentifier` recursively, but SwiftUI identifiers live in the accessibility system, not on backing UIViews. Works correctly for UIKit elements. *(found: 2026-03-22, GH #9)*
 
+- **BUG-007** `[dylib/wait_for]` `status:open` — `wait_for` handler's main-thread polling loop blocks SwiftUI re-rendering. The handler polls with `RunLoop.current.run(until:)` on the main thread, but SwiftUI `@Observable` state changes don't re-render during nested RunLoop iterations. Result: wait_for works for already-visible conditions but cannot detect async UI state changes (e.g., 3s timer firing). *(found: 2026-03-22, GH #18)*
+
 ---
 
 **Routing:** Work items → `ROADMAP.md` | Test coverage → `test-app/COVERAGE.md` | Research → `docs/RESEARCH.md`
