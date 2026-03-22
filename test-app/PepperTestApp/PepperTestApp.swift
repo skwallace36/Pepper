@@ -58,7 +58,11 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
     ) -> Bool {
         UNUserNotificationCenter.current().delegate = self
         AppSeeding.seedAll()
-        requestAllPermissions()
+        // Skip permission requests in CI — system dialogs block headless sims.
+        // Set PEPPER_SKIP_PERMISSIONS=1 via simctl launch env vars.
+        if ProcessInfo.processInfo.environment["PEPPER_SKIP_PERMISSIONS"] == nil {
+            requestAllPermissions()
+        }
         return true
     }
 
