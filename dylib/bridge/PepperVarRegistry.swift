@@ -153,6 +153,15 @@ final class PepperVarRegistry {
                 continue
             }
 
+            // @Environment can hold @Observable objects (Swift 5.9+ Observation framework)
+            // e.g. @Environment(AppState.self) var state → Environment<AppState>
+            if typeName.hasPrefix("Environment<") {
+                if let obj = extractEnvironmentValue(from: child.value), isObservableClass(obj) {
+                    trackInstance(obj)
+                }
+                continue
+            }
+
             // Also check if the child itself is an ObservableObject (stored property)
             let childObj = child.value as AnyObject
             if isObservableObject(childObj) {
@@ -261,6 +270,44 @@ final class PepperVarRegistry {
                     }
                 }
             }
+        }
+        return nil
+    }
+
+    /// Extract the @Observable object from a SwiftUI Environment<T> wrapper.
+    /// Environment stores its value in internal storage that varies by iOS version.
+    private func extractEnvironmentValue(from wrapper: Any) -> AnyObject? {
+        let mirror = Mirror(reflecting: wrapper)
+        for child in mirror.children {
+            let label = child.label ?? ""
+            // Direct value storage
+            if label == "_value" || label == "wrappedValue" || label == "_wrappedValue" || label == "value" {
+                let obj = child.value as AnyObject
+                // Skip Optional.none — environment may not be populated yet
+                if "\(child.value)" == "nil" { continue }
+                return obj
+            }
+            // Internal storage variants
+            if label == "_content" || label == "_store" || label == "content" || label == "storage" || label == "_storage" {
+                let innerMirror = Mirror(reflecting: child.value)
+                for inner in innerMirror.children {
+                    let innerLabel = inner.label ?? ""
+                    if innerLabel == "value" || innerLabel == "_value" || innerLabel == ".0" || innerLabel == "wrappedValue" {
+                        if "\(inner.value)" == "nil" { continue }
+                        return inner.value as AnyObject
+                    }
+                }
+                // If the storage itself is the object (single-element enum payload)
+                if innerMirror.children.isEmpty {
+                    let obj = child.value as AnyObject
+                    if isObservableClass(obj) { return obj }
+                }
+            }
+        }
+        // Fallback: walk all children looking for something @Observable
+        for child in mirror.children {
+            let obj = child.value as AnyObject
+            if isObservableClass(obj) { return obj }
         }
         return nil
     }
