@@ -87,10 +87,10 @@ Bugs: see [`BUGS.md`](../BUGS.md)
 | `identify_selected` | — | untested | Segmented control |  |
 | `identify_icons` | — | untested | 4 SF Symbol icon-only buttons |  |
 | `wait_idle` | — | untested | After any UI mutation |  |
-| `scroll_to` | down | untested | List tab — scroll until text visible |  |
-| `scroll_to` | up | untested | List tab |  |
-| `scroll_to` | left | untested |  |  |
-| `scroll_to` | right | untested |  |  |
+| `scroll_to` | down | pass | List tab — scroll until text visible | Scrolls down until exact text match found. Tested: Item 12 found after 1 scroll (1325ms), Item 29 found after 1 scroll. Already-visible returns immediately (14ms). BUG-004: server dispatch timeout (10s) fires before long scrolls complete. |
+| `scroll_to` | up | pass | List tab | Scrolls up to find text. Tested: Item 5 found after 2 scrolls (2648ms) from bottom of list. BUG-004 applies for long distances. |
+| `scroll_to` | left | pass | List tab (no horizontal scroll surface) | Direction accepted, scrolls executed, correctly reports text not found. No horizontal scroll surface in test app to fully validate. |
+| `scroll_to` | right | pass | List tab (no horizontal scroll surface) | Direction accepted, scrolls executed, correctly reports text not found. No horizontal scroll surface in test app to fully validate. |
 | `dismiss_keyboard` | — | untested | Focus TextField then dismiss |  |
 | `gesture` | pinch | untested | ZoomableImage (pinch-to-zoom) |  |
 | `gesture` | rotate | untested | NEEDS: rotation gesture on a view |  |
@@ -168,10 +168,10 @@ Bugs: see [`BUGS.md`](../BUGS.md)
 
 **141 test points** across 49 commands.
 
-- pass: 11
+- pass: 15
 - fail: 2
 - crash: 1
-- untested: 125
+- untested: 121
 
 ## Test App Gaps
 
