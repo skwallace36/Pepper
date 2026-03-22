@@ -195,10 +195,27 @@ fi
 # Per-type: $75/day, Total: $300/day
 TODAY=$(date -u +%Y-%m-%d)
 sum_cost() {
-  awk -F'"cost_usd":' "/$1/"'{split($2,a,/[^0-9.]/); s+=a[1]} END{printf "%.2f",s+0}' "$EVENTS" 2>/dev/null || echo "0.00"
+  local filter="$1"
+  python3 -c "
+import json, sys
+total = 0.0
+with open('$EVENTS') as f:
+    for line in f:
+        line = line.strip()
+        if not line: continue
+        try:
+            e = json.loads(line)
+        except: continue
+        if not e.get('ts','').startswith('$TODAY'): continue
+        if '$filter' == 'type' and e.get('agent') != '$TYPE': continue
+        cost = e.get('cost_usd', 0)
+        try: total += float(cost)
+        except: pass
+print(f'{total:.2f}')
+" 2>/dev/null || echo "0.00"
 }
-TYPE_COST_TODAY=$(sum_cost "\"agent\":\"${TYPE}\".*${TODAY}")
-TOTAL_COST_TODAY=$(sum_cost "${TODAY}")
+TYPE_COST_TODAY=$(sum_cost "type")
+TOTAL_COST_TODAY=$(sum_cost "all")
 
 if [ "$(echo "$TYPE_COST_TODAY > 75" | bc)" = "1" ]; then
   emit "failed" ",\"detail\":\"daily budget exceeded for ${TYPE}: \$${TYPE_COST_TODAY}\""
@@ -221,8 +238,10 @@ export PEPPER_AGENT_TYPE="$TYPE"
 export CLAUDE_CODE_DISABLE_AUTO_MEMORY=1
 
 # Claim a simulator via pepper_sessions (flock-based, multi-agent safe)
+# 30s timeout prevents hanging if xcrun is stuck
 CLAIMED_SIM=$(python3 -c "
-import sys; sys.path.insert(0, '$REPO_ROOT/tools')
+import sys, signal; sys.path.insert(0, '$REPO_ROOT/tools')
+signal.alarm(30)
 from pepper_sessions import find_available_simulator, claim_simulator
 udid = find_available_simulator()
 claim_simulator(udid, label='agent-${TYPE}')
@@ -311,9 +330,17 @@ while kill -0 "$AGENT_PID" 2>/dev/null; do
     pkill -P "$AGENT_PID" 2>/dev/null || true
     break
   fi
-  # Kill switch: .pepper-kill prevents new launches (checked at startup).
-  # Running agents are killed via `make agents-stop` which sends SIGTERM
-  # to processes matched by pgrep. The trap handles cleanup.
+  # Kill switch: checked every 5s in addition to SIGTERM from agents-stop.
+  # Belt-and-suspenders — agents-stop sends SIGTERM directly, but if that
+  # doesn't reach the agent (zombie, stuck), this catches it.
+  if [ -f .pepper-kill ]; then
+    echo "Kill switch detected — terminating agent..."
+    kill -TERM "$AGENT_PID" 2>/dev/null || true
+    sleep 3
+    kill -9 "$AGENT_PID" 2>/dev/null || true
+    pkill -P "$AGENT_PID" 2>/dev/null || true
+    break
+  fi
 done
 
 wait "$AGENT_PID" 2>/dev/null
@@ -338,14 +365,21 @@ else
   emit_final "done" ",\"cost_usd\":${COST},\"duration_s\":${DURATION},\"transcript\":\"${TRANSCRIPT}\""
 fi
 
-# Auto-chain: if this agent opened a PR, launch the verifier next
+# Auto-chain: if this agent opened a PR, launch the verifier next.
+# Only launch if pr-verifier isn't already running (prevents race with heartbeat).
 if [ "$TYPE" != "pr-verifier" ] && [ "$TYPE" != "pr-responder" ]; then
-  # Check GitHub for any open PRs without 'verified' label
-  UNVERIFIED=$(gh pr list --repo skwallace36/Pepper --state open --json number,labels \
-    --jq '[.[] | select(.labels | map(.name) | index("verified") | not)] | length' 2>/dev/null || echo 0)
-  if [ "$UNVERIFIED" -gt 0 ]; then
-    echo "$UNVERIFIED unverified PR(s) — chaining pr-verifier..."
-    nohup "$REPO_ROOT/scripts/agent-runner.sh" pr-verifier >> build/logs/chain.log 2>&1 &
+  VERIFIER_LOCK="build/logs/.lock-pr-verifier"
+  VERIFIER_RUNNING=false
+  if [ -f "$VERIFIER_LOCK" ] && kill -0 "$(cat "$VERIFIER_LOCK" 2>/dev/null)" 2>/dev/null; then
+    VERIFIER_RUNNING=true
+  fi
+  if [ "$VERIFIER_RUNNING" = false ]; then
+    UNVERIFIED=$(gh pr list --repo skwallace36/Pepper --state open --json number,labels \
+      --jq '[.[] | select(.labels | map(.name) | index("verified") | not)] | length' 2>/dev/null || echo 0)
+    if [ "$UNVERIFIED" -gt 0 ]; then
+      echo "$UNVERIFIED unverified PR(s) — chaining pr-verifier..."
+      nohup "$REPO_ROOT/scripts/agent-runner.sh" pr-verifier >> build/logs/chain.log 2>&1 &
+    fi
   fi
 fi
 
