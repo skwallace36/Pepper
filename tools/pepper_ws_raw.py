@@ -58,7 +58,11 @@ class RawWebSocket:
             first_line = resp.split(b"\r\n")[0]
             raise ConnectionError(f"WebSocket upgrade failed: {first_line}")
 
-        return cls(sock)
+        # Save any data read past the HTTP headers (may contain WS frames)
+        ws = cls(sock)
+        header_end = resp.index(b"\r\n\r\n") + 4
+        ws._buf = resp[header_end:]
+        return ws
 
     def send(self, text):
         """Send a masked text frame (RFC 6455 §5.1: client MUST mask)."""

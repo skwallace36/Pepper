@@ -173,7 +173,7 @@ pass "App launched on port $CI_PORT"
 # --- Step 6: Wait for Pepper server ---
 step "Waiting for Pepper server (timeout: ${CI_TIMEOUT}s)"
 python3 "$PROJECT_DIR/tools/pepper-ctl" --host 127.0.0.1 --port "$CI_PORT" \
-    wait-for-server --wait-timeout "$CI_TIMEOUT"
+    wait-for-server --wait-timeout "$CI_TIMEOUT" --verbose
 pass "Server ready"
 
 # --- Step 7: Smoke tests ---
