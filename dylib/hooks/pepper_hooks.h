@@ -1,9 +1,9 @@
 #ifndef pepper_hooks_h
 #define pepper_hooks_h
 
-/// Install fishhook-based interposition of dispatch_async and dispatch_after
-/// on the main queue. The provided callbacks are invoked to increment/decrement
-/// a pending-block counter for Layer 3 idle detection.
+/// Register callbacks for DYLD_INTERPOSE-based dispatch_async/dispatch_after
+/// interposition on the main queue. The interposition is always active (dyld
+/// installs it at load time); this call just enables the tracking callbacks.
 void pepper_install_dispatch_hooks(void (*inc_fn)(void), void (*dec_fn)(void));
 
 /// Returns the current number of pending (hooked) main-queue dispatch blocks.
