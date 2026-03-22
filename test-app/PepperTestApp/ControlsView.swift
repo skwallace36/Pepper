@@ -5,6 +5,7 @@ struct ControlsView: View {
 
     @State private var showSheet = false
     @State private var showAlert = false
+    @State private var showShareSheet = false
 
     var body: some View {
         @Bindable var state = state
@@ -44,7 +45,7 @@ struct ControlsView: View {
                             }
                             .accessibilityIdentifier("bell_button")
 
-                            Button(action: {}) {
+                            Button(action: { showShareSheet = true }) {
                                 Image(systemName: "square.and.arrow.up")
                             }
                             .accessibilityIdentifier("share_button")
@@ -157,6 +158,9 @@ struct ControlsView: View {
         .sheet(isPresented: $showSheet) {
             SheetView()
         }
+        .sheet(isPresented: $showShareSheet) {
+            ShareSheet(items: ["Shared from PepperTestApp"])
+        }
         .alert("Test Alert", isPresented: $showAlert) {
             Button("OK") {
                 print("[PepperTest] Alert OK tapped")
@@ -168,4 +172,16 @@ struct ControlsView: View {
             Text("This is a test alert dialog")
         }
     }
+}
+
+// MARK: - Share Sheet
+
+struct ShareSheet: UIViewControllerRepresentable {
+    let items: [Any]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: items, applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
