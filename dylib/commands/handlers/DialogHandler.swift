@@ -154,7 +154,7 @@ final class DialogHandler: PepperHandler {
             ])
 
         default:
-            return .error(id: command.id, message: "Unknown action: \(action). Use list, current, dismiss, detect_system, auto_dismiss, share_sheet, or dismiss_sheet.")
+            return .error(id: command.id, message: "Unknown action: \(action). Use list, current, dismiss, detect_system, auto_dismiss, share_sheet, dismiss_sheet, or dismiss_system (MCP only).")
         }
     }
 
