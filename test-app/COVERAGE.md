@@ -126,14 +126,14 @@ Bugs: see [`BUGS.md`](../BUGS.md)
 | `animations` | trace | untested | Same animated views |  |
 | `animations` | speed | untested | Same animated views |  |
 | `heap` | find | pass | AppState class |  |
-| `heap` | inspect | untested | AppState instance |  |
-| `heap` | read | untested | AppState KeyPaths |  |
-| `heap` | classes | untested | Pattern match against app classes |  |
-| `heap` | controllers | untested | List active view controllers |  |
-| `heap_snapshot` | snapshot | untested | Any state |  |
-| `heap_snapshot` | diff | untested | Take 2 snapshots, diff |  |
-| `heap_snapshot` | clear | untested | After snapshot |  |
-| `heap_snapshot` | status | untested | Any state |  |
+| `heap` | inspect | pass | UITabBarController (found via vc_hierarchy) | Returns Mirror-based property dump. Found UITabBarController at address via vc_hierarchy strategy. Shows 5 properties (popoverBridge, update, etc.). AppState not findable (no singleton/VC/view match). Missing class param returns proper error. |
+| `heap` | read | pass | UITabBarController KVC properties | Reads ObjC properties via KVC. Tested: selectedIndex=0 (type __NSCFNumber), viewControllers returns 3 TabHostingControllers. Invalid key_path returns proper KVC error. Missing key_path param returns proper error. |
+| `heap` | classes | pass | ObjC runtime class enumeration | Pattern 'State' found 501 classes (showing 100). Pattern 'PepperTest' found 32 app-specific classes. Pattern 'Controller' with limit=10 correctly capped results. Missing pattern param returns proper error. |
+| `heap` | controllers | pass | Full VC hierarchy from key window | Returns 11 controllers: root UIHostingController, UIKitTabBarController (3 tabs, selected=0), 3 TabHostingControllers, 3 UIKitNavigationControllers (stack_count=1 each), 3 NavigationStackHostingControllers. Shows depth, isVisible, title, and tab/nav metadata. |
+| `heap_snapshot` | snapshot | pass | Any state | Scans heap via malloc zone enumeration. Returns total_classes=115, total_instances, top_30 by count, memory info (resident_mb, virtual_mb). Top classes: AccessibilityGeometryStorage (342), AccessibilityNode (185), _LocaleICU (152). |
+| `heap_snapshot` | diff | pass | Take 2 snapshots, diff | Compares current heap to baseline. After ~10s found 7 growing classes (CString +10, Endpoint +8, etc.) with verdict '7 class(es) growing — potential leaks'. Returns growing/shrinking arrays with before/after/delta. No-baseline error handled properly. |
+| `heap_snapshot` | clear | pass | After snapshot | Clears saved snapshot. Returns {cleared:true}. Confirmed status returns has_snapshot=false after clear, and diff returns proper 'No baseline snapshot' error. |
+| `heap_snapshot` | status | pass | Any state | Without snapshot: returns {has_snapshot:false}. After snapshot: returns has_snapshot=true, class_count=115, taken_at ISO8601 timestamp, seconds_ago. |
 | `defaults` | list | untested | NEEDS: seed test defaults on launch |  |
 | `defaults` | get | untested | Same |  |
 | `defaults` | set | untested | Any state |  |
@@ -168,10 +168,10 @@ Bugs: see [`BUGS.md`](../BUGS.md)
 
 **141 test points** across 49 commands.
 
-- pass: 37
+- pass: 45
 - fail: 7
 - crash: 1
-- untested: 93
+- untested: 85
 
 ## Test App Gaps
 
