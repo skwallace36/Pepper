@@ -149,15 +149,30 @@ def _remove_session(udid: str):
 def _is_session_live(session: dict) -> bool:
     """Check if a session is still active.
 
-    A session is live if EITHER:
-    - The claiming PID is still alive (long-running MCP server), OR
-    - The Pepper port is still responding (app is running, even if deploy script exited)
+    A session is live if ANY of:
+    - state is "deploying" and claimed < 60s ago (deploy in progress)
+    - The claiming PID is still alive (long-running MCP server)
+    - The Pepper port is still responding (app running, deploy script exited)
 
-    This dual check supports both MCP deploy (PID stays alive) and `make deploy`
-    (PID dies after launch, but the app + Pepper port remain live).
+    This supports: MCP deploy (PID alive), `make deploy` (port alive), and
+    pre-claims during deploy (state=deploying, no port yet).
     """
+    state = session.get("state", "active")
     pid = session.get("pid", 0)
     port = session.get("port", 0)
+
+    # Pre-claim: deploy in progress, no port yet. Live for up to 60s.
+    if state == "deploying":
+        claimed_str = session.get("claimed_at", "")
+        try:
+            claimed_time = datetime.fromisoformat(claimed_str)
+            age = (datetime.now(timezone.utc) - claimed_time).total_seconds()
+            if age < 60:
+                return True
+            # Deploy took too long — treat as stale
+        except (ValueError, TypeError):
+            pass
+        return False
 
     if _is_pid_alive(pid):
         # PID is alive — check heartbeat staleness as secondary signal
@@ -215,6 +230,54 @@ def claim_simulator(udid: str, bundle_id: str = "", port: int = 0,
     return _write_session_atomic(udid, data)
 
 
+def claim_simulator_deploying(udid: str, label: Optional[str] = None) -> bool:
+    """Pre-claim a simulator before deploy starts.
+
+    Writes a session with state=deploying. This is considered live for 60s,
+    giving the deploy process time to launch the app and update to state=active.
+
+    Uses atomic write for race safety: two agents both calling this will race
+    on os.rename(), and only one can win.
+
+    Returns True if pre-claim succeeded, False if another session owns it.
+    """
+    existing = _read_session(udid)
+    if existing and _is_session_live(existing):
+        return False
+    if existing:
+        _remove_session(udid)
+
+    now = datetime.now(timezone.utc).isoformat()
+    data = {
+        "udid": udid,
+        "pid": 0,
+        "claimed_at": now,
+        "heartbeat": now,
+        "state": "deploying",
+        "bundle_id": "",
+        "port": 0,
+        "label": label or os.environ.get("PEPPER_SESSION_LABEL", "make-deploy"),
+    }
+    _ensure_session_dir()
+    path = _session_path(udid)
+    tmp_path = f"{path}.{os.getpid()}.tmp"
+    try:
+        with open(tmp_path, "w") as f:
+            json.dump(data, f)
+        os.rename(tmp_path, path)
+        # Verify we won the race
+        verify = _read_session(udid)
+        if verify and verify.get("claimed_at") == now:
+            return True
+        return False
+    except OSError:
+        try:
+            os.remove(tmp_path)
+        except OSError:
+            pass
+        return False
+
+
 def claim_simulator_with_port(udid: str, bundle_id: str = "", port: int = 0,
                               label: Optional[str] = None) -> bool:
     """Claim a simulator using port liveness as the anchor (not PID).
@@ -227,11 +290,15 @@ def claim_simulator_with_port(udid: str, bundle_id: str = "", port: int = 0,
     """
     existing = _read_session(udid)
     if existing and _is_session_live(existing):
-        # Another live session owns it — check if it's the same port (redeploy)
-        if existing.get("port") == port:
+        existing_state = existing.get("state", "active")
+        if existing_state == "deploying":
+            # Upgrade pre-claim to active — this is the post-deploy step
+            pass
+        elif existing.get("port") == port:
             # Same port = same app instance, just update
             pass
         else:
+            # Another active session owns it
             return False
     elif existing:
         _remove_session(udid)
@@ -240,7 +307,8 @@ def claim_simulator_with_port(udid: str, bundle_id: str = "", port: int = 0,
     data = {
         "udid": udid,
         "pid": 0,  # sentinel — liveness determined by port check
-        "claimed_at": now,
+        "state": "active",
+        "claimed_at": existing.get("claimed_at", now) if existing else now,
         "heartbeat": now,
         "bundle_id": bundle_id,
         "port": port,
