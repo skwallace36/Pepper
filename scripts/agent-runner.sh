@@ -17,6 +17,7 @@ TIMEOUT_S=900
 
 AGENT_PID=""
 FINAL_EVENT_EMITTED=false
+OUR_WORKTREE=""  # Track which worktree belongs to THIS agent
 
 emit() {
   local event="$1"; shift
@@ -42,10 +43,10 @@ cleanup() {
     pkill -P "$AGENT_PID" 2>/dev/null || true
   fi
 
-  # Worktree cleanup — remove ALL agent worktrees (not just ours)
-  for wt in $(git worktree list --porcelain 2>/dev/null | grep "^worktree .*/\.claude/worktrees/" | sed 's/^worktree //'); do
-    git worktree remove --force "$wt" 2>/dev/null || true
-  done
+  # Worktree cleanup — only remove OUR worktree, not sibling agents'
+  if [ -n "$OUR_WORKTREE" ]; then
+    git worktree remove --force "$OUR_WORKTREE" 2>/dev/null || true
+  fi
   git worktree prune 2>/dev/null || true
 
   # Safety net: if no final event was emitted, emit one now with diagnostic info
@@ -183,6 +184,12 @@ case "$TYPE" in
   *)        BUDGET=2.00 ;;
 esac
 
+# Snapshot worktrees before launch so we can identify ours
+WORKTREES_BEFORE=$(git worktree list --porcelain 2>/dev/null | grep "^worktree .*/\.claude/worktrees/" | sed 's/^worktree //' | sort || true)
+
+# Stagger concurrent launches — random 0-3s to avoid git worktree add race
+sleep $(( RANDOM % 4 ))
+
 # Launch the agent in background so we can enforce timeout
 claude -p \
   "You are the ${TYPE} agent. Follow your instructions." \
@@ -193,11 +200,16 @@ claude -p \
   > "$TRANSCRIPT" 2>&1 &
 AGENT_PID=$!
 
+# Identify which worktree was created for this agent
+sleep 2
+WORKTREES_AFTER=$(git worktree list --porcelain 2>/dev/null | grep "^worktree .*/\.claude/worktrees/" | sed 's/^worktree //' | sort || true)
+OUR_WORKTREE=$(comm -13 <(echo "$WORKTREES_BEFORE") <(echo "$WORKTREES_AFTER") | head -1)
+
 # Wait with timeout
 TIMED_OUT=false
 ELAPSED=0
-# Quick check: if agent dies in first 3 seconds, it's likely an auth/startup failure
-sleep 3
+# Quick check: if agent dies in first 5 seconds total (2s above + 1s here)
+sleep 1
 if ! kill -0 "$AGENT_PID" 2>/dev/null; then
   wait "$AGENT_PID" 2>/dev/null
   EXIT_CODE=$?
