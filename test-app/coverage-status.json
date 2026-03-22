@@ -109,9 +109,9 @@
   "network.log":         { "status": "untested",  "surface": "After start + Fetch HTTP button",          "notes": "" },
   "network.clear":       { "status": "untested",  "surface": "After log capture",                        "notes": "" },
 
-  "wait_for.visible":    { "status": "untested",  "surface": "Start 3s Timer → wait for FIRED text",    "notes": "" },
-  "wait_for.exists":     { "status": "untested",  "surface": "Same timer or navigation push",            "notes": "" },
-  "wait_for.has_value":  { "status": "untested",  "surface": "Counter value after tap",                  "notes": "" },
+  "wait_for.visible":    { "status": "fail",      "surface": "Start 3s Timer → wait for FIRED text",    "notes": "BUG-007: Text condition works for already-visible text (returns 3-23ms). But fails to detect async state changes — 3s timer fires and text updates to 'Timer: FIRED', yet wait_for times out. Handler's main-thread polling loop blocks SwiftUI re-rendering." },
+  "wait_for.exists":     { "status": "fail",      "surface": "Same timer or navigation push",            "notes": "BUG-006 + BUG-007: Element ID condition fails (SwiftUI identifiers not discoverable). Text condition works for already-present text but fails for async changes (same main-thread blocking as visible)." },
+  "wait_for.has_value":  { "status": "fail",      "surface": "Counter value after tap",                  "notes": "BUG-006: has_value requires element ID, which fails for SwiftUI elements. Cannot test the has_value logic itself. Text-based workaround (wait_for text 'Count: N' after tap) works because tap updates synchronously before wait_for starts polling." },
   "wait_idle":           { "status": "untested",  "surface": "After any UI mutation",                    "notes": "" },
   "batch":               { "status": "untested",  "surface": "Sequence of tap + look",                   "notes": "" },
   "watch":               { "status": "untested",  "surface": "Watch counter label, then tap",            "notes": "" },
