@@ -42,8 +42,29 @@ enum PepperElementResolver {
 
         // Strategy 1: accessibility identifier
         if let elementID = params["element"]?.stringValue {
+            // Try UIView hierarchy first (fast path — works for UIKit elements)
             if let view = window.pepper_findElement(id: elementID) {
                 return (Result(view: view, strategy: .accessibilityID, description: elementID), nil)
+            }
+            // Fallback: search the accessibility tree (SwiftUI .accessibilityIdentifier()
+            // puts identifiers on UIAccessibilityElement objects, not on backing UIViews)
+            let accElements = PepperSwiftUIBridge.shared.collectAccessibilityElements()
+            let screenBounds = UIScreen.main.bounds
+            var bestMatch: PepperAccessibilityElement?
+            for element in accElements {
+                guard element.identifier == elementID, element.frame != .zero else { continue }
+                let center = CGPoint(x: element.frame.midX, y: element.frame.midY)
+                if screenBounds.contains(center) {
+                    bestMatch = element
+                    break
+                }
+                if bestMatch == nil {
+                    bestMatch = element
+                }
+            }
+            if let match = bestMatch {
+                let center = CGPoint(x: match.frame.midX, y: match.frame.midY)
+                return (Result(view: window, strategy: .accessibilityID, description: elementID, tapPoint: center), nil)
             }
             return (nil, "Element not found by accessibility ID: \(elementID)")
         }
