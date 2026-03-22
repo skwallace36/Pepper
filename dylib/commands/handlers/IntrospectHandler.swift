@@ -731,6 +731,35 @@ struct IntrospectHandler: PepperHandler {
             data["screen_key"] = AnyCodable(screenKey)
         }
 
+        // System dialog detection: warn agents when a modal dialog is blocking interaction.
+        // Pending dialogs (permission prompts, alerts) overlay the app and prevent taps
+        // from reaching underlying elements. Surface this prominently so agents don't
+        // waste cycles tapping unreachable controls.
+        let pendingDialogs = PepperDialogInterceptor.shared.pending
+        if !pendingDialogs.isEmpty {
+            let dialogSummaries = pendingDialogs.map { dialog -> [String: AnyCodable] in
+                var summary: [String: AnyCodable] = [
+                    "dialog_id": AnyCodable(dialog.id),
+                    "title": AnyCodable(dialog.title ?? ""),
+                    "buttons": AnyCodable(dialog.actions.map { AnyCodable($0.title ?? "") })
+                ]
+                if let message = dialog.message, !message.isEmpty {
+                    summary["message"] = AnyCodable(message)
+                }
+                return summary
+            }
+            data["system_dialog_blocking"] = AnyCodable([
+                "warning": AnyCodable("\u{26a0}\u{fe0f} system_dialog_blocking"),
+                "description": AnyCodable("A system dialog is covering the app. UI elements behind it are not interactable until the dialog is resolved."),
+                "dialogs": AnyCodable(dialogSummaries.map { AnyCodable($0) }),
+                "suggested_actions": AnyCodable([
+                    AnyCodable("dialog dismiss button=\"<button_title>\" — dismiss with a specific button"),
+                    AnyCodable("dialog auto_dismiss — auto-dismiss permission dialogs"),
+                    AnyCodable("simulator permissions — pre-grant permissions to avoid dialogs")
+                ])
+            ] as [String: AnyCodable])
+        }
+
         return .ok(id: command.id, data: data)
     }
 
