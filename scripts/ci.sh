@@ -84,7 +84,7 @@ cleanup() {
         mkdir -p "$RESULTS_DIR"
         xcrun simctl spawn "$SIM_UDID" log show \
             --predicate 'subsystem CONTAINS "pepper"' \
-            --last 5m --style compact \
+            --last 5m --style compact --info \
             > "$RESULTS_DIR/pepper-log.txt" 2>/dev/null || true
         info "Logs saved to build/ci-results/pepper-log.txt"
     fi
