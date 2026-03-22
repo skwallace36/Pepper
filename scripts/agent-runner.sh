@@ -76,6 +76,12 @@ emit "started" ",\"detail\":\"picking work from queue (\$${TYPE_COST_TODAY} spen
 export PEPPER_EVENTS_LOG="$EVENTS"
 export PEPPER_AGENT_TYPE="$TYPE"
 
+# Agent git identity — agents commit as themselves, not as the user
+export GIT_AUTHOR_NAME="pepper-${TYPE}-agent"
+export GIT_AUTHOR_EMAIL="pepper-${TYPE}-agent@noreply.pepper.dev"
+export GIT_COMMITTER_NAME="pepper-${TYPE}-agent"
+export GIT_COMMITTER_EMAIL="pepper-${TYPE}-agent@noreply.pepper.dev"
+
 START=$(date +%s)
 TRANSCRIPT="build/logs/transcript-${TYPE}-${START}.json"
 
