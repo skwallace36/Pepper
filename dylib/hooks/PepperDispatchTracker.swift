@@ -1,10 +1,10 @@
 import Foundation
 import os
 
-/// Tracks pending main-queue dispatch blocks via fishhook interposition.
+/// Tracks pending main-queue dispatch blocks via DYLD_INTERPOSE interposition.
 /// Provides Layer 3 idle detection: the app is not idle while async blocks are pending.
 ///
-/// Uses fishhook to rebind `dispatch_async` and `dispatch_after` — when a block is
+/// Uses DYLD_INTERPOSE to rebind `dispatch_async` and `dispatch_after` — when a block is
 /// submitted to the main queue, the pending count increments; when the block completes,
 /// it decrements. Only short-delay `dispatch_after` calls (<=1.5s) are tracked to
 /// avoid counting background timers as pending UI work.
@@ -24,7 +24,7 @@ final class PepperDispatchTracker {
 
     // MARK: - Installation
 
-    /// Install fishhook-based dispatch interposition. Call once from PepperPlane.start().
+    /// Install DYLD_INTERPOSE-based dispatch interposition. Call once from PepperPlane.start().
     /// Safe to call multiple times — second call is a no-op.
     func install() {
         guard !Self.installed else { return }
@@ -36,7 +36,7 @@ final class PepperDispatchTracker {
             { PepperDispatchTracker.shared.increment() },
             { PepperDispatchTracker.shared.decrement() }
         )
-        logger.info("Dispatch tracker installed (fishhook interposition active)")
+        logger.info("Dispatch tracker installed (DYLD_INTERPOSE interposition active)")
     }
 
     // MARK: - Counter
