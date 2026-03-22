@@ -21,8 +21,8 @@ except ImportError:
     print("  pip install websockets")
     sys.exit(1)
 
-DEFAULT_HOST = "localhost"
-PORT_DIR = "/tmp/pepper-ports"
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from pepper_common import DEFAULT_HOST, PORT_DIR
 
 
 def discover_port(simulator=None):
