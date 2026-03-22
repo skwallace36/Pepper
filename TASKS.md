@@ -9,7 +9,7 @@ Statuses: `unstarted` → `in-progress` → `pr-open` → `done`.
 
 Run every Pepper command against the test app. Each task covers a command family. Update `test-app/coverage-status.json` with results.
 
-- **TASK-010** `[P2]` `status:unstarted` — Test `tap` variants: element, point, icon_name, tab, heuristic, predicate *(6 untested)*
+- **TASK-010** `[P2]` `status:in-progress` — Test `tap` variants: element, point, icon_name, tab, heuristic, predicate *(6 untested)*
 - **TASK-011** `[P2]` `status:pr-open` — Test `scroll` variants: top, bottom, up, left, right *(3 pass, 2 blocked)*
 - **TASK-012** `[P2]` `status:pr-open` — Test `scroll_to` variants: element, text, predicate, edge *(4 tested → pass, BUG-004 filed)*
 - **TASK-013** `[P2]` `status:unstarted` — Test `swipe` variants: up, down, left, right *(4 untested)*
