@@ -34,11 +34,6 @@ Test app changes needed before blocked commands can be tested. Unblocks ~20 unte
 
 ## Modularize `tools/` (P3)
 
-- **TASK-030** `[P3]` `status:done` — Fix build script when APP_ADAPTER_TYPE is unset (`set -u` + unbound var) *(PR #6, merged)*
-- **TASK-031** `[P3]` `status:pr-open` — Audit core code for app-specific assumptions that break in generic mode *(PR #7)*
-- **TASK-032** `[P3]` `status:unstarted` — Generic mode smoke test script (`make test-generic`) — build, inject, run core commands, assert no crashes
-- **TASK-033** `[P3]` `status:unstarted` — Audit error messages for adapter-specific language that confuses generic mode users
-
 ### Extract shared library — `pepper_common.py`
 
 - **TASK-060** `[P3]` `status:unstarted` — Extract `pepper_common.py`: `load_env()`, `get_config()`, `PORT_DIR` constant. Replace duplicates in pepper-mcp, pepper-ctl, pepper-stream, test-client.py
@@ -64,27 +59,57 @@ Test app changes needed before blocked commands can be tested. Unblocks ~20 unte
 - **TASK-074** `[P3]` `status:unstarted` — Audit and fix error handling: replace broad `except Exception` in pepper-context, standardize import error messages across all tools, validate external tool deps (rg, gh, xcodebuild)
 - **TASK-075** `[P3]` `status:unstarted` — Update `tools/TOOLS.md` to document the new module layout and shared library
 
-## Generic Mode Cleanup (P4)
+## CI/CD Integration (P4)
 
-- **TASK-030** `[P4]` `status:unstarted` — Fix build script when APP_ADAPTER_TYPE is unset (`set -u` + unbound var)
-- **TASK-031** `[P4]` `status:unstarted` — Audit core code for app-specific assumptions that break in generic mode
-- **TASK-032** `[P4]` `status:unstarted` — Generic mode smoke test script (`make test-generic`) — build, inject, run core commands, assert no crashes
-- **TASK-033** `[P4]` `status:unstarted` — Audit error messages for adapter-specific language that confuses generic mode users
+GitHub Actions workflow that boots a simulator, injects Pepper, and runs tests with reported results.
 
-## Real-World App Testing (P5)
+- **TASK-080** `[P4]` `status:unstarted` — Add `pepper-ctl wait-for-server` health check command (poll WebSocket until connected or timeout)
+- **TASK-081** `[P4]` `status:unstarted` — Add JUnit/JSON test result export to `pepper-ctl` for CI artifact collection
+- **TASK-082** `[P4]` `status:unstarted` — Create GitHub Actions workflow template: build dylib, boot headless sim, inject via `deploy`, run smoke tests, upload results
+- **TASK-083** `[P4]` `status:unstarted` — Add CI batch/headless mode — run a predefined test script and exit with pass/fail status code
+- **TASK-084** `[P4]` `status:unstarted` — Add `make ci` target that wraps the full boot → inject → test → teardown cycle
 
-- **TASK-040** `[P5]` `status:unstarted` — Test Pepper against Wikipedia iOS app
-- **TASK-041** `[P5]` `status:unstarted` — Test Pepper against Ice Cubes (SwiftUI Mastodon client)
+## Device Support (P5)
 
-## New Capabilities (P6)
+Extend Pepper from simulator-only to real iOS devices via build-time framework embedding.
+
+- **TASK-085** `[P5]` `status:unstarted` — Add `make xcframework` target — package Pepper dylib as an xcframework for device embedding
+- **TASK-086** `[P5]` `status:unstarted` — Add Bonjour service advertisement to `PepperServer` for device-to-host discovery (+ `NSLocalNetworkUsageDescription` docs)
+- **TASK-087** `[P5]` `status:unstarted` — Add non-simulator port resolution fallback — explicit env var, Info.plist key, or Bonjour browse
+- **TASK-088** `[P5]` `status:unstarted` — Update `pepper-ctl` and `pepper-mcp` to discover and connect to device-hosted Pepper instances (not just simulator ports)
+- **TASK-089** `[P5]` `status:unstarted` — Document device integration guide — how to embed Pepper framework in an Xcode project for on-device use
+
+## Packaging & Distribution (P6)
+
+README, Homebrew, MCP directory listings.
+
+- **TASK-090** `[P6]` `status:unstarted` — Write README with animated demo GIF/video, 3-step install, architecture diagram, tool reference table
+- **TASK-091** `[P6]` `status:unstarted` — Create Homebrew tap repo (`homebrew-pepper`) with formula + GitHub Actions for automated bottle building
+- **TASK-092** `[P6]` `status:unstarted` — Submit to MCP directories: mcp.so, awesome-mcp-servers (wong2 + punkpeye), Cline marketplace, official MCP registry, Glama, PulseMCP
+- **TASK-093** `[P6]` `status:unstarted` — Record 60-second demo video showing Claude Code using Pepper to observe and interact with an iOS app
+- **TASK-094** `[P6]` `status:unstarted` — Write technical blog post: "How I Gave AI Eyes Inside iOS Apps" — dylib injection approach, MCP integration, what it enables
+
+## Generic Mode Cleanup (P7)
+
+- **TASK-030** `[P7]` `status:done` — Fix build script when APP_ADAPTER_TYPE is unset (`set -u` + unbound var) *(PR #6, merged)*
+- **TASK-031** `[P7]` `status:unstarted` — Audit core code for app-specific assumptions that break in generic mode
+- **TASK-032** `[P7]` `status:unstarted` — Generic mode smoke test script (`make test-generic`) — build, inject, run core commands, assert no crashes
+- **TASK-033** `[P7]` `status:unstarted` — Audit error messages for adapter-specific language that confuses generic mode users
+
+## Real-World App Testing (P8)
+
+- **TASK-040** `[P8]` `status:unstarted` — Test Pepper against Wikipedia iOS app
+- **TASK-041** `[P8]` `status:unstarted` — Test Pepper against Ice Cubes (SwiftUI Mastodon client)
+
+## New Capabilities (P9)
 
 Ideas from `docs/RESEARCH.md` promoted to concrete tasks.
 
-- **TASK-050** `[P6]` `status:unstarted` — Accessibility audit command — scan for missing a11y labels, invalid traits, insufficient color contrast, Dynamic Type issues
-- **TASK-051** `[P6]` `status:unstarted` — Touch failure debugging — dump gesture recognizer stack, responder chain, hit-test path for a given point or element
-- **TASK-052** `[P6]` `status:unstarted` — Layout inspector — AutoLayout constraint dump with ambiguity detection (inspired by Chisel `paltrace`)
-- **TASK-053** `[P6]` `status:unstarted` — Performance profiling — FPS counter, main thread blocking detection, expensive redraw identification
-- **TASK-054** `[P6]` `status:unstarted` — In-process view capture via `drawHierarchy(in:)` — faster than simctl, supports per-view snapshots
+- **TASK-050** `[P9]` `status:unstarted` — Accessibility audit command — scan for missing a11y labels, invalid traits, insufficient color contrast, Dynamic Type issues
+- **TASK-051** `[P9]` `status:unstarted` — Touch failure debugging — dump gesture recognizer stack, responder chain, hit-test path for a given point or element
+- **TASK-052** `[P9]` `status:unstarted` — Layout inspector — AutoLayout constraint dump with ambiguity detection (inspired by Chisel `paltrace`)
+- **TASK-053** `[P9]` `status:unstarted` — Performance profiling — FPS counter, main thread blocking detection, expensive redraw identification
+- **TASK-054** `[P9]` `status:unstarted` — In-process view capture via `drawHierarchy(in:)` — faster than simctl, supports per-view snapshots
 
 ---
 
