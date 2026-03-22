@@ -37,6 +37,12 @@ format_line() {
       failed)   printf "%s  %-9s \033[1;31mFAILED\033[0m    %s · \$%s · %ss\n" "$ts" "$agent" "$detail" "$cost" "$duration" ;;
       timeout)  printf "%s  %-9s \033[1;31mTIMEOUT\033[0m   %s · \$%s\n" "$ts" "$agent" "$detail" "$cost" ;;
       killed)   printf "%s  %-9s \033[1;31mKILLED\033[0m    %s\n" "$ts" "$agent" "$detail" ;;
+      build)    printf "%s  %-9s \033[0;32mBUILD\033[0m     %s\n" "$ts" "$agent" "$detail" ;;
+      build-fail) printf "%s  %-9s \033[1;31mBUILD ✗\033[0m   %s\n" "$ts" "$agent" "$detail" ;;
+      sim-launch) printf "%s  %-9s \033[0;36mSIM\033[0m       launched %s\n" "$ts" "$agent" "$detail" ;;
+      sim-install) printf "%s  %-9s \033[0;36mSIM\033[0m       %s\n" "$ts" "$agent" "$detail" ;;
+      pepper)   printf "%s  %-9s \033[0;34mPEPPER\033[0m    %s\n" "$ts" "$agent" "$detail" ;;
+      pepper-fail) printf "%s  %-9s \033[1;31mPEPPER ✗\033[0m  %s\n" "$ts" "$agent" "$detail" ;;
       *)        printf "%s  %-9s %s  %s\n" "$ts" "$agent" "$event" "$detail" ;;
     esac
   done
