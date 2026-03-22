@@ -64,7 +64,7 @@ Test app changes needed before blocked commands can be tested. Unblocks ~20 unte
 
 ### Tools directory cleanup
 
-- **TASK-074** `[P3]` `status:unstarted` — Audit and fix error handling: replace broad `except Exception` in pepper-context, standardize import error messages across all tools, validate external tool deps (rg, gh, xcodebuild)
+- **TASK-074** `[P3]` `status:pr-open` — Audit and fix error handling: replace broad `except Exception` in pepper-context, standardize import error messages across all tools, validate external tool deps (rg, gh, xcodebuild)
 - **TASK-075** `[P3]` `status:unstarted` — Update `tools/TOOLS.md` to document the new module layout and shared library
 
 ## CI/CD Integration (P4)
