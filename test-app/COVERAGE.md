@@ -32,8 +32,8 @@ Bugs: see [`BUGS.md`](../BUGS.md)
 | `tap` | tab | fail | Tab bar | BUG-005: Returns 'No tab bar found in view hierarchy'. findTabBarButtons() searches for UITabBar but SwiftUI TabView does not expose UITabBar views in the hierarchy. |
 | `tap` | heuristic | pass | Slider element on Controls tab | Tapped slider via heuristic:'slider'. Found at (116,790). Error case also tested: nonexistent heuristic returns proper error. |
 | `tap` | predicate | pass | Tap Me button via NSPredicate | Predicate "label == 'Tap Me' AND type == 'button'" found and tapped correctly. Count incremented. Error case tested: no-match predicate returns proper error. |
-| `input` | — | untested | TextField (text_field), TextEditor (text_editor) |  |
-| `toggle` | — | untested | Toggle (toggle_switch), Segmented (segment_control) |  |
+| `input` | — | pass | TextField (text_field), TextEditor (text_view) | TextField: set 'Hello Pepper', appended ' World' with --no-clear, cleared+replaced with 'Replaced'. TextEditor (text_view): set value accepted. Error case: nonexistent ID returns proper 'Element not found' error. |
+| `toggle` | — | fail | Toggle (dark_mode_toggle, notifications_toggle, airplane_toggle), Segmented (sort_picker) | BUG-006 (same root cause): SwiftUI Toggle elements return 'Element not found' — accessibilityIdentifier not discoverable. Segmented control (sort_picker) works: toggled Name→Date→Size successfully. Toggle command itself functions correctly; failure is in SwiftUI element discovery. |
 | `scroll` | top | pass | List tab (30 rows) | Scrolled to top from mid-list; Item 0 visible at top |
 | `scroll` | bottom | pass | List tab (30 rows) | Scrolled to bottom; Item 29 visible at bottom |
 | `scroll` | down | pass | List tab (30 rows) |  |
@@ -168,10 +168,10 @@ Bugs: see [`BUGS.md`](../BUGS.md)
 
 **141 test points** across 49 commands.
 
-- pass: 22
-- fail: 4
+- pass: 23
+- fail: 5
 - crash: 1
-- untested: 111
+- untested: 109
 
 ## Test App Gaps
 
