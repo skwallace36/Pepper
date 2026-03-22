@@ -110,7 +110,7 @@ Restructure the iOS dylib for platform abstraction. Each phase is independently 
 ### Phase B: iOS platform wrappers
 
 - **TASK-110** `[P3]` `status:pr-open` — Create `IOSPlatform.swift` factory + add `platform` property to `PepperPlane.shared`. Wire it up in `start()`. *(blocked by TASK-100, TASK-101)*
-- **TASK-111** `[P3]` `status:in-progress` — Create `IOSElementDiscovery` wrapping `PepperSwiftUIBridge.shared` + `PepperAccessibilityCollector` + `PepperElementResolver`. *(blocked by TASK-110)*
+- **TASK-111** `[P3]` `status:pr-open` — Create `IOSElementDiscovery` wrapping `PepperSwiftUIBridge.shared` + `PepperAccessibilityCollector` + `PepperElementResolver`. *(blocked by TASK-110)*
 - **TASK-112** `[P3]` `status:unstarted` — Create `IOSInputSynthesis` wrapping `PepperHIDEventSynthesizer.shared` (tap, doubleTap, scroll, swipe, gesture, inputText, toggle). *(blocked by TASK-110)*
 - **TASK-113** `[P3]` `status:unstarted` — Create `IOSStateObservation` wrapping `PepperState.shared` + `PepperIdleMonitor.shared` + `PepperScreenRegistry`. *(blocked by TASK-110)*
 - **TASK-114** `[P3]` `status:unstarted` — Create `IOSNetworkInterception` wrapping `PepperNetworkInterceptor.shared`. *(blocked by TASK-110)*
