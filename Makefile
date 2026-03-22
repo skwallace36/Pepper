@@ -23,7 +23,7 @@ LOGS_DIR    := $(PROJECT_DIR)/build/logs
 
 .PHONY: help build deploy launch kill relaunch ping check \
         logs clean test-client pepper-ctl test-app coverage coverage-check \
-        docs setup agent agent-monitor agent-status agent-trigger agents-install agents-uninstall agent-cleanup agent-kill agent-resume
+        docs setup ci agent agent-monitor agent-status agent-trigger agents-install agents-uninstall agent-cleanup agent-kill agent-resume
 
 # ============================================================
 # Help
@@ -150,6 +150,10 @@ test-app:
 ## test-deploy: Build test app + build dylib + launch with Pepper injected
 test-deploy: test-app build
 	@$(MAKE) launch BUNDLE_ID=$(TEST_APP_BUNDLE)
+
+## ci: Full boot → inject → test → teardown cycle
+ci:
+	@bash "$(PROJECT_DIR)/scripts/ci.sh" $(CI_ARGS)
 
 # ============================================================
 # Housekeeping
