@@ -12,29 +12,70 @@ AGENT="${PEPPER_AGENT_TYPE:-unknown}"
 
 INPUT=$(cat)
 TOOL=$(echo "$INPUT" | jq -r '.tool_name // empty')
+TS=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
-# Track MCP Pepper tool calls (look, tap, scroll, etc.)
-if echo "$TOOL" | grep -qE '^mcp__pepper__'; then
-  SUBCMD=$(echo "$TOOL" | sed 's/^mcp__pepper__//')
-  EXIT_CODE=$(echo "$INPUT" | jq -r '.tool_response.exit_code // 0')
-  if [ "$EXIT_CODE" = "0" ]; then
-    emit "\"event\":\"pepper\",\"detail\":\"${SUBCMD}\""
-  else
-    emit "\"event\":\"pepper-fail\",\"detail\":\"${SUBCMD}\""
-  fi
+emit() {
+  echo "{\"ts\":\"${TS}\",\"agent\":\"${AGENT}\",$1}" >> "$EVENTS_LOG"
+}
+
+# --- Context tracking (Read, Edit, Write, Grep, Glob) ---
+
+if [ "$TOOL" = "Read" ]; then
+  FILE=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')
+  RESPONSE=$(echo "$INPUT" | jq -r '.tool_response // empty')
+  BYTES=${#RESPONSE}
+  emit "\"event\":\"read\",\"file\":$(printf '%s' "$FILE" | jq -Rs '.'),\"bytes\":${BYTES}"
   exit 0
 fi
+
+if [ "$TOOL" = "Edit" ]; then
+  FILE=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')
+  emit "\"event\":\"edit\",\"file\":$(printf '%s' "$FILE" | jq -Rs '.')"
+  exit 0
+fi
+
+if [ "$TOOL" = "Write" ]; then
+  FILE=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')
+  CONTENT=$(echo "$INPUT" | jq -r '.tool_input.content // empty')
+  BYTES=${#CONTENT}
+  emit "\"event\":\"write\",\"file\":$(printf '%s' "$FILE" | jq -Rs '.'),\"bytes\":${BYTES}"
+  exit 0
+fi
+
+if [ "$TOOL" = "Grep" ]; then
+  PATTERN=$(echo "$INPUT" | jq -r '.tool_input.pattern // empty')
+  RESPONSE=$(echo "$INPUT" | jq -r '.tool_response // empty')
+  BYTES=${#RESPONSE}
+  emit "\"event\":\"grep\",\"pattern\":$(printf '%s' "$PATTERN" | jq -Rs '.'),\"bytes\":${BYTES}"
+  exit 0
+fi
+
+if [ "$TOOL" = "Glob" ]; then
+  PATTERN=$(echo "$INPUT" | jq -r '.tool_input.pattern // empty')
+  RESPONSE=$(echo "$INPUT" | jq -r '.tool_response // empty')
+  BYTES=${#RESPONSE}
+  emit "\"event\":\"glob\",\"pattern\":$(printf '%s' "$PATTERN" | jq -Rs '.'),\"bytes\":${BYTES}"
+  exit 0
+fi
+
+# --- MCP Pepper tool calls (look, tap, scroll, etc.) ---
+
+if echo "$TOOL" | grep -qE '^mcp__pepper__'; then
+  SUBCMD=$(echo "$TOOL" | sed 's/^mcp__pepper__//')
+  RESPONSE=$(echo "$INPUT" | jq -r '.tool_response // empty')
+  BYTES=${#RESPONSE}
+  emit "\"event\":\"pepper\",\"detail\":\"${SUBCMD}\",\"bytes\":${BYTES}"
+  exit 0
+fi
+
+# --- Bash commands ---
 
 [ "$TOOL" = "Bash" ] || exit 0
 
 CMD=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
 STDOUT=$(echo "$INPUT" | jq -r '.tool_response.stdout // empty')
 EXIT_CODE=$(echo "$INPUT" | jq -r '.tool_response.exit_code // 0')
-TS=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-
-emit() {
-  echo "{\"ts\":\"${TS}\",\"agent\":\"${AGENT}\",$1}" >> "$EVENTS_LOG"
-}
+BYTES=${#STDOUT}
 
 # Branch creation
 if echo "$CMD" | grep -qE 'git (checkout -b|switch -c|branch )'; then
@@ -64,9 +105,9 @@ fi
 # Build (xcodebuild or make build)
 if echo "$CMD" | grep -qE '(xcodebuild|make.*build|make.*deploy)'; then
   if [ "$EXIT_CODE" = "0" ]; then
-    emit "\"event\":\"build\",\"detail\":\"success\""
+    emit "\"event\":\"build\",\"detail\":\"success\",\"bytes\":${BYTES}"
   else
-    emit "\"event\":\"build-fail\",\"detail\":\"exit code ${EXIT_CODE}\""
+    emit "\"event\":\"build-fail\",\"detail\":\"exit code ${EXIT_CODE}\",\"bytes\":${BYTES}"
   fi
 fi
 
@@ -81,10 +122,16 @@ if echo "$CMD" | grep -qE 'simctl install' && [ "$EXIT_CODE" = "0" ]; then
   emit "\"event\":\"sim-install\",\"detail\":\"app installed\""
 fi
 
-# MCP tool calls (pepper look, tap, etc.)
-if [ "$TOOL" = "Bash" ] && echo "$CMD" | grep -qE 'pepper-ctl'; then
+# gh commands (PR diff reads, issue reads, etc.)
+if echo "$CMD" | grep -qE '^gh (pr|issue|api)'; then
+  SUBCMD=$(echo "$CMD" | grep -oE '^gh [a-z]+ [a-z]+' || echo "$CMD" | awk '{print $1,$2}')
+  emit "\"event\":\"gh\",\"detail\":$(printf '%s' "$SUBCMD" | jq -Rs '.'),\"bytes\":${BYTES}"
+fi
+
+# pepper-ctl via Bash
+if echo "$CMD" | grep -qE 'pepper-ctl'; then
   SUBCMD=$(echo "$CMD" | grep -oE 'pepper-ctl [a-z_]+' | awk '{print $2}')
-  [ -n "$SUBCMD" ] && emit "\"event\":\"pepper\",\"detail\":\"${SUBCMD}\""
+  [ -n "$SUBCMD" ] && emit "\"event\":\"pepper\",\"detail\":\"${SUBCMD}\",\"bytes\":${BYTES}"
 fi
 
 exit 0
