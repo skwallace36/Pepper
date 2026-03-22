@@ -40,6 +40,8 @@ FINAL_EVENT_EMITTED=false
 OUR_WORKTREE=""  # Track which worktree belongs to THIS agent
 START=""  # Set before agent launch; empty means pre-launch exit (no safety net needed)
 TRANSCRIPT=""
+CLAIMED_SIM=""
+SIMS_BEFORE=""
 
 emit() {
   local event="$1"; shift
@@ -68,6 +70,15 @@ cleanup() {
   # Worktree cleanup — only remove OUR worktree, not sibling agents'
   if [ -n "$OUR_WORKTREE" ]; then
     git worktree remove --force "$OUR_WORKTREE" 2>/dev/null || true
+  fi
+
+  # Release claimed simulator
+  if [ -n "$CLAIMED_SIM" ]; then
+    python3 -c "
+import sys; sys.path.insert(0, '$REPO_ROOT/tools')
+from pepper_sessions import release_simulator
+release_simulator('$CLAIMED_SIM')
+" 2>/dev/null || true
   fi
 
   # Sim cleanup — shut down any sims this agent booted
@@ -201,15 +212,16 @@ emit "started" ",\"detail\":\"picking work from queue (\$${TYPE_COST_TODAY} spen
 export PEPPER_EVENTS_LOG="$EVENTS"
 export PEPPER_AGENT_TYPE="$TYPE"
 
-# Pin agents to the FIRST booted simulator — prevents booting extra sims
-FIRST_SIM=$(xcrun simctl list devices booted -j 2>/dev/null | python3 -c "
-import json, sys
-devs = json.load(sys.stdin)['devices']
-booted = [d for r in devs.values() for d in r if d['state'] == 'Booted']
-print(booted[0]['udid'] if booted else '')
+# Claim a simulator via pepper_sessions (flock-based, multi-agent safe)
+CLAIMED_SIM=$(python3 -c "
+import sys; sys.path.insert(0, '$REPO_ROOT/tools')
+from pepper_sessions import find_available_simulator, claim_simulator
+udid = find_available_simulator()
+claim_simulator(udid, label='agent-${TYPE}')
+print(udid)
 " 2>/dev/null || true)
-if [ -n "$FIRST_SIM" ]; then
-  export SIMULATOR_ID="$FIRST_SIM"
+if [ -n "$CLAIMED_SIM" ]; then
+  export SIMULATOR_ID="$CLAIMED_SIM"
 fi
 
 # Agent git identity — agents commit as themselves, not as the user
