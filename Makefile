@@ -61,13 +61,7 @@ launch:
 		echo "Pepper.framework not found. Run 'make build' first." >&2; \
 		exit 1; \
 	fi
-	@python3 -c "import sys; sys.path.insert(0, '$(TOOLS_DIR)'); \
-from pepper_sessions import is_claimed; import os; \
-s = is_claimed('$(SIMULATOR_ID)'); \
-s and s.get('pid') != os.getppid() and \
-print('WARNING: Sim $(SIMULATOR_ID) claimed by PID ' + str(s['pid']) + \
-((' (' + s['label'] + ')') if s.get('label') else '') + \
-'. Another Pepper session may be affected.', file=sys.stderr)" 2>&1 || true
+	@python3 "$(TOOLS_DIR)/check-sim-available.py" "$(SIMULATOR_ID)" "$(TOOLS_DIR)"
 	@echo "Launching $(BUNDLE_ID) with Pepper injection..."
 	-@xcrun simctl terminate "$(SIMULATOR_ID)" "$(BUNDLE_ID)" 2>/dev/null
 	@open -a Simulator --args -CurrentDeviceUDID "$(SIMULATOR_ID)" 2>/dev/null || true
