@@ -35,7 +35,7 @@ Test app changes needed before blocked commands can be tested. Unblocks ~20 unte
 ## Generic Mode Cleanup (P3)
 
 - **TASK-030** `[P3]` `status:unstarted` — Fix build script when APP_ADAPTER_TYPE is unset (`set -u` + unbound var)
-- **TASK-031** `[P3]` `status:unstarted` — Audit core code for app-specific assumptions that break in generic mode
+- **TASK-031** `[P3]` `status:in-progress` — Audit core code for app-specific assumptions that break in generic mode
 - **TASK-032** `[P3]` `status:unstarted` — Generic mode smoke test script (`make test-generic`) — build, inject, run core commands, assert no crashes
 - **TASK-033** `[P3]` `status:unstarted` — Audit error messages for adapter-specific language that confuses generic mode users
 
