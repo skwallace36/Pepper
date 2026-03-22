@@ -40,8 +40,8 @@ Bugs: see [`BUGS.md`](../BUGS.md)
 | `scroll` | up | pass | List tab (30 rows) | Scrolled up 400pt from bottom; items shifted upward as expected |
 | `scroll` | left | blocked | Horizontal scroll if added | Command executes without error but no horizontal scroll view in test app to verify |
 | `scroll` | right | blocked | Horizontal scroll if added | Command executes without error but no horizontal scroll view in test app to verify |
-| `tree` | — | untested | Any screen |  |
-| `read` | — | untested | Elements with a11y IDs |  |
+| `tree` | — | pass | Controls tab, Misc tab | Returns full UIView hierarchy as JSON (3355 lines on Controls tab). Supports --depth param for truncation (depth=3 returns 4 nodes). Reports nodeCount and truncated flag. |
+| `read` | — | pass | sort_picker (UIKit segmented control) | Works for UIKit elements: read sort_picker returned value=2, segmentCount=3, segmentTitles, enabled, visible. Fails for SwiftUI elements (BUG-006: tap_button returns 'Element not found'). Nonexistent IDs return proper 'Element not found' error. |
 | `wait_for` | visible | fail | Start 3s Timer → wait for FIRED text | BUG-007: Text condition works for already-visible text (returns 3-23ms). But fails to detect async state changes — 3s timer fires and text updates to 'Timer: FIRED', yet wait_for times out. Handler's main-thread polling loop blocks SwiftUI re-rendering. |
 | `wait_for` | exists | fail | Same timer or navigation push | BUG-006 + BUG-007: Element ID condition fails (SwiftUI identifiers not discoverable). Text condition works for already-present text but fails for async changes (same main-thread blocking as visible). |
 | `wait_for` | has_value | fail | Counter value after tap | BUG-006: has_value requires element ID, which fails for SwiftUI elements. Cannot test the has_value logic itself. Text-based workaround (wait_for text 'Count: N' after tap) works because tap updates synchronously before wait_for starts polling. |
@@ -83,9 +83,9 @@ Bugs: see [`BUGS.md`](../BUGS.md)
 | `dialog` | auto_dismiss | untested | Alert dialog |  |
 | `dismiss` | — | untested | Sheet from Show Sheet button |  |
 | `status` | — | untested | Any state |  |
-| `highlight` | — | untested | Any element |  |
-| `identify_selected` | — | untested | Segmented control |  |
-| `identify_icons` | — | untested | 4 SF Symbol icon-only buttons |  |
+| `highlight` | — | pass | Tap Me button on Controls tab | Highlighted 'Tap Me' button. Returns frame, description, strategy (interactive_text), highlighted=true. |
+| `identify_selected` | — | pass | Name/Date/Size segmented control | Correctly identified 'Size' as selected. Returns scores, debug info with brightness/ink analysis, and detected color scheme (light). |
+| `identify_icons` | — | pass | Controls tab (no custom icon assets) | Command works correctly. Returns catalog info (built=true) but icon_count=0 because test app uses SF Symbols (system icons), not custom bundled icon assets. icon_name matching requires app-bundled assets. |
 | `wait_idle` | — | untested | After any UI mutation |  |
 | `scroll_to` | down | pass | List tab — scroll until text visible | Scrolls down until exact text match found. Tested: Item 12 found after 1 scroll (1325ms), Item 29 found after 1 scroll. Already-visible returns immediately (14ms). BUG-004: server dispatch timeout (10s) fires before long scrolls complete. |
 | `scroll_to` | up | pass | List tab | Scrolls up to find text. Tested: Item 5 found after 2 scrolls (2648ms) from bottom of list. BUG-004 applies for long distances. |
@@ -150,9 +150,9 @@ Bugs: see [`BUGS.md`](../BUGS.md)
 | `keychain` | set | untested | Any state |  |
 | `keychain` | delete | untested | After set |  |
 | `keychain` | clear | untested | After set |  |
-| `find` | count | untested | Predicate against known elements |  |
-| `find` | first | untested | Same |  |
-| `find` | list | untested | Same |  |
+| `find` | count | pass | Controls tab with type=='button' predicate | Returned count=27 for type=='button'. Also tested label CONTAINS 'Tap' (count=1). Correct counts for known elements. |
+| `find` | first | pass | Controls tab with type=='button' predicate | Returns first matching element with label, type, center, traits, tap_cmd, view_controller, total_matches=27. No-match predicate returns proper 'No elements match predicate' error. |
+| `find` | list | pass | Controls tab with type=='button' limit=5 | Returns array of matches with count and per-element details (label, center, type, traits, tap_cmd). Limit param works correctly, capping results at 5. |
 | `hook` | install | untested | UIKitControlsViewController ObjC methods |  |
 | `hook` | remove | untested | After install |  |
 | `hook` | remove_all | untested | After install |  |
@@ -168,10 +168,10 @@ Bugs: see [`BUGS.md`](../BUGS.md)
 
 **141 test points** across 49 commands.
 
-- pass: 23
+- pass: 31
 - fail: 8
 - crash: 1
-- untested: 106
+- untested: 98
 
 ## Test App Gaps
 
