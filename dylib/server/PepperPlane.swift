@@ -109,6 +109,10 @@ public final class PepperPlane {
         // so the test runner can inspect and dismiss system dialogs programmatically.
         PepperDialogInterceptor.shared.install()
 
+        // Install EventKit interceptor — auto-grants calendar/reminders access
+        // without showing system dialogs (SpringBoard remote alerts).
+        PepperEventKitInterceptor.shared.install()
+
         // Install inline overlay scroll observer — swizzles UIScrollView.setContentOffset
         // to auto-refresh builder highlights when scrolling stops.
         PepperInlineOverlay.shared.install()
