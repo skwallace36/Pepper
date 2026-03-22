@@ -72,7 +72,7 @@ Test app changes needed before blocked commands can be tested. Unblocks ~20 unte
 GitHub Actions workflow that boots a simulator, injects Pepper, and runs tests with reported results.
 
 - **TASK-080** `[P3]` `status:pr-open` — Add `pepper-ctl wait-for-server` health check command (poll WebSocket until connected or timeout)
-- **TASK-081** `[P3]` `status:unstarted` — Add JUnit/JSON test result export to `pepper-ctl` for CI artifact collection
+- **TASK-081** `[P3]` `status:pr-open` — Add JUnit/JSON test result export to `pepper-ctl` for CI artifact collection
 - **TASK-082** `[P3]` `status:unstarted` — Create GitHub Actions workflow template: build dylib, boot headless sim, inject via `deploy`, run smoke tests, upload results
 - **TASK-083** `[P3]` `status:unstarted` — Add CI batch/headless mode — run a predefined test script and exit with pass/fail status code
 - **TASK-084** `[P3]` `status:unstarted` — Add `make ci` target that wraps the full boot → inject → test → teardown cycle
