@@ -2,12 +2,26 @@ import Foundation
 import UIKit
 import ObjectiveC
 
+/// C function — find live instances of specific classes on the heap.
+/// Implemented in PepperHeapScan.c.
+@_silgen_name("pepper_heap_find_instances")
+func pepper_heap_find_instances(
+    _ target_classes: UnsafePointer<UnsafeRawPointer?>,
+    _ target_count: Int32,
+    _ out_instances: UnsafeMutablePointer<UnsafeMutablePointer<UnsafeRawPointer?>?>,
+    _ out_classes: UnsafeMutablePointer<UnsafeMutablePointer<UnsafeRawPointer?>?>,
+    _ out_count: UnsafeMutablePointer<Int32>
+) -> Int32
+
 /// Discovers and catalogs @Published properties on ObservableObject instances at runtime.
 /// Supports reading and writing values, triggering SwiftUI re-renders on mutation.
 ///
 /// Discovery is triggered automatically from `pepper_viewDidAppear` — each VC's view
 /// hierarchy is walked to find UIHostingController rootViews and regular VC stored properties
 /// that conform to ObservableObject.
+///
+/// Additionally, `discoverFromHeap()` scans the process heap for @Observable instances
+/// (classes with a `_$observationRegistrar` ivar) — independent of SwiftUI view tree structure.
 final class PepperVarRegistry {
 
     static let shared = PepperVarRegistry()
@@ -32,11 +46,12 @@ final class PepperVarRegistry {
         let ivarOffset: Int?      // byte offset for raw memory access
     }
 
-    /// A tracked ObservableObject instance with its class name and property catalog.
+    /// A tracked ObservableObject or @Observable instance with its class name and property catalog.
     struct TrackedInstance {
         let className: String
         weak var instance: AnyObject?
         let properties: [PropertyInfo]
+        let isObservable: Bool  // true = @Observable (Observation framework), false = ObservableObject + @Published
     }
 
     // MARK: - State
@@ -47,6 +62,9 @@ final class PepperVarRegistry {
 
     /// Property catalog cache keyed by class name — avoids re-cataloging the same class.
     private var catalogCache: [String: [PropertyInfo]] = [:]
+
+    /// Whether the initial heap scan for @Observable has run.
+    private var didInitialHeapScan = false
 
     private init() {}
 
@@ -95,9 +113,15 @@ final class PepperVarRegistry {
                 }
             }
         }
+
+        // Run heap-based @Observable discovery once on first viewDidAppear
+        if !didInitialHeapScan {
+            didInitialHeapScan = true
+            discoverFromHeap()
+        }
     }
 
-    /// Force re-scan: discover from all visible VCs.
+    /// Force re-scan: discover from all visible VCs + heap scan for @Observable.
     func forceDiscover() {
         lock.lock()
         tracked.removeAll { $0.instance == nil }
@@ -111,6 +135,9 @@ final class PepperVarRegistry {
                 discoverFromVCTree(rootVC)
             }
         }
+
+        // Heap-based discovery for @Observable instances (bypasses SwiftUI view tree)
+        discoverFromHeap()
     }
 
     private func discoverFromVCTree(_ vc: UIViewController) {
@@ -123,9 +150,104 @@ final class PepperVarRegistry {
         }
     }
 
+    // MARK: - Heap-based @Observable Discovery (BUG-003)
+
+    /// Scan the heap for live instances of @Observable classes.
+    /// Uses ObjC runtime to find classes with `_$observationRegistrar` ivar,
+    /// then the C heap scanner to find live instances. Independent of SwiftUI view tree.
+    func discoverFromHeap() {
+        // Step 1: Find all ObjC classes that have a _$observationRegistrar ivar
+        let observableClasses = findObservableClasses()
+        guard !observableClasses.isEmpty else { return }
+
+        pepperLog.info("Vars: heap scan found \(observableClasses.count) @Observable class(es)", category: .bridge)
+
+        // Step 2: Use the heap scanner to find live instances
+        var targetPtrs: [UnsafeRawPointer?] = observableClasses.map { unsafeBitCast($0, to: UnsafeRawPointer.self) }
+
+        var instancesPtr: UnsafeMutablePointer<UnsafeRawPointer?>?
+        var classesPtr: UnsafeMutablePointer<UnsafeRawPointer?>?
+        var count: Int32 = 0
+
+        let result = targetPtrs.withUnsafeMutableBufferPointer { buf in
+            pepper_heap_find_instances(buf.baseAddress!, Int32(buf.count), &instancesPtr, &classesPtr, &count)
+        }
+
+        guard result == 0, count > 0, let instances = instancesPtr, let classes = classesPtr else { return }
+        defer {
+            free(instances)
+            free(classes)
+        }
+
+        // Step 3: Track each found instance (deduplicated in trackInstance)
+        // Use a set to avoid tracking multiple instances of the same pointer
+        var seen = Set<UnsafeRawPointer>()
+        for i in 0..<Int(count) {
+            guard let instancePtr = instances[i] else { continue }
+            guard seen.insert(instancePtr).inserted else { continue }
+
+            // Convert raw pointer to AnyObject — this is the live instance
+            let obj: AnyObject = Unmanaged<AnyObject>.fromOpaque(instancePtr).takeUnretainedValue()
+            trackInstance(obj, knownObservable: true)
+        }
+    }
+
+    /// Find all ObjC classes that have a `_$observationRegistrar` stored property.
+    /// This ivar is added by the @Observable macro (Observation framework).
+    /// Only returns classes from the app's main executable — system framework
+    /// @Observable classes (e.g. SwiftUI internals) are excluded to avoid crashes
+    /// when Mirror touches read-only __DATA_CONST memory.
+    private func findObservableClasses() -> [AnyClass] {
+        let totalCount = Int(objc_getClassList(nil, 0))
+        guard totalCount > 0 else { return [] }
+
+        let buffer = UnsafeMutablePointer<AnyClass>.allocate(capacity: totalCount)
+        let actualCount = Int(objc_getClassList(AutoreleasingUnsafeMutablePointer(buffer), Int32(totalCount)))
+        defer { buffer.deallocate() }
+
+        // Only include classes from the app's main bundle — skip all system frameworks.
+        // This avoids SwiftUI internal @Observable classes (NavigationSelectionHost,
+        // ScrollEnvironmentStorage, etc.) whose fields can point to read-only memory.
+        let mainBundlePath = Bundle.main.bundlePath
+
+        var result: [AnyClass] = []
+        for i in 0..<actualCount {
+            let cls = buffer[i]
+
+            // Filter to app bundle classes only
+            let classBundle = Bundle(for: cls)
+            guard classBundle.bundlePath.hasPrefix(mainBundlePath) else { continue }
+
+            // Skip Pepper dylib's own classes
+            let name = NSStringFromClass(cls)
+            if name.hasPrefix("Pepper.") { continue }
+
+            // Check if this class has _$observationRegistrar ivar
+            if classHasObservationRegistrar(cls) {
+                result.append(cls)
+            }
+        }
+        return result
+    }
+
+    /// Check if a class (not superclasses) declares a `_$observationRegistrar` ivar.
+    private func classHasObservationRegistrar(_ cls: AnyClass) -> Bool {
+        var ivarCount: UInt32 = 0
+        guard let ivars = class_copyIvarList(cls, &ivarCount) else { return false }
+        defer { free(ivars) }
+
+        for i in 0..<Int(ivarCount) {
+            guard let cName = ivar_getName(ivars[i]) else { continue }
+            if strcmp(cName, "_$observationRegistrar") == 0 {
+                return true
+            }
+        }
+        return false
+    }
+
     /// Recursively mirror a SwiftUI view tree looking for ObservableObject refs.
     private func discoverFromSwiftUIView(_ value: Any, depth: Int) {
-        guard depth < 8 else { return }
+        guard depth < 15 else { return }
 
         let mirror = Mirror(reflecting: value)
 
@@ -144,15 +266,56 @@ final class PepperVarRegistry {
                 continue
             }
 
+            // @State can hold @Observable objects (Swift 5.9+ Observation framework)
+            if typeName.hasPrefix("State<") {
+                if let obj = extractStateValue(from: child.value), isObservableClass(obj) {
+                    trackInstance(obj)
+                }
+                continue
+            }
+
+            // @Environment can hold @Observable objects (Swift 5.9+ Observation framework)
+            // e.g. @Environment(AppState.self) var state → Environment<AppState>
+            if typeName.hasPrefix("Environment<") {
+                if let obj = extractEnvironmentValue(from: child.value), isObservableClass(obj) {
+                    trackInstance(obj)
+                }
+                continue
+            }
+
+            // _EnvironmentKeyWritingModifier — the writer side of .environment(obj).
+            // This is where the injected @Observable object actually lives in the
+            // view modifier chain. The modifier has a `value` property.
+            if typeName.contains("EnvironmentKeyWritingModifier") {
+                let modMirror = Mirror(reflecting: child.value)
+                for modChild in modMirror.children {
+                    if (modChild.label == "value" || modChild.label == "_value"),
+                       "\(modChild.value)" != "nil" {
+                        let obj = modChild.value as AnyObject
+                        if isObservableClass(obj) {
+                            trackInstance(obj)
+                        }
+                    }
+                }
+                // Still recurse into the modifier's content
+                discoverFromSwiftUIView(child.value, depth: depth + 1)
+                continue
+            }
+
             // Also check if the child itself is an ObservableObject (stored property)
             let childObj = child.value as AnyObject
             if isObservableObject(childObj) {
                 trackInstance(childObj)
             }
 
-            // Recurse into view body/content
-            if label == "content" || label == "body" || label == "_tree" || label == "_root" ||
-               label.hasPrefix("_") {
+            // Recurse into view body/content/modifier chain.
+            // "storage"/"view" pierce AnyView type erasure (AnyViewStorageBase box pattern).
+            // "some" handles Optional wrapping in SwiftUI types.
+            // Type-based check catches AnyView/Storage containers regardless of label.
+            if label == "content" || label == "body" || label == "modifier" ||
+               label == "storage" || label == "view" || label == "some" ||
+               label == "_tree" || label == "_root" || label.hasPrefix("_") ||
+               typeName.contains("AnyView") || typeName.contains("Storage") {
                 discoverFromSwiftUIView(child.value, depth: depth + 1)
             }
         }
@@ -190,9 +353,20 @@ final class PepperVarRegistry {
             if typeName.hasPrefix(prefix) { return false }
         }
         // Known ObservableObject naming patterns
-        return typeName.contains("ViewModel") || typeName.contains("Store") ||
-               typeName.contains("Manager") || typeName.contains("Observable") ||
-               typeName.contains("Model") || typeName.contains("State")
+        if typeName.contains("ViewModel") || typeName.contains("Store") ||
+           typeName.contains("Manager") || typeName.contains("Observable") ||
+           typeName.contains("Model") || typeName.contains("State") {
+            return true
+        }
+        // Fallback: check for @Observable (Observation framework)
+        return isObservableClass(obj)
+    }
+
+    /// Check if an object uses the Observation framework (@Observable macro).
+    /// Detects the _$observationRegistrar stored property added by the macro.
+    private func isObservableClass(_ obj: AnyObject) -> Bool {
+        let mirror = Mirror(reflecting: obj)
+        return mirror.children.contains { $0.label == "_$observationRegistrar" }
     }
 
     /// Extract the ObservableObject from a StateObject/ObservedObject wrapper.
@@ -224,8 +398,70 @@ final class PepperVarRegistry {
         return nil
     }
 
+    /// Extract the value from a SwiftUI State<T> wrapper.
+    private func extractStateValue(from wrapper: Any) -> AnyObject? {
+        let mirror = Mirror(reflecting: wrapper)
+        for child in mirror.children {
+            let label = child.label ?? ""
+            if label == "_value" || label == "wrappedValue" || label == "_wrappedValue" {
+                return child.value as AnyObject
+            }
+            if label == "storage" || label == "_storage" {
+                let innerMirror = Mirror(reflecting: child.value)
+                for inner in innerMirror.children {
+                    let innerLabel = inner.label ?? ""
+                    if innerLabel == "value" || innerLabel == "_value" || innerLabel == ".0" {
+                        return inner.value as AnyObject
+                    }
+                }
+            }
+        }
+        return nil
+    }
+
+    /// Extract the @Observable object from a SwiftUI Environment<T> wrapper.
+    /// Environment stores its value in internal storage that varies by iOS version.
+    private func extractEnvironmentValue(from wrapper: Any) -> AnyObject? {
+        let mirror = Mirror(reflecting: wrapper)
+        for child in mirror.children {
+            let label = child.label ?? ""
+            // Direct value storage
+            if label == "_value" || label == "wrappedValue" || label == "_wrappedValue" || label == "value" {
+                let obj = child.value as AnyObject
+                // Skip Optional.none — environment may not be populated yet
+                if "\(child.value)" == "nil" { continue }
+                return obj
+            }
+            // Internal storage variants
+            if label == "_content" || label == "_store" || label == "content" || label == "storage" || label == "_storage" {
+                let innerMirror = Mirror(reflecting: child.value)
+                for inner in innerMirror.children {
+                    let innerLabel = inner.label ?? ""
+                    if innerLabel == "value" || innerLabel == "_value" || innerLabel == ".0" || innerLabel == "wrappedValue" {
+                        if "\(inner.value)" == "nil" { continue }
+                        return inner.value as AnyObject
+                    }
+                }
+                // If the storage itself is the object (single-element enum payload)
+                if innerMirror.children.isEmpty {
+                    let obj = child.value as AnyObject
+                    if isObservableClass(obj) { return obj }
+                }
+            }
+        }
+        // Fallback: walk all children looking for something @Observable
+        for child in mirror.children {
+            let obj = child.value as AnyObject
+            if isObservableClass(obj) { return obj }
+        }
+        return nil
+    }
+
     /// Track an instance if not already tracked.
-    private func trackInstance(_ obj: AnyObject) {
+    /// - Parameter knownObservable: If true, skip the Mirror-based `isObservableClass` check
+    ///   (already verified at the C/ObjC runtime level). This avoids crashes when Mirror
+    ///   touches objects with fields in read-only memory.
+    private func trackInstance(_ obj: AnyObject, knownObservable: Bool = false) {
         let className = String(describing: type(of: obj))
 
         lock.lock()
@@ -237,9 +473,16 @@ final class PepperVarRegistry {
             return
         }
 
-        let props = catalogProperties(of: obj, className: className)
-        tracked.append(TrackedInstance(className: className, instance: obj, properties: props))
-        pepperLog.info("Vars: tracked \(className) with \(props.count) @Published properties", category: .bridge)
+        let observable = knownObservable || isObservableClass(obj)
+        let props: [PropertyInfo]
+        if observable {
+            props = catalogObservableProperties(of: obj, className: className)
+        } else {
+            props = catalogProperties(of: obj, className: className)
+        }
+        tracked.append(TrackedInstance(className: className, instance: obj, properties: props, isObservable: observable))
+        let framework = observable ? "@Observable" : "@Published"
+        pepperLog.info("Vars: tracked \(className) with \(props.count) \(framework) properties", category: .bridge)
     }
 
     // MARK: - Property Cataloging
@@ -271,6 +514,46 @@ final class PepperVarRegistry {
                 type: varType,
                 innerType: innerType,
                 typeName: innerTypeName,
+                ivarName: label,
+                ivarOffset: ivarOffset
+            ))
+        }
+
+        catalogCache[className] = props
+        return props
+    }
+
+    /// Catalog properties for an @Observable instance (Observation framework).
+    /// Unlike @Published, properties are stored directly with an underscore prefix.
+    private func catalogObservableProperties(of obj: AnyObject, className: String) -> [PropertyInfo] {
+        if let cached = catalogCache[className] {
+            return cached
+        }
+
+        var props: [PropertyInfo] = []
+        let mirror = Mirror(reflecting: obj)
+
+        for child in mirror.children {
+            guard let label = child.label else { continue }
+            // Skip Observation framework infrastructure (_$observationRegistrar, _$id, etc.)
+            if label.hasPrefix("_$") { continue }
+            // @ObservationTracked properties have underscore-prefixed backing storage
+            guard label.hasPrefix("_") else { continue }
+
+            let propertyName = String(label.dropFirst())
+            let childTypeName = String(describing: Mirror(reflecting: child.value).subjectType)
+
+            // Skip if it looks like a Published wrapper (hybrid class)
+            if childTypeName.hasPrefix("Published<") { continue }
+
+            let (varType, innerType) = classifyType(childTypeName)
+            let ivarOffset = findIvarOffset(named: label, in: type(of: obj))
+
+            props.append(PropertyInfo(
+                name: propertyName,
+                type: varType,
+                innerType: innerType,
+                typeName: childTypeName,
                 ivarName: label,
                 ivarOffset: ivarOffset
             ))
@@ -499,15 +782,19 @@ final class PepperVarRegistry {
         guard let entry = entry, let instance = entry.instance else { return nil }
         guard let prop = entry.properties.first(where: { $0.name == propertyName }) else { return nil }
 
-        // Mirror the instance, find the _propertyName child (Published<T>)
         let mirror = Mirror(reflecting: instance)
-        guard let publishedChild = mirror.children.first(where: { $0.label == prop.ivarName }) else {
+        guard let child = mirror.children.first(where: { $0.label == prop.ivarName }) else {
             return nil
         }
 
-        // Extract value from Published<T>
-        let value = extractPublishedValue(publishedChild.value)
-        return serializeValue(value, type: prop.type, innerType: prop.innerType)
+        if entry.isObservable {
+            // @Observable: value is stored directly, no Published<T> unwrap needed
+            return serializeValue(child.value, type: prop.type, innerType: prop.innerType)
+        } else {
+            // ObservableObject + @Published: unwrap Published<T> storage
+            let value = extractPublishedValue(child.value)
+            return serializeValue(value, type: prop.type, innerType: prop.innerType)
+        }
     }
 
     /// Extract the wrapped value from a Published<T> instance.
