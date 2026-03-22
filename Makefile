@@ -23,7 +23,7 @@ LOGS_DIR    := $(PROJECT_DIR)/build/logs
 
 .PHONY: help build deploy launch kill relaunch ping check \
         logs clean test-client pepper-ctl test-app coverage coverage-check \
-        docs setup agent agent-monitor agent-status agent-cleanup agent-kill agent-resume
+        docs setup agent agent-monitor agent-status agent-trigger agents-install agents-uninstall agent-cleanup agent-kill agent-resume
 
 # ============================================================
 # Help
@@ -185,6 +185,27 @@ agent-monitor:
 ## agent-status: Replay all agent events
 agent-status:
 	@./scripts/agent-monitor.sh --replay
+
+## agent-trigger: Fire a trigger event (e.g. make agent-trigger EVENT=bug-filed)
+agent-trigger:
+	@./scripts/agent-trigger.sh "$(EVENT)"
+
+## agents-install: Install heartbeat (2h) + post-merge trigger
+agents-install:
+	@sed "s|REPO_ROOT|$(PROJECT_DIR)|g" scripts/launchd/com.pepper.agent-heartbeat.plist > ~/Library/LaunchAgents/com.pepper.agent-heartbeat.plist
+	@launchctl load ~/Library/LaunchAgents/com.pepper.agent-heartbeat.plist 2>/dev/null || true
+	@ln -sf ../../scripts/hooks/post-merge-trigger.sh .git/hooks/post-merge
+	@echo "Installed:"
+	@echo "  Heartbeat: tester/builder/researcher every 2h (launchd)"
+	@echo "  Triggers:  bug-filed/pr-opened via post-merge hook"
+	@echo "  Monitor:   make agent-monitor"
+
+## agents-uninstall: Remove heartbeat + hooks
+agents-uninstall:
+	@launchctl unload ~/Library/LaunchAgents/com.pepper.agent-heartbeat.plist 2>/dev/null || true
+	@rm -f ~/Library/LaunchAgents/com.pepper.agent-heartbeat.plist
+	@rm -f .git/hooks/post-merge
+	@echo "Agent heartbeat and triggers uninstalled."
 
 ## agent-cleanup: Kill orphaned agent processes, worktrees, and extra sims
 agent-cleanup:
