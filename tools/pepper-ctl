@@ -17,6 +17,7 @@ Usage:
   pepper-ctl read --id element_id
   pepper-ctl scroll --direction down --amount 300
   pepper-ctl batch --file commands.json
+  pepper-ctl wait-for-server --wait-timeout 60
   pepper-ctl help
   pepper-ctl raw '{"cmd":"ping"}'
 """
@@ -192,6 +193,7 @@ def build_parser():
   pepper-ctl look                            Compact screen summary (what's tappable)
   pepper-ctl read --id label_name            Read element value
   pepper-ctl batch --file commands.json      Run batch commands
+  pepper-ctl wait-for-server                 Block until server is reachable
   pepper-ctl help                            List server commands
 """,
     )
@@ -269,6 +271,11 @@ def build_parser():
 
     # help (server-side)
     sub.add_parser("help", help="List all available commands from the server")
+
+    # wait-for-server
+    p = sub.add_parser("wait-for-server", help="Wait until Pepper server is reachable (health check)")
+    p.add_argument("--interval", type=float, default=1.0, help="Seconds between retries (default: 1.0)")
+    p.add_argument("--wait-timeout", type=int, default=30, help="Max seconds to wait (default: 30)")
 
     # subscribe / wait
     p = sub.add_parser("wait", help="Subscribe to events and wait")
@@ -572,6 +579,45 @@ async def cmd_help(args):
     output_response(resp, args.raw_json)
 
 
+async def cmd_wait_for_server(args):
+    """Poll WebSocket with ping until the server responds or timeout expires."""
+    import time
+    deadline = time.monotonic() + args.wait_timeout
+    attempt = 0
+    while True:
+        attempt += 1
+        try:
+            msg = make_command("ping")
+            url = f"ws://{args.host}:{args.port}"
+            async with websockets.client.connect(url, close_timeout=2) as ws:
+                await ws.send(json.dumps(msg))
+                raw = await asyncio.wait_for(ws.recv(), timeout=3)
+                resp = json.loads(raw)
+                if resp.get("status") == "ok":
+                    if not args.raw_json:
+                        print(green(f"Server ready (attempt {attempt})"))
+                    else:
+                        print(json.dumps({"status": "ok", "attempts": attempt}))
+                    return
+        except (ConnectionRefusedError, OSError, asyncio.TimeoutError,
+                websockets.exceptions.ConnectionClosed,
+                websockets.exceptions.ConnectionClosedError,
+                websockets.exceptions.InvalidURI,
+                websockets.exceptions.InvalidHandshake):
+            pass
+
+        if time.monotonic() >= deadline:
+            if not args.raw_json:
+                print(red(f"Timeout: server not reachable after {args.wait_timeout}s ({attempt} attempts)"), file=sys.stderr)
+            else:
+                print(json.dumps({"status": "error", "message": "timeout", "attempts": attempt}))
+            sys.exit(1)
+
+        if args.verbose:
+            print(dim(f"[attempt {attempt}] not ready, retrying in {args.interval}s..."), file=sys.stderr)
+        await asyncio.sleep(args.interval)
+
+
 async def cmd_wait(args):
     await wait_for_events(args.host, args.port, args.events, args.wait_timeout)
 
@@ -630,6 +676,7 @@ def main():
         "toggle": cmd_toggle,
         "batch": cmd_batch,
         "help": cmd_help,
+        "wait-for-server": cmd_wait_for_server,
         "wait": cmd_wait,
         "raw": cmd_raw,
     }
