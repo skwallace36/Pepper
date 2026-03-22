@@ -16,6 +16,6 @@ See `CLAUDE.md` for development docs.
 
 **Build fails** — `xcode-select --install`, then `make clean && make build`.
 
-**"Element not found"** — Run `look` to see what's actually on screen.
+**"Element not found"** — Use the `look` MCP tool (or `python3 tools/pepper-ctl look` from CLI) to see what's actually on screen.
 
 **"No key window available"** — App needs a moment after launch. Wait 2-3 seconds.
