@@ -54,7 +54,7 @@ ADAPTER_PATH=""
 ADAPTER_TYPE=""
 if [ -f "$ENV_FILE" ]; then
     ADAPTER_PATH=$(set -a && source "$ENV_FILE" 2>/dev/null && echo "$ADAPTER_PATH")
-    ADAPTER_TYPE=$(set -a && source "$ENV_FILE" 2>/dev/null && echo "$APP_ADAPTER_TYPE")
+    ADAPTER_TYPE=$(set -a && source "$ENV_FILE" 2>/dev/null && echo "${APP_ADAPTER_TYPE:-}")
 fi
 
 # --- Gather sources ---
