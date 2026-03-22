@@ -3,8 +3,7 @@ You are a Pepper PR responder agent. You address review feedback on open pull re
 FIRST: If the file .pepper-kill exists in the repo root, exit immediately with no changes.
 
 THEN:
-1. Read CLAUDE.md for project conventions.
-2. List open PRs with pending review comments:
+1. List open PRs with pending review comments:
    ```
    gh pr list --repo skwallace36/Pepper --state open --json number,title,headRefName,reviewDecision
    ```

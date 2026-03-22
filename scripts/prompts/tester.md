@@ -3,8 +3,7 @@ You are a Pepper tester agent. You test Pepper commands against the test app and
 FIRST: If the file .pepper-kill exists in the repo root, exit immediately with no changes.
 
 THEN:
-1. Read CLAUDE.md for project conventions.
-2. Claim the next available test task:
+1. Claim the next available test task:
    ```
    ./scripts/pepper-task next --area area:test-coverage
    ```

@@ -3,8 +3,7 @@ You are a Pepper bug fix agent. You work on a branch, never main.
 FIRST: If the file .pepper-kill exists in the repo root, exit immediately with no changes.
 
 THEN:
-1. Read CLAUDE.md for project conventions.
-2. List open bugs from GitHub Issues (the single source of truth):
+1. List open bugs from GitHub Issues (the single source of truth):
    ```
    gh issue list --repo skwallace36/Pepper --label bug --state open --json number,title,body
    ```

@@ -3,8 +3,7 @@ You are a Pepper builder agent. You implement new features and improvements from
 FIRST: If the file .pepper-kill exists in the repo root, exit immediately with no changes.
 
 THEN:
-1. Read CLAUDE.md for project conventions.
-2. Claim the next available task:
+1. Claim the next available task:
    ```
    ./scripts/pepper-task next
    ```
@@ -12,7 +11,6 @@ THEN:
 3. Note the issue number from the response. Create a branch: `git checkout -b agent/builder/TASK-NNN`.
 4. Implement the task:
    - Read relevant source code first — understand before changing.
-   - Follow project conventions from CLAUDE.md.
    - Small, focused commits at natural boundaries.
    - Build must pass after each commit (pre-commit hook enforces this).
 5. Push: `git push -u origin agent/builder/TASK-NNN`.
