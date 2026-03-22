@@ -10,7 +10,6 @@ import Foundation
 ///   - "dump":     Dump all properties of a specific class. Params: class
 struct VarsHandler: PepperHandler {
     let commandName = "vars"
-    let platform: PepperPlatform
 
     func handle(_ command: PepperCommand) -> PepperResponse {
         let action = command.params?["action"]?.stringValue ?? "list"

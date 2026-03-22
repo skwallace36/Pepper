@@ -48,10 +48,9 @@ Key files:
 - `PepperInteractiveDiscovery.swift` — 8-phase element discovery pipeline
 
 ### `platform/`
-Cross-platform abstractions and iOS-specific implementations.
+WebSocket transport layer.
 - `WebSocketTransport.swift` — transport protocol (`WebSocketTransport`, `TransportConnection`, `TransportDelegate`)
 - `NWListenerTransport.swift` — iOS implementation using Network.framework NWListener
-- `PepperPlatform.swift` / `IOSPlatform.swift` — platform subsystem abstraction
 
 ### `config/`
 App adapter configuration.
