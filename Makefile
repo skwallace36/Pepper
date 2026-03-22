@@ -11,6 +11,7 @@
 SIMULATOR_ID  ?= $(shell xcrun simctl list devices booted -j 2>/dev/null | python3 -c "import json,sys; devs=json.load(sys.stdin)['devices']; ids=[d['udid'] for r in devs.values() for d in r if d['state']=='Booted']; print(ids[0] if ids else '')" 2>/dev/null)
 BUNDLE_ID     ?= $(APP_BUNDLE_ID)
 ADAPTER_TYPE  ?= $(or $(APP_ADAPTER_TYPE),generic)
+SKIP_PRIVACY  ?= 0
 # Per-simulator port: deterministic hash of SIMULATOR_ID → port in 8770-8869.
 PORT          ?= $(shell echo "$(SIMULATOR_ID)" | python3 -c "import sys,hashlib; uid=sys.stdin.read().strip(); print(8770 + int(hashlib.md5(uid.encode()).hexdigest()[:4],16) % 100 if uid else 8765)" 2>/dev/null)
 
@@ -43,9 +44,10 @@ help:
 	@grep -E '^## ' $(MAKEFILE_LIST) | sed 's/^## /  /' | column -t -s ':'
 	@echo ""
 	@echo "Configuration:"
-	@echo "  SIMULATOR_ID = $(SIMULATOR_ID)"
-	@echo "  BUNDLE_ID    = $(BUNDLE_ID)"
-	@echo "  PORT         = $(PORT)"
+	@echo "  SIMULATOR_ID  = $(SIMULATOR_ID)"
+	@echo "  BUNDLE_ID     = $(BUNDLE_ID)"
+	@echo "  PORT          = $(PORT)"
+	@echo "  SKIP_PRIVACY  = $(SKIP_PRIVACY)  (set to 1 to skip auto-granting permissions)"
 
 # ============================================================
 # Core workflow: build dylib → launch with injection
@@ -66,9 +68,11 @@ launch:
 	-@xcrun simctl terminate "$(SIMULATOR_ID)" "$(BUNDLE_ID)" 2>/dev/null
 	@open -a Simulator --args -CurrentDeviceUDID "$(SIMULATOR_ID)" 2>/dev/null || true
 	@xcrun simctl bootstatus "$(SIMULATOR_ID)" -b 2>/dev/null || sleep 2
-	@xcrun simctl privacy "$(SIMULATOR_ID)" grant all "$(BUNDLE_ID)" 2>/dev/null || true
-	@xcrun simctl privacy "$(SIMULATOR_ID)" grant photos "$(BUNDLE_ID)" 2>/dev/null || true
-	@xcrun simctl privacy "$(SIMULATOR_ID)" grant photos-add "$(BUNDLE_ID)" 2>/dev/null || true
+	@if [ "$(SKIP_PRIVACY)" != "1" ]; then \
+		for perm in photos photos-add camera microphone contacts calendar location-always; do \
+			xcrun simctl privacy "$(SIMULATOR_ID)" grant $$perm "$(BUNDLE_ID)" 2>/dev/null || true; \
+		done; \
+	fi
 	@SIMCTL_CHILD_DYLD_INSERT_LIBRARIES="$(DYLIB_PATH)" \
 		SIMCTL_CHILD_PEPPER_PORT="$(PORT)" \
 		SIMCTL_CHILD_PEPPER_SIM_UDID="$(SIMULATOR_ID)" \
