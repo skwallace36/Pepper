@@ -45,11 +45,10 @@ Injects Pepper's DYLD_INSERT_LIBRARIES into an Xcode scheme for automatic inject
 
 ## Dependencies
 
-Python packages: `websockets` (required), `mcp` (for pepper-mcp).
+Python packages: `websockets` (required), `mcp` (for pepper-mcp). See `requirements.txt` at repo root.
 
 ```bash
-pip3 install websockets
-pip3 install -r tools/requirements.txt  # full deps
+pip3 install -r requirements.txt
 ```
 
 ---

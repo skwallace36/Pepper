@@ -33,7 +33,7 @@ Command dispatch and all handler implementations.
 - `PepperDispatcher.swift` — routes incoming JSON commands to handlers
 - `handlers/` — one file per command (50+ handlers)
 
-See `docs/COMMANDS.md` for the full command reference.
+Tool docstrings and parameters are in `tools/pepper-mcp`.
 
 ### `bridge/`
 UIKit/SwiftUI integration layer. Element discovery, HID event synthesis, accessibility, introspection.
