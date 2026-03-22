@@ -319,6 +319,7 @@ Independent heartbeats. Each wakes on its own schedule, checks its queue, exits 
 | Tester | COVERAGE.md untested commands | ~2h | Tests against test app, updates results | 2 (prompt ready, needs sim) |
 | Builder | ROADMAP.md unstarted items | ~1h | Implements feature, opens PR | 3 (needs ROADMAP restructure) |
 | Researcher | RESEARCH.md ideas | ~6h | Explores one idea, adds findings | **2 ✓** |
+| Verifier | Open PRs without `verified` label | ~1h | Builds, deploys, tests fix on sim | **2 ✓** |
 
 ### Agent Prompts
 
