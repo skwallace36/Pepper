@@ -27,6 +27,9 @@ Running without an adapter exposed build failures and app-specific assumptions. 
 ### P4: Real-world app testing
 After the test app is green, inject into Wikipedia, Ice Cubes, etc. to pressure-test against real UIs.
 
+### P5: New capabilities
+Accessibility audit, touch failure debugging, layout inspector, performance profiling, in-process view capture. Concrete tasks in `TASKS.md`.
+
 ## Done
 
 - [x] Test app scaffolded and building (`test-app/PepperTestApp`) *(2026-03-21)*
