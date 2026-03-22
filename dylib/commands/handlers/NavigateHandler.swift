@@ -63,7 +63,7 @@ struct NavigateHandler: PepperHandler {
 
         // Try popping to the screen in the current nav stack
         if let topVC = UIWindow.pepper_topViewController,
-           let navController = topVC.navigationController {
+           let navController = topVC.pepper_effectiveNavController {
             if navController.pepper_pop(to: screenID) {
                 return .ok(id: command.id, data: buildScreenData())
             }
@@ -81,7 +81,7 @@ struct NavigateHandler: PepperHandler {
         guard let topVC = UIWindow.pepper_topViewController else {
             return .error(id: command.id, message: "No top view controller found")
         }
-        guard let navController = topVC.navigationController else {
+        guard let navController = topVC.pepper_effectiveNavController else {
             // Try dismissing a modal presentation instead
             if topVC.presentingViewController != nil {
                 topVC.dismiss(animated: true)
@@ -92,13 +92,13 @@ struct NavigateHandler: PepperHandler {
             }
             return .error(id: command.id, message: "No navigation controller or presenting VC to pop from")
         }
-        guard navController.viewControllers.count > 1 else {
+        guard navController.pepper_canPop else {
             return .error(id: command.id, message: "Already at root of navigation stack")
         }
 
         let poppedType = String(describing: type(of: topVC))
         logger.info("Popping \(poppedType) from navigation stack")
-        navController.popViewController(animated: true)
+        navController.pepper_popBack(animated: true)
 
         // Brief delay for animation
         RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.4))
