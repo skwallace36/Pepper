@@ -4,7 +4,7 @@ High-level priorities and project direction.
 
 For research/ideas, see `docs/RESEARCH.md`.
 For test results, see `test-app/COVERAGE.md` (auto-generated).
-For known bugs, see `BUGS.md`.
+For known bugs, see GitHub Issues (`gh issue list --label bug`).
 For agent-parseable work items, see `TASKS.md`.
 
 ## Current State
@@ -13,12 +13,12 @@ Pepper is the only in-process iOS runtime inspector exposed via MCP. A dylib inj
 
 Every other tool in this space (mobile-mcp, Appium MCP, ios-simulator-mcp, Maestro) operates externally via accessibility APIs or screenshots. Pepper runs *inside* the app, providing deep access to heap, network, console, keychain, layers, lifecycle, and 40+ other capabilities that no competitor can match.
 
-A purpose-built test app (`test-app/`, bundle ID `com.pepper.testapp`) exists for testing Pepper against generic SwiftUI/UIKit patterns. First test run (2026-03-21) surfaced 3 bugs (see `BUGS.md`). Agent system is operational (2026-03-22) — 6 agent types, all validated.
+A purpose-built test app (`test-app/`, bundle ID `com.pepper.testapp`) exists for testing Pepper against generic SwiftUI/UIKit patterns. First test run (2026-03-21) surfaced 3 bugs (see GitHub Issues). Agent system is operational (2026-03-22) — 6 agent types, all validated.
 
 ## Priorities
 
 ### P1: Fix known bugs
-All bugs tracked in `BUGS.md`. Agent-addressable. PRs open for all 3.
+All bugs tracked in GitHub Issues (`gh issue list --label bug`). Agent-addressable. PRs open for all 3.
 
 ### P2: Complete test app coverage
 Run every Pepper command against the test app. 132 untested command variants. Broken into discrete tasks in `TASKS.md`. Will surface more bugs.
@@ -59,4 +59,4 @@ Current agents use Opus for everything and re-read the full codebase each run. O
 
 ---
 
-**Routing:** Bugs → `BUGS.md` | Tasks → `TASKS.md` | Test results → `test-app/COVERAGE.md` | Research → `docs/RESEARCH.md`
+**Routing:** Bugs → GitHub Issues (`gh issue list --label bug`) | Tasks → `TASKS.md` | Test results → `test-app/COVERAGE.md` | Research → `docs/RESEARCH.md`

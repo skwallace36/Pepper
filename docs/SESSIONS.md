@@ -140,4 +140,4 @@ For workers that need MCP tools (e.g. `look`, `tap`), the MCP server's `_resolve
 
 ---
 
-**Routing:** Bugs → `../BUGS.md` | Work items → `../ROADMAP.md` | Research → `RESEARCH.md`
+**Routing:** Bugs → GitHub Issues (`gh issue list --label bug`) | Work items → `../ROADMAP.md` | Research → `RESEARCH.md`
