@@ -36,7 +36,7 @@ Test app changes needed before blocked commands can be tested. Unblocks ~20 unte
 
 ### Extract shared library — `pepper_common.py`
 
-- **TASK-060** `[P3]` `status:in-progress` — Extract `pepper_common.py`: `load_env()`, `get_config()`, `PORT_DIR` constant. Replace duplicates in pepper-mcp, pepper-ctl, pepper-stream, test-client.py
+- **TASK-060** `[P3]` `status:pr-open` — Extract `pepper_common.py`: `load_env()`, `get_config()`, `PORT_DIR` constant. Replace duplicates in pepper-mcp, pepper-ctl, pepper-stream, test-client.py
 - **TASK-061** `[P3]` `status:unstarted` — Extract port discovery to `pepper_common.py`: `discover_port()`, `discover_simulator()`, `list_simulators()`. Consolidate 4 reimplementations (pepper-mcp, pepper-ctl, pepper-stream, test-client.py) into one with liveness checks
 - **TASK-062** `[P3]` `status:unstarted` — Extract `pepper_format.py`: `format_look()` with optional ANSI color support. Deduplicate pepper-mcp (~150 lines) and pepper-ctl (~120 lines) formatting code
 - **TASK-063** `[P3]` `status:unstarted` — Extract `pepper_websocket.py`: shared `send_command()` with event filtering, crash detection, ID matching. Deduplicate pepper-mcp and pepper-ctl WebSocket logic. Merge pepper-ctl's redundant `send_command()` / `send_and_recv_multi()`
