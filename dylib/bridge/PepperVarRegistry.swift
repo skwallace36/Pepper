@@ -126,7 +126,7 @@ final class PepperVarRegistry {
 
     /// Recursively mirror a SwiftUI view tree looking for ObservableObject refs.
     private func discoverFromSwiftUIView(_ value: Any, depth: Int) {
-        guard depth < 8 else { return }
+        guard depth < 15 else { return }
 
         let mirror = Mirror(reflecting: value)
 
@@ -187,9 +187,14 @@ final class PepperVarRegistry {
                 trackInstance(childObj)
             }
 
-            // Recurse into view body/content/modifier chain
+            // Recurse into view body/content/modifier chain.
+            // "storage"/"view" pierce AnyView type erasure (AnyViewStorageBase box pattern).
+            // "some" handles Optional wrapping in SwiftUI types.
+            // Type-based check catches AnyView/Storage containers regardless of label.
             if label == "content" || label == "body" || label == "modifier" ||
-               label == "_tree" || label == "_root" || label.hasPrefix("_") {
+               label == "storage" || label == "view" || label == "some" ||
+               label == "_tree" || label == "_root" || label.hasPrefix("_") ||
+               typeName.contains("AnyView") || typeName.contains("Storage") {
                 discoverFromSwiftUIView(child.value, depth: depth + 1)
             }
         }
