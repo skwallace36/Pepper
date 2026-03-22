@@ -32,7 +32,7 @@ fi
 # Commit
 if echo "$CMD" | grep -qE 'git commit' && [ "$EXIT_CODE" = "0" ]; then
   MSG=$(echo "$STDOUT" | grep -oE '\] .+' | head -1 | sed 's/^\] //' | tr -d '\n')
-  [ -n "$MSG" ] && emit "\"event\":\"commit\",\"detail\":$(echo "$MSG" | jq -Rs '.')"
+  [ -n "$MSG" ] && emit "\"event\":\"commit\",\"detail\":$(printf '%s' "$MSG" | jq -Rs '.')"
 fi
 
 # PR creation

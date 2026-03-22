@@ -58,8 +58,8 @@ set -e
 END=$(date +%s)
 DURATION=$((END - START))
 
-# Extract cost from transcript
-COST=$(jq -r '.cost_usd // .result.cost_usd // 0' "$TRANSCRIPT" 2>/dev/null || echo 0)
+# Extract cost from transcript (field is total_cost_usd in --output-format json)
+COST=$(jq -r '.total_cost_usd // .cost_usd // 0' "$TRANSCRIPT" 2>/dev/null || echo 0)
 
 # Emit final event based on outcome
 if [ -f .pepper-kill ]; then
