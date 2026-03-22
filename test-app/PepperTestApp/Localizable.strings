@@ -1,0 +1,8 @@
+/* Test strings for Pepper locale command testing */
+"greeting" = "Hello from PepperTestApp";
+"button_tap" = "Tap Me";
+"button_reset" = "Reset";
+"label_count" = "Count: %d";
+"tab_controls" = "Controls";
+"tab_list" = "List";
+"tab_misc" = "Misc";
