@@ -25,12 +25,12 @@
   "input":               { "status": "untested",  "surface": "TextField (text_field), TextEditor (text_editor)", "notes": "" },
   "toggle":              { "status": "untested",  "surface": "Toggle (toggle_switch), Segmented (segment_control)", "notes": "" },
 
-  "scroll.top":          { "status": "untested",  "surface": "List tab (30 rows)",                       "notes": "" },
-  "scroll.bottom":       { "status": "untested",  "surface": "List tab (30 rows)",                       "notes": "" },
+  "scroll.top":          { "status": "pass",     "surface": "List tab (30 rows)",                       "notes": "Scrolled to top from mid-list; Item 0 visible at top" },
+  "scroll.bottom":       { "status": "pass",     "surface": "List tab (30 rows)",                       "notes": "Scrolled to bottom; Item 29 visible at bottom" },
   "scroll.down":         { "status": "pass",     "surface": "List tab (30 rows)",                       "notes": "" },
-  "scroll.up":           { "status": "untested",  "surface": "List tab (30 rows)",                       "notes": "" },
-  "scroll.left":         { "status": "untested",  "surface": "Horizontal scroll if added",               "notes": "" },
-  "scroll.right":        { "status": "untested",  "surface": "Horizontal scroll if added",               "notes": "" },
+  "scroll.up":           { "status": "pass",     "surface": "List tab (30 rows)",                       "notes": "Scrolled up 400pt from bottom; items shifted upward as expected" },
+  "scroll.left":         { "status": "blocked",  "surface": "Horizontal scroll if added",               "notes": "Command executes without error but no horizontal scroll view in test app to verify" },
+  "scroll.right":        { "status": "blocked",  "surface": "Horizontal scroll if added",               "notes": "Command executes without error but no horizontal scroll view in test app to verify" },
 
   "swipe.down":          { "status": "untested",  "surface": "Any scrollable view",                      "notes": "" },
   "swipe.up":            { "status": "untested",  "surface": "Any scrollable view",                      "notes": "" },
