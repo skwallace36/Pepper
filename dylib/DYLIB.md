@@ -23,7 +23,7 @@ Dylib bootstrap. `bootstrap.c` is the C entry point called by dyld. `PepperLoade
 ### `server/`
 WebSocket server and connection management.
 - `PepperPlane.swift` — singleton entry point, lifecycle, event routing
-- `PepperServer.swift` — NWListener-based WebSocket server
+- `PepperServer.swift` — transport-agnostic WebSocket server (takes `WebSocketTransport` via init)
 - `PepperConnectionManager.swift` — thread-safe connection tracking (serial dispatch queue)
 - `PepperLogger.swift` — OSLog + WebSocket log streaming
 
@@ -46,6 +46,12 @@ Key files:
 - `PepperIconCatalog.swift` — icon asset catalog extraction via CUICatalog + perceptual hashing
 - `PepperNavBridge.swift` — UIViewController/UINavigationController extensions
 - `PepperInteractiveDiscovery.swift` — 8-phase element discovery pipeline
+
+### `platform/`
+Cross-platform abstractions and iOS-specific implementations.
+- `WebSocketTransport.swift` — transport protocol (`WebSocketTransport`, `TransportConnection`, `TransportDelegate`)
+- `NWListenerTransport.swift` — iOS implementation using Network.framework NWListener
+- `PepperPlatform.swift` / `IOSPlatform.swift` — platform subsystem abstraction
 
 ### `config/`
 App adapter configuration.
