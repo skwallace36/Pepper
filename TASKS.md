@@ -17,7 +17,7 @@ Run every Pepper command against the test app. Each task covers a command family
 - **TASK-015** `[P2]` `status:pr-open` — Test `wait_for` variants: visible, exists, has_value *(3 fail — BUG-007, BUG-006)*
 - **TASK-016** `[P2]` `status:pr-open` — Test `tree` + `read` + `find` commands *(8 pass)*
 - **TASK-017** `[P2]` `status:pr-open` — Test `vars` variants: discover, list, get, set, dump, mirror *(6 pass, BUG-003 verified fixed)*
-- **TASK-018** `[P2]` `status:in-progress` — Test `heap` + `heap_snapshot` commands *(8 untested)*
+- **TASK-018** `[P2]` `status:pr-open` — Test `heap` + `heap_snapshot` commands *(8 pass)*
 - **TASK-019** `[P2]` `status:unstarted` — Test `layers` + `introspect` commands *(8+ untested)*
 - **TASK-020** `[P2]` `status:unstarted` — Test `console` + `network` + `timeline` commands *(14 untested)*
 - **TASK-021** `[P2]` `status:unstarted` — Test `lifecycle` + `orientation` commands *(8 untested)*
