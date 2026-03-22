@@ -53,14 +53,14 @@ Bugs: see [`BUGS.md`](../BUGS.md)
 | `deeplinks` | — | untested | NEEDS: URL scheme + routes |  |
 | `back` | — | fail | Detail → Deeper nav stack push | BUG-001 |
 | `screen` | — | pass | Any tab |  |
-| `introspect` | full | untested | Any screen |  |
-| `introspect` | accessibility | untested | Elements with a11y IDs |  |
-| `introspect` | text | untested | Labels, text views |  |
-| `introspect` | tappable | untested | Buttons, controls |  |
-| `introspect` | interactive | untested | All interactive controls |  |
-| `introspect` | mirror | untested | Any view |  |
-| `introspect` | platform | untested | UIKitControlsView |  |
-| `introspect` | map | untested | Any screen (this is 'look') |  |
+| `introspect` | full | pass | List tab (all screens tested) | Returns combined accessibility (250 elements) + viewHierarchy (126 views) + hostingControllerCount (7). Default mode when no mode param given. Response ~52-96KB depending on tab. Tested on Controls and List tabs. |
+| `introspect` | accessibility | pass | Controls tab | Returns 62 accessibility elements with label, type, traits, frame, interactive flag, view_controller, scroll_context, presentation_context. Covers buttons, headers, staticText, segments, sliders. |
+| `introspect` | text | pass | Controls tab | Returns all visible text on screen with frame, type (header, button, staticText). Found Buttons, Tap Me, Count: 3, Toggles, Segmented Control, etc. |
+| `introspect` | tappable | pass | Controls tab | Returns 29 tappable/interactive elements filtered from accessibility tree. Each has label, type, traits, frame, view_controller. Subset of accessibility mode. |
+| `introspect` | interactive | pass | Controls tab | Returns 38 elements (28 labeled + 10 unlabeled) with hit-test filtering, gesture info, source tracking (accessibility vs view), center coordinates, is_control flag, label_source. Most detailed interactive mode. |
+| `introspect` | mirror | pass | Controls tab | Returns Mirror-based SwiftUI type reflection. Found 2 mirrors: _UIHostingView with RootViewDelegate tree (depth 3) and UIKitPlatformViewHost (depth 4). Shows SwiftUI view structure. |
+| `introspect` | platform | pass | Controls tab | Returns platform UIView hierarchy analysis. Shows UISwitch, UISegmentedControl, UISlider with frames, interactive flag, hasGestures, subviewCount, id, value. Good for UIKit introspection. |
+| `introspect` | map | pass | List tab | Returns spatially-grouped screen state (rows by y-range). 11 rows, 15 elements on List tab. Includes memory_mb, screen, element_count, non_interactive text. This is the backend for 'look' command. Error case: invalid mode returns proper error message. |
 | `swipe` | down | pass | List tab (30 rows) | Swiped down from center (201,437) to (201,837). List scrolled back to top showing Item 0. Swipe down = finger moves down = content scrolls down. |
 | `swipe` | up | pass | List tab (30 rows) | Swiped up from center (201,437) to (201,37). List scrolled from Items 0-9 to Items 11-24. Swipe up = finger moves up = content scrolls up. |
 | `swipe` | left | pass | List tab (30 rows) | Swiped left from center (201,437) to (-199,437). Command executed without error. No swipe-action rows in test app to reveal delete/actions, but gesture injected correctly. |
@@ -116,7 +116,7 @@ Bugs: see [`BUGS.md`](../BUGS.md)
 | `vars` | discover | pass | AppState properties | Force re-scans VC hierarchy for @Observable instances. Returns 2 instances (AppState with 17 properties, NestedState with 2 properties). Reports type, writable, value for each. |
 | `vars` | dump | pass | AppState | Returns flat key-value dict of all properties for a class. Tested: dump AppState returns all 17 properties. Error case: nonexistent class returns proper error. |
 | `vars` | mirror | pass | AppState | Returns detailed Mirror-based property list with type, writable, published flags. Tested: mirror NestedState shows innerValue, innerCount, plus $observationRegistrar. More detail than list/dump. |
-| `layers` | — | crash | Gradient + shadow on Misc tab | BUG-002 |
+| `layers` | — | pass | Misc tab (gradient + shadow), List tab | BUG-002 FIXED: no longer crashes on gradient views. Returns full CALayer tree with properties (cornerRadius, shadow, gradient colors/locations, opacity, masks). Tested: Misc tab gradient area returned GradientLayer with colors [#0088FF, #9069EF, #CB30E0], shadow properties. List tab returned CellHostingView layer tree. Controls tab times out (deep hierarchy) — not a crash, just slow. Error case: missing point param returns proper error. |
 | `console` | start | pass | Any state |  |
 | `console` | stop | untested | After start |  |
 | `console` | status | untested | Any state |  |
@@ -168,10 +168,9 @@ Bugs: see [`BUGS.md`](../BUGS.md)
 
 **141 test points** across 49 commands.
 
-- pass: 45
+- pass: 54
 - fail: 7
-- crash: 1
-- untested: 85
+- untested: 77
 
 ## Test App Gaps
 
