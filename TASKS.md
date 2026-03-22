@@ -89,6 +89,40 @@ README, Homebrew, MCP directory listings.
 - **TASK-093** `[P6]` `status:unstarted` — Record 60-second demo video showing Claude Code using Pepper to observe and interact with an iOS app
 - **TASK-094** `[P6]` `status:unstarted` — Write technical blog post: "How I Gave AI Eyes Inside iOS Apps" — dylib injection approach, MCP integration, what it enables
 
+## Android Port Prep (P3)
+
+Restructure the iOS dylib for platform abstraction. Each phase is independently committable. iOS keeps working at every step. Full plan: `docs/plans/ANDROID-PORT.md`.
+
+### Phase A: Platform protocols + core types
+
+- **TASK-100** `[P3]` `status:unstarted` — Create `dylib/platform/` with `PepperPlatform.swift` (factory protocol), `ElementDiscovery.swift`, `InputSynthesis.swift`, `StateObservation.swift`. Pure addition, no existing code changes.
+- **TASK-101** `[P3]` `status:unstarted` — Add remaining platform protocols: `NetworkInterception.swift`, `DialogDetection.swift`, `NavigationBridge.swift`, `ViewIntrospection.swift`, `WebSocketTransport.swift`. *(blocked by TASK-100)*
+- **TASK-102** `[P3]` `status:unstarted` — Create `dylib/core/PepperGeometry.swift` with platform-agnostic `PepperPoint`/`PepperRect` (midX/midY, contains, intersects). Add `#if canImport(UIKit)` CGRect/CGPoint bridging extensions.
+
+### Phase B: iOS platform wrappers
+
+- **TASK-110** `[P3]` `status:unstarted` — Create `IOSPlatform.swift` factory + add `platform` property to `PepperPlane.shared`. Wire it up in `start()`. *(blocked by TASK-100, TASK-101)*
+- **TASK-111** `[P3]` `status:unstarted` — Create `IOSElementDiscovery` wrapping `PepperSwiftUIBridge.shared` + `PepperAccessibilityCollector` + `PepperElementResolver`. *(blocked by TASK-110)*
+- **TASK-112** `[P3]` `status:unstarted` — Create `IOSInputSynthesis` wrapping `PepperHIDEventSynthesizer.shared` (tap, doubleTap, scroll, swipe, gesture, inputText, toggle). *(blocked by TASK-110)*
+- **TASK-113** `[P3]` `status:unstarted` — Create `IOSStateObservation` wrapping `PepperState.shared` + `PepperIdleMonitor.shared` + `PepperScreenRegistry`. *(blocked by TASK-110)*
+- **TASK-114** `[P3]` `status:unstarted` — Create `IOSNetworkInterception` wrapping `PepperNetworkInterceptor.shared`. *(blocked by TASK-110)*
+- **TASK-115** `[P3]` `status:unstarted` — Create `IOSDialogDetection` wrapping `PepperDialogInterceptor.shared` + `IOSNavigationBridge` wrapping `PepperNavBridge` + `IOSViewIntrospection` wrapping existing layer/heap code. *(blocked by TASK-110)*
+
+### Phase C: Migrate handlers to platform abstraction
+
+- **TASK-120** `[P3]` `status:unstarted` — Migrate pure-logic handlers (~12): BatchHandler, SubscribeHandler, UnsubscribeHandler, WatchHandler, UnwatchHandler, TestHandler, HookHandler, TimelineHandler, MemoryHandler, HeapSnapshotHandler, StatusHandler, ConsoleHandler. No-op or trivial — verify they compile against platform API. *(blocked by TASK-110)*
+- **TASK-121** `[P3]` `status:unstarted` — Migrate light-dep handlers (group 1, ~8): NetworkHandler, DefaultsHandler, ClipboardHandler, CookieHandler, KeychainHandler, LocaleHandler, DialogHandler, CurrentScreenHandler. Replace direct singleton calls with `platform.*`. *(blocked by TASK-111 through TASK-115)*
+- **TASK-122** `[P3]` `status:unstarted` — Migrate light-dep handlers (group 2, ~7): PushHandler, OrientationHandler, LifecycleHandler, AnimationsHandler, VarsHandler, ReadHandler, HighlightHandler. *(blocked by TASK-111 through TASK-115)*
+- **TASK-123** `[P3]` `status:unstarted` — Migrate heavy-dep handlers (input, ~7): TapHandler, ScrollHandler, ScrollUntilVisibleHandler, SwipeHandler, GestureHandler, InputHandler, ToggleHandler. Replace HID + element resolution calls. *(blocked by TASK-111, TASK-112)*
+- **TASK-124** `[P3]` `status:unstarted` — Migrate heavy-dep handlers (navigation, ~5): NavigateHandler, DeeplinkHandler, BackHandler, DismissHandler, DismissKeyboardHandler. *(blocked by TASK-111, TASK-115)*
+- **TASK-125** `[P3]` `status:unstarted` — Migrate heavy-dep handlers (introspection, ~9): FindHandler, IntrospectHandler, IntrospectMapHelpers, IntrospectModes, IntrospectCardProbing, TreeHandler, LayersHandler, IdentifyIconsHandler, IdentifySelectedHandler, IdleWaitHandler. *(blocked by TASK-111, TASK-113, TASK-115)*
+
+### Phase D–F: Core extraction + server split + reorg
+
+- **TASK-130** `[P3]` `status:unstarted` — Extract core geometry into `PepperElementTypes.swift`: replace `CGRect`/`CGPoint` with `PepperPoint`/`PepperRect`, remove `import UIKit` from data models, add `#if canImport(UIKit)` convenience inits. *(blocked by TASK-102)*
+- **TASK-131** `[P3]` `status:unstarted` — Split `PepperServer.swift`: extract `WebSocketTransport` protocol, create `NWListenerTransport` wrapping existing NWListener code (lines 1-170). Core server logic (lines 215-380) takes transport via init. *(blocked by TASK-101)*
+- **TASK-132** `[P3]` `status:unstarted` — Directory reorganization: move iOS-specific files into `dylib/ios/`, core files into `dylib/core/`, update build script source paths. *(blocked by all above — do last)*
+
 ## Generic Mode Cleanup (P7)
 
 - **TASK-030** `[P7]` `status:done` — Fix build script when APP_ADAPTER_TYPE is unset (`set -u` + unbound var) *(PR #6, merged)*
