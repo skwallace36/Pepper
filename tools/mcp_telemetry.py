@@ -15,25 +15,24 @@ SendFn = Callable[..., "asyncio.Future[dict]"]
 
 async def snapshot_counts(port: int, send_fn: SendFn) -> dict:
     """Snapshot network + console counts + memory before an action. Fast — just status queries."""
-    try:
-        net_resp, console_resp, mem_resp = await asyncio.gather(
-            send_fn(port, "network", {"action": "status"}, timeout=2),
-            send_fn(port, "console", {"action": "status"}, timeout=2),
-            send_fn(port, "memory", timeout=2),
-            return_exceptions=True,
-        )
-        net_total = 0
-        console_total = 0
-        mem_mb = 0.0
-        if isinstance(net_resp, dict) and net_resp.get("status") == "ok":
-            net_total = net_resp.get("data", {}).get("total_recorded", 0)
-        if isinstance(console_resp, dict) and console_resp.get("status") == "ok":
-            console_total = console_resp.get("data", {}).get("total_captured", 0)
-        if isinstance(mem_resp, dict) and mem_resp.get("status") == "ok":
-            mem_mb = mem_resp.get("data", {}).get("resident_mb", 0.0)
-        return {"net_total": net_total, "console_total": console_total, "mem_mb": mem_mb}
-    except Exception:
-        return {"net_total": 0, "console_total": 0, "mem_mb": 0.0}
+    # return_exceptions=True ensures gather never raises from inner tasks —
+    # failed tasks are returned as exception objects handled by isinstance checks below.
+    net_resp, console_resp, mem_resp = await asyncio.gather(
+        send_fn(port, "network", {"action": "status"}, timeout=2),
+        send_fn(port, "console", {"action": "status"}, timeout=2),
+        send_fn(port, "memory", timeout=2),
+        return_exceptions=True,
+    )
+    net_total = 0
+    console_total = 0
+    mem_mb = 0.0
+    if isinstance(net_resp, dict) and net_resp.get("status") == "ok":
+        net_total = net_resp.get("data", {}).get("total_recorded", 0)
+    if isinstance(console_resp, dict) and console_resp.get("status") == "ok":
+        console_total = console_resp.get("data", {}).get("total_captured", 0)
+    if isinstance(mem_resp, dict) and mem_resp.get("status") == "ok":
+        mem_mb = mem_resp.get("data", {}).get("resident_mb", 0.0)
+    return {"net_total": net_total, "console_total": console_total, "mem_mb": mem_mb}
 
 
 async def gather_telemetry(port: int, pre_counts: dict, send_fn: SendFn) -> str:

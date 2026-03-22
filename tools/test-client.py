@@ -17,8 +17,7 @@ from collections import OrderedDict
 try:
     import websockets
 except ImportError:
-    print("Error: 'websockets' package required. Install with:")
-    print("  pip install websockets")
+    print("Error: 'websockets' package required. Install with: pip install websockets", file=sys.stderr)
     sys.exit(1)
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
