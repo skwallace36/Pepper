@@ -10,4 +10,8 @@ protocol PepperPlatform {
     var elementDiscovery: ElementDiscovery { get }
     var input: InputSynthesis { get }
     var state: StateObservation { get }
+    var network: NetworkInterception { get }
+    var dialog: DialogDetection { get }
+    var navigation: NavigationBridge { get }
+    var introspection: ViewIntrospection { get }
 }
