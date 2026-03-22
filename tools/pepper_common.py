@@ -5,7 +5,9 @@ Used by pepper-mcp, pepper-ctl, pepper-stream, and test-client.py.
 """
 
 import os
+import shutil
 import socket
+import sys
 from typing import Optional
 
 
@@ -16,6 +18,21 @@ from typing import Optional
 PEPPER_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PORT_DIR = "/tmp/pepper-ports"
 DEFAULT_HOST = "localhost"
+
+
+def require_tool(name: str, install_hint: str = "") -> str:
+    """Check that an external CLI tool is on PATH. Returns the full path.
+
+    Prints a clear error and exits if the tool is missing.
+    """
+    path = shutil.which(name)
+    if path:
+        return path
+    msg = f"Error: '{name}' not found on PATH."
+    if install_hint:
+        msg += f" Install with: {install_hint}"
+    print(msg, file=sys.stderr)
+    sys.exit(1)
 
 
 # ---------------------------------------------------------------------------
