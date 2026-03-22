@@ -4,9 +4,11 @@ Pepper is a dylib injected into iOS simulator apps via `DYLD_INSERT_LIBRARIES`. 
 
 Source of truth for dylib code is `dylib/`. Config via `.env` (see `.env.example`). Run `make help` for all targets.
 
+**Adapters** are optional app-specific modules (deep link routes, icon mappings, custom tools) compiled alongside the dylib. Set `APP_ADAPTER_TYPE` and `ADAPTER_PATH` in `.env`. Without an adapter, Pepper runs in generic mode.
+
 ## MCP Tools
 
-46 tools via `.mcp.json`. Docstrings and parameters live in `tools/pepper-mcp`.
+46 tools via `.mcp.json`. Docstrings and parameters live in `tools/pepper-mcp`. `look` is the primary tool — it's `introspect mode:map` under the hood but exposed as its own MCP tool.
 
 look, tap, scroll, scroll_to, swipe, gesture, input_text, toggle, navigate, back, dismiss, dismiss_keyboard, dialog, screen, vars_inspect, heap, layers, console, network, timeline, crash_log, animations, lifecycle, find, read_element, tree, highlight, hook, defaults, clipboard, keychain, cookies, locale, flags, push, orientation, status, wait_for, wait_idle, record, raw, simulator, build, build_device, deploy, iterate
 
