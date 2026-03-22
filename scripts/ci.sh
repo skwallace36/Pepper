@@ -18,7 +18,22 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
 # Defaults
 CI_DEVICE="${CI_DEVICE:-iPhone 16}"
-CI_RUNTIME="${CI_RUNTIME:-iOS-18-2}"
+# Auto-detect latest iOS runtime if not specified
+if [ -z "${CI_RUNTIME:-}" ]; then
+  CI_RUNTIME=$(xcrun simctl list runtimes -j 2>/dev/null | python3 -c "
+import json, sys
+runtimes = json.load(sys.stdin).get('runtimes', [])
+ios = [r for r in runtimes if r.get('platform') == 'iOS' and r.get('isAvailable', False)]
+if ios:
+    # Pick latest by version
+    ios.sort(key=lambda r: r.get('version', '0'), reverse=True)
+    # Convert 'com.apple.CoreSimulator.SimRuntime.iOS-18-4' → 'iOS-18-4'
+    ident = ios[0]['identifier'].split('.')[-1]
+    print(ident)
+else:
+    print('iOS-18-2')  # fallback
+" 2>/dev/null || echo "iOS-18-2")
+fi
 CI_PORT="${CI_PORT:-8765}"
 CI_TIMEOUT="${CI_TIMEOUT:-30}"
 TEST_APP_BUNDLE="com.pepper.testapp"
