@@ -42,12 +42,23 @@ else
     fail "Python 3 not found"
 fi
 
-# websockets package
-if python3 -c "import websockets" 2>/dev/null; then
-    pass "Python websockets package"
+# Python venv (MCP server runs from .venv)
+VENV="$REPO_DIR/.venv"
+if [ ! -f "$VENV/bin/python3" ]; then
+    info "Creating venv..."
+    python3 -m venv "$VENV" 2>/dev/null || /opt/homebrew/bin/python3.12 -m venv "$VENV" 2>/dev/null
+fi
+if [ -f "$VENV/bin/python3" ]; then
+    pass "Venv exists"
+    # Install/update deps
+    "$VENV/bin/pip" install -q -r "$REPO_DIR/requirements.txt" 2>/dev/null
+    if "$VENV/bin/python3" -c "import mcp, websockets" 2>/dev/null; then
+        pass "Venv deps installed (mcp, websockets)"
+    else
+        fail "Venv deps missing — run: .venv/bin/pip install -r requirements.txt"
+    fi
 else
-    warn "Python websockets not installed — installing..."
-    pip3 install websockets --quiet && pass "Installed websockets" || fail "Could not install websockets"
+    fail "Could not create venv"
 fi
 
 # Simulator
