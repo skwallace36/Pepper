@@ -112,6 +112,11 @@ else
   emit "done" ",\"cost_usd\":${COST},\"duration_s\":${DURATION},\"transcript\":\"${TRANSCRIPT}\""
 fi
 
+# Worktree cleanup — remove completed agent worktrees
+for wt in $(git worktree list --porcelain 2>/dev/null | grep "^worktree .claude/worktrees/" | cut -d' ' -f2); do
+  git worktree remove "$wt" 2>/dev/null || true
+done
+
 # Transcript retention: keep last 20 per type
 TRANSCRIPTS=$(ls -1t build/logs/transcript-${TYPE}-*.json 2>/dev/null || true)
 COUNT=$(echo "$TRANSCRIPTS" | grep -c . 2>/dev/null || echo 0)
