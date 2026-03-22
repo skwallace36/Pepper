@@ -8,7 +8,7 @@ For known bugs, see `BUGS.md`.
 
 ## Current State
 
-Pepper works well as a dylib injected into iOS simulator apps. The MCP server exposes 46 tools. Core functionality — `look`, `tap`, `scroll`, `heap` — is solid against UIKit-heavy apps.
+Pepper works well as a dylib injected into iOS simulator apps. Core functionality — `look`, `tap`, `scroll`, `heap` — is solid against UIKit-heavy apps.
 
 A purpose-built test app (`test-app/`, bundle ID `com.pepper.testapp`) exists for testing Pepper against generic SwiftUI/UIKit patterns. First test run (2026-03-21) surfaced 3 bugs (see `BUGS.md`).
 
