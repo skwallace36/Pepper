@@ -36,9 +36,11 @@ except ImportError:
     print("  pip install websockets", file=sys.stderr)
     sys.exit(1)
 
-# Session management for liveness-aware port discovery
+# Shared modules from tools/
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import pepper_sessions
+from pepper_websocket import CrashError, make_command
+from pepper_websocket import send_command as ws_send_command
 
 from pepper_common import DEFAULT_HOST, PORT_DIR, load_env, discover_port as _discover_port
 import pepper_format
@@ -69,93 +71,36 @@ bold = pepper_format.bold
 
 
 # --- Protocol helpers ---
-
-
-def make_command(cmd, params=None):
-    """Build a command message with a short unique id."""
-    msg = {"id": str(uuid.uuid4())[:8], "cmd": cmd}
-    if params:
-        msg["params"] = params
-    return msg
+# make_command is imported from pepper_websocket
 
 
 async def send_command(host, port, msg, timeout=10, verbose=False):
     """Connect, send a single command, return the response.
 
-    Filters out event messages (e.g. event:log) while waiting for
-    the command response matching our message id.
+    Wraps pepper_websocket.send_command with CLI-appropriate error handling
+    (prints to stderr and exits on failure).
     """
-    url = f"ws://{host}:{port}"
-    msg_id = msg.get("id")
+    def on_event(evt, evt_data):
+        if verbose:
+            print(dim(f"[event:{evt}] {json.dumps(evt_data)}"), file=sys.stderr)
+
     try:
-        async with websockets.connect(url) as ws:
-            await ws.send(json.dumps(msg))
-            deadline = asyncio.get_event_loop().time() + timeout
-            while True:
-                remaining = deadline - asyncio.get_event_loop().time()
-                if remaining <= 0:
-                    print(red("Error: Timeout waiting for response."), file=sys.stderr)
-                    sys.exit(1)
-                raw = await asyncio.wait_for(ws.recv(), timeout=remaining)
-                data = json.loads(raw)
-                # Skip event messages (e.g. log events broadcast by the server)
-                if "event" in data:
-                    if verbose:
-                        evt = data["event"]
-                        evt_data = data.get("data", {})
-                        print(dim(f"[event:{evt}] {json.dumps(evt_data)}"), file=sys.stderr)
-                    continue
-                # Accept response matching our id, or any non-event response
-                if msg_id is None or data.get("id") == msg_id:
-                    return data
+        return await ws_send_command(host, port, msg, timeout=timeout, on_event=on_event)
     except ConnectionRefusedError:
+        url = f"ws://{host}:{port}"
         print(red(f"Error: Cannot connect to {url}"), file=sys.stderr)
         print("Is the app running with the control plane enabled?", file=sys.stderr)
         sys.exit(1)
     except asyncio.TimeoutError:
         print(red("Error: Timeout waiting for response."), file=sys.stderr)
         sys.exit(1)
-    except websockets.exceptions.ConnectionClosed:
-        cmd_name = msg.get("cmd", "unknown")
-        print(red(f"APP CRASHED. The '{cmd_name}' command caused the app to crash (WebSocket connection lost)."), file=sys.stderr)
-        print("Investigate the crash before retrying — do NOT just redeploy.", file=sys.stderr)
+    except CrashError as e:
+        print(red(str(e)), file=sys.stderr)
+        print("Do NOT just redeploy.", file=sys.stderr)
         sys.exit(1)
 
 
-async def send_and_recv_multi(host, port, msg, timeout=10, verbose=False):
-    """Send a command and collect multiple responses (for batch)."""
-    url = f"ws://{host}:{port}"
-    msg_id = msg.get("id")
-    try:
-        async with websockets.connect(url) as ws:
-            await ws.send(json.dumps(msg))
-            deadline = asyncio.get_event_loop().time() + timeout
-            while True:
-                remaining = deadline - asyncio.get_event_loop().time()
-                if remaining <= 0:
-                    print(red("Error: Timeout waiting for response."), file=sys.stderr)
-                    sys.exit(1)
-                raw = await asyncio.wait_for(ws.recv(), timeout=remaining)
-                data = json.loads(raw)
-                if "event" in data:
-                    if verbose:
-                        evt = data["event"]
-                        evt_data = data.get("data", {})
-                        print(dim(f"[event:{evt}] {json.dumps(evt_data)}"), file=sys.stderr)
-                    continue
-                if msg_id is None or data.get("id") == msg_id:
-                    return data
-    except ConnectionRefusedError:
-        print(red(f"Error: Cannot connect to {url}"), file=sys.stderr)
-        sys.exit(1)
-    except asyncio.TimeoutError:
-        print(red("Error: Timeout waiting for response."), file=sys.stderr)
-        sys.exit(1)
-    except websockets.exceptions.ConnectionClosed:
-        cmd_name = msg.get("cmd", "unknown")
-        print(red(f"APP CRASHED. The '{cmd_name}' command caused the app to crash (WebSocket connection lost)."), file=sys.stderr)
-        print("Investigate the crash before retrying — do NOT just redeploy.", file=sys.stderr)
-        sys.exit(1)
+# send_and_recv_multi was identical to send_command — use send_command instead.
 
 
 async def wait_for_events(host, port, events, timeout=30):
