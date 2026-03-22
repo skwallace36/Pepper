@@ -78,7 +78,8 @@ public final class PepperPlane {
             }
         }
 
-        let server = PepperServer(port: port, dispatcher: dispatcher)
+        let transport = NWListenerTransport(port: port)
+        let server = PepperServer(transport: transport, dispatcher: dispatcher)
         self.server = server
         self.currentPort = port
 
