@@ -45,38 +45,10 @@ except ImportError:
     sys.exit(1)
 
 # ---------------------------------------------------------------------------
-# Config from .env
+# Config from .env (shared via pepper_common)
 # ---------------------------------------------------------------------------
 
-PEPPER_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-
-def load_env():
-    """Load .env file from pepper repo root. Returns dict of key=value pairs."""
-    env = {}
-    env_path = os.path.join(PEPPER_DIR, ".env")
-    if os.path.exists(env_path):
-        for line in open(env_path):
-            line = line.strip()
-            if line and not line.startswith("#") and "=" in line:
-                key, _, value = line.partition("=")
-                env[key.strip()] = value.strip().strip('"').strip("'")
-    return env
-
-
-def get_config():
-    """Get build config from .env + defaults."""
-    env = load_env()
-    return {
-        "scheme": env.get("APP_SCHEME", ""),
-        "bundle_id": env.get("APP_BUNDLE_ID", ""),
-        "adapter_type": env.get("APP_ADAPTER_TYPE", "generic"),
-        "xcodebuild_wrapper": os.path.join(PEPPER_DIR, "scripts", "xcodebuild.sh"),
-        "dylib_path": env.get("APP_DYLIB_PATH", os.path.join(PEPPER_DIR, "build", "Pepper.framework", "Pepper")),
-        # Physical device IDs (xcodebuild ECID ≠ devicectl CoreDevice UUID)
-        "device_xcodebuild_id": env.get("DEVICE_XCODEBUILD_ID", ""),
-        "device_devicectl_uuid": env.get("DEVICE_DEVICECTL_UUID", ""),
-    }
+from pepper_common import PEPPER_DIR, PORT_DIR, load_env, get_config
 
 
 def load_adapter_tools() -> list[dict]:
@@ -159,8 +131,6 @@ def load_adapter_preamble() -> str:
 # ---------------------------------------------------------------------------
 # Port discovery (shared with pepper-ctl)
 # ---------------------------------------------------------------------------
-
-PORT_DIR = "/tmp/pepper-ports"
 
 
 def _resolve_port_file(simulator: Optional[str] = None) -> tuple[str, int]:
