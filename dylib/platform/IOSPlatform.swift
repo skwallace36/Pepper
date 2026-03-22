@@ -13,8 +13,8 @@ final class IOSPlatform: PepperPlatform {
     /// iOS element discovery — wraps PepperSwiftUIBridge + PepperElementResolver.
     let elementDiscovery: ElementDiscovery = IOSElementDiscovery()
 
-    /// Placeholder — replaced by IOSInputSynthesis (TASK-112).
-    let input: InputSynthesis = IOSInputSynthesisStub()
+    /// iOS input synthesis — wraps PepperHIDEventSynthesizer + UITextInput.
+    let input: InputSynthesis = IOSInputSynthesis()
 
     /// Placeholder — replaced by IOSStateObservation (TASK-113).
     let state: StateObservation = IOSStateObservationStub()
@@ -37,32 +37,6 @@ final class IOSPlatform: PepperPlatform {
 // These exist solely so IOSPlatform compiles and conforms to PepperPlatform
 // before the real wrapper types are created. Nothing calls through the
 // platform abstraction yet — handlers still use singletons directly.
-
-private final class IOSInputSynthesisStub: InputSynthesis {
-    func tap(at point: CGPoint, duration: TimeInterval) -> Bool {
-        fatalError("IOSInputSynthesis not yet implemented — see TASK-112")
-    }
-
-    func doubleTap(at point: CGPoint) -> Bool {
-        fatalError("IOSInputSynthesis not yet implemented — see TASK-112")
-    }
-
-    func scroll(direction: ScrollDirection, amount: Double, at point: CGPoint) -> Bool {
-        fatalError("IOSInputSynthesis not yet implemented — see TASK-112")
-    }
-
-    func swipe(from start: CGPoint, to end: CGPoint, duration: TimeInterval) -> Bool {
-        fatalError("IOSInputSynthesis not yet implemented — see TASK-112")
-    }
-
-    func gesture(touches: [GestureTouch]) -> Bool {
-        fatalError("IOSInputSynthesis not yet implemented — see TASK-112")
-    }
-
-    func inputText(_ text: String) -> Bool {
-        fatalError("IOSInputSynthesis not yet implemented — see TASK-112")
-    }
-}
 
 private final class IOSStateObservationStub: StateObservation {
     func currentScreen() -> ScreenInfo {
