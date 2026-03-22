@@ -16,6 +16,15 @@ struct DeeplinkHandler: PepperHandler {
     func handle(_ command: PepperCommand) -> PepperResponse {
         let config = PepperAppConfig.shared
 
+        // No deep links configured (generic mode — no adapter)
+        if config.deeplinks.isEmpty && config.deeplinkCatalog.isEmpty {
+            return .ok(id: command.id, data: [
+                "deeplinks": AnyCodable([AnyCodable]()),
+                "count": AnyCodable(0),
+                "note": AnyCodable("No deep links configured. Deep links require an app adapter with a deeplinkScheme and deeplink catalog. Use 'navigate' with 'tab' or 'action' params for navigation in generic mode.")
+            ])
+        }
+
         // Prefer the new self-documenting deeplinks list
         if !config.deeplinks.isEmpty {
             return .ok(id: command.id, data: [
