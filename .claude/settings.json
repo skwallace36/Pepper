@@ -53,9 +53,24 @@
   "hooks": {
     "PreToolUse": [
       {
-        "type": "command",
         "matcher": "Bash",
-        "command": "input=$(cat); cmd=$(echo \"$input\" | jq -r '.tool_input.command // empty'); if echo \"$cmd\" | grep -qE 'git push' && echo \"$cmd\" | grep -qE '(main|master)'; then echo 'DENY: push to main blocked — use a branch + PR'; exit 0; fi"
+        "hooks": [
+          {
+            "type": "command",
+            "command": "input=$(cat); cmd=$(echo \"$input\" | jq -r '.tool_input.command // empty'); if echo \"$cmd\" | grep -qE 'git push' && echo \"$cmd\" | grep -qE '(main|master)'; then echo 'DENY: push to main blocked — use a branch + PR'; exit 0; fi"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./scripts/hooks/agent-events.sh"
+          }
+        ]
       }
     ]
   }
