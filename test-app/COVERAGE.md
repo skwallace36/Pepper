@@ -26,12 +26,12 @@ Bugs: see [`BUGS.md`](../BUGS.md)
 | `help` | — | untested | Any state |  |
 | `look` | — | pass | Any screen | Alias for introspect map |
 | `tap` | text | pass | Tap Me button, tab bar items |  |
-| `tap` | element | untested | Buttons with a11y IDs |  |
-| `tap` | point | untested | Any tappable coordinate |  |
-| `tap` | icon_name | untested | SF Symbol icon-only buttons |  |
-| `tap` | tab | untested | Tab bar |  |
-| `tap` | heuristic | untested | Any labeled element |  |
-| `tap` | predicate | untested | Elements matching NSPredicate |  |
+| `tap` | element | fail | Buttons with a11y IDs | BUG-006: Works for UIKit views (uikit_button found and tapped), but fails for SwiftUI .accessibilityIdentifier() elements (tap_button not found). SwiftUI identifiers not stored as UIView.accessibilityIdentifier. |
+| `tap` | point | pass | Tap Me button at (201,232) | Tapped Tap Me button by coordinate. Count incremented from 0 to 1. Strategy: point. |
+| `tap` | icon_name | blocked | SF Symbol icon-only buttons | icon_name matching uses perceptual hashing against app-bundled icon assets. Test app only uses SF Symbols (system icons), not custom icon assets. Cannot test without adding custom icon assets to test app. |
+| `tap` | tab | fail | Tab bar | BUG-005: Returns 'No tab bar found in view hierarchy'. findTabBarButtons() searches for UITabBar but SwiftUI TabView does not expose UITabBar views in the hierarchy. |
+| `tap` | heuristic | pass | Slider element on Controls tab | Tapped slider via heuristic:'slider'. Found at (116,790). Error case also tested: nonexistent heuristic returns proper error. |
+| `tap` | predicate | pass | Tap Me button via NSPredicate | Predicate "label == 'Tap Me' AND type == 'button'" found and tapped correctly. Count incremented. Error case tested: no-match predicate returns proper error. |
 | `input` | — | untested | TextField (text_field), TextEditor (text_editor) |  |
 | `toggle` | — | untested | Toggle (toggle_switch), Segmented (segment_control) |  |
 | `scroll` | top | pass | List tab (30 rows) | Scrolled to top from mid-list; Item 0 visible at top |
@@ -168,10 +168,10 @@ Bugs: see [`BUGS.md`](../BUGS.md)
 
 **141 test points** across 49 commands.
 
-- pass: 15
-- fail: 2
+- pass: 18
+- fail: 4
 - crash: 1
-- untested: 121
+- untested: 115
 
 ## Test App Gaps
 
