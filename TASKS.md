@@ -31,7 +31,7 @@ Inject Pepper into Ice Cubes (open source SwiftUI Mastodon client) to pressure-t
 
 - **TASK-027** `[P2]` `status:pr-open` — Clone Ice Cubes, build for simulator, inject Pepper, verify `look` works. Record what the element tree looks like for a real SwiftUI app (lazy lists, navigation stacks, tab bars, async images). *(BLOCKED by BUG-009: app crashes ~1s after injection due to PepperIconCatalog.build() calling UIImage on background thread)*
 - **TASK-028** `[P2]` `status:pr-open` — Run `tap`, `scroll`, `navigate` against Ice Cubes. Document which commands work, which fail, and file bugs for failures. *(BLOCKED by BUG-009: app crashes on injection — cannot test any commands until fix lands)*
-- **TASK-029** `[P2]` `status:unstarted` — Run `heap`, `vars`, `layers`, `network` against Ice Cubes. These are the deep introspection commands — stress test them against a real app's object graph and network traffic.
+- **TASK-029** `[P2]` `status:pr-open` — Run `heap`, `vars`, `layers`, `network` against Ice Cubes. These are the deep introspection commands — stress test them against a real app's object graph and network traffic. *(BLOCKED by BUG-010: app crashes on injection due to PepperIconCatalog nil imageRef assertion — cannot test any commands until fix lands)*
 
 ## Test App Gaps (P2 prerequisite)
 
