@@ -186,7 +186,17 @@ final class PepperVarRegistry {
             guard let instancePtr = instances[i] else { continue }
             guard seen.insert(instancePtr).inserted else { continue }
 
-            // Convert raw pointer to AnyObject — this is the live instance
+            // Liveness validation: the object may have been deallocated between
+            // the heap scan and now. Dereferencing a freed pointer is UB.
+            // 1) malloc_size returns 0 for freed blocks
+            guard malloc_size(instancePtr) >= MemoryLayout<UnsafeRawPointer>.size else { continue }
+            // 2) Verify the isa pointer still matches the class the scanner found.
+            //    If memory was freed and reused, the isa will differ.
+            guard let expectedClassPtr = classes[i] else { continue }
+            let isaPtr = instancePtr.load(as: UnsafeRawPointer.self)
+            guard isaPtr == expectedClassPtr else { continue }
+
+            // Safe to dereference — validated as a live instance of the expected class
             let obj: AnyObject = Unmanaged<AnyObject>.fromOpaque(instancePtr).takeUnretainedValue()
             trackInstance(obj, knownObservable: true)
         }
