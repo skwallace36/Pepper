@@ -83,6 +83,7 @@ launch:
 		SIMCTL_CHILD_PEPPER_PORT="$(PORT)" \
 		SIMCTL_CHILD_PEPPER_SIM_UDID="$(SIMULATOR_ID)" \
 		SIMCTL_CHILD_PEPPER_ADAPTER="$(ADAPTER_TYPE)" \
+		SIMCTL_CHILD_PEPPER_SKIP_PERMISSIONS="$${PEPPER_AGENT_TYPE:+1}" \
 		xcrun simctl launch "$(SIMULATOR_ID)" "$(BUNDLE_ID)"
 	@echo "Launched with injection. Control plane at ws://localhost:$(PORT)"
 	@python3 -c "import sys, os, time; sys.path.insert(0, '$(TOOLS_DIR)'); \
