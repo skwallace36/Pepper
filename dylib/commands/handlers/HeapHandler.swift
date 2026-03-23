@@ -237,8 +237,7 @@ struct HeapHandler: PepperHandler {
     /// 3. Search the UIView hierarchy (any view subclass)
     private func findInstance(className: String) -> (Any, String, String)? {
         // Resolve the class
-        let resolvedClass = resolveClass(className)
-        guard let cls = resolvedClass else { return nil }
+        guard let cls = resolveClass(className) else { return nil }
         let resolvedName = NSStringFromClass(cls)
 
         // Strategy 1: Try singleton selectors
@@ -249,7 +248,7 @@ struct HeapHandler: PepperHandler {
         for selName in singletonSelectors {
             let sel = NSSelectorFromString(selName)
             // Check if the class (as meta-class) responds to this selector
-            guard let metaClass = object_getClass(cls) else { continue }
+            guard object_getClass(cls) != nil else { continue }
             if class_getClassMethod(cls, sel) != nil {
                 // Call the class method
                 if let result = (cls as AnyObject).perform(sel)?.takeUnretainedValue() {

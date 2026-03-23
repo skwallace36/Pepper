@@ -107,7 +107,7 @@ final class PepperConnectionManager {
     /// Remove a connection by ID.
     func removeConnection(id: String) {
         queue.sync {
-            connections.removeValue(forKey: id)
+            _ = connections.removeValue(forKey: id)
         }
         pepperLog.info("Connection removed: \(id)", category: .server)
     }

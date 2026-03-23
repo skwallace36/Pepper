@@ -230,7 +230,7 @@ final class PepperVarRegistry {
 
         var result: [AnyClass] = []
         for i in 0..<actualCount {
-            let cls = buffer[i]
+            let cls: AnyClass = buffer[i]
 
             // Filter to app bundle classes only
             let classBundle = Bundle(for: cls)
