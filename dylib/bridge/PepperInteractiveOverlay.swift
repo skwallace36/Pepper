@@ -229,14 +229,18 @@ final class PepperInteractiveOverlay {
     }
 
     private func makePillButton(label: String, action: String, colorKey: String) -> UIButton {
-        let btn = UIButton(type: .system)
-        btn.setTitle(label, for: .normal)
-        btn.titleLabel?.font = .systemFont(ofSize: 11, weight: .semibold)
-        btn.setTitleColor(.white, for: .normal)
-        // swiftlint:disable:next force_unwrapping
-        btn.backgroundColor = Self.pillColors[colorKey] ?? Self.pillColors["action"]!
-        btn.layer.cornerRadius = 13
-        btn.contentEdgeInsets = UIEdgeInsets(top: 4, left: 10, bottom: 4, right: 10)
+        var config = UIButton.Configuration.filled()
+        config.title = label
+        config.baseForegroundColor = .white
+        config.baseBackgroundColor = Self.pillColors[colorKey] ?? Self.pillColors["action"]!
+        config.cornerStyle = .capsule
+        config.contentInsets = NSDirectionalEdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)
+        config.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { incoming in
+            var out = incoming
+            out.font = .systemFont(ofSize: 11, weight: .semibold)
+            return out
+        }
+        let btn = UIButton(configuration: config)
         btn.accessibilityIdentifier = "pepper_pill_\(action)"
 
         objc_setAssociatedObject(btn, &pillActionKey, action, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)

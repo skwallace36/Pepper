@@ -1,4 +1,4 @@
-import CommonCrypto
+import CryptoKit
 import Foundation
 
 /// Tracks heap instance counts per screen and detects growth (potential leaks).
@@ -58,12 +58,8 @@ final class PepperLeakMonitor {
 
     /// 8-char hash for fingerprinting
     private static func shortHash(_ input: String) -> String {
-        let data = Data(input.utf8)
-        var hash = [UInt8](repeating: 0, count: Int(CC_MD5_DIGEST_LENGTH))
-        data.withUnsafeBytes { buf in
-            _ = CC_MD5(buf.baseAddress, CC_LONG(data.count), &hash)
-        }
-        return hash.prefix(4).map { String(format: "%02x", $0) }.joined()
+        let digest = Insecure.MD5.hash(data: Data(input.utf8))
+        return digest.prefix(4).map { String(format: "%02x", $0) }.joined()
     }
 
     /// Run a heap scan and diff against the previous snapshot for this screen key.

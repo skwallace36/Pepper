@@ -112,9 +112,7 @@ final class PepperAccessibility {
     /// Tag navigation bar buttons.
     private func tagNavigationBar(_ navBar: UINavigationBar, for viewController: UIViewController) {
         // Back button
-        if let backButton = navBar.backItem?.backBarButtonItem {
-            // backBarButtonItem doesn't have a view directly, but the nav bar has subviews
-        }
+        // backBarButtonItem doesn't have a view directly, but the nav bar has subviews
 
         // Find nav bar button views
         let navButtons = navBar.subviews.filter {
