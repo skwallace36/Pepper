@@ -542,3 +542,23 @@ def register_debug_tools(mcp, resolve_and_send):
         if limit is not None:
             params["limit"] = limit
         return await resolve_and_send(simulator, "concurrency", params)
+
+    @mcp.tool()
+    async def perf(
+        simulator: str | None = Field(default=None, description="Simulator UDID"),
+        action: str = Field(default="fps", description="Action: fps, hitches, redraws"),
+        duration_ms: int | None = Field(default=None, description="Sampling duration in ms (for fps/hitches; default: 2000/5000)"),
+        threshold_ms: int | None = Field(default=None, description="Hitch threshold in ms (for hitches action; default: 16)"),
+    ) -> str:
+        """Performance diagnostics: FPS measurement, main-thread hitch detection, expensive redraw identification.
+
+        action=fps: measure frame rate using CADisplayLink. Returns avg/min/max FPS, dropped frames, per-second buckets.
+        action=hitches: detect main-thread blocks via background watchdog. Returns hitch count, durations, and timestamps.
+        action=redraws: scan the layer tree for expensive rendering: shadows without shadowPath, masks, rasterization,
+        oversized images, semi-transparent large layers. Returns issues sorted by severity."""
+        params: dict = {"action": action}
+        if duration_ms is not None:
+            params["duration_ms"] = duration_ms
+        if threshold_ms is not None:
+            params["threshold_ms"] = threshold_ms
+        return await resolve_and_send(simulator, "perf", params, timeout=30)
