@@ -12,7 +12,7 @@ THEN:
    b. Read inline review comments: `gh api repos/skwallace36/Pepper/pulls/<number>/comments`
    c. Read PR reviews: `gh api repos/skwallace36/Pepper/pulls/<number>/reviews`
    d. Read issue comments (verifier reports, general feedback): `gh api repos/skwallace36/Pepper/issues/<number>/comments`
-4. Prioritize PRs with comments from **skwallace36** (the repo owner) — always address those first, before any other feedback. Then handle other actionable feedback (review comments, requested changes, verifier failure reports).
+4. Distinguish human vs agent comments: all agent comments end with a signature line like `— pepper-agent/pr-verifier` or `— pepper-agent/conflict-resolver`. Comments WITHOUT this signature are from the human owner — **always prioritize those first**.
 5. Check out the PR branch: `git checkout <branch-name> && git pull origin <branch-name>`
 6. Address each review comment:
    - Make the requested changes
@@ -27,3 +27,4 @@ SCOPE: You may ONLY modify files already in the PR diff.
 DO NOT modify: ROADMAP.md, docs/plans/, .claude/, .mcp.json, .env, AGENTIC-PLAN.md.
 DO NOT close or merge PRs.
 DO NOT modify files outside the PR diff.
+ALL comments you post MUST end with: `— pepper-agent/pr-responder`

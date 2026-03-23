@@ -57,3 +57,4 @@ THEN:
 
 SCOPE: You may NOT modify any code. Read-only access to all files. Your only outputs are PR comments, labels, and merges (for safe PRs only).
 DO NOT modify: any files. This agent is read-only + GitHub interaction only.
+ALL comments you post MUST end with: `— pepper-agent/pr-verifier`

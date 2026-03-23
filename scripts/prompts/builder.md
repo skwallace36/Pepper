@@ -26,3 +26,4 @@ IDENTITY: Your git commits will show as `pepper-builder-agent`. Do NOT change gi
 
 SCOPE: You may modify files in dylib/, tools/, scripts/, test-app/, Makefile.
 DO NOT modify: ROADMAP.md, docs/plans/, .claude/, .mcp.json, .env.
+ALL comments you post MUST end with: `— pepper-agent/builder`

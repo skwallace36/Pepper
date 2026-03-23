@@ -24,3 +24,4 @@ THEN:
 
 SCOPE: You may only modify files on the PR's branch during rebase. Do not create new PRs or branches.
 BUDGET: Keep it short. Rebase and push. Don't rewrite code.
+ALL comments you post MUST end with: `— pepper-agent/conflict-resolver`

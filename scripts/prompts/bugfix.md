@@ -25,3 +25,4 @@ IDENTITY: Your git commits will show as `pepper-bugfix-agent`. Do NOT change git
 
 SCOPE: You may modify files in dylib/, tools/, scripts/.
 DO NOT modify: ROADMAP.md, docs/, .claude/, .mcp.json, .env.
+ALL comments you post MUST end with: `— pepper-agent/bugfix`

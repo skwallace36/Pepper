@@ -42,3 +42,4 @@ IDENTITY: Your git commits will show as `pepper-tester-agent`. Do NOT change git
 
 SCOPE: You may modify test-app/coverage-status.json.
 DO NOT modify: dylib/, ROADMAP.md, docs/plans/, .claude/, .mcp.json, .env.
+ALL comments you post MUST end with: `— pepper-agent/tester`
