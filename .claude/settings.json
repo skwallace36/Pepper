@@ -11,16 +11,10 @@
       "WebSearch(*)"
     ],
     "deny": [
-      "Bash(git push --force*)",
-      "Bash(git push -f*)",
       "Bash(git push*main*)",
       "Bash(git push*master*)",
       "Bash(git push origin main*)",
       "Bash(git push origin master*)",
-      "Bash(git reset --hard*)",
-      "Bash(git checkout -- *)",
-      "Bash(git clean -f*)",
-      "Bash(git branch -D *)",
       "Bash(rm -rf /*)",
       "Bash(rm -rf ~*)",
       "Bash(rm -rf .*)",
