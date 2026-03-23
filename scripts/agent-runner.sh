@@ -158,7 +158,7 @@ fi
 # Max concurrent instances per agent type
 case "$TYPE" in
   pr-verifier|verifier) MAX_INSTANCES=2 ;;
-  builder)              MAX_INSTANCES=2 ;;
+  builder)              MAX_INSTANCES=1 ;;
   *)                    MAX_INSTANCES=1 ;;
 esac
 
