@@ -9,7 +9,7 @@ import base64
 import json
 from typing import Optional
 
-from mcp.types import TextContent, ImageContent
+from mcp.types import TextContent, ImageContent  # type: ignore[import-not-found]
 from pydantic import Field
 
 from mcp_screenshot import capture_screenshot
@@ -115,7 +115,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
         amount: Optional[int] = Field(default=None, description="Scroll amount in points"),
     ) -> str:
         """Scroll the screen in a direction. Automatically shows screen state after scrolling."""
-        params = {"direction": direction}
+        params: dict = {"direction": direction}
         if amount is not None:
             params["amount"] = amount
         return await act_and_look(simulator, "scroll", params)

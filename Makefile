@@ -22,7 +22,7 @@ DYLIB_PATH  := $(PROJECT_DIR)/build/Pepper.framework/Pepper
 
 LOGS_DIR    := $(PROJECT_DIR)/build/logs
 
-.PHONY: help build deploy launch kill relaunch ping check lint smoke \
+.PHONY: help build deploy launch kill relaunch ping check lint smoke typecheck \
         logs clean test-client pepper-ctl test-app coverage coverage-check \
         docs setup ci smoke smoke-ice-cubes \
         agent agent-monitor agent-status agent-trigger agents-install agents-uninstall agent-cleanup agents-start agents-stop agent-analyze groom \
@@ -139,6 +139,10 @@ fmt-check:
 	fi
 	@echo "Checking dylib/ Swift formatting..."
 	@find "$(CONTROL_DIR)" -name '*.swift' -print0 | xargs -0 swift-format lint --configuration "$(PROJECT_DIR)/.swift-format" --strict && echo "All files formatted correctly." || (echo "Formatting issues found. Run 'make fmt' to fix." >&2; exit 1)
+
+## typecheck: Run pyright type checker on Python code
+typecheck:
+	@npx --yes pyright
 
 # ============================================================
 # Control plane commands
