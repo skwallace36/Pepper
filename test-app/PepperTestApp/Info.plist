@@ -25,5 +25,11 @@
 	<string>Pepper test app needs calendar access for swizzle testing</string>
 	<key>NSUserTrackingUsageDescription</key>
 	<string>Pepper test app needs tracking permission for swizzle testing</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Pepper uses the local network to advertise its debug server for device-to-host discovery.</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_pepper._tcp</string>
+	</array>
 </dict>
 </plist>
