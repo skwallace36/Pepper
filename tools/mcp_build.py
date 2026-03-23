@@ -305,6 +305,10 @@ async def deploy_app(simulator: str, send_fn: SendFn,
     env["SIMCTL_CHILD_DYLD_INSERT_LIBRARIES"] = dylib
     env["SIMCTL_CHILD_PEPPER_ADAPTER"] = cfg.get("adapter_type", "generic")
     env["SIMCTL_CHILD_PEPPER_SIM_UDID"] = simulator
+    # Skip authorization swizzles when running under an agent — agents use
+    # simctl privacy grant instead, and swizzles trigger blocking dialogs.
+    if os.environ.get("PEPPER_AGENT_TYPE"):
+        env["SIMCTL_CHILD_PEPPER_SKIP_PERMISSIONS"] = "1"
     result = subprocess.run(
         ["xcrun", "simctl", "launch", simulator, bid],
         capture_output=True, text=True, env=env
