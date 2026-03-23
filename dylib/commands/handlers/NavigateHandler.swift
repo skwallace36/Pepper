@@ -84,10 +84,16 @@ struct NavigateHandler: PepperHandler {
         guard let navController = topVC.pepper_effectiveNavController else {
             // Try dismissing a modal presentation instead
             if topVC.presentingViewController != nil {
-                topVC.dismiss(animated: true)
+                let dismissedType = String(describing: type(of: topVC))
+                var animationDone = false
+                topVC.dismiss(animated: true) { animationDone = true }
+                let deadline = Date(timeIntervalSinceNow: 0.5)
+                while !animationDone && Date() < deadline {
+                    RunLoop.current.run(mode: .default, before: Date(timeIntervalSinceNow: 0.05))
+                }
                 return .ok(id: command.id, data: [
                     "action": AnyCodable("dismiss"),
-                    "dismissed": AnyCodable(String(describing: type(of: topVC)))
+                    "dismissed": AnyCodable(dismissedType)
                 ])
             }
             return .error(id: command.id, message: "No navigation controller or presenting VC to pop from")
@@ -97,10 +103,16 @@ struct NavigateHandler: PepperHandler {
             // This handles SwiftUI .sheet() with an embedded NavigationStack: the nav
             // controller is found as a child but has depth 1, so we dismiss the sheet.
             if topVC.presentingViewController != nil {
-                topVC.dismiss(animated: true)
+                let dismissedType = String(describing: type(of: topVC))
+                var animationDone = false
+                topVC.dismiss(animated: true) { animationDone = true }
+                let deadline = Date(timeIntervalSinceNow: 0.5)
+                while !animationDone && Date() < deadline {
+                    RunLoop.current.run(mode: .default, before: Date(timeIntervalSinceNow: 0.05))
+                }
                 return .ok(id: command.id, data: [
                     "action": AnyCodable("dismiss"),
-                    "dismissed": AnyCodable(String(describing: type(of: topVC)))
+                    "dismissed": AnyCodable(dismissedType)
                 ])
             }
             return .error(id: command.id, message: "Already at root of navigation stack")
