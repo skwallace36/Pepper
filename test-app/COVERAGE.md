@@ -26,14 +26,14 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `help` | — | pass | Any state | Returns list of 50 available server commands. Tested via pepper-ctl and direct WebSocket. |
 | `look` | — | pass | Any screen | Alias for introspect map |
 | `tap` | text | pass | Tap Me button, tab bar items |  |
-| `tap` | element | fail | Buttons with a11y IDs | BUG-006: Works for UIKit views (uikit_button found and tapped), but fails for SwiftUI .accessibilityIdentifier() elements (tap_button not found). SwiftUI identifiers not stored as UIView.accessibilityIdentifier. |
+| `tap` | element | pass | Buttons with a11y IDs | BUG-006 FIXED: PepperElementResolver now falls back to PepperSwiftUIBridge.collectAccessibilityElements() when UIView hierarchy lookup fails. SwiftUI .accessibilityIdentifier() elements (e.g. tap_button) are now discoverable via the accessibility tree. |
 | `tap` | point | pass | Tap Me button at (201,232) | Tapped Tap Me button by coordinate. Count incremented from 0 to 1. Strategy: point. |
 | `tap` | icon_name | blocked | SF Symbol icon-only buttons | icon_name matching uses perceptual hashing against app-bundled icon assets. Test app only uses SF Symbols (system icons), not custom icon assets. Cannot test without adding custom icon assets to test app. |
-| `tap` | tab | fail | Tab bar | BUG-005: Returns 'No tab bar found in view hierarchy'. findTabBarButtons() searches for UITabBar but SwiftUI TabView does not expose UITabBar views in the hierarchy. |
+| `tap` | tab | pass | Tab bar | BUG-005 FIXED: Added findAccessibilityTabButtons() that scans the accessibility tree for the .tabBar container and its .button children. Works for SwiftUI TabView (tabs found via accessibility elements). Programmatic UITabBarController selection also available as further fallback. |
 | `tap` | heuristic | pass | Slider element on Controls tab | Tapped slider via heuristic:'slider'. Found at (116,790). Error case also tested: nonexistent heuristic returns proper error. |
 | `tap` | predicate | pass | Tap Me button via NSPredicate | Predicate "label == 'Tap Me' AND type == 'button'" found and tapped correctly. Count incremented. Error case tested: no-match predicate returns proper error. |
 | `input` | — | pass | TextField (text_field), TextEditor (text_view) | TextField: set 'Hello Pepper', appended ' World' with --no-clear, cleared+replaced with 'Replaced'. TextEditor (text_view): set value accepted. Error case: nonexistent ID returns proper 'Element not found' error. |
-| `toggle` | — | fail | Toggle (dark_mode_toggle, notifications_toggle, airplane_toggle), Segmented (sort_picker) | BUG-006 (same root cause): SwiftUI Toggle elements return 'Element not found' — accessibilityIdentifier not discoverable. Segmented control (sort_picker) works: toggled Name→Date→Size successfully. Toggle command itself functions correctly; failure is in SwiftUI element discovery. |
+| `toggle` | — | fail | Toggle (dark_mode_toggle, notifications_toggle, airplane_toggle), Segmented (sort_picker) | BUG-006 fix applied to PepperElementResolver (used by TapHandler) but ToggleHandler still calls pepper_findElement(id:) directly, bypassing the SwiftUI accessibility fallback. SwiftUI Toggle elements still return 'Element not found'. Segmented control (sort_picker) works. New issue: #265. |
 | `scroll` | top | pass | List tab (30 rows) | Scrolled to top from mid-list; Item 0 visible at top |
 | `scroll` | bottom | pass | List tab (30 rows) | Scrolled to bottom; Item 29 visible at bottom |
 | `scroll` | down | pass | List tab (30 rows) |  |
@@ -42,16 +42,16 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `scroll` | right | pass | Misc tab horizontal scroll (15 items) | Horizontal ScrollView already present; scroll right shifts content rightward |
 | `tree` | — | pass | Controls tab, Misc tab | Returns full UIView hierarchy as JSON (3355 lines on Controls tab). Supports --depth param for truncation (depth=3 returns 4 nodes). Reports nodeCount and truncated flag. |
 | `read` | — | pass | sort_picker (UIKit segmented control) | Works for UIKit elements: read sort_picker returned value=2, segmentCount=3, segmentTitles, enabled, visible. Fails for SwiftUI elements (BUG-006: tap_button returns 'Element not found'). Nonexistent IDs return proper 'Element not found' error. |
-| `wait_for` | visible | fail | Start 3s Timer → wait for FIRED text | BUG-007: Text condition works for already-visible text (returns 3-23ms). But fails to detect async state changes — 3s timer fires and text updates to 'Timer: FIRED', yet wait_for times out. Handler's main-thread polling loop blocks SwiftUI re-rendering. |
-| `wait_for` | exists | fail | Same timer or navigation push | BUG-006 + BUG-007: Element ID condition fails (SwiftUI identifiers not discoverable). Text condition works for already-present text but fails for async changes (same main-thread blocking as visible). |
-| `wait_for` | has_value | fail | Counter value after tap | BUG-006: has_value requires element ID, which fails for SwiftUI elements. Cannot test the has_value logic itself. Text-based workaround (wait_for text 'Count: N' after tap) works because tap updates synchronously before wait_for starts polling. |
+| `wait_for` | visible | pass | Start 3s Timer → wait for FIRED text | BUG-007 FIXED: Polling moved to background thread (DispatchQueue.global). Main thread is free for SwiftUI @Observable re-rendering. 3s timer test now works — wait_for detects async text change to 'Timer: FIRED'. |
+| `wait_for` | exists | pass | Same timer or navigation push | BUG-007 FIXED: Background thread polling allows SwiftUI state changes. Text-based exists condition now detects async changes. Note: element ID condition in WaitHandler still uses pepper_findElement directly (UIKit-only); see #266 for full fix. |
+| `wait_for` | has_value | fail | Counter value after tap | BUG-006 fix not applied to WaitHandler — WaitHandler.evaluate(.elementHasValue) calls pepper_findElement(id:) directly, bypassing SwiftUI accessibility fallback. SwiftUI counter elements still not found. New issue: #266. |
 | `batch` | — | pass | Sequence of ping + screen, tap + look | Executes array of commands sequentially, returns all responses. Tested: (1) ping+screen returns 2 responses with correct data. (2) tap+look returns tap result then screen state. (3) Empty array returns {executed:0, errors:0, responses:[]}. (4) Missing commands param returns proper error. |
 | `navigate` | tab | pass | 3-tab TabView (Controls, List, Misc) |  |
 | `navigate` | deeplink | pass | Tab deep links (controls, list, misc) | URL scheme auto-detected from Info.plist. peppertest://controls, peppertest://list, peppertest://misc switch tabs via onOpenURL. Other routes show generic DeeplinkView modal. |
-| `navigate` | pop | fail | Detail nav stack (pushed via Item 0 tap) | BUG-001 (same root cause): Returns 'Already at root of navigation stack' even when on a pushed SwiftUI NavigationStack detail view. screen shows can_go_back=false despite detail being visible. SwiftUI NavigationStack state not detectable through UIKit. |
-| `navigate` | dismiss | fail | Sheet from Show Sheet button | BUG-008: Returns 'Already at root of navigation stack' even when SwiftUI .sheet() is presented. screen correctly shows is_modal=true, screen_id=presentation, but dismiss logic doesn't detect it. GH #40. |
+| `navigate` | pop | pass | Detail nav stack (pushed via Item 0 tap) | BUG-001 FIXED: pepper_effectiveNavController now walks child VCs to find SwiftUI NavigationStack's UINavigationController. pepper_effectiveDepth uses nav bar item count as secondary signal. pepper_popBack falls back to HID back-button tap for SwiftUI-managed nav. |
+| `navigate` | dismiss | pass | Sheet from Show Sheet button | BUG-008 FIXED: NavigateHandler handlePop falls through to modal dismiss when nav stack is at root depth=1 (SwiftUI .sheet() case). SwiftUI .sheet() presentations now correctly dismissed. |
 | `deeplinks` | — | pass | Any state (generic mode) | Returns {count:0, deeplinks:[], note:'No deep links configured...'} in generic mode. Command works correctly; no adapter configured so no deeplinks available. |
-| `back` | — | fail | Detail → Deeper nav stack push | BUG-001 |
+| `back` | — | pass | Detail → Deeper nav stack push | BUG-001 FIXED: BackHandler uses pepper_effectiveNavController to find child UINavigationController from SwiftUI NavigationStack. pepper_canPop checks nav bar items as secondary signal. pepper_popBack uses HID back-button tap for SwiftUI NavigationStack. |
 | `screen` | — | pass | Any tab |  |
 | `introspect` | full | pass | List tab (all screens tested) | Returns combined accessibility (250 elements) + viewHierarchy (126 views) + hostingControllerCount (7). Default mode when no mode param given. Response ~52-96KB depending on tab. Tested on Controls and List tabs. |
 | `introspect` | accessibility | pass | Controls tab | Returns 62 accessibility elements with label, type, traits, frame, interactive flag, view_controller, scroll_context, presentation_context. Covers buttons, headers, staticText, segments, sliders. |
@@ -95,7 +95,7 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `dialog` | dismiss_sheet | pass | Share button (icon-only SF Symbol) | After triggering share sheet via share button, dismiss_sheet returns {dismissed:true} and sheet is removed. Interceptor broadcasts share_sheet_dismissed event. |
 | `dialog` | detect_system | untested |  |  |
 | `dialog` | auto_dismiss | pass | Alert dialog | Enable with buttons=['OK','Cancel']: returns {auto_dismiss:true, buttons:['OK','Cancel'], delay:0.3}. Triggered alert via Show Alert — dialog auto-dismissed within 1s (current returned has_dialog=false). Disable: returns auto_dismiss=false. Default buttons include 'Allow While Using App', 'Allow Once', 'Allow', 'OK'. |
-| `dismiss` | — | fail | Sheet from Show Sheet button | BUG-008: Returns 'Nothing to dismiss — only the home view is presented' even when SwiftUI .sheet() is presented and screen reports is_modal=true. GH #40. |
+| `dismiss` | — | pass | Sheet from Show Sheet button | BUG-008 FIXED: DismissHandler now checks modalPresentationStyle (pageSheet/formSheet/automatic) instead of chain depth. SwiftUI .sheet() presentations correctly detected and dismissed. |
 | `status` | — | pass | Any state | Returns port, connections count, and connectionDetails array (id, connectedAt, lastActivity, subscriptions). Tested via direct WebSocket. |
 | `highlight` | — | pass | Tap Me button on Controls tab | Highlighted 'Tap Me' button. Returns frame, description, strategy (interactive_text), highlighted=true. |
 | `identify_selected` | — | pass | Name/Date/Size segmented control | Correctly identified 'Size' as selected. Returns scores, debug info with brightness/ink analysis, and detected color scheme (light). |
@@ -136,7 +136,7 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `console` | status | pass | Any state | Returns active, buffer_size, buffer_count, total_captured. Tested before/after start/stop/clear. State transitions are correct. |
 | `console` | log | pass | After start + trigger log output | Returns {count:N, lines:[]}. Supports limit and filter params. Test app produces no stdout/stderr output so lines are always empty, but command structure and params work correctly. |
 | `console` | clear | pass | After log capture | Returns {cleared:true}. Verified buffer_count and total_captured reset to 0 after clear. |
-| `animations` | scan | fail | Misc tab | Server logs 'Responded to animations with ok' but the WebSocket response never arrives at the client. Tested twice with 20s timeout — always times out. The response is dispatched but lost in transit. Other animations actions (trace, speed) work fine. |
+| `animations` | scan | fail | Misc tab | BUG-009 fix (icon catalog background thread crash) was unrelated to this failure. 'Response lost in transit' issue persists — server logs success but client never receives response. trace and speed actions work fine. New issue: #267. |
 | `animations` | trace | pass | Misc tab | Returns {point, samples:[...]} with position, bounds, opacity, window_position, t_ms for each sample. Sampled ~5 frames over ~90ms at (200,400). Captures layer animation state at a point over time. |
 | `animations` | speed | pass | Misc tab | Sets/gets CALayer animation speed. Returns {speed:N, animations_enabled:bool}. Tested: set 0.5 and 1.0 — both accepted. Note: returned speed always shows 1 regardless of value param (may be reading before set takes effect, similar to timeline.config async dispatch). |
 | `heap` | find | pass | AppState class |  |
@@ -205,9 +205,6 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `accessibility_action` | magic_tap | untested |  |  |
 | `accessibility_action` | increment | untested |  |  |
 | `accessibility_action` | decrement | untested |  |  |
-| `renders` | start | untested |  |  |
-| `renders` | stop | untested |  |  |
-| `renders` | counts | untested |  |  |
 | `renders` | snapshot | untested |  |  |
 | `renders` | diff | untested |  |  |
 | `renders` | reset | untested |  |  |
@@ -243,11 +240,11 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 
 ## Summary
 
-**218 test points** across 62 commands.
+**215 test points** across 62 commands.
 
-- pass: 128
-- fail: 11
-- untested: 77
+- pass: 136
+- fail: 3
+- untested: 74
 
 ## Test App Gaps
 
