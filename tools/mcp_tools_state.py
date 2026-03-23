@@ -140,3 +140,25 @@ def register_state_tools(mcp, resolve_and_send):
         if name:
             params["name"] = name
         return await resolve_and_send(simulator, "cookies", params)
+
+    @mcp.tool()
+    async def undo_manager(
+        simulator: Optional[str] = Field(default=None, description="Simulator UDID"),
+        action: str = Field(default="list", description="Action: list, status, undo, redo"),
+        index: Optional[int] = Field(default=None, description="Manager index from 'list' (default: 0, the first found)"),
+    ) -> str:
+        """Inspect and control NSUndoManager — query undo/redo stack state and trigger undo/redo.
+        Use this to verify that user actions are properly registered as undoable, test undo/redo
+        flows, and debug undo stack issues in document-based or text-heavy apps.
+
+        Actions:
+        - list: find all NSUndoManager instances (via responder chain + heap scan), show owner and state
+        - status: detailed state of a specific manager (canUndo, canRedo, action names, grouping level)
+        - undo: trigger undo on a manager (reports what was undone)
+        - redo: trigger redo on a manager (reports what was redone)
+
+        Related tools: vars_inspect (runtime state), heap (object discovery)."""
+        params: dict = {"action": action}
+        if index is not None:
+            params["index"] = index
+        return await resolve_and_send(simulator, "undo", params)
