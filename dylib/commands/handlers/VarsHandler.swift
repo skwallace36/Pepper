@@ -28,7 +28,8 @@ struct VarsHandler: PepperHandler {
         case "mirror":
             return handleMirror(command)
         default:
-            return .error(id: command.id, message: "Unknown vars action '\(action)'. Use list/get/set/discover/dump/mirror.")
+            return .error(
+                id: command.id, message: "Unknown vars action '\(action)'. Use list/get/set/discover/dump/mirror.")
         }
     }
 
@@ -36,10 +37,12 @@ struct VarsHandler: PepperHandler {
 
     private func handleList(_ command: PepperCommand) -> PepperResponse {
         let instances = PepperVarRegistry.shared.listAll()
-        return .ok(id: command.id, data: [
-            "instances": AnyCodable(instances),
-            "count": AnyCodable(instances.count)
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "instances": AnyCodable(instances),
+                "count": AnyCodable(instances.count),
+            ])
     }
 
     private func handleGet(_ command: PepperCommand) -> PepperResponse {
@@ -51,10 +54,12 @@ struct VarsHandler: PepperHandler {
             return .error(id: command.id, message: "Property not found: '\(path)'. Run action:discover to refresh.")
         }
 
-        return .ok(id: command.id, data: [
-            "path": AnyCodable(path),
-            "value": value
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "path": AnyCodable(path),
+                "value": value,
+            ])
     }
 
     private func handleSet(_ command: PepperCommand) -> PepperResponse {
@@ -74,7 +79,7 @@ struct VarsHandler: PepperHandler {
 
         var data: [String: AnyCodable] = [
             "path": AnyCodable(path),
-            "ok": AnyCodable(true)
+            "ok": AnyCodable(true),
         ]
         if let newValue = newValue {
             data["value"] = newValue
@@ -85,10 +90,12 @@ struct VarsHandler: PepperHandler {
     private func handleDiscover(_ command: PepperCommand) -> PepperResponse {
         PepperVarRegistry.shared.forceDiscover()
         let instances = PepperVarRegistry.shared.listAll()
-        return .ok(id: command.id, data: [
-            "instances": AnyCodable(instances),
-            "count": AnyCodable(instances.count)
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "instances": AnyCodable(instances),
+                "count": AnyCodable(instances.count),
+            ])
     }
 
     private func handleDump(_ command: PepperCommand) -> PepperResponse {
@@ -97,13 +104,16 @@ struct VarsHandler: PepperHandler {
         }
 
         guard let props = PepperVarRegistry.shared.dumpClass(className) else {
-            return .error(id: command.id, message: "No tracked instance of '\(className)'. Run action:discover to refresh.")
+            return .error(
+                id: command.id, message: "No tracked instance of '\(className)'. Run action:discover to refresh.")
         }
 
-        return .ok(id: command.id, data: [
-            "class": AnyCodable(className),
-            "properties": AnyCodable(props)
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "class": AnyCodable(className),
+                "properties": AnyCodable(props),
+            ])
     }
 
     private func handleMirror(_ command: PepperCommand) -> PepperResponse {
@@ -112,12 +122,15 @@ struct VarsHandler: PepperHandler {
         }
 
         guard let result = PepperVarRegistry.shared.mirrorAll(className) else {
-            return .error(id: command.id, message: "No tracked instance of '\(className)'. Run action:discover to refresh.")
+            return .error(
+                id: command.id, message: "No tracked instance of '\(className)'. Run action:discover to refresh.")
         }
 
-        return .ok(id: command.id, data: [
-            "class": AnyCodable(className),
-            "properties": AnyCodable(result)
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "class": AnyCodable(className),
+                "properties": AnyCodable(result),
+            ])
     }
 }

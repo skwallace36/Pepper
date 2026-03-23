@@ -37,8 +37,8 @@ struct ReadHandler: PepperHandler {
                 "x": AnyCodable(Double(view.frame.origin.x)),
                 "y": AnyCodable(Double(view.frame.origin.y)),
                 "width": AnyCodable(Double(view.frame.size.width)),
-                "height": AnyCodable(Double(view.frame.size.height))
-            ])
+                "height": AnyCodable(Double(view.frame.size.height)),
+            ]),
         ]
 
         if let label = view.accessibilityLabel, !label.isEmpty {

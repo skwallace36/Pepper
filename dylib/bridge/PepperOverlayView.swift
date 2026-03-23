@@ -23,7 +23,10 @@ final class PepperOverlayView {
     ///   - fillBackground: If true, fills the box with the border color instead of 8% alpha
     ///   - duration: How long the highlight stays visible before fading (default 0.8s).
     ///               Use <= 0 for persistent overlays (dismissed only via `dismissAll()`).
-    func show(frame: CGRect, color: UIColor, label: String? = nil, labelInside: Bool = false, labelColor: UIColor? = nil, fillBackground: Bool = false, duration: TimeInterval = 0.8) {
+    func show(
+        frame: CGRect, color: UIColor, label: String? = nil, labelInside: Bool = false, labelColor: UIColor? = nil,
+        fillBackground: Bool = false, duration: TimeInterval = 0.8
+    ) {
         let overlay = getOverlayView()
 
         // Expand frame slightly so border sits outside the element
@@ -132,11 +135,12 @@ final class PepperOverlayView {
 
         let hPad: CGFloat = 6
         let vPad: CGFloat = 2
-        let pill = UIView(frame: CGRect(
-            x: 0, y: 0,
-            width: min(label.frame.width + hPad * 2, UIScreen.main.bounds.width - 4),
-            height: label.frame.height + vPad * 2
-        ))
+        let pill = UIView(
+            frame: CGRect(
+                x: 0, y: 0,
+                width: min(label.frame.width + hPad * 2, UIScreen.main.bounds.width - 4),
+                height: label.frame.height + vPad * 2
+            ))
         pill.backgroundColor = color.withAlphaComponent(0.85)
         pill.layer.cornerRadius = pill.frame.height / 2
         pill.isUserInteractionEnabled = false
@@ -152,9 +156,11 @@ final class PepperOverlayView {
             return window
         }
 
-        guard let scene = UIApplication.shared.connectedScenes
-            .compactMap({ $0 as? UIWindowScene })
-            .first else {
+        guard
+            let scene = UIApplication.shared.connectedScenes
+                .compactMap({ $0 as? UIWindowScene })
+                .first
+        else {
             // No window scene — highlights silently dropped
             return UIView()
         }

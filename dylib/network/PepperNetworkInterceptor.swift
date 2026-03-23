@@ -218,8 +218,9 @@ final class PepperNetworkInterceptor {
                 summary += " \(url)"
             }
             if let body = transaction.request.body,
-               (url.hasSuffix("/graphql") || url.hasSuffix("/graphql/")),
-               let opName = Self.extractGraphQLOperationName(body) {
+                url.hasSuffix("/graphql") || url.hasSuffix("/graphql/"),
+                let opName = Self.extractGraphQLOperationName(body)
+            {
                 summary += " \(opName)"
             }
             summary += " (\(durationMs)ms, \(Self.formatBytes(bodySize)))"
@@ -257,7 +258,8 @@ final class PepperNetworkInterceptor {
         var key = "\(method) \(path)"
         if path.hasSuffix("/graphql") || path.hasSuffix("/graphql/") {
             if let body = transaction.request.body,
-               let opName = Self.extractGraphQLOperationName(body) {
+                let opName = Self.extractGraphQLOperationName(body)
+            {
                 key = "\(method) \(path) (\(opName))"
             }
         }
@@ -276,8 +278,7 @@ final class PepperNetworkInterceptor {
 
             // Only warn once per burst — check if we already warned for this key recently
             let alreadyWarned = duplicateWarnings.contains {
-                $0.endpoint == key &&
-                Date().timeIntervalSince($0.timestamp) < 5.0
+                $0.endpoint == key && Date().timeIntervalSince($0.timestamp) < 5.0
             }
             guard !alreadyWarned else { return }
 
@@ -383,7 +384,9 @@ final class PepperNetworkInterceptor {
     }
 
     /// Process a body Data into a (string, encoding, truncated, originalSize) tuple.
-    static func processBody(_ data: Data?, contentType: String?) -> (body: String?, encoding: String?, truncated: Bool, originalSize: Int) {
+    static func processBody(_ data: Data?, contentType: String?) -> (
+        body: String?, encoding: String?, truncated: Bool, originalSize: Int
+    ) {
         guard let data = data, !data.isEmpty else {
             return (nil, nil, false, 0)
         }
@@ -393,7 +396,8 @@ final class PepperNetworkInterceptor {
         let effectiveData = truncated ? data.prefix(maxBodySize) : data
 
         if isTextContentType(contentType) {
-            let text = String(data: effectiveData, encoding: .utf8)
+            let text =
+                String(data: effectiveData, encoding: .utf8)
                 ?? String(data: effectiveData, encoding: .ascii)
             return (text, nil, truncated, originalSize)
         } else {
@@ -421,7 +425,8 @@ final class PepperNetworkInterceptor {
     static func extractGraphQLOperationName(_ body: String) -> String? {
         // Try JSON format first (most common)
         if let data = body.data(using: .utf8),
-           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        {
             if let opName = json["operationName"] as? String, !opName.isEmpty {
                 return opName
             }

@@ -97,7 +97,7 @@ final class PepperLogger {
             var data: [String: AnyCodable] = [
                 "category": AnyCodable(category.rawValue),
                 "level": AnyCodable(levelName(level)),
-                "message": AnyCodable(message)
+                "message": AnyCodable(message),
             ]
             if let commandID = commandID {
                 data["commandId"] = AnyCodable(commandID)
@@ -108,12 +108,12 @@ final class PepperLogger {
 
     private func levelName(_ level: OSLogType) -> String {
         switch level {
-        case .debug:   return "debug"
-        case .info:    return "info"
+        case .debug: return "debug"
+        case .info: return "info"
         case .default: return "warning"
-        case .error:   return "error"
-        case .fault:   return "fault"
-        default:       return "unknown"
+        case .error: return "error"
+        case .fault: return "fault"
+        default: return "unknown"
         }
     }
 }

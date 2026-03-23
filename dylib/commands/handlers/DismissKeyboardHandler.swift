@@ -13,8 +13,10 @@ struct DismissKeyboardHandler: PepperHandler {
         // Send resignFirstResponder through the responder chain
         window.endEditing(true)
 
-        return .ok(id: command.id, data: [
-            "dismissed": AnyCodable(true),
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "dismissed": AnyCodable(true)
+            ])
     }
 }

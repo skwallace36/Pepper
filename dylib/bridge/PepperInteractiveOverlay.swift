@@ -37,26 +37,32 @@ final class PepperInteractiveOverlay {
     // MARK: - Colors
 
     private static let pillColors: [String: UIColor] = [
-        "action": UIColor(red: 0.231, green: 0.510, blue: 0.965, alpha: 1), // #3b82f6
-        "assert": UIColor(red: 0.133, green: 0.773, blue: 0.369, alpha: 1), // #22c55e
-        "wait":   UIColor(red: 0.980, green: 0.749, blue: 0.141, alpha: 1), // #fabe24
-        "nav":    UIColor(red: 0.737, green: 0.549, blue: 1.000, alpha: 1), // #bc8cff
-        "input":  UIColor(red: 0.980, green: 0.749, blue: 0.141, alpha: 1), // #fabe24
+        "action": UIColor(red: 0.231, green: 0.510, blue: 0.965, alpha: 1),  // #3b82f6
+        "assert": UIColor(red: 0.133, green: 0.773, blue: 0.369, alpha: 1),  // #22c55e
+        "wait": UIColor(red: 0.980, green: 0.749, blue: 0.141, alpha: 1),  // #fabe24
+        "nav": UIColor(red: 0.737, green: 0.549, blue: 1.000, alpha: 1),  // #bc8cff
+        "input": UIColor(red: 0.980, green: 0.749, blue: 0.141, alpha: 1),  // #fabe24
     ]
 
     // MARK: - Menu definitions per category
 
     /// (label, action, colorKey)
     private static let menuDefs: [String: [(String, String, String)]] = [
-        "tap":    [("tap", "tap", "action"), ("2x", "double_tap", "action"),
-                   ("hold", "long_press", "action"), ("assert", "assert", "assert"),
-                   ("wait", "wait", "wait"), ("find", "find", "wait")],
-        "text":   [("assert", "assert", "assert"), ("!assert", "not_assert", "assert"),
-                   ("wait", "wait", "wait"), ("find", "find", "wait")],
-        "input":  [("input", "input", "input"), ("tap", "tap", "action"),
-                   ("assert", "assert", "assert")],
+        "tap": [
+            ("tap", "tap", "action"), ("2x", "double_tap", "action"),
+            ("hold", "long_press", "action"), ("assert", "assert", "assert"),
+            ("wait", "wait", "wait"), ("find", "find", "wait"),
+        ],
+        "text": [
+            ("assert", "assert", "assert"), ("!assert", "not_assert", "assert"),
+            ("wait", "wait", "wait"), ("find", "find", "wait"),
+        ],
+        "input": [
+            ("input", "input", "input"), ("tap", "tap", "action"),
+            ("assert", "assert", "assert"),
+        ],
         "toggle": [("toggle", "toggle", "action"), ("assert", "assert", "assert")],
-        "nav":    [("nav", "nav", "nav"), ("assert", "assert", "assert")],
+        "nav": [("nav", "nav", "nav"), ("assert", "assert", "assert")],
     ]
 
     // MARK: - Public API
@@ -120,7 +126,8 @@ final class PepperInteractiveOverlay {
     @objc private func zoneTapped(_ sender: UIControl) {
         let index = sender.tag
         guard let category = objc_getAssociatedObject(sender, &zoneCategoryKey) as? String,
-              let window = PepperOverlayView.shared.ensureWindow() else { return }
+            let window = PepperOverlayView.shared.ensureWindow()
+        else { return }
 
         // Haptic on zone tap
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -240,8 +247,9 @@ final class PepperInteractiveOverlay {
 
     @objc private func pillTapped(_ sender: UIButton) {
         guard let action = objc_getAssociatedObject(sender, &pillActionKey) as? String,
-              let index = selectedIndex,
-              let url = callbackURL else { return }
+            let index = selectedIndex,
+            let url = callbackURL
+        else { return }
 
         // Grab embedded label/step/category from the zone before dismissing
         let zone = zoneViews.first(where: { $0.tag == index })
@@ -260,7 +268,8 @@ final class PepperInteractiveOverlay {
         if let s = suggestedStep { body["suggested_step"] = s }
         if let c = category { body["category"] = c }
         guard let jsonData = try? JSONSerialization.data(withJSONObject: body),
-              let endpoint = URL(string: url) else { return }
+            let endpoint = URL(string: url)
+        else { return }
 
         var request = URLRequest(url: endpoint)
         request.httpMethod = "POST"

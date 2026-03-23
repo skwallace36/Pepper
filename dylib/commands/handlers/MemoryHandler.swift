@@ -74,13 +74,15 @@ struct MemoryHandler: PepperHandler {
             return .error(id: command.id, message: "task_vm_info failed: \(vmResult)")
         }
 
-        return .ok(id: command.id, data: [
-            "phys_footprint_mb": AnyCodable(mbRound(vmInfo.phys_footprint)),
-            "internal_mb": AnyCodable(mbRound(vmInfo.internal)),
-            "compressed_mb": AnyCodable(mbRound(vmInfo.compressed)),
-            "purgeable_mb": AnyCodable(mbRound(vmInfo.purgeable_volatile_resident)),
-            "timestamp_ms": AnyCodable(Int(Date().timeIntervalSince1970 * 1000)),
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "phys_footprint_mb": AnyCodable(mbRound(vmInfo.phys_footprint)),
+                "internal_mb": AnyCodable(mbRound(vmInfo.internal)),
+                "compressed_mb": AnyCodable(mbRound(vmInfo.compressed)),
+                "purgeable_mb": AnyCodable(mbRound(vmInfo.purgeable_volatile_resident)),
+                "timestamp_ms": AnyCodable(Int(Date().timeIntervalSince1970 * 1000)),
+            ])
     }
 
     // MARK: - Helpers

@@ -26,45 +26,57 @@ struct ConsoleHandler: PepperHandler {
         case "start":
             let bufferSize = command.params?["buffer_size"]?.intValue
             interceptor.install(bufferSize: bufferSize)
-            return .ok(id: command.id, data: [
-                "active": AnyCodable(true),
-                "buffer_size": AnyCodable(interceptor.bufferSize),
-            ])
+            return .ok(
+                id: command.id,
+                data: [
+                    "active": AnyCodable(true),
+                    "buffer_size": AnyCodable(interceptor.bufferSize),
+                ])
 
         case "stop":
             interceptor.uninstall()
-            return .ok(id: command.id, data: [
-                "active": AnyCodable(false),
-                "total_captured": AnyCodable(interceptor.totalCaptured),
-            ])
+            return .ok(
+                id: command.id,
+                data: [
+                    "active": AnyCodable(false),
+                    "total_captured": AnyCodable(interceptor.totalCaptured),
+                ])
 
         case "status":
-            return .ok(id: command.id, data: [
-                "active": AnyCodable(interceptor.isActive),
-                "buffer_size": AnyCodable(interceptor.bufferSize),
-                "buffer_count": AnyCodable(interceptor.entryCount),
-                "total_captured": AnyCodable(interceptor.totalCaptured),
-            ])
+            return .ok(
+                id: command.id,
+                data: [
+                    "active": AnyCodable(interceptor.isActive),
+                    "buffer_size": AnyCodable(interceptor.bufferSize),
+                    "buffer_count": AnyCodable(interceptor.entryCount),
+                    "total_captured": AnyCodable(interceptor.totalCaptured),
+                ])
 
         case "log":
             let limit = command.params?["limit"]?.intValue ?? 50
             let filter = command.params?["filter"]?.stringValue
-            let sinceMs: Int64? = (command.params?["since_ms"]?.value as? Int).map { Int64($0) }
+            let sinceMs: Int64? =
+                (command.params?["since_ms"]?.value as? Int).map { Int64($0) }
                 ?? (command.params?["since_ms"]?.value as? Int64)
             let lines = interceptor.recentLines(limit: limit, filter: filter, sinceMs: sinceMs)
-            return .ok(id: command.id, data: [
-                "count": AnyCodable(lines.count),
-                "lines": AnyCodable(lines.map { AnyCodable($0) }),
-            ])
+            return .ok(
+                id: command.id,
+                data: [
+                    "count": AnyCodable(lines.count),
+                    "lines": AnyCodable(lines.map { AnyCodable($0) }),
+                ])
 
         case "clear":
             interceptor.clearBuffer()
-            return .ok(id: command.id, data: [
-                "cleared": AnyCodable(true),
-            ])
+            return .ok(
+                id: command.id,
+                data: [
+                    "cleared": AnyCodable(true)
+                ])
 
         default:
-            return .error(id: command.id, message: "Unknown action '\(action)'. Available: start, stop, status, log, clear")
+            return .error(
+                id: command.id, message: "Unknown action '\(action)'. Available: start, stop, status, log, clear")
         }
     }
 }

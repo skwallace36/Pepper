@@ -27,7 +27,8 @@ struct KeychainHandler: PepperHandler {
         case "clear":
             return handleClear(command)
         default:
-            return .error(id: command.id, message: "Unknown keychain action '\(action)'. Use list/get/set/delete/clear.")
+            return .error(
+                id: command.id, message: "Unknown keychain action '\(action)'. Use list/get/set/delete/clear.")
         }
     }
 
@@ -38,7 +39,7 @@ struct KeychainHandler: PepperHandler {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecReturnAttributes as String: true,
-            kSecMatchLimit as String: kSecMatchLimitAll
+            kSecMatchLimit as String: kSecMatchLimitAll,
         ]
 
         var result: AnyObject?
@@ -46,10 +47,12 @@ struct KeychainHandler: PepperHandler {
 
         guard status == errSecSuccess, let items = result as? [[String: Any]] else {
             if status == errSecItemNotFound {
-                return .ok(id: command.id, data: [
-                    "count": AnyCodable(0),
-                    "items": AnyCodable([[String: AnyCodable]]())
-                ])
+                return .ok(
+                    id: command.id,
+                    data: [
+                        "count": AnyCodable(0),
+                        "items": AnyCodable([[String: AnyCodable]]()),
+                    ])
             }
             return .error(id: command.id, message: "Keychain query failed: \(status)")
         }
@@ -66,7 +69,7 @@ struct KeychainHandler: PepperHandler {
 
             var entry: [String: AnyCodable] = [
                 "service": AnyCodable(service),
-                "account": AnyCodable(account)
+                "account": AnyCodable(account),
             ]
             if let ag = accessGroup { entry["access_group"] = AnyCodable(ag) }
             if let c = created { entry["created"] = AnyCodable(ISO8601DateFormatter().string(from: c)) }
@@ -76,11 +79,13 @@ struct KeychainHandler: PepperHandler {
             if entries.count >= limit { break }
         }
 
-        return .ok(id: command.id, data: [
-            "count": AnyCodable(entries.count),
-            "total": AnyCodable(items.count),
-            "items": AnyCodable(entries)
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "count": AnyCodable(entries.count),
+                "total": AnyCodable(items.count),
+                "items": AnyCodable(entries),
+            ])
     }
 
     private func handleGet(_ command: PepperCommand) -> PepperResponse {
@@ -93,7 +98,7 @@ struct KeychainHandler: PepperHandler {
             kSecAttrService as String: service,
             kSecReturnData as String: true,
             kSecReturnAttributes as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne
+            kSecMatchLimit as String: kSecMatchLimitOne,
         ]
         if let account = command.params?["account"]?.stringValue {
             query[kSecAttrAccount as String] = account
@@ -111,7 +116,7 @@ struct KeychainHandler: PepperHandler {
 
         var data: [String: AnyCodable] = [
             "service": AnyCodable(service),
-            "account": AnyCodable(item[kSecAttrAccount as String] as? String ?? "")
+            "account": AnyCodable(item[kSecAttrAccount as String] as? String ?? ""),
         ]
 
         if let valueData = item[kSecValueData as String] as? Data {
@@ -146,7 +151,7 @@ struct KeychainHandler: PepperHandler {
         let searchQuery: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
-            kSecAttrAccount as String: account
+            kSecAttrAccount as String: account,
         ]
         let updateAttrs: [String: Any] = [
             kSecValueData as String: valueData
@@ -166,12 +171,14 @@ struct KeychainHandler: PepperHandler {
             return .error(id: command.id, message: "Keychain \(action) failed: \(status)")
         }
 
-        return .ok(id: command.id, data: [
-            "ok": AnyCodable(true),
-            "action": AnyCodable(action),
-            "service": AnyCodable(service),
-            "account": AnyCodable(account)
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "ok": AnyCodable(true),
+                "action": AnyCodable(action),
+                "service": AnyCodable(service),
+                "account": AnyCodable(account),
+            ])
     }
 
     private func handleDelete(_ command: PepperCommand) -> PepperResponse {
@@ -181,7 +188,7 @@ struct KeychainHandler: PepperHandler {
 
         var query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service
+            kSecAttrService as String: service,
         ]
         if let account = command.params?["account"]?.stringValue {
             query[kSecAttrAccount as String] = account
@@ -192,11 +199,13 @@ struct KeychainHandler: PepperHandler {
             return .error(id: command.id, message: "Keychain delete failed: \(status)")
         }
 
-        return .ok(id: command.id, data: [
-            "ok": AnyCodable(true),
-            "removed": AnyCodable(status == errSecSuccess),
-            "service": AnyCodable(service)
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "ok": AnyCodable(true),
+                "removed": AnyCodable(status == errSecSuccess),
+                "service": AnyCodable(service),
+            ])
     }
 
     private func handleClear(_ command: PepperCommand) -> PepperResponse {
@@ -204,9 +213,11 @@ struct KeychainHandler: PepperHandler {
             kSecClass as String: kSecClassGenericPassword
         ]
         let status = SecItemDelete(query as CFDictionary)
-        return .ok(id: command.id, data: [
-            "ok": AnyCodable(true),
-            "cleared": AnyCodable(status == errSecSuccess)
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "ok": AnyCodable(true),
+                "cleared": AnyCodable(status == errSecSuccess),
+            ])
     }
 }

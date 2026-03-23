@@ -22,7 +22,8 @@ final class PepperEventKitInterceptor {
         let eventsSel = NSSelectorFromString("requestFullAccessToEventsWithCompletion:")
         let eventsSwizzledSel = #selector(EKEventStore.pepper_requestFullAccessToEvents(completion:))
         if let original = class_getInstanceMethod(cls, eventsSel),
-           let swizzled = class_getInstanceMethod(cls, eventsSwizzledSel) {
+            let swizzled = class_getInstanceMethod(cls, eventsSwizzledSel)
+        {
             method_exchangeImplementations(original, swizzled)
             pepperLog.info("EventKit full events authorization auto-grant installed", category: .lifecycle)
         }
@@ -31,7 +32,8 @@ final class PepperEventKitInterceptor {
         let remindersSel = NSSelectorFromString("requestFullAccessToRemindersWithCompletion:")
         let remindersSwizzledSel = #selector(EKEventStore.pepper_requestFullAccessToReminders(completion:))
         if let original = class_getInstanceMethod(cls, remindersSel),
-           let swizzled = class_getInstanceMethod(cls, remindersSwizzledSel) {
+            let swizzled = class_getInstanceMethod(cls, remindersSwizzledSel)
+        {
             method_exchangeImplementations(original, swizzled)
             pepperLog.info("EventKit full reminders authorization auto-grant installed", category: .lifecycle)
         }
@@ -40,7 +42,8 @@ final class PepperEventKitInterceptor {
         let legacySel = NSSelectorFromString("requestAccessToEntityType:completion:")
         let legacySwizzledSel = #selector(EKEventStore.pepper_requestAccess(to:completion:))
         if let original = class_getInstanceMethod(cls, legacySel),
-           let swizzled = class_getInstanceMethod(cls, legacySwizzledSel) {
+            let swizzled = class_getInstanceMethod(cls, legacySwizzledSel)
+        {
             method_exchangeImplementations(original, swizzled)
             pepperLog.info("EventKit legacy authorization auto-grant installed", category: .lifecycle)
         }
@@ -71,7 +74,8 @@ extension EKEventStore {
         to entityType: EKEntityType,
         completion: @escaping (Bool, Error?) -> Void
     ) {
-        pepperLog.info("EventKit legacy authorization auto-granted (entity: \(entityType.rawValue))", category: .commands)
+        pepperLog.info(
+            "EventKit legacy authorization auto-granted (entity: \(entityType.rawValue))", category: .commands)
         completion(true, nil)
     }
 }

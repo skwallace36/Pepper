@@ -70,12 +70,13 @@ final class PepperTouchVisualizer {
     // MARK: - Internals
 
     private func makeCircle(at center: CGPoint, size: CGFloat, color: UIColor) -> UIView {
-        let view = UIView(frame: CGRect(
-            x: center.x - size / 2,
-            y: center.y - size / 2,
-            width: size,
-            height: size
-        ))
+        let view = UIView(
+            frame: CGRect(
+                x: center.x - size / 2,
+                y: center.y - size / 2,
+                width: size,
+                height: size
+            ))
         view.backgroundColor = color
         view.layer.cornerRadius = size / 2
         view.isUserInteractionEnabled = false
@@ -103,9 +104,11 @@ final class PepperTouchVisualizer {
         }
 
         // Create a passthrough overlay window above everything
-        guard let scene = UIApplication.shared.connectedScenes
-            .compactMap({ $0 as? UIWindowScene })
-            .first else {
+        guard
+            let scene = UIApplication.shared.connectedScenes
+                .compactMap({ $0 as? UIWindowScene })
+                .first
+        else {
             // Fallback: return key window (dots will be under modals)
             return UIApplication.shared.connectedScenes
                 .compactMap { $0 as? UIWindowScene }

@@ -100,7 +100,7 @@ struct NetworkTiming: Codable {
 
     func toDictionary() -> [String: Any] {
         var dict: [String: Any] = [
-            "start_ms": startMs,
+            "start_ms": startMs
         ]
         if let endMs = endMs {
             dict["end_ms"] = endMs

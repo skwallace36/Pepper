@@ -76,7 +76,9 @@ enum PepperElementResolver {
             // This works regardless of whether the app uses UITabBarController or a custom one.
             let tabBarButtons = findTabBarButtons(in: window)
             if tabIndex >= 0, tabIndex < tabBarButtons.count {
-                return (Result(view: tabBarButtons[tabIndex], strategy: .tabIndex, description: "tab[\(tabIndex)]"), nil)
+                return (
+                    Result(view: tabBarButtons[tabIndex], strategy: .tabIndex, description: "tab[\(tabIndex)]"), nil
+                )
             }
 
             // Second try: SwiftUI TabView — scan accessibility tree for tab bar buttons.
@@ -87,8 +89,11 @@ enum PepperElementResolver {
                     let btn = accTabButtons[tabIndex]
                     let tapPoint = CGPoint(x: btn.frame.midX, y: btn.frame.midY)
                     let label = btn.label ?? "tab[\(tabIndex)]"
-                    return (Result(view: window, strategy: .tabIndex,
-                                   description: "tab[\(tabIndex)] '\(label)'", tapPoint: tapPoint), nil)
+                    return (
+                        Result(
+                            view: window, strategy: .tabIndex,
+                            description: "tab[\(tabIndex)] '\(label)'", tapPoint: tapPoint), nil
+                    )
                 }
             }
 
@@ -120,7 +125,8 @@ enum PepperElementResolver {
             // Interactive elements (discoverInteractiveElements) — ranked highest by pickBestCandidate
             let lower = text.lowercased()
             let screenBounds = UIScreen.main.bounds
-            let interactiveElements = PepperSwiftUIBridge.shared.discoverInteractiveElements(hitTestFilter: true, maxElements: 500)
+            let interactiveElements = PepperSwiftUIBridge.shared.discoverInteractiveElements(
+                hitTestFilter: true, maxElements: 500)
             let matches = interactiveElements.filter { $0.hitReachable && $0.label?.lowercased() == lower }
             if let match = pickBestInteractiveElement(matches, screenBounds: screenBounds) {
                 candidates.append((window, match.center, .interactiveText))
@@ -143,15 +149,20 @@ enum PepperElementResolver {
             }
 
             if let best = pickBestCandidate(candidates, text: text, exact: exact) {
-                return (Result(view: best.view, strategy: best.strategy, description: text, tapPoint: best.tapPoint), nil)
+                return (
+                    Result(view: best.view, strategy: best.strategy, description: text, tapPoint: best.tapPoint), nil
+                )
             }
             if interactiveOnly {
-                let available = interactiveElements
+                let available =
+                    interactiveElements
                     .filter { $0.hitReachable && $0.label != nil }
                     .prefix(20)
                     // swiftlint:disable:next force_unwrapping
                     .map { $0.label! }
-                return (nil, "No interactive element labeled \"\(text)\". Available: \(available.joined(separator: ", "))")
+                return (
+                    nil, "No interactive element labeled \"\(text)\". Available: \(available.joined(separator: ", "))"
+                )
             }
             return (nil, "Element not found by text: \"\(text)\"")
         }
@@ -170,7 +181,9 @@ enum PepperElementResolver {
             }
 
             if let best = pickBestCandidate(candidates, text: label, exact: exact) {
-                return (Result(view: best.view, strategy: best.strategy, description: label, tapPoint: best.tapPoint), nil)
+                return (
+                    Result(view: best.view, strategy: best.strategy, description: label, tapPoint: best.tapPoint), nil
+                )
             }
             return (nil, "Element not found by accessibility label: \"\(label)\"")
         }
@@ -187,8 +200,9 @@ enum PepperElementResolver {
 
         // Strategy 6: point coordinates
         if let pointDict = params["point"]?.dictValue,
-           let x = pointDict["x"]?.doubleValue,
-           let y = pointDict["y"]?.doubleValue {
+            let x = pointDict["x"]?.doubleValue,
+            let y = pointDict["y"]?.doubleValue
+        {
             let point = CGPoint(x: x, y: y)
             if let view = window.pepper_findElement(point: point) {
                 return (Result(view: view, strategy: .point, description: "(\(x), \(y))"), nil)
@@ -215,15 +229,20 @@ enum PepperElementResolver {
             if view is UIControl { return true }
             if view.accessibilityTraits.contains(.button) { return true }
             if let gestures = view.gestureRecognizers,
-               gestures.contains(where: { $0 is UITapGestureRecognizer }) { return true }
+                gestures.contains(where: { $0 is UITapGestureRecognizer })
+            {
+                return true
+            }
             return false
         }
 
         func isExactMatch(_ view: UIView) -> Bool {
-            if exact { return true } // all matches are exact in exact mode
-            let labels = [view.accessibilityLabel,
-                          (view as? UIButton)?.currentTitle,
-                          (view as? UILabel)?.text].compactMap { $0 }
+            if exact { return true }  // all matches are exact in exact mode
+            let labels = [
+                view.accessibilityLabel,
+                (view as? UIButton)?.currentTitle,
+                (view as? UILabel)?.text,
+            ].compactMap { $0 }
             return labels.contains(where: { $0.pepperEquals(text) })
         }
 
@@ -284,11 +303,10 @@ enum PepperElementResolver {
         // These are common in apps that use custom tab bar containers
         let customTabBars = window.pepper_findElements { view in
             let name = String(describing: type(of: view))
-            return (name.contains("TabBar") || name.contains("tabBar")) &&
-                   !(view is UITabBar) &&
-                   view.subviews.count >= 2 &&
-                   // Tab bars are typically at the bottom of the screen
-                   view.convert(view.bounds, to: nil).origin.y > UIScreen.main.bounds.height * 0.7
+            return (name.contains("TabBar") || name.contains("tabBar")) && !(view is UITabBar)
+                && view.subviews.count >= 2
+                // Tab bars are typically at the bottom of the screen
+                && view.convert(view.bounds, to: nil).origin.y > UIScreen.main.bounds.height * 0.7
         }
         for tabBarView in customTabBars {
             // Get interactive children sorted left-to-right
@@ -320,7 +338,10 @@ enum PepperElementResolver {
         while let vc = current {
             if let tab = vc as? UITabBarController { return tab }
             if let nav = vc as? UINavigationController,
-               let tab = nav.viewControllers.first as? UITabBarController { return tab }
+                let tab = nav.viewControllers.first as? UITabBarController
+            {
+                return tab
+            }
             current = vc.presentedViewController
         }
         return nil
@@ -344,10 +365,8 @@ enum PepperElementResolver {
 
         // Find button elements whose center falls within the tab bar's frame
         let buttons = elements.filter { elem in
-            elem.isInteractive &&
-            elem.traits.contains("button") &&
-            elem.frame.width > 0 && elem.frame.height > 0 &&
-            tabBarFrame.contains(CGPoint(x: elem.frame.midX, y: elem.frame.midY))
+            elem.isInteractive && elem.traits.contains("button") && elem.frame.width > 0 && elem.frame.height > 0
+                && tabBarFrame.contains(CGPoint(x: elem.frame.midX, y: elem.frame.midY))
         }.sorted { $0.frame.midX < $1.frame.midX }
 
         return buttons

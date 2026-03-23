@@ -56,7 +56,7 @@ extension PepperSwiftUIBridge {
             let mirror = Mirror(reflecting: view)
             var hostInfo: [String: Any] = [
                 "class": typeName,
-                "depth": depth
+                "depth": depth,
             ]
 
             // Extract SwiftUI view type from mirror children
@@ -102,26 +102,27 @@ extension PepperSwiftUIBridge {
             // Skip internal SwiftUI storage types that aren't useful
             if label.hasPrefix("_") && !label.hasPrefix("_tree") {
                 // Still include if it's a view-like type
-                if childType.contains("View") || childType.contains("Text") ||
-                   childType.contains("Button") || childType.contains("Stack") ||
-                   childType.contains("List") || childType.contains("Form") ||
-                   childType.contains("Toggle") || childType.contains("Image") {
+                if childType.contains("View") || childType.contains("Text") || childType.contains("Button")
+                    || childType.contains("Stack") || childType.contains("List") || childType.contains("Form")
+                    || childType.contains("Toggle") || childType.contains("Image")
+                {
                     children.append(mirrorSwiftUIView(child.value, maxDepth: maxDepth, currentDepth: currentDepth + 1))
                 }
                 continue
             }
 
             // For "content", "body", "source", "label" children, recurse
-            if label == "content" || label == "body" || label == "source" ||
-               label == "label" || label == "destination" {
+            if label == "content" || label == "body" || label == "source" || label == "label" || label == "destination"
+            {
                 children.append(mirrorSwiftUIView(child.value, maxDepth: maxDepth, currentDepth: currentDepth + 1))
-            } else if childType.contains("View") || childType.contains("Text") ||
-                      childType.contains("Button") || childType.contains("Stack") {
+            } else if childType.contains("View") || childType.contains("Text") || childType.contains("Button")
+                || childType.contains("Stack")
+            {
                 children.append(mirrorSwiftUIView(child.value, maxDepth: maxDepth, currentDepth: currentDepth + 1))
             } else {
                 // For simple values, store them directly
                 let strVal = String(describing: child.value)
-                if strVal.count < 200 { // Avoid huge string dumps
+                if strVal.count < 200 {  // Avoid huge string dumps
                     info[label] = strVal
                 }
             }
@@ -154,11 +155,9 @@ extension PepperSwiftUIBridge {
         let typeName = String(describing: type(of: view))
 
         // SwiftUI platform views have distinctive class names
-        let isSwiftUIPlatformView = typeName.contains("PlatformGroup") ||
-                                     typeName.contains("PlatformView") ||
-                                     typeName.contains("_UIHostingView") ||
-                                     typeName.contains("SwiftUI") ||
-                                     typeName.contains("DisplayList")
+        let isSwiftUIPlatformView =
+            typeName.contains("PlatformGroup") || typeName.contains("PlatformView")
+            || typeName.contains("_UIHostingView") || typeName.contains("SwiftUI") || typeName.contains("DisplayList")
 
         if isSwiftUIPlatformView || view.accessibilityLabel != nil || view.accessibilityIdentifier != nil {
             var info: [String: Any] = [
@@ -168,8 +167,8 @@ extension PepperSwiftUIBridge {
                     "x": Double(view.frame.origin.x),
                     "y": Double(view.frame.origin.y),
                     "width": Double(view.frame.size.width),
-                    "height": Double(view.frame.size.height)
-                ]
+                    "height": Double(view.frame.size.height),
+                ],
             ]
 
             if let label = view.accessibilityLabel {

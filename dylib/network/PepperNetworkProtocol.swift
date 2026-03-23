@@ -68,7 +68,8 @@ final class PepperNetworkProtocol: URLProtocol {
 
         // Only HTTP/HTTPS
         guard let scheme = request.url?.scheme?.lowercased(),
-              scheme == "http" || scheme == "https" else { return false }
+            scheme == "http" || scheme == "https"
+        else { return false }
 
         // Skip already-handled requests
         if URLProtocol.property(forKey: handledKey, in: request) != nil {
@@ -250,7 +251,10 @@ final class PepperNetworkProtocol: URLProtocol {
 
 extension PepperNetworkProtocol: URLSessionDataDelegate {
 
-    func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse, completionHandler: @escaping (URLSession.ResponseDisposition) -> Void) {
+    func urlSession(
+        _ session: URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse,
+        completionHandler: @escaping (URLSession.ResponseDisposition) -> Void
+    ) {
         httpResponse = response as? HTTPURLResponse
         // If matched override or throttle, defer sending the response — we'll deliver after buffering
         if matchedOverride == nil && throttleBytesPerSecond == nil {
@@ -384,7 +388,8 @@ extension PepperNetworkProtocol: URLSessionDataDelegate {
 
     /// Construct a new HTTPURLResponse with an updated Content-Length header.
     /// HTTPURLResponse is immutable, so we must create a new instance.
-    private static func responseWithUpdatedContentLength(_ original: HTTPURLResponse, newLength: Int) -> HTTPURLResponse {
+    private static func responseWithUpdatedContentLength(_ original: HTTPURLResponse, newLength: Int) -> HTTPURLResponse
+    {
         var headers = PepperNetworkInterceptor.extractHeaders(original)
         headers["Content-Length"] = String(newLength)
         return HTTPURLResponse(

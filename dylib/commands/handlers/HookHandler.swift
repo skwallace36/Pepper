@@ -43,7 +43,9 @@ struct HookHandler: PepperHandler {
             PepperMethodHookEngine.clearLog(hookId)
             return .ok(id: command.id, data: ["cleared": AnyCodable(hookId ?? "all")])
         default:
-            return .error(id: command.id, message: "Unknown action: \(action). Use: install, remove, remove_all, list, log, clear")
+            return .error(
+                id: command.id, message: "Unknown action: \(action). Use: install, remove, remove_all, list, log, clear"
+            )
         }
     }
 
@@ -68,12 +70,14 @@ struct HookHandler: PepperHandler {
 
         if let hookId = hookId {
             logger.info("Installed hook \(hookId) on \(isClassMethod ? "+" : "-")[\(className) \(methodName)]")
-            return .ok(id: command.id, data: [
-                "hook_id": AnyCodable(hookId),
-                "class": AnyCodable(className),
-                "method": AnyCodable(methodName),
-                "class_method": AnyCodable(isClassMethod),
-            ])
+            return .ok(
+                id: command.id,
+                data: [
+                    "hook_id": AnyCodable(hookId),
+                    "class": AnyCodable(className),
+                    "method": AnyCodable(methodName),
+                    "class_method": AnyCodable(isClassMethod),
+                ])
         } else {
             return .error(id: command.id, message: (errorMsg as String?) ?? "Failed to install hook")
         }
@@ -103,10 +107,12 @@ struct HookHandler: PepperHandler {
             }
             return dict
         }
-        return .ok(id: command.id, data: [
-            "hooks": AnyCodable(serialized.map { AnyCodable($0) }),
-            "count": AnyCodable(PepperMethodHookEngine.hookCount()),
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "hooks": AnyCodable(serialized.map { AnyCodable($0) }),
+                "count": AnyCodable(PepperMethodHookEngine.hookCount()),
+            ])
     }
 
     // MARK: - Log
@@ -128,10 +134,12 @@ struct HookHandler: PepperHandler {
             return dict
         }
 
-        return .ok(id: command.id, data: [
-            "entries": AnyCodable(serialized.map { AnyCodable($0) }),
-            "count": AnyCodable(entries.count),
-            "hook_id": AnyCodable(hookId as Any),
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "entries": AnyCodable(serialized.map { AnyCodable($0) }),
+                "count": AnyCodable(entries.count),
+                "hook_id": AnyCodable(hookId as Any),
+            ])
     }
 }

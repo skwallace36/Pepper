@@ -34,9 +34,11 @@ struct WaitHandler: PepperHandler {
         // Check immediately — if already satisfied, return without waiting.
         if evaluate(condition) {
             logger.info("Wait condition already met")
-            return .ok(id: command.id, data: [
-                "waited_ms": AnyCodable(0)
-            ])
+            return .ok(
+                id: command.id,
+                data: [
+                    "waited_ms": AnyCodable(0)
+                ])
         }
 
         // Poll on a background thread so the main thread's RunLoop can process
@@ -63,9 +65,11 @@ struct WaitHandler: PepperHandler {
                 if conditionMet {
                     let elapsedMs = Int(Date().timeIntervalSince(startTime) * 1000)
                     handler.logger.info("Wait condition met after \(elapsedMs)ms")
-                    pollResult = .ok(id: command.id, data: [
-                        "waited_ms": AnyCodable(elapsedMs)
-                    ])
+                    pollResult = .ok(
+                        id: command.id,
+                        data: [
+                            "waited_ms": AnyCodable(elapsedMs)
+                        ])
                     group.leave()
                     return
                 }
@@ -214,7 +218,8 @@ struct WaitHandler: PepperHandler {
         }
         // Custom tab bar container (via TabBarProvider)
         if PepperAppConfig.shared.tabBarProvider?.isTabBarContainer(vc) == true,
-           let displayed = vc.pepper_currentViewController {
+            let displayed = vc.pepper_currentViewController
+        {
             return topMost(from: displayed)
         }
         return vc

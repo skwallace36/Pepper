@@ -10,7 +10,9 @@ extension IntrospectHandler {
         let maxDepth = command.params?["depth"]?.intValue ?? 20
         let result = PepperSwiftUIBridge.shared.introspect(maxDepth: maxDepth)
 
-        logger.info("Full introspection: \(result.accessibilityElements.count) accessibility, \(result.viewHierarchyElements.count) view hierarchy, \(result.hostingControllerCount) hosting controllers")
+        logger.info(
+            "Full introspection: \(result.accessibilityElements.count) accessibility, \(result.viewHierarchyElements.count) view hierarchy, \(result.hostingControllerCount) hosting controllers"
+        )
 
         return .ok(id: command.id, data: result.toDictionary())
     }
@@ -26,7 +28,7 @@ extension IntrospectHandler {
 
         var data: [String: AnyCodable] = [
             "elements": AnyCodable(elements.map { AnyCodable($0.toDictionary()) }),
-            "count": AnyCodable(elements.count)
+            "count": AnyCodable(elements.count),
         ]
         if bridge.lastAccessibilityTruncated {
             data["truncated"] = AnyCodable(true)
@@ -42,7 +44,8 @@ extension IntrospectHandler {
         let raw = bridge.collectAccessibilityElements()
         let elements = bridge.annotateDepth(raw)
 
-        let textItems = elements.compactMap { elem -> (label: String, frame: CGRect, type: String, hitReachable: Bool)? in
+        let textItems = elements.compactMap {
+            elem -> (label: String, frame: CGRect, type: String, hitReachable: Bool)? in
             guard let label = elem.label, !label.isEmpty else { return nil }
             return (label: label, frame: elem.frame, type: elem.type, hitReachable: elem.hitReachable)
         }
@@ -55,8 +58,8 @@ extension IntrospectHandler {
                     "x": AnyCodable(Double(item.frame.origin.x)),
                     "y": AnyCodable(Double(item.frame.origin.y)),
                     "width": AnyCodable(Double(item.frame.size.width)),
-                    "height": AnyCodable(Double(item.frame.size.height))
-                ])
+                    "height": AnyCodable(Double(item.frame.size.height)),
+                ]),
             ]
             if !item.hitReachable {
                 dict["hit_reachable"] = AnyCodable(false)
@@ -68,7 +71,7 @@ extension IntrospectHandler {
 
         var data: [String: AnyCodable] = [
             "texts": AnyCodable(serialized.map { AnyCodable($0) }),
-            "count": AnyCodable(textItems.count)
+            "count": AnyCodable(textItems.count),
         ]
         if bridge.lastAccessibilityTruncated {
             data["truncated"] = AnyCodable(true)
@@ -89,7 +92,7 @@ extension IntrospectHandler {
 
         var data: [String: AnyCodable] = [
             "elements": AnyCodable(elements.map { AnyCodable($0.toDictionary()) }),
-            "count": AnyCodable(elements.count)
+            "count": AnyCodable(elements.count),
         ]
         if bridge.lastAccessibilityTruncated {
             data["truncated"] = AnyCodable(true)
@@ -118,8 +121,9 @@ extension IntrospectHandler {
         }
 
         if let nearestDict = command.params?["nearest_to"]?.dictValue,
-           let nx = nearestDict["x"]?.doubleValue,
-           let ny = nearestDict["y"]?.doubleValue {
+            let nx = nearestDict["x"]?.doubleValue,
+            let ny = nearestDict["y"]?.doubleValue
+        {
             let point = CGPoint(x: nx, y: ny)
             let count = nearestDict["count"]?.intValue ?? 5
             let direction = nearestDict["direction"]?.stringValue
@@ -129,13 +133,14 @@ extension IntrospectHandler {
         let labeledCount = elements.filter { $0.labeled }.count
         let unlabeledCount = elements.count - labeledCount
 
-        logger.info("Interactive discovery: \(elements.count) elements (\(labeledCount) labeled, \(unlabeledCount) unlabeled)")
+        logger.info(
+            "Interactive discovery: \(elements.count) elements (\(labeledCount) labeled, \(unlabeledCount) unlabeled)")
 
         var data: [String: AnyCodable] = [
             "elements": AnyCodable(elements.map { AnyCodable($0.toDictionary()) }),
             "count": AnyCodable(elements.count),
             "labeled_count": AnyCodable(labeledCount),
-            "unlabeled_count": AnyCodable(unlabeledCount)
+            "unlabeled_count": AnyCodable(unlabeledCount),
         ]
         if bridge.lastInteractiveTruncated {
             data["truncated"] = AnyCodable(true)
@@ -156,10 +161,12 @@ extension IntrospectHandler {
 
         logger.info("Mirror introspection: \(mirrorInfo.count) hosting views analyzed")
 
-        return .ok(id: command.id, data: [
-            "mirrors": AnyCodable(mirrorInfo.map { AnyCodable($0) }),
-            "count": AnyCodable(mirrorInfo.count)
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "mirrors": AnyCodable(mirrorInfo.map { AnyCodable($0) }),
+                "count": AnyCodable(mirrorInfo.count),
+            ])
     }
 
     // MARK: - Platform view analysis
@@ -169,9 +176,11 @@ extension IntrospectHandler {
 
         logger.info("Platform view analysis: \(platformViews.count) platform views")
 
-        return .ok(id: command.id, data: [
-            "views": AnyCodable(platformViews.map { AnyCodable($0) }),
-            "count": AnyCodable(platformViews.count)
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "views": AnyCodable(platformViews.map { AnyCodable($0) }),
+                "count": AnyCodable(platformViews.count),
+            ])
     }
 }

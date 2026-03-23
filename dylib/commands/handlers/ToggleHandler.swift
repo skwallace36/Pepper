@@ -38,11 +38,13 @@ struct ToggleHandler: PepperHandler {
             if success {
                 // Read the new value after the tap (switch toggles on touch up)
                 let newValue = uiSwitch.isOn
-                return .ok(id: command.id, data: [
-                    "element": AnyCodable(elementID),
-                    "type": AnyCodable("switch"),
-                    "value": AnyCodable(newValue)
-                ])
+                return .ok(
+                    id: command.id,
+                    data: [
+                        "element": AnyCodable(elementID),
+                        "type": AnyCodable("switch"),
+                        "value": AnyCodable(newValue),
+                    ])
             } else {
                 return .error(id: command.id, message: "Toggle tap failed — HID event synthesis unavailable")
             }
@@ -76,11 +78,13 @@ struct ToggleHandler: PepperHandler {
             let success = PepperHIDEventSynthesizer.shared.performTap(at: center, in: window)
 
             if success {
-                return .ok(id: command.id, data: [
-                    "element": AnyCodable(elementID),
-                    "type": AnyCodable("segmentedControl"),
-                    "value": AnyCodable(segment.selectedSegmentIndex)
-                ])
+                return .ok(
+                    id: command.id,
+                    data: [
+                        "element": AnyCodable(elementID),
+                        "type": AnyCodable("segmentedControl"),
+                        "value": AnyCodable(segment.selectedSegmentIndex),
+                    ])
             } else {
                 return .error(id: command.id, message: "Segment tap failed — HID event synthesis unavailable")
             }

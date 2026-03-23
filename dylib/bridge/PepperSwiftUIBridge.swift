@@ -1,5 +1,5 @@
-import UIKit
 import SwiftUI
+import UIKit
 
 /// Bridge for discovering SwiftUI views via the accessibility tree.
 ///
@@ -27,7 +27,8 @@ final class PepperSwiftUIBridge {
     /// True when the last `discoverInteractiveElements()` hit any element cap.
     var lastInteractiveTruncated = false
 
-    var cachedAccessibility: (gen: UInt64, elements: [PepperAccessibilityElement], truncated: Bool, time: CFAbsoluteTime)?
+    var cachedAccessibility:
+        (gen: UInt64, elements: [PepperAccessibilityElement], truncated: Bool, time: CFAbsoluteTime)?
     var cachedInteractive: (gen: UInt64, elements: [PepperInteractiveElement], truncated: Bool, time: CFAbsoluteTime)?
 
     /// Maximum cache age in seconds. Prevents stale results when the UI
@@ -92,8 +93,7 @@ final class PepperSwiftUIBridge {
     /// and we can't use `is UIHostingController<SomeView>` without knowing the type.
     func isHostingController(_ vc: UIViewController) -> Bool {
         let typeName = String(describing: type(of: vc))
-        return typeName.contains("UIHostingController") ||
-               typeName.contains("HostingController")
+        return typeName.contains("UIHostingController") || typeName.contains("HostingController")
     }
 
     // MARK: - SwiftUI element discovery
@@ -250,7 +250,7 @@ final class PepperSwiftUIBridge {
             [
                 "hosting_controller": String(describing: type(of: vc)),
                 "screen_id": vc.pepperScreenID,
-                "tree": vc.view.pepper_viewTree(maxDepth: 8)
+                "tree": vc.view.pepper_viewTree(maxDepth: 8),
             ] as [String: Any]
         }
     }
@@ -273,9 +273,12 @@ final class PepperSwiftUIBridge {
         return scrollViews
     }
 
-    private func collectScrollViewsRecursive(view: UIView, into results: inout [(scrollView: UIScrollView, frameInWindow: CGRect, direction: String)]) {
+    private func collectScrollViewsRecursive(
+        view: UIView, into results: inout [(scrollView: UIScrollView, frameInWindow: CGRect, direction: String)]
+    ) {
         if let sv = view as? UIScrollView, !sv.isHidden, sv.alpha > 0.01,
-           sv.bounds.width > 0, sv.bounds.height > 0 {
+            sv.bounds.width > 0, sv.bounds.height > 0
+        {
             let frameInWindow = sv.convert(sv.bounds, to: nil)
             let contentW = sv.contentSize.width
             let contentH = sv.contentSize.height
@@ -285,10 +288,15 @@ final class PepperSwiftUIBridge {
             let scrollsH = contentW > boundsW + 1
             let scrollsV = contentH > boundsH + 1
             let direction: String
-            if scrollsH && scrollsV { direction = "both" }
-            else if scrollsH { direction = "horizontal" }
-            else if scrollsV { direction = "vertical" }
-            else { direction = "none" }
+            if scrollsH && scrollsV {
+                direction = "both"
+            } else if scrollsH {
+                direction = "horizontal"
+            } else if scrollsV {
+                direction = "vertical"
+            } else {
+                direction = "none"
+            }
             if direction != "none" {
                 results.append((scrollView: sv, frameInWindow: frameInWindow, direction: direction))
             }
@@ -338,7 +346,8 @@ final class PepperSwiftUIBridge {
         // Only apply for elements in the top 60pt or bottom 60pt of the screen —
         // elements in the middle should trust the scroll offset calculation.
         let screenBounds = UIScreen.main.bounds
-        let isFixedEdge = screenBounds.contains(elementCenter)
+        let isFixedEdge =
+            screenBounds.contains(elementCenter)
             && (elementCenter.y < 60 || elementCenter.y > screenBounds.height - 60)
         let visible = match.visibleInViewport || isFixedEdge
         return PepperScrollContext(direction: match.direction, visibleInViewport: visible)

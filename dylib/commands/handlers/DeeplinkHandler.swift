@@ -18,20 +18,28 @@ struct DeeplinkHandler: PepperHandler {
 
         // No deep links configured (generic mode — no adapter)
         if config.deeplinks.isEmpty && config.deeplinkCatalog.isEmpty {
-            return .ok(id: command.id, data: [
-                "deeplinks": AnyCodable([AnyCodable]()),
-                "count": AnyCodable(0),
-                "note": AnyCodable("No deep links configured. Deep links require an app adapter with a deeplinkScheme and deeplink catalog. Use 'navigate' with 'tab' or 'action' params for navigation in generic mode.")
-            ])
+            return .ok(
+                id: command.id,
+                data: [
+                    "deeplinks": AnyCodable([AnyCodable]()),
+                    "count": AnyCodable(0),
+                    "note": AnyCodable(
+                        "No deep links configured. Deep links require an app adapter with a deeplinkScheme and deeplink catalog. Use 'navigate' with 'tab' or 'action' params for navigation in generic mode."
+                    ),
+                ])
         }
 
         // Prefer the new self-documenting deeplinks list
         if !config.deeplinks.isEmpty {
-            return .ok(id: command.id, data: [
-                "deeplinks": AnyCodable(config.deeplinks.map { AnyCodable($0) }),
-                "count": AnyCodable(config.deeplinks.count),
-                "usage": AnyCodable("Use {\"cmd\": \"navigate\", \"params\": {\"deeplink\": \"<path>\"}} to navigate. Paths: \(config.knownDeeplinks.joined(separator: ", "))")
-            ])
+            return .ok(
+                id: command.id,
+                data: [
+                    "deeplinks": AnyCodable(config.deeplinks.map { AnyCodable($0) }),
+                    "count": AnyCodable(config.deeplinks.count),
+                    "usage": AnyCodable(
+                        "Use {\"cmd\": \"navigate\", \"params\": {\"deeplink\": \"<path>\"}} to navigate. Paths: \(config.knownDeeplinks.joined(separator: ", "))"
+                    ),
+                ])
         }
 
         // Legacy: rich catalog format
@@ -48,7 +56,7 @@ struct DeeplinkHandler: PepperHandler {
                 "path": AnyCodable(path),
                 "category": AnyCodable(info["category"] ?? ""),
                 "description": AnyCodable(info["description"] ?? ""),
-                "url": AnyCodable("\(config.deeplinkScheme)://\(path)")
+                "url": AnyCodable("\(config.deeplinkScheme)://\(path)"),
             ]
             return AnyCodable(entry)
         }
@@ -56,11 +64,15 @@ struct DeeplinkHandler: PepperHandler {
         let allCategories = config.deeplinkCatalog.compactMap { $0["category"] }
         let categories = Set(allCategories).sorted()
 
-        return .ok(id: command.id, data: [
-            "deeplinks": AnyCodable(deeplinks),
-            "count": AnyCodable(items.count),
-            "categories": AnyCodable(categories.map { AnyCodable($0) }),
-            "usage": AnyCodable("Use {\"cmd\": \"navigate\", \"params\": {\"deeplink\": \"<path>\", \"deeplink_params\": {\"key\": \"value\"}}} to navigate")
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "deeplinks": AnyCodable(deeplinks),
+                "count": AnyCodable(items.count),
+                "categories": AnyCodable(categories.map { AnyCodable($0) }),
+                "usage": AnyCodable(
+                    "Use {\"cmd\": \"navigate\", \"params\": {\"deeplink\": \"<path>\", \"deeplink_params\": {\"key\": \"value\"}}} to navigate"
+                ),
+            ])
     }
 }

@@ -34,16 +34,20 @@ struct ClipboardHandler: PepperHandler {
                 return .error(id: command.id, message: "Missing 'value' param.")
             }
             pb.string = value
-            return .ok(id: command.id, data: [
-                "ok": AnyCodable(true),
-                "value": AnyCodable(value)
-            ])
+            return .ok(
+                id: command.id,
+                data: [
+                    "ok": AnyCodable(true),
+                    "value": AnyCodable(value),
+                ])
 
         case "clear":
             pb.items = []
-            return .ok(id: command.id, data: [
-                "ok": AnyCodable(true)
-            ])
+            return .ok(
+                id: command.id,
+                data: [
+                    "ok": AnyCodable(true)
+                ])
 
         default:
             return .error(id: command.id, message: "Unknown clipboard action '\(action)'. Use get/set/clear.")
