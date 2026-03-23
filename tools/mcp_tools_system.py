@@ -8,6 +8,7 @@ import asyncio
 import json
 import subprocess
 
+from pepper_ax import find_and_dismiss_dialog as _ax_dismiss
 from pepper_common import get_config, require_parse_json, try_parse_json
 from pydantic import Field
 
@@ -26,15 +27,25 @@ _PERMISSION_KEYWORDS = {
 
 # All permissions to try when we can't infer the type
 _ALL_PERMISSIONS = [
-    "photos", "photos-add", "camera", "microphone",
-    "contacts", "calendar", "reminders",
-    "location-always", "location-when-in-use",
-    "notifications", "health",
+    "photos",
+    "photos-add",
+    "camera",
+    "microphone",
+    "contacts",
+    "calendar",
+    "reminders",
+    "location-always",
+    "location-when-in-use",
+    "notifications",
+    "health",
 ]
 
 # Common permission dialog buttons in preference order
 _PERMISSION_BUTTONS = [
-    "Allow While Using App", "Allow Once", "Allow", "OK",
+    "Allow While Using App",
+    "Allow Once",
+    "Allow",
+    "OK",
 ]
 
 
@@ -98,7 +109,8 @@ async def _dismiss_system_dialog(simulator, resolve_and_send, resolve_simulator)
     for perm in permissions_to_try:
         result = subprocess.run(
             ["xcrun", "simctl", "privacy", sim, "grant", perm, bid],
-            capture_output=True, text=True,
+            capture_output=True,
+            text=True,
         )
         if result.returncode == 0:
             granted.append(perm)
@@ -116,33 +128,63 @@ async def _dismiss_system_dialog(simulator, resolve_and_send, resolve_simulator)
         recheck_detected = True
 
     if not recheck_detected:
-        return json.dumps({
-            "status": "ok", "dismissed": True,
-            "method": "privacy_grant", "permissions_granted": granted,
-        }, indent=2)
+        return json.dumps(
+            {
+                "status": "ok",
+                "dismissed": True,
+                "method": "privacy_grant",
+                "permissions_granted": granted,
+            },
+            indent=2,
+        )
 
-    # Step 6: Fall back to accessibility-based button click
+    # Step 6: Fall back to macOS Accessibility API (AXUIElement) — clicks buttons
+    # directly in the Simulator window, works for SpringBoard-rendered dialogs
+    # that the in-process interceptor can't reach.
+    ax_result = await asyncio.get_event_loop().run_in_executor(None, _ax_dismiss)
+    if ax_result.get("dismissed"):
+        return json.dumps(
+            {
+                "status": "ok",
+                "dismissed": True,
+                "method": "ax_accessibility",
+                "button": ax_result.get("button"),
+                "permissions_granted": granted,
+            },
+            indent=2,
+        )
+
+    # Step 7: Last resort — try in-process button click (works for intercepted alerts)
     for btn in _PERMISSION_BUTTONS:
         dismiss_raw = await resolve_and_send(simulator, "dialog", {"action": "dismiss", "button": btn})
         try:
             dismiss_resp = json.loads(dismiss_raw)
             dd = dismiss_resp.get("data", dismiss_resp)
             if dd.get("dismissed"):
-                return json.dumps({
-                    "status": "ok", "dismissed": True,
-                    "method": "button_click", "button": btn,
-                    "permissions_granted": granted,
-                }, indent=2)
+                return json.dumps(
+                    {
+                        "status": "ok",
+                        "dismissed": True,
+                        "method": "button_click",
+                        "button": btn,
+                        "permissions_granted": granted,
+                    },
+                    indent=2,
+                )
         except json.JSONDecodeError:
             continue
 
     # Could not dismiss
-    return json.dumps({
-        "status": "ok", "dismissed": False,
-        "reason": "System dialog detected but could not dismiss",
-        "permissions_granted": granted,
-        "suggestion": "Try tapping the dialog button manually or use 'simulator permissions' tool",
-    }, indent=2)
+    return json.dumps(
+        {
+            "status": "ok",
+            "dismissed": False,
+            "reason": "System dialog detected but could not dismiss",
+            "permissions_granted": granted,
+            "suggestion": "Try tapping the dialog button manually or use 'simulator permissions' tool",
+        },
+        indent=2,
+    )
 
 
 def register_system_tools(mcp, resolve_and_send, act_and_look, resolve_simulator=None):
@@ -158,10 +200,14 @@ def register_system_tools(mcp, resolve_and_send, act_and_look, resolve_simulator
     @mcp.tool()
     async def dialog(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
-        action: str = Field(description="Action: list, current, dismiss, dismiss_system, detect_system, auto_dismiss, share_sheet, dismiss_sheet"),
+        action: str = Field(
+            description="Action: list, current, dismiss, dismiss_system, detect_system, auto_dismiss, share_sheet, dismiss_sheet"
+        ),
         button: str | None = Field(default=None, description="Button title to tap (for dismiss action)"),
         enabled: bool | None = Field(default=None, description="Enable/disable auto-dismiss (for auto_dismiss action)"),
-        buttons: str | None = Field(default=None, description="JSON array of button titles for auto-dismiss (e.g. '[\"Allow\",\"OK\"]')"),
+        buttons: str | None = Field(
+            default=None, description='JSON array of button titles for auto-dismiss (e.g. \'["Allow","OK"]\')'
+        ),
     ) -> str:
         """Interact with system dialogs (alerts, permission prompts, share sheets).
         - list: see all pending dialogs
@@ -231,7 +277,9 @@ def register_system_tools(mcp, resolve_and_send, act_and_look, resolve_simulator
         action: str | None = Field(default=None, description="Action: deliver (default), pending, clear"),
         title: str | None = Field(default=None, description="Notification title"),
         body: str | None = Field(default=None, description="Notification body text"),
-        data: str | None = Field(default=None, description="JSON userInfo payload for deeplink routing (e.g. '{\"type\":\"walk_summary\"}')"),
+        data: str | None = Field(
+            default=None, description='JSON userInfo payload for deeplink routing (e.g. \'{"type":"walk_summary"}\')'
+        ),
     ) -> str:
         """Simulate push notifications — deliver, list pending, or clear all.
         Delivered notifications appear like real remote pushes. Include data payload to test deeplink routing."""
@@ -252,8 +300,12 @@ def register_system_tools(mcp, resolve_and_send, act_and_look, resolve_simulator
     @mcp.tool()
     async def status(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
-        memory: bool = Field(default=False, description="Include process memory stats (resident size, virtual size, footprint)"),
-        memory_detail: bool = Field(default=False, description="Include detailed VM breakdown (internal, compressed, purgeable)"),
+        memory: bool = Field(
+            default=False, description="Include process memory stats (resident size, virtual size, footprint)"
+        ),
+        memory_detail: bool = Field(
+            default=False, description="Include detailed VM breakdown (internal, compressed, purgeable)"
+        ),
     ) -> str:
         """Get device, app, and Pepper server info — bundle ID, version, port, connections, current screen.
         Add memory=true for process memory stats, or memory_detail=true for full VM breakdown."""
@@ -271,7 +323,9 @@ def register_system_tools(mcp, resolve_and_send, act_and_look, resolve_simulator
         simulator: str | None = Field(default=None, description="Simulator UDID"),
         text: str | None = Field(default=None, description="Highlight element by text label"),
         frame: str | None = Field(default=None, description="Highlight a frame: 'x,y,width,height'"),
-        color: str | None = Field(default=None, description="Color name (blue/green/red/yellow/purple) or hex (#ff0000)"),
+        color: str | None = Field(
+            default=None, description="Color name (blue/green/red/yellow/purple) or hex (#ff0000)"
+        ),
         label: str | None = Field(default=None, description="Label text to show on the highlight"),
         duration: float | None = Field(default=None, description="How long to show in seconds (default: 0.8)"),
         clear: bool = Field(default=False, description="Clear all highlights"),
@@ -301,7 +355,10 @@ def register_system_tools(mcp, resolve_and_send, act_and_look, resolve_simulator
     @mcp.tool()
     async def orientation(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
-        value: str | None = Field(default=None, description="Target orientation: portrait, landscape_left, landscape_right, portrait_upside_down"),
+        value: str | None = Field(
+            default=None,
+            description="Target orientation: portrait, landscape_left, landscape_right, portrait_upside_down",
+        ),
     ) -> str:
         """Get or set device orientation. Omit value to query current orientation."""
         params: dict = {}
@@ -312,7 +369,9 @@ def register_system_tools(mcp, resolve_and_send, act_and_look, resolve_simulator
     @mcp.tool()
     async def locale(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
-        action: str | None = Field(default=None, description="Action: current (default), set, reset, lookup, languages"),
+        action: str | None = Field(
+            default=None, description="Action: current (default), set, reset, lookup, languages"
+        ),
         language: str | None = Field(default=None, description="Language code for set/lookup (e.g. 'es', 'ja')"),
         region: str | None = Field(default=None, description="Region code for set (e.g. 'JP', 'US')"),
         key: str | None = Field(default=None, description="Localization key to look up (for lookup action)"),
@@ -370,7 +429,9 @@ def register_system_tools(mcp, resolve_and_send, act_and_look, resolve_simulator
     async def hook(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
         action: str = Field(default="list", description="Action: install, remove, remove_all, list, log, clear"),
-        class_name: str | None = Field(default=None, description="ObjC class name (for install, e.g. 'UIViewController')"),
+        class_name: str | None = Field(
+            default=None, description="ObjC class name (for install, e.g. 'UIViewController')"
+        ),
         method: str | None = Field(default=None, description="ObjC method name (for install, e.g. 'viewDidAppear:')"),
         class_method: bool = Field(default=False, description="Hook class method (+) instead of instance method (-)"),
         hook_id: str | None = Field(default=None, description="Hook ID (for remove, log, clear)"),
@@ -403,7 +464,9 @@ def register_system_tools(mcp, resolve_and_send, act_and_look, resolve_simulator
     @mcp.tool()
     async def find(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
-        predicate: str = Field(description="NSPredicate format string (e.g. \"label CONTAINS 'Save' AND type == 'button'\")"),
+        predicate: str = Field(
+            description="NSPredicate format string (e.g. \"label CONTAINS 'Save' AND type == 'button'\")"
+        ),
         action: str = Field(default="list", description="Action: list (default), first, count"),
         limit: int | None = Field(default=None, description="Max results to return (default: 50)"),
     ) -> str:
