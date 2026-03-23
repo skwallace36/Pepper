@@ -66,7 +66,8 @@ except ImportError:
 
 from pepper_common import (
     PEPPER_DIR, PORT_DIR, load_env, get_config,
-    discover_port, discover_simulator, list_simulators,
+    discover_port, discover_simulator, discover_instance, list_simulators,
+    list_instances,
 )
 
 
@@ -174,19 +175,21 @@ def require_parse_json(value, field_name="value"):
 # WebSocket command sender
 # ---------------------------------------------------------------------------
 
-async def send_command(port: int, cmd: str, params: Optional[dict] = None, timeout: float = 10) -> dict:
+async def send_command(port: int, cmd: str, params: Optional[dict] = None,
+                       timeout: float = 10, host: str = "localhost") -> dict:
     """Send a command to Pepper's WebSocket server and return the response.
 
     Wraps pepper_websocket.send_command with MCP-appropriate error handling
     (returns error dicts instead of raising).
     """
     msg = make_command(cmd, params)
+    addr = f"{host}:{port}"
     try:
-        return await ws_send_command("localhost", port, msg, timeout=timeout)
+        return await ws_send_command(host, port, msg, timeout=timeout)
     except asyncio.TimeoutError:
         return {"status": "error", "error": f"Command timed out after {timeout}s"}
     except ConnectionRefusedError:
-        return {"status": "error", "error": f"Connection refused on port {port}. Is Pepper running?"}
+        return {"status": "error", "error": f"Connection refused at {addr}. Is Pepper running?"}
     except CrashError as e:
         return {
             "status": "error",
@@ -204,12 +207,16 @@ async def send_command(port: int, cmd: str, params: Optional[dict] = None, timeo
 
 
 async def resolve_and_send(simulator: Optional[str], cmd: str, params: Optional[dict] = None, timeout: float = 10) -> str:
-    """Resolve port and send command. Returns JSON string. Auto-appends crash info on APP CRASHED."""
+    """Resolve instance and send command. Returns JSON string. Auto-appends crash info on APP CRASHED.
+
+    The simulator parameter accepts any Pepper instance identifier — simulator UDID or device UDID.
+    Discovery checks both simulator port files and device registrations.
+    """
     try:
-        udid, port = discover_simulator(simulator)
+        host, port, udid = discover_instance(simulator)
     except RuntimeError as e:
         return json.dumps({"status": "error", "error": str(e)}, indent=2)
-    resp = await send_command(port, cmd, params, timeout)
+    resp = await send_command(port, cmd, params, timeout, host=host)
     result = json.dumps(resp, indent=2)
     # Auto-fetch crash info when app crashes
     error = resp.get("error", "")
