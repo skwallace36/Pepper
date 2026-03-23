@@ -77,6 +77,13 @@ final class PepperDialogInterceptor {
         guard !authSwizzlesInstalled else { return }
         authSwizzlesInstalled = true
 
+        // Skip authorization swizzles in agent mode — agents use simctl privacy
+        // grant instead, and these swizzles trigger dialogs that block agents.
+        if ProcessInfo.processInfo.environment["PEPPER_SKIP_PERMISSIONS"] == "1" {
+            pepperLog.info("Skipping authorization swizzles (PEPPER_SKIP_PERMISSIONS=1)", category: .lifecycle)
+            return
+        }
+
         installNotificationSwizzle()
         // installCurrentNotificationCenterSwizzle() — DISABLED: crashes on iOS 26 (BUG-307)
         installPhotoLibrarySwizzle()
