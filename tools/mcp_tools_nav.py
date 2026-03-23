@@ -13,7 +13,7 @@ from mcp.types import TextContent, ImageContent
 from pydantic import Field
 
 from mcp_screenshot import capture_screenshot
-from pepper_common import discover_simulator
+from pepper_common import discover_instance
 from pepper_format import format_look
 
 
@@ -40,7 +40,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
         Use visual=true to include a screenshot for visual validation.
         Use screenshot_quality='high' + save_screenshot='/tmp/foo.jpg' for PR validation screenshots."""
         try:
-            udid, port = discover_simulator(simulator)
+            host, port, udid = discover_instance(simulator)
         except RuntimeError as e:
             return [TextContent(type="text", text=str(e))]
 
@@ -48,12 +48,12 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
             # Run introspect and screenshot in parallel
             quality = screenshot_quality if screenshot_quality in ("standard", "high") else "standard"
             introspect_task = asyncio.create_task(
-                send_command(port, "look", {})
+                send_command(port, "look", {}, host=host)
             )
             screenshot_task = asyncio.create_task(capture_screenshot(udid, quality=quality))
             resp, screenshot_b64 = await asyncio.gather(introspect_task, screenshot_task)
         else:
-            resp = await send_command(port, "look", {})
+            resp = await send_command(port, "look", {}, host=host)
             screenshot_b64 = None
 
         if raw:

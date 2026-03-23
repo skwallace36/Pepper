@@ -2,10 +2,11 @@
 
 import asyncio
 import json
+from functools import partial
 from typing import Callable, Optional
 
 from mcp_crash import fetch_crash_info
-from pepper_common import discover_simulator
+from pepper_common import discover_instance
 from pepper_format import format_look
 
 # Type alias for the send_command callable expected by these functions.
@@ -167,15 +168,18 @@ async def act_and_look(
     """Send a command, then automatically run look to show screen state after the action.
     Returns: action result + screen summary + telemetry. Forces the check-act-verify loop."""
     try:
-        udid, port = discover_simulator(simulator)
+        host, port, udid = discover_instance(simulator)
     except RuntimeError as e:
         return json.dumps({"status": "error", "error": str(e)}, indent=2)
 
+    # Bind host so downstream telemetry calls reach the right target
+    bound_fn = partial(send_fn, host=host) if host != "localhost" else send_fn
+
     # Snapshot counts before action for telemetry delta
-    pre_counts = await snapshot_counts(port, send_fn)
+    pre_counts = await snapshot_counts(port, bound_fn)
 
     # Execute the action
-    action_resp = await send_fn(port, cmd, params, timeout)
+    action_resp = await bound_fn(port, cmd, params, timeout)
 
     # If the action failed, include screen state + guidance
     if action_resp.get("status") != "ok":
@@ -194,7 +198,7 @@ async def act_and_look(
         # Element not found — show what IS on screen
         if "not found" in err.lower() or "no hit-reachable" in err.lower():
             await asyncio.sleep(0.2)
-            look_resp = await send_fn(port, "look", {}, timeout=5)
+            look_resp = await bound_fn(port, "look", {}, timeout=5)
             screen_summary = format_look(look_resp) if look_resp.get("status") == "ok" else "(look failed)"
             return f"Error: {err}\n\n--- What's actually on screen ---\n{screen_summary}"
 
@@ -209,10 +213,10 @@ async def act_and_look(
 
     # Auto-look + telemetry in parallel
     look_task = asyncio.create_task(
-        send_fn(port, "look", {}, timeout=5)
+        bound_fn(port, "look", {}, timeout=5)
     )
     telemetry_task = asyncio.create_task(
-        gather_telemetry(port, pre_counts, send_fn)
+        gather_telemetry(port, pre_counts, bound_fn)
     )
 
     look_resp, telemetry = await asyncio.gather(look_task, telemetry_task, return_exceptions=True)

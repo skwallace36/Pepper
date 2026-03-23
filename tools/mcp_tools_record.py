@@ -11,7 +11,7 @@ from typing import Optional
 
 from pydantic import Field
 
-from pepper_common import discover_simulator
+from pepper_common import discover_instance
 
 # Active recording sessions: UDID → {"proc": subprocess, "path": str, "start_time": float}
 _active_recordings: dict = {}
@@ -41,7 +41,7 @@ def register_record_tools(mcp):
         Upload videos to GitHub via Playwright MCP (browser automation) for autoplay in PRs.
         Upload GIFs/screenshots via upload-screenshot tool (release assets)."""
         try:
-            udid, port = discover_simulator(simulator)
+            _host, _port, udid = discover_instance(simulator)
         except RuntimeError as e:
             return str(e)
 
