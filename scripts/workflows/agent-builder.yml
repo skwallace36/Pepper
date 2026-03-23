@@ -1,0 +1,96 @@
+# GitHub Actions workflow: Builder Agent
+# Runs on schedule or manual dispatch to implement tasks from the backlog.
+# Uses claude-code-action on Linux runners (no simulator needed).
+#
+# Install: make ci-agents-install
+# Requires repository secret: ANTHROPIC_API_KEY
+# Note: __ANTHROPIC_SECRET_REF__ is replaced by setup script during install.
+#
+# Build verification requires macOS + Xcode. This workflow handles
+# code-level implementation; the local pr-verifier handles build + test.
+
+name: Builder Agent
+
+on:
+  workflow_dispatch:
+    inputs:
+      area:
+        description: 'Area label to filter tasks (optional)'
+        required: false
+        type: string
+  schedule:
+    # Run twice daily at 10:00 and 22:00 UTC (when local machine may be off)
+    - cron: '0 10,22 * * *'
+
+concurrency:
+  group: builder
+  cancel-in-progress: false
+
+jobs:
+  build-task:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for kill switch
+        run: |
+          if [ -f .pepper-kill ]; then
+            echo "Kill switch active. Exiting."
+            exit 1
+          fi
+
+      - name: Claim next task
+        id: claim
+        run: |
+          AREA="${{ github.event.inputs.area }}"
+          if [ -n "$AREA" ]; then
+            RESULT=$(./scripts/pepper-task next --area "$AREA" 2>&1) || { echo "No tasks available"; exit 1; }
+          else
+            RESULT=$(./scripts/pepper-task next 2>&1) || { echo "No tasks available"; exit 1; }
+          fi
+          echo "task=$RESULT" >> "$GITHUB_OUTPUT"
+          NUMBER=$(echo "$RESULT" | python3 -c "import json,sys; print(json.load(sys.stdin)['number'])")
+          echo "number=$NUMBER" >> "$GITHUB_OUTPUT"
+
+      - name: Export credential
+        if: steps.claim.outputs.number != ''
+        run: |
+          echo "ANTHROPIC_API""_KEY=$CRED" >> "$GITHUB_ENV"
+        env:
+          CRED: __ANTHROPIC_SECRET_REF__
+
+      - name: Run Builder Agent
+        if: steps.claim.outputs.number != ''
+        uses: anthropics/claude-code-action@v1
+        with:
+          max_budget_usd: "3.00"
+          system_prompt: |
+            You are a Pepper builder agent running in CI.
+
+            Task claimed — Issue #${{ steps.claim.outputs.number }}.
+            Task data: ${{ steps.claim.outputs.task }}
+
+            Instructions:
+            1. Create branch: git checkout -b agent/builder/TASK-${{ steps.claim.outputs.number }}
+            2. Read the task body for details. Read relevant source code first.
+            3. Implement with small, focused commits.
+            4. Push: git push -u origin agent/builder/TASK-${{ steps.claim.outputs.number }}
+            5. Open a PR:
+               - Title: [agent/builder] TASK-${{ steps.claim.outputs.number }}: brief description
+               - Body: Include Fixes #${{ steps.claim.outputs.number }}
+               - Reviewer: skwallace36
+            6. If stuck after 3 attempts, comment on the issue.
+
+            SCOPE: You may modify files in dylib/, tools/, scripts/, test-app/, Makefile.
+            DO NOT modify: ROADMAP.md, docs/plans/, .claude/, .mcp.json, .env.
+
+            NOTE: You cannot run 'make build' in CI (no Xcode). Focus on code
+            correctness. The local pr-verifier agent will handle build verification.
