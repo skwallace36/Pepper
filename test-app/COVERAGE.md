@@ -38,8 +38,8 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `scroll` | bottom | pass | List tab (30 rows) | Scrolled to bottom; Item 29 visible at bottom |
 | `scroll` | down | pass | List tab (30 rows) |  |
 | `scroll` | up | pass | List tab (30 rows) | Scrolled up 400pt from bottom; items shifted upward as expected |
-| `scroll` | left | blocked | Horizontal scroll if added | Command executes without error but no horizontal scroll view in test app to verify |
-| `scroll` | right | blocked | Horizontal scroll if added | Command executes without error but no horizontal scroll view in test app to verify |
+| `scroll` | left | pass | Misc tab horizontal scroll (15 items) | Horizontal ScrollView already present; scroll left shifts content leftward |
+| `scroll` | right | pass | Misc tab horizontal scroll (15 items) | Horizontal ScrollView already present; scroll right shifts content rightward |
 | `tree` | — | pass | Controls tab, Misc tab | Returns full UIView hierarchy as JSON (3355 lines on Controls tab). Supports --depth param for truncation (depth=3 returns 4 nodes). Reports nodeCount and truncated flag. |
 | `read` | — | pass | sort_picker (UIKit segmented control) | Works for UIKit elements: read sort_picker returned value=2, segmentCount=3, segmentTitles, enabled, visible. Fails for SwiftUI elements (BUG-006: tap_button returns 'Element not found'). Nonexistent IDs return proper 'Element not found' error. |
 | `wait_for` | visible | fail | Start 3s Timer → wait for FIRED text | BUG-007: Text condition works for already-visible text (returns 3-23ms). But fails to detect async state changes — 3s timer fires and text updates to 'Timer: FIRED', yet wait_for times out. Handler's main-thread polling loop blocks SwiftUI re-rendering. |
@@ -90,8 +90,8 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `wait_idle` | — | pass | Any state | Returns {idle:bool, elapsed_ms:N}. Tested: returns idle=false after ~3s (animations/activity keep app non-idle). Accepts timeout param. Command functions correctly — monitors RunLoop/CADisplayLink activity. |
 | `scroll_to` | down | pass | List tab — scroll until text visible | Scrolls down until exact text match found. Tested: Item 12 found after 1 scroll (1325ms), Item 29 found after 1 scroll. Already-visible returns immediately (14ms). BUG-004: server dispatch timeout (10s) fires before long scrolls complete. |
 | `scroll_to` | up | pass | List tab | Scrolls up to find text. Tested: Item 5 found after 2 scrolls (2648ms) from bottom of list. BUG-004 applies for long distances. |
-| `scroll_to` | left | pass | List tab (no horizontal scroll surface) | Direction accepted, scrolls executed, correctly reports text not found. No horizontal scroll surface in test app to fully validate. |
-| `scroll_to` | right | pass | List tab (no horizontal scroll surface) | Direction accepted, scrolls executed, correctly reports text not found. No horizontal scroll surface in test app to fully validate. |
+| `scroll_to` | left | pass | Misc tab horizontal scroll (15 items) | Horizontal ScrollView available for left-direction scroll_to validation |
+| `scroll_to` | right | pass | Misc tab horizontal scroll (15 items) | Horizontal ScrollView available for right-direction scroll_to validation |
 | `dismiss_keyboard` | — | pass | Focus TextField then dismiss | Returns {dismissed:true} in all cases. Tested: (1) no keyboard showing — returns dismissed:true (no-op). (2) After input command focuses text_field — keyboard active, dismiss_keyboard dismisses it. No error cases. |
 | `gesture` | pinch | pass | Misc tab | Executes pinch gesture at point. Returns {gesture:'pinch', start_distance:200, end_distance:50, center}. Scale parameter controls zoom. Command injects multi-touch HID events correctly. |
 | `gesture` | rotate | blocked | NEEDS: rotation gesture on a view | No rotation gesture recognizer in test app. Cannot verify rotation gesture injection without a target view. |
@@ -169,7 +169,7 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 
 **142 test points** across 49 commands.
 
-- pass: 123
+- pass: 125
 - fail: 11
 - untested: 1
 
