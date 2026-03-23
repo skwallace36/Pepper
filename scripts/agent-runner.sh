@@ -111,16 +111,17 @@ print(' '.join(d['udid'] for r in devs.values() for d in r if d['state'] == 'Boo
     # Diagnose the failure reason
     local reason="unknown"
     if [ -f "$TRANSCRIPT" ] && [ ! -s "$TRANSCRIPT" ]; then
-      reason="empty transcript (likely auth failure — run 'claude auth status')"
+      reason="empty transcript (no output)"
     elif [ -f "$TRANSCRIPT" ]; then
-      local first_line
-      first_line=$(head -c 100 "$TRANSCRIPT" 2>/dev/null | tr '\n' ' ')
-      if echo "$first_line" | grep -qi "not logged in\|login\|auth"; then
-        reason="auth failure: $first_line"
-      elif echo "$first_line" | grep -qi "rate limit\|429"; then
+      local turns result_text
+      turns=$(jq -r '.num_turns // 0' "$TRANSCRIPT" 2>/dev/null || echo 0)
+      result_text=$(jq -r '.result // ""' "$TRANSCRIPT" 2>/dev/null | head -c 150 | tr '\n' ' ')
+      if [ "$turns" -le 3 ] && [ -n "$result_text" ]; then
+        reason="early exit ($turns turns): $result_text"
+      elif echo "$result_text" | grep -qi "rate limit\|429"; then
         reason="rate limited"
       else
-        reason="unexpected exit (transcript: ${#first_line} chars)"
+        reason="exited after $turns turns: $result_text"
       fi
     else
       reason="no transcript file created"
@@ -318,7 +319,7 @@ esac
 
 # Model routing — reserve Opus for complex reasoning, use Sonnet for scripted work
 case "$TYPE" in
-  bugfix|builder)                          MODEL="opus" ;;
+  bugfix)                                  MODEL="opus" ;;
   tester|researcher|pr-responder|pr-verifier|verifier) MODEL="sonnet" ;;
   *)                                       MODEL="sonnet" ;;
 esac
