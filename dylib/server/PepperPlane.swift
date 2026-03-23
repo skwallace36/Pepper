@@ -136,6 +136,10 @@ public final class PepperPlane {
         // Write port file for auto-discovery by pepper-ctl
         writePortFile(port: port)
 
+        // Write a readiness sentinel so CI scripts can detect successful startup
+        // without relying on WebSocket connectivity (useful when diagnosing launch issues).
+        writeReadinessSentinel(port: port)
+
         pepperLog.info("Control plane started on port \(port)", category: .lifecycle)
         logger.info("[pepper] Control plane started on port \(port)")
         #endif
@@ -157,8 +161,9 @@ public final class PepperPlane {
         PepperState.shared.eventSink = nil
         state = .idle
 
-        // Clean up port file
+        // Clean up port file and readiness sentinel
         removePortFile()
+        removeReadinessSentinel()
 
         pepperLog.info("Control plane stopped", category: .lifecycle)
         logger.info("[pepper] Control plane stopped")
@@ -215,6 +220,29 @@ public final class PepperPlane {
 
     private func removePortFile() {
         guard let path = portFilePath else { return }
+        try? FileManager.default.removeItem(atPath: path)
+    }
+
+    // MARK: - Readiness Sentinel (CI diagnostics)
+
+    private static let sentinelDir = "/tmp/pepper-ready"
+
+    private var sentinelPath: String? {
+        guard let udid = resolvedUDID, !udid.isEmpty else {
+            return "\(Self.sentinelDir)/default.ready"
+        }
+        return "\(Self.sentinelDir)/\(udid).ready"
+    }
+
+    private func writeReadinessSentinel(port: UInt16) {
+        guard let path = sentinelPath else { return }
+        try? FileManager.default.createDirectory(atPath: Self.sentinelDir, withIntermediateDirectories: true)
+        let info = "port=\(port)\npid=\(ProcessInfo.processInfo.processIdentifier)\ntime=\(Date())\n"
+        try? info.write(toFile: path, atomically: true, encoding: .utf8)
+    }
+
+    private func removeReadinessSentinel() {
+        guard let path = sentinelPath else { return }
         try? FileManager.default.removeItem(atPath: path)
     }
 }
