@@ -20,6 +20,11 @@ THEN:
    ```
    gh pr merge <number> --repo skwallace36/Pepper --squash --delete-branch
    ```
+   ALSO: check for already-verified PRs that are mergeable and should be auto-merged:
+   ```
+   gh pr list --repo skwallace36/Pepper --state open --label verified --json number,title,mergeable,labels --jq '.[] | select(.mergeable == "MERGEABLE" and (.labels | map(.name) | index("needs-approval") | not))'
+   ```
+   For each one, apply the merge decision rules from step 10. If it's safe to merge, merge it.
    Then continue to unverified PRs.
 3. Read the PR description and diff to understand what it changes and what to test.
 4. Check out the PR branch: `git checkout <branch> && git pull origin <branch>`.
