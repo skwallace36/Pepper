@@ -182,14 +182,19 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `notifications` | post | untested |  |  |
 | `notifications` | events | untested |  |  |
 | `notifications` | clear | untested |  |  |
+| `snapshot` | save | untested | Any state | New command. Captures current look/introspect map output as a named baseline for later diffing. |
+| `snapshot` | diff | untested | After snapshot save | New command. Compares current screen state against saved snapshot. Returns added/removed/changed elements and text. Supports ignore_transient and assert_no_diff. |
+| `snapshot` | list | untested | Any state | New command. Lists all saved snapshot names. |
+| `snapshot` | delete | untested | After snapshot save | New command. Deletes a saved snapshot by name. |
+| `snapshot` | clear | untested | After snapshot save | New command. Deletes all saved snapshots. |
 
 ## Summary
 
-**160 test points** across 51 commands.
+**165 test points** across 52 commands.
 
 - pass: 127
 - fail: 11
-- untested: 19
+- untested: 24
 
 ## Test App Gaps
 
