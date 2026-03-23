@@ -1,0 +1,17 @@
+{
+  "suite": "wikipedia-smoke",
+  "app": "Wikipedia iOS",
+  "bundle_id": "org.wikimedia.wikipedia",
+  "tests": [
+    {"name": "server responds to ping", "cmd": "ping"},
+    {"name": "look returns screen map", "cmd": "introspect", "params": {"mode": "map"}},
+    {"name": "tree returns hierarchy", "cmd": "tree"},
+    {"name": "screen returns info", "cmd": "screen"},
+    {"name": "console returns logs", "cmd": "console"},
+    {"name": "network returns requests", "cmd": "network"},
+    {"name": "status returns state", "cmd": "status"},
+    {"name": "lifecycle returns events", "cmd": "lifecycle"},
+    {"name": "layers returns layer tree", "cmd": "layers"},
+    {"name": "heap scan runs", "cmd": "heap"}
+  ]
+}
