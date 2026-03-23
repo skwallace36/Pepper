@@ -26,6 +26,9 @@ final class PepperNetworkProtocol: URLProtocol {
     /// If non-nil, this request matched an override — buffer response and apply transform.
     private var matchedOverride: PepperNetworkOverride?
 
+    /// Matched network conditions for this request (latency, throttle, etc.).
+    private var matchedConditions: [PepperNetworkCondition] = []
+
     /// Transaction ID for correlation.
     private let transactionId = UUID().uuidString
 
@@ -94,6 +97,23 @@ final class PepperNetworkProtocol: URLProtocol {
             url: url, method: method, body: bodyString
         )
 
+        // Check for network condition rules
+        matchedConditions = PepperNetworkInterceptor.shared.matchingConditions(
+            url: url, method: method, body: bodyString
+        )
+
+        // Check for blocking conditions (offline, fail) — these short-circuit the request
+        if let blockingEffect = firstBlockingEffect() {
+            applyBlockingEffect(blockingEffect, url: url, method: method)
+            return
+        }
+
+        // Calculate total latency from all matching latency conditions
+        let totalLatencyMs = matchedConditions.reduce(0) { total, condition in
+            if case .latency(let ms) = condition.effect { return total + ms }
+            return total
+        }
+
         // Mark the request so we don't intercept it again
         guard let mutableRequest = (request as NSURLRequest).mutableCopy() as? NSMutableURLRequest else { return }
         URLProtocol.setProperty(true, forKey: Self.handledKey, in: mutableRequest)
@@ -104,7 +124,118 @@ final class PepperNetworkProtocol: URLProtocol {
         forwardSession = URLSession(configuration: config, delegate: self, delegateQueue: nil)
 
         dataTask = forwardSession?.dataTask(with: mutableRequest as URLRequest)
-        dataTask?.resume()
+
+        // Apply latency delay if any
+        if totalLatencyMs > 0 {
+            DispatchQueue.global().asyncAfter(deadline: .now() + .milliseconds(totalLatencyMs)) { [weak self] in
+                self?.dataTask?.resume()
+            }
+        } else {
+            dataTask?.resume()
+        }
+    }
+
+    /// Returns the first blocking effect (offline, failStatus, failError) from matched conditions.
+    private func firstBlockingEffect() -> NetworkConditionEffect? {
+        for condition in matchedConditions {
+            switch condition.effect {
+            case .offline, .failStatus, .failError:
+                return condition.effect
+            default:
+                continue
+            }
+        }
+        return nil
+    }
+
+    /// Apply a blocking effect — fail the request immediately without forwarding.
+    private func applyBlockingEffect(_ effect: NetworkConditionEffect, url: String, method: String) {
+        let endMs = PepperNetworkInterceptor.nowMs()
+
+        // Build request info for recording
+        let contentType = request.allHTTPHeaderFields?["Content-Type"]
+        let bodyResult = PepperNetworkInterceptor.processBody(capturedRequestBody, contentType: contentType)
+        let requestInfo = NetworkRequestInfo(
+            url: url,
+            method: method,
+            headers: PepperNetworkInterceptor.extractRequestHeaders(request),
+            body: bodyResult.body,
+            bodyEncoding: bodyResult.encoding,
+            bodyTruncated: bodyResult.truncated,
+            originalBodySize: bodyResult.originalSize,
+            timestampMs: startMs
+        )
+
+        switch effect {
+        case .offline:
+            let error = NSError(
+                domain: NSURLErrorDomain,
+                code: NSURLErrorNotConnectedToInternet,
+                userInfo: [NSLocalizedDescriptionKey: "Simulated offline (Pepper network condition)"]
+            )
+            let transaction = NetworkTransaction(
+                id: transactionId,
+                request: requestInfo,
+                response: nil,
+                timing: NetworkTiming(startMs: startMs, endMs: endMs, durationMs: endMs - startMs),
+                error: error.localizedDescription
+            )
+            PepperNetworkInterceptor.shared.record(transaction)
+            PepperNetworkInterceptor.shared.decrementActiveRequests()
+            client?.urlProtocol(self, didFailWithError: error)
+
+        case .failStatus(let statusCode):
+            let responseUrl = request.url ?? URL(string: "about:blank")!
+            let syntheticResponse = HTTPURLResponse(
+                url: responseUrl,
+                statusCode: statusCode,
+                httpVersion: "HTTP/1.1",
+                headerFields: ["X-Pepper-Simulated": "true"]
+            )!
+            let body = "{\"error\":\"Simulated HTTP \(statusCode) (Pepper network condition)\"}".data(using: .utf8)!
+            let respBody = PepperNetworkInterceptor.processBody(body, contentType: "application/json")
+            let responseInfo = NetworkResponseInfo(
+                statusCode: statusCode,
+                headers: ["X-Pepper-Simulated": "true"],
+                body: respBody.body,
+                bodyEncoding: respBody.encoding,
+                bodyTruncated: respBody.truncated,
+                originalBodySize: respBody.originalSize,
+                contentLength: Int64(body.count)
+            )
+            let transaction = NetworkTransaction(
+                id: transactionId,
+                request: requestInfo,
+                response: responseInfo,
+                timing: NetworkTiming(startMs: startMs, endMs: endMs, durationMs: endMs - startMs),
+                error: nil
+            )
+            PepperNetworkInterceptor.shared.record(transaction)
+            PepperNetworkInterceptor.shared.decrementActiveRequests()
+            client?.urlProtocol(self, didReceive: syntheticResponse, cacheStoragePolicy: .notAllowed)
+            client?.urlProtocol(self, didLoad: body)
+            client?.urlProtocolDidFinishLoading(self)
+
+        case .failError(let domain, let code):
+            let error = NSError(
+                domain: domain,
+                code: code,
+                userInfo: [NSLocalizedDescriptionKey: "Simulated error \(domain):\(code) (Pepper network condition)"]
+            )
+            let transaction = NetworkTransaction(
+                id: transactionId,
+                request: requestInfo,
+                response: nil,
+                timing: NetworkTiming(startMs: startMs, endMs: endMs, durationMs: endMs - startMs),
+                error: error.localizedDescription
+            )
+            PepperNetworkInterceptor.shared.record(transaction)
+            PepperNetworkInterceptor.shared.decrementActiveRequests()
+            client?.urlProtocol(self, didFailWithError: error)
+
+        default:
+            break
+        }
     }
 
     override func stopLoading() {
@@ -121,8 +252,8 @@ extension PepperNetworkProtocol: URLSessionDataDelegate {
 
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse, completionHandler: @escaping (URLSession.ResponseDisposition) -> Void) {
         httpResponse = response as? HTTPURLResponse
-        // If matched, defer sending the response — we'll construct a new one after transform
-        if matchedOverride == nil {
+        // If matched override or throttle, defer sending the response — we'll deliver after buffering
+        if matchedOverride == nil && throttleBytesPerSecond == nil {
             client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
         }
         completionHandler(.allow)
@@ -130,10 +261,19 @@ extension PepperNetworkProtocol: URLSessionDataDelegate {
 
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
         responseData.append(data)
-        // If matched, buffer only — don't stream to client yet
-        if matchedOverride == nil {
+        // If matched override or throttling, buffer only — don't stream to client yet
+        if matchedOverride == nil && throttleBytesPerSecond == nil {
             client?.urlProtocol(self, didLoad: data)
         }
+    }
+
+    /// Lowest throttle rate from matched conditions, or nil if no throttle.
+    private var throttleBytesPerSecond: Int? {
+        let rates = matchedConditions.compactMap { condition -> Int? in
+            if case .throttle(let bps) = condition.effect { return bps }
+            return nil
+        }
+        return rates.min()
     }
 
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
@@ -186,9 +326,10 @@ extension PepperNetworkProtocol: URLSessionDataDelegate {
         // Record (original response data, before transform)
         PepperNetworkInterceptor.shared.record(transaction)
 
-        // Complete the original request — apply transform if matched
+        // Complete the original request — apply transform if matched, then throttle if needed
         if let error = error {
             client?.urlProtocol(self, didFailWithError: error)
+            forwardSession?.finishTasksAndInvalidate()
         } else if let override = matchedOverride, let httpResponse = httpResponse {
             // Apply the transform to the buffered response data
             let modifiedData = override.transform(responseData)
@@ -196,13 +337,47 @@ extension PepperNetworkProtocol: URLSessionDataDelegate {
             // Create a new HTTPURLResponse with updated Content-Length
             let modifiedResponse = Self.responseWithUpdatedContentLength(httpResponse, newLength: modifiedData.count)
             client?.urlProtocol(self, didReceive: modifiedResponse, cacheStoragePolicy: .notAllowed)
-            client?.urlProtocol(self, didLoad: modifiedData)
-            client?.urlProtocolDidFinishLoading(self)
+            deliverData(modifiedData)
+        } else if let bps = throttleBytesPerSecond, let httpResponse = httpResponse {
+            // Throttle: send response header then drip-feed the buffered data
+            client?.urlProtocol(self, didReceive: httpResponse, cacheStoragePolicy: .notAllowed)
+            deliverThrottled(data: responseData, bytesPerSecond: bps)
         } else {
             client?.urlProtocolDidFinishLoading(self)
+            forwardSession?.finishTasksAndInvalidate()
         }
+    }
 
+    // MARK: - Data Delivery Helpers
+
+    /// Deliver data immediately and finish.
+    private func deliverData(_ data: Data) {
+        client?.urlProtocol(self, didLoad: data)
+        client?.urlProtocolDidFinishLoading(self)
         forwardSession?.finishTasksAndInvalidate()
+    }
+
+    /// Deliver data in chunks to simulate bandwidth throttling.
+    /// Sends `bytesPerSecond` bytes per second in 100ms intervals.
+    private func deliverThrottled(data: Data, bytesPerSecond: Int) {
+        let chunkInterval: TimeInterval = 0.1  // 100ms between chunks
+        let chunkSize = max(1, bytesPerSecond / 10)  // bytes per 100ms
+
+        DispatchQueue.global().async { [weak self] in
+            var offset = 0
+            while offset < data.count {
+                guard let self = self else { return }
+                let end = min(offset + chunkSize, data.count)
+                let chunk = data.subdata(in: offset..<end)
+                self.client?.urlProtocol(self, didLoad: chunk)
+                offset = end
+                if offset < data.count {
+                    Thread.sleep(forTimeInterval: chunkInterval)
+                }
+            }
+            self?.client?.urlProtocolDidFinishLoading(self!)
+            self?.forwardSession?.finishTasksAndInvalidate()
+        }
     }
 
     // MARK: - Response Helpers
