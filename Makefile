@@ -24,7 +24,7 @@ LOGS_DIR    := $(PROJECT_DIR)/build/logs
 
 .PHONY: help build deploy launch kill relaunch ping check \
         logs clean test-client pepper-ctl test-app coverage coverage-check \
-        docs setup ci agent agent-monitor agent-status agent-trigger agents-install agents-uninstall agent-cleanup agents-start agents-stop agent-analyze
+        docs setup ci agent agent-monitor agent-status agent-trigger agents-install agents-uninstall agent-cleanup agents-start agents-stop agent-analyze groom
 
 # ============================================================
 # Help
@@ -79,10 +79,10 @@ launch:
 		SIMCTL_CHILD_PEPPER_ADAPTER="$(ADAPTER_TYPE)" \
 		xcrun simctl launch "$(SIMULATOR_ID)" "$(BUNDLE_ID)"
 	@echo "Launched with injection. Control plane at ws://localhost:$(PORT)"
-	@python3 -c "import sys, time; sys.path.insert(0, '$(TOOLS_DIR)'); \
+	@python3 -c "import sys, os, time; sys.path.insert(0, '$(TOOLS_DIR)'); \
 from pepper_sessions import quick_port_check, claim_simulator_with_port; \
 [time.sleep(0.5) for _ in range(20) if not quick_port_check($(PORT), 0.5)]; \
-claim_simulator_with_port('$(SIMULATOR_ID)', '$(BUNDLE_ID)', $(PORT), label='make-deploy')" 2>/dev/null || true
+claim_simulator_with_port('$(SIMULATOR_ID)', '$(BUNDLE_ID)', $(PORT), label='make-deploy') if not os.environ.get('PEPPER_AGENT_TYPE') else None" 2>/dev/null || true
 
 ## deploy: Build dylib + launch with injection
 deploy: build launch
@@ -241,6 +241,10 @@ agents-stop:
 ## agent-analyze: Analyze agent session context usage and re-reads
 agent-analyze:
 	@./scripts/agent-analyze.sh $(ANALYZE_ARGS)
+
+## groom: Groom the issue backlog (triage, prioritize, decompose)
+groom:
+	@./scripts/agent-runner.sh groomer
 
 ## clean: Clean build artifacts
 clean:
