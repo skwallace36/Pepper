@@ -264,6 +264,7 @@ final class PepperDispatcher {
         register(TimersHandler())
         register(PerfHandler())
         register(ScreenshotHandler())
+        register(StorageHandler())
     }
 }
 
