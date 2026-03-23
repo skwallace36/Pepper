@@ -195,6 +195,12 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `undo` | undo | untested |  |  |
 | `undo` | redo | untested |  |  |
 | `accessibility_audit` | — | untested | Any state |  |
+| `accessibility_action` | list | untested |  |  |
+| `accessibility_action` | invoke | untested |  |  |
+| `accessibility_action` | escape | untested |  |  |
+| `accessibility_action` | magic_tap | untested |  |  |
+| `accessibility_action` | increment | untested |  |  |
+| `accessibility_action` | decrement | untested |  |  |
 | `renders` | snapshot | untested |  |  |
 | `renders` | diff | untested |  |  |
 | `renders` | reset | untested |  |  |
@@ -209,11 +215,11 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 
 ## Summary
 
-**184 test points** across 58 commands.
+**190 test points** across 59 commands.
 
 - pass: 128
 - fail: 11
-- untested: 43
+- untested: 49
 
 ## Test App Gaps
 
