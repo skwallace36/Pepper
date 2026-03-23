@@ -4,6 +4,7 @@ Pepper common utilities — shared constants, config helpers, and port discovery
 Used by pepper-mcp, pepper-ctl, pepper-stream, and test-client.py.
 """
 
+import json as _json
 import os
 import shutil
 import socket
@@ -17,6 +18,7 @@ from typing import Optional
 
 PEPPER_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PORT_DIR = "/tmp/pepper-ports"
+DEVICE_DIR = "/tmp/pepper-devices"
 DEFAULT_HOST = "localhost"
 
 
@@ -79,10 +81,10 @@ def get_config() -> dict[str, str]:
 # Port liveness
 # ---------------------------------------------------------------------------
 
-def port_alive(port: int, timeout: float = 1.0) -> bool:
-    """Check if anything is listening on localhost:port via TCP connect."""
+def port_alive(port: int, host: str = "localhost", timeout: float = 1.0) -> bool:
+    """Check if anything is listening on host:port via TCP connect."""
     try:
-        s = socket.create_connection(("localhost", port), timeout=timeout)
+        s = socket.create_connection((host, port), timeout=timeout)
         s.close()
         return True
     except (ConnectionRefusedError, OSError, socket.timeout):
@@ -186,3 +188,209 @@ def list_simulators() -> list[dict]:
                 except (ValueError, OSError):
                     pass
     return sims
+
+
+# ---------------------------------------------------------------------------
+# Device discovery (physical devices via registered endpoints)
+# ---------------------------------------------------------------------------
+
+def _read_device_file(udid: str) -> Optional[dict]:
+    """Read a device registration file. Returns dict with host/port or None."""
+    path = os.path.join(DEVICE_DIR, f"{udid}.device")
+    try:
+        with open(path) as f:
+            data = _json.load(f)
+        if "host" in data and "port" in data:
+            return data
+    except (FileNotFoundError, _json.JSONDecodeError, OSError, KeyError):
+        pass
+    return None
+
+
+def register_device(udid: str, host: str, port: int, name: str = "",
+                    via: str = "") -> None:
+    """Register a physical device endpoint for Pepper discovery.
+
+    Creates a JSON file at /tmp/pepper-devices/{UDID}.device.
+    Use after setting up connectivity (iproxy, WiFi, etc.).
+    """
+    os.makedirs(DEVICE_DIR, exist_ok=True)
+    data = {"host": host, "port": port, "udid": udid}
+    if name:
+        data["name"] = name
+    if via:
+        data["via"] = via
+    path = os.path.join(DEVICE_DIR, f"{udid}.device")
+    with open(path, "w") as f:
+        _json.dump(data, f)
+
+
+def unregister_device(udid: str) -> bool:
+    """Remove a device registration. Returns True if file existed."""
+    path = os.path.join(DEVICE_DIR, f"{udid}.device")
+    try:
+        os.remove(path)
+        return True
+    except FileNotFoundError:
+        return False
+
+
+def _resolve_device_file(device: Optional[str] = None) -> tuple[str, int, str]:
+    """Resolve a single (host, port, udid) from device files.
+
+    If device UDID is given, looks up that specific device.
+    Otherwise auto-discovers from DEVICE_DIR (must have exactly one live device).
+    Validates liveness via TCP probe.
+    """
+    if device:
+        data = _read_device_file(device)
+        if data is None:
+            raise RuntimeError(f"No device registered for UDID {device}")
+        host, port = data["host"], data["port"]
+        if port_alive(port, host=host):
+            return host, port, device
+        raise RuntimeError(
+            f"Device {device} registered at {host}:{port} but not responding. "
+            f"Check connectivity (iproxy / WiFi) and re-register."
+        )
+
+    if not os.path.isdir(DEVICE_DIR):
+        raise RuntimeError("No devices registered")
+
+    live_devices: list[tuple[str, int, str]] = []
+    for f in sorted(os.listdir(DEVICE_DIR)):
+        if not f.endswith(".device"):
+            continue
+        udid = f.removesuffix(".device")
+        data = _read_device_file(udid)
+        if data is None:
+            continue
+        host, port = data["host"], data["port"]
+        if port_alive(port, host=host):
+            live_devices.append((host, port, udid))
+        else:
+            # Stale device — remove
+            try:
+                os.remove(os.path.join(DEVICE_DIR, f))
+            except OSError:
+                pass
+
+    if len(live_devices) == 1:
+        return live_devices[0]
+    elif len(live_devices) > 1:
+        lines = [f"  {udid} → {host}:{port}" for host, port, udid in live_devices]
+        raise RuntimeError(
+            f"Multiple devices responding ({len(live_devices)}). "
+            f"Pass device=UDID to pick one:\n" + "\n".join(lines)
+        )
+    raise RuntimeError("No devices registered")
+
+
+def list_devices() -> list[dict]:
+    """List all registered devices with liveness status."""
+    devices = []
+    if os.path.isdir(DEVICE_DIR):
+        for f in sorted(os.listdir(DEVICE_DIR)):
+            if f.endswith(".device"):
+                udid = f.removesuffix(".device")
+                data = _read_device_file(udid)
+                if data:
+                    data["alive"] = port_alive(data["port"], host=data["host"])
+                    devices.append(data)
+    return devices
+
+
+# ---------------------------------------------------------------------------
+# Unified instance discovery (simulators + devices)
+# ---------------------------------------------------------------------------
+
+def discover_instance(identifier: Optional[str] = None) -> tuple[str, int, str]:
+    """Discover a Pepper instance — simulator or device. Returns (host, port, udid).
+
+    Resolution order:
+    1. If identifier given: check simulator port files, then device files.
+    2. If not given: collect all live sims and devices; require exactly one.
+    """
+    if identifier:
+        # Try simulator first
+        sim_path = os.path.join(PORT_DIR, f"{identifier}.port")
+        if os.path.exists(sim_path):
+            try:
+                port = int(open(sim_path).read().strip())
+                if port_alive(port):
+                    return "localhost", port, identifier
+            except (ValueError, OSError):
+                pass
+
+        # Try device
+        device_data = _read_device_file(identifier)
+        if device_data:
+            host, port = device_data["host"], device_data["port"]
+            if port_alive(port, host=host):
+                return host, port, identifier
+            raise RuntimeError(
+                f"Instance {identifier} registered at {host}:{port} but not responding."
+            )
+
+        raise RuntimeError(
+            f"No Pepper instance found for {identifier}. "
+            f"Check simulator port files and device registrations."
+        )
+
+    # Auto-discover: collect all live instances
+    instances: list[tuple[str, int, str, str]] = []  # (host, port, udid, kind)
+
+    # Simulators
+    if os.path.isdir(PORT_DIR):
+        for f in sorted(os.listdir(PORT_DIR)):
+            if not f.endswith(".port"):
+                continue
+            udid = f.removesuffix(".port")
+            try:
+                port = int(open(os.path.join(PORT_DIR, f)).read().strip())
+            except (ValueError, OSError):
+                continue
+            if port_alive(port):
+                instances.append(("localhost", port, udid, "simulator"))
+
+    # Devices
+    if os.path.isdir(DEVICE_DIR):
+        for f in sorted(os.listdir(DEVICE_DIR)):
+            if not f.endswith(".device"):
+                continue
+            udid = f.removesuffix(".device")
+            data = _read_device_file(udid)
+            if data and port_alive(data["port"], host=data["host"]):
+                instances.append((data["host"], data["port"], udid, "device"))
+
+    if len(instances) == 1:
+        host, port, udid, _ = instances[0]
+        return host, port, udid
+    elif len(instances) > 1:
+        lines = []
+        for host, port, udid, kind in instances:
+            addr = f"{host}:{port}" if kind == "device" else f"localhost:{port}"
+            lines.append(f"  {udid} → {addr} ({kind})")
+        raise RuntimeError(
+            f"Multiple Pepper instances running ({len(instances)}). "
+            f"Specify simulator=UDID or device=UDID:\n" + "\n".join(lines)
+        )
+
+    raise RuntimeError(
+        "No Pepper instances found. Is the app running with dylib injection, "
+        "or is a device registered?"
+    )
+
+
+def list_instances() -> list[dict]:
+    """List all live Pepper instances (simulators + devices)."""
+    instances = []
+    for sim in list_simulators():
+        sim["kind"] = "simulator"
+        sim["host"] = "localhost"
+        instances.append(sim)
+    for dev in list_devices():
+        if dev.get("alive"):
+            dev["kind"] = "device"
+            instances.append(dev)
+    return instances

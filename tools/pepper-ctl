@@ -21,6 +21,12 @@ Usage:
   pepper-ctl test-report --file tests.json --format junit --output results.xml
   pepper-ctl help
   pepper-ctl raw '{"cmd":"ping"}'
+
+Device management:
+  pepper-ctl register-device --udid UDID --host IP --port PORT
+  pepper-ctl unregister-device --udid UDID
+  pepper-ctl list-instances                   # show all sims + devices
+  pepper-ctl --device UDID ping               # target a specific device
 """
 
 import argparse
@@ -45,7 +51,12 @@ import pepper_sessions
 from pepper_websocket import CrashError, make_command
 from pepper_websocket import send_command as ws_send_command
 
-from pepper_common import DEFAULT_HOST, PORT_DIR, load_env, discover_port as _discover_port
+from pepper_common import (
+    DEFAULT_HOST, PORT_DIR, load_env,
+    discover_port as _discover_port, discover_instance,
+    register_device as _register_device, unregister_device as _unregister_device,
+    list_instances as _list_instances,
+)
 import pepper_format
 from pepper_format import format_look
 
@@ -202,9 +213,10 @@ def build_parser():
   pepper-ctl help                            List server commands
 """,
     )
-    parser.add_argument("--host", default=DEFAULT_HOST, help=f"Server host (default: {DEFAULT_HOST})")
+    parser.add_argument("--host", default=None, help=f"Server host (default: auto-detect, or {DEFAULT_HOST} for simulators)")
     parser.add_argument("--port", "-p", type=int, default=None, help="Server port (default: auto-discover from port files)")
     parser.add_argument("--simulator", "-s", default=None, help="Simulator UDID to connect to (reads port from /tmp/pepper-ports/<UDID>.port)")
+    parser.add_argument("--device", "-d", default=None, help="Device UDID to connect to (reads host:port from /tmp/pepper-devices/<UDID>.device)")
     parser.add_argument("--json", action="store_true", dest="raw_json", help="Output raw JSON response")
     parser.add_argument("--timeout", "-t", type=int, default=10, help="Response timeout in seconds (default: 10)")
     parser.add_argument("--verbose", "-v", action="store_true", help="Show event messages on stderr")
@@ -298,6 +310,23 @@ def build_parser():
     # raw
     p = sub.add_parser("raw", help="Send raw JSON command")
     p.add_argument("json_str", help="JSON string to send")
+
+    # --- Device management (local, no server connection needed) ---
+
+    # register-device
+    p = sub.add_parser("register-device", help="Register a physical device endpoint for Pepper discovery")
+    p.add_argument("--udid", required=True, help="Device UDID (from devicectl or Xcode)")
+    p.add_argument("--host", required=True, help="Device IP or hostname (use localhost for iproxy)")
+    p.add_argument("--port", type=int, required=True, help="Pepper WebSocket port on the device")
+    p.add_argument("--name", default="", help="Human-readable device name (optional)")
+    p.add_argument("--via", default="", choices=["wifi", "usb", ""], help="Connection method (optional, for display)")
+
+    # unregister-device
+    p = sub.add_parser("unregister-device", help="Remove a device registration")
+    p.add_argument("--udid", required=True, help="Device UDID to remove")
+
+    # list-instances
+    sub.add_parser("list-instances", help="List all live Pepper instances (simulators + devices)")
 
     return parser
 
@@ -851,6 +880,40 @@ async def cmd_raw(args):
     output_response(resp, args.raw_json)
 
 
+async def cmd_register_device(args):
+    """Register a device endpoint for discovery."""
+    _register_device(args.udid, args.host, args.port, name=args.name, via=args.via)
+    addr = f"{args.host}:{args.port}"
+    name_str = f' "{args.name}"' if args.name else ""
+    print(green(f"Registered device {args.udid[:12]}{name_str} at {addr}"))
+
+
+async def cmd_unregister_device(args):
+    """Remove a device registration."""
+    if _unregister_device(args.udid):
+        print(green(f"Unregistered device {args.udid[:12]}"))
+    else:
+        print(yellow(f"No registration found for {args.udid[:12]}"))
+
+
+async def cmd_list_instances(args):
+    """List all live Pepper instances."""
+    instances = _list_instances()
+    if not instances:
+        print(yellow("No live Pepper instances found."))
+        return
+    for inst in instances:
+        kind = inst.get("kind", "?")
+        udid = inst.get("udid", "?")
+        host = inst.get("host", "localhost")
+        port = inst.get("port", 0)
+        name = inst.get("name", "")
+        addr = f"{host}:{port}"
+        tag = cyan(f"[{kind}]")
+        name_str = f'  "{name}"' if name else ""
+        print(f"  {tag} {udid} → {bold(addr)}{name_str}")
+
+
 # --- Main ---
 
 
@@ -863,18 +926,63 @@ def main():
         USE_COLOR = False
         pepper_format.USE_COLOR = False
 
+    if not args.command:
+        parser.print_help()
+        sys.exit(1)
+
+    # Commands that don't need a server connection
+    local_handlers = {
+        "register-device": cmd_register_device,
+        "unregister-device": cmd_unregister_device,
+        "list-instances": cmd_list_instances,
+    }
+    if args.command in local_handlers:
+        asyncio.run(local_handlers[args.command](args))
+        return
+
     # Load .env defaults — CLI flags take precedence
     env = load_env()
     if args.simulator is None and "PEPPER_SIMULATOR" in env:
         args.simulator = env["PEPPER_SIMULATOR"]
+    if args.device is None and "PEPPER_DEVICE" in env:
+        args.device = env["PEPPER_DEVICE"]
 
-    # Resolve port: explicit --port wins, then --simulator lookup, then auto-discover
-    if args.port is None:
-        args.port = discover_port(simulator=args.simulator)
-
-    if not args.command:
-        parser.print_help()
+    if args.simulator and args.device:
+        print(red("Error: --simulator and --device are mutually exclusive"), file=sys.stderr)
         sys.exit(1)
+
+    # Resolve host + port:
+    #   1. Explicit --host/--port wins
+    #   2. --device → look up device registration
+    #   3. --simulator → look up simulator port file
+    #   4. Auto-discover (sims + devices)
+    if args.host is not None and args.port is not None:
+        pass  # Both explicitly set
+    elif args.device:
+        try:
+            host, port, _udid = discover_instance(args.device)
+            if args.host is None:
+                args.host = host
+            if args.port is None:
+                args.port = port
+        except RuntimeError as e:
+            print(red(str(e)), file=sys.stderr)
+            sys.exit(1)
+    elif args.port is None:
+        try:
+            host, port, _udid = discover_instance(args.simulator)
+            if args.host is None:
+                args.host = host
+            args.port = port
+        except RuntimeError as e:
+            # Fallback to 8765 for CLI when no instances found (legacy behavior)
+            if "Multiple" in str(e):
+                print(str(e), file=sys.stderr)
+                sys.exit(1)
+            args.port = 8765
+
+    if args.host is None:
+        args.host = DEFAULT_HOST
 
     # Dispatch to handler
     handlers = {
