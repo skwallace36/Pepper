@@ -2,8 +2,9 @@
 
 import asyncio
 import json
-from collections.abc import Callable
+from collections.abc import Callable, Coroutine
 from functools import partial
+from typing import Any
 
 from mcp_crash import fetch_crash_info
 from pepper_common import discover_instance

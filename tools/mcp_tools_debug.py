@@ -338,13 +338,13 @@ def register_debug_tools(mcp, resolve_and_send):
 
     @mcp.tool()
     async def accessibility_audit(
-        simulator: Optional[str] = Field(default=None, description="Simulator UDID"),
-        checks: Optional[str] = Field(
+        simulator: str | None = Field(default=None, description="Simulator UDID"),
+        checks: str | None = Field(
             default=None,
             description="Comma-separated checks to run (default: all). "
             "Options: missing_label, missing_trait, contrast, dynamic_type, touch_target, redundant_trait",
         ),
-        severity: Optional[str] = Field(
+        severity: str | None = Field(
             default=None,
             description="Minimum severity to include: error, warning (default), info",
         ),

@@ -1,7 +1,7 @@
 """Navigation and interaction tool definitions for Pepper MCP.
 
 Tool definitions for: look, tap, scroll, input_text, navigate, back, dismiss,
-swipe, screen, scroll_to, dismiss_keyboard, snapshot.
+swipe, screen, scroll_to, dismiss_keyboard, snapshot, diff.
 """
 
 import asyncio
@@ -224,3 +224,15 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
             "ignore_transient": ignore_transient,
             "assert_no_diff": assert_no_diff,
         })
+
+    @mcp.tool()
+    async def diff(
+        simulator: str | None = Field(default=None, description="Simulator UDID"),
+        action: str = Field(default="start", description="Action: 'start' (capture baseline), 'show' (compare to baseline), 'clear' (discard baseline)"),
+    ) -> str:
+        """Quick view hierarchy diff — show what changed between two look snapshots.
+
+        Workflow: diff action=start → perform actions (tap, scroll, etc.) → diff action=show.
+        Returns only added/removed/changed elements — much smaller than a full look call.
+        Useful for verifying that an action actually changed the UI."""
+        return await resolve_and_send(simulator, "diff", {"action": action})
