@@ -4,6 +4,9 @@ import UIKit
 /// Handles {"cmd": "renders"} commands for SwiftUI render tracking and view tree inspection.
 ///
 /// Actions:
+///   - "start":    Install spike swizzles (updateRootView, didRender, setNeedsUpdate) with console logging.
+///   - "stop":     Remove spike swizzles and return method call statistics.
+///   - "counts":   Return current spike method call counts without stopping.
 ///   - "snapshot": Capture the current SwiftUI view tree for all hosting views.
 ///   - "diff":     Compare current view tree against previous snapshot, showing changes.
 ///   - "reset":    Clear all render tracking data.
@@ -14,6 +17,9 @@ import UIKit
 ///   - "why":      Experimental — attempt to determine which state triggered a re-render.
 ///
 /// Usage:
+///   {"cmd":"renders","params":{"action":"start"}}
+///   {"cmd":"renders","params":{"action":"stop"}}
+///   {"cmd":"renders","params":{"action":"counts"}}
 ///   {"cmd":"renders","params":{"action":"snapshot"}}
 ///   {"cmd":"renders","params":{"action":"diff"}}
 ///   {"cmd":"renders","params":{"action":"reset"}}
@@ -29,6 +35,12 @@ struct RendersHandler: PepperHandler {
         let action = command.params?["action"]?.stringValue ?? "snapshot"
 
         switch action {
+        case "start":
+            return handleStart(command)
+        case "stop":
+            return handleStop(command)
+        case "counts":
+            return handleCounts(command)
         case "snapshot":
             return handleSnapshot(command)
         case "diff":
@@ -48,9 +60,74 @@ struct RendersHandler: PepperHandler {
         default:
             return .error(
                 id: command.id,
-                message: "Unknown action '\(action)'. Use snapshot, diff, reset, ag_probe, ag_server, ag_dump, signpost, or why."
+                message: "Unknown action '\(action)'. Use start, stop, counts, snapshot, diff, reset, ag_probe, ag_server, ag_dump, signpost, or why."
             )
         }
+    }
+
+    // MARK: - Start / Stop / Counts (Spike)
+
+    private func handleStart(_ command: PepperCommand) -> PepperResponse {
+        let report = PepperRenderTracker.shared.start()
+        let status = report["status"] as? String ?? "unknown"
+
+        if status == "error" {
+            return .error(id: command.id, message: report["message"] as? String ?? "Failed to start spike")
+        }
+
+        var data: [String: AnyCodable] = [
+            "status": AnyCodable(status),
+            "swizzles_installed": AnyCodable(report["swizzles_installed"] as? Int ?? 0),
+            "classes_found": AnyCodable(report["classes_found"] as? Int ?? 0),
+            "note": AnyCodable("Spike active. Interact with SwiftUI screens and watch console output. Call stop to remove swizzles and see stats."),
+        ]
+
+        if let details = report["details"] as? [[String: String]] {
+            data["details"] = AnyCodable(details.map { dict in
+                AnyCodable(dict.mapValues { AnyCodable($0) })
+            })
+        }
+
+        return .ok(id: command.id, data: data)
+    }
+
+    private func handleStop(_ command: PepperCommand) -> PepperResponse {
+        let report = PepperRenderTracker.shared.stop()
+        let status = report["status"] as? String ?? "unknown"
+
+        var data: [String: AnyCodable] = [
+            "status": AnyCodable(status),
+        ]
+
+        if let removed = report["swizzles_removed"] as? Int {
+            data["swizzles_removed"] = AnyCodable(removed)
+        }
+
+        if let counts = report["method_counts"] as? [String: Int] {
+            data["method_counts"] = AnyCodable(counts.mapValues { AnyCodable($0) })
+
+            // Summarize which methods fired
+            let fired = counts.filter { $0.value > 0 }.keys.sorted()
+            let silent = counts.filter { $0.value == 0 }.keys.sorted()
+            data["methods_that_fired"] = AnyCodable(fired.map { AnyCodable($0) })
+            if !silent.isEmpty {
+                data["methods_silent"] = AnyCodable(silent.map { AnyCodable($0) })
+            }
+        }
+
+        return .ok(id: command.id, data: data)
+    }
+
+    private func handleCounts(_ command: PepperCommand) -> PepperResponse {
+        let tracker = PepperRenderTracker.shared
+        let spikeCounts = tracker.spikeMethodCounts
+        let renderCounts = tracker.currentCounts
+
+        return .ok(id: command.id, data: [
+            "spike_active": AnyCodable(tracker.spikeActive),
+            "method_counts": AnyCodable(spikeCounts.mapValues { AnyCodable($0) }),
+            "layout_render_counts": AnyCodable(renderCounts.mapValues { AnyCodable($0) }),
+        ])
     }
 
     // MARK: - Snapshot
