@@ -16,8 +16,40 @@ struct ToggleHandler: PepperHandler {
             return .error(id: command.id, message: "No key window available")
         }
 
-        guard let element = window.pepper_findElement(id: elementID) else {
-            return .error(id: command.id, message: "Element not found: \(elementID)")
+        // Try UIKit view hierarchy first, then fall back to PepperElementResolver
+        // (which searches the SwiftUI accessibility tree for elements like SwiftUI Toggle)
+        let element: UIView
+        var swiftUITapPoint: CGPoint?
+
+        if let uiView = window.pepper_findElement(id: elementID) {
+            element = uiView
+        } else {
+            let (resolved, errorMsg) = PepperElementResolver.resolve(params: command.params, in: window)
+            guard let resolved = resolved else {
+                return .error(id: command.id, message: errorMsg ?? "Element not found: \(elementID)")
+            }
+            element = resolved.view
+            swiftUITapPoint = resolved.tapPoint
+        }
+
+        // SwiftUI element found via accessibility tree — tap at the resolved point
+        if let tapPoint = swiftUITapPoint {
+            logger.info("Tapping SwiftUI toggle \(elementID) at (\(tapPoint.x), \(tapPoint.y))")
+
+            PepperTouchVisualizer.shared.showTap(at: tapPoint)
+            let success = PepperHIDEventSynthesizer.shared.performTap(at: tapPoint, in: window)
+
+            if success {
+                return .ok(
+                    id: command.id,
+                    data: [
+                        "element": AnyCodable(elementID),
+                        "type": AnyCodable("swiftui_toggle"),
+                        "toggled": AnyCodable(true),
+                    ])
+            } else {
+                return .error(id: command.id, message: "Toggle tap failed — HID event synthesis unavailable")
+            }
         }
 
         // UISwitch — tap its center to toggle
