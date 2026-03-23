@@ -227,10 +227,14 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `concurrency` | actors | untested |  |  |
 | `concurrency` | tasks | untested |  |  |
 | `concurrency` | cancel | untested |  |  |
+| `perf` | start | untested |  |  |
+| `perf` | stop | untested |  |  |
+| `perf` | mark | untested |  |  |
+| `perf` | status | untested |  |  |
 
 ## Summary
 
-**205 test points** across 60 commands.
+**205 test points** across 61 commands.
 
 - pass: 128
 - fail: 11
