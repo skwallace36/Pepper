@@ -177,7 +177,7 @@ struct HeapHandler: PepperHandler {
         return .ok(
             id: command.id,
             data: [
-                "pattern": AnyCodable(pattern ?? "(app classes)"),
+                "pattern": AnyCodable(pattern),
                 "total": AnyCodable(total),
                 "showing": AnyCodable(matches.count),
                 "classes": AnyCodable(matches),
