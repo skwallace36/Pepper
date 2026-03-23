@@ -289,6 +289,7 @@ case "$TYPE" in
   bugfix)   BUDGET=3.00 ;;
   builder)  BUDGET=3.00 ;;
   groomer)  BUDGET=3.00 ;;
+  conflict-resolver) BUDGET=1.00 ;;
   *)        BUDGET=2.00 ;;
 esac
 
