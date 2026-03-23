@@ -27,11 +27,18 @@ THEN:
 9. Take screenshots with `look visual=true` for evidence.
 10. Auto-merge decision:
    Check which files the PR changes: `gh pr diff <number> --repo skwallace36/Pepper --name-only`
-   - If ALL changed files are under `test-app/` or are `*.md` files → merge it:
+   - If ANY changed file matches these paths → do NOT merge, just label `verified` for human review:
+     - `Makefile`
+     - `.claude/` (settings, hooks config)
+     - `.github/` (CI, workflows)
+     - `scripts/agent-*.sh` or `scripts/hooks/` (agent system infrastructure)
+     - `scripts/prompts/` (agent prompts)
+     - `tools/pepper-mcp` (MCP server)
+     - `.env*`
+   - Otherwise → merge it:
      ```
      gh pr merge <number> --repo skwallace36/Pepper --squash --delete-branch
      ```
-   - If ANY changed file is outside those paths (dylib/, tools/, scripts/, Makefile, etc.) → do NOT merge. Just add the `verified` label and leave it for human review.
 
 SCOPE: You may NOT modify any code. Read-only access to all files. Your only outputs are PR comments, labels, and merges (for safe PRs only).
 DO NOT modify: any files. This agent is read-only + GitHub interaction only.
