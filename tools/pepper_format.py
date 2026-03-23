@@ -342,9 +342,7 @@ def format_look_compact(resp: dict) -> str:
         if not (0 <= cx <= vw and 0 <= cy <= vh):
             return False
         sc = element.get("scroll_context", {})
-        if sc and sc.get("visible_in_viewport") is False:
-            return False
-        return True
+        return not (sc and sc.get("visible_in_viewport") is False)
 
     # Flatten interactive elements from rows, filter viewport
     all_interactive = []
