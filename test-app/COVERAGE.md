@@ -192,14 +192,17 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `undo` | undo | untested |  |  |
 | `undo` | redo | untested |  |  |
 | `accessibility_audit` | — | untested | Any state |  |
+| `renders` | snapshot | untested |  |  |
+| `renders` | diff | untested |  |  |
+| `renders` | reset | untested |  |  |
 
 ## Summary
 
-**170 test points** across 54 commands.
+**173 test points** across 55 commands.
 
 - pass: 128
 - fail: 11
-- untested: 29
+- untested: 32
 
 ## Test App Gaps
 
