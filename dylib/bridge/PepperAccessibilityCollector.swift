@@ -334,10 +334,15 @@ extension PepperSwiftUIBridge {
             }
         }
 
-        let elementType = classifyAccessibilityTraits(traits)
+        // UITableViewCell and UICollectionViewCell are tappable via parent view selection
+        // (didSelectRowAt: / didSelectItemAt:). They don't carry .button trait but are
+        // interactive targets — consistent with isViewInteractive() in the view-hierarchy walk.
+        let isCellView = element is UITableViewCell || element is UICollectionViewCell
+        let elementType = isCellView ? "cell" : classifyAccessibilityTraits(traits)
         let isInteractive =
             traits.contains(.button) || traits.contains(.link) || traits.contains(.searchField)
             || traits.contains(.adjustable) || traits.contains(.keyboardKey)
+            || isCellView
 
         return PepperAccessibilityElement(
             label: label,
