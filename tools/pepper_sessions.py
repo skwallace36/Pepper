@@ -10,10 +10,13 @@ exactly as before. The session layer is purely additive.
 """
 
 import json
+import logging
 import os
 import socket
 from datetime import datetime, timezone
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 
 SESSION_DIR = "/tmp/pepper-sessions"
@@ -22,6 +25,10 @@ PORT_DIR = "/tmp/pepper-ports"
 # How old a heartbeat can be before we consider the session stale (seconds).
 # Secondary check — PID liveness is primary.
 HEARTBEAT_STALE_SECONDS = 120
+
+# Hard ceiling on session age (seconds). Sessions older than this are stale
+# regardless of PID/port status. 20 min = 15-min agent timeout + 5-min buffer.
+MAX_SESSION_AGE_SECONDS = 1200
 
 # Default cap on concurrent claimed simulators.
 DEFAULT_MAX_SIMS = 3
@@ -128,9 +135,28 @@ def _is_session_live(session: dict) -> bool:
     - The claiming PID is still alive (long-running MCP server)
     - The Pepper port is still responding (app running, deploy script exited)
 
+    Hard ceiling: sessions older than MAX_SESSION_AGE_SECONDS are always stale,
+    regardless of PID or port status.
+
     This supports: MCP deploy (PID alive), `make deploy` (port alive), and
     pre-claims during deploy (state=deploying, no port yet).
     """
+    # Hard ceiling — catch hung processes that are technically alive
+    claimed_str = session.get("claimed_at", "")
+    if claimed_str:
+        try:
+            claimed_time = datetime.fromisoformat(claimed_str)
+            age = (datetime.now(timezone.utc) - claimed_time).total_seconds()
+            if age > MAX_SESSION_AGE_SECONDS:
+                logger.info(
+                    "Time-based stale cleanup: session %s (PID %s) aged out at %.0fs (max %ds)",
+                    session.get("udid", "?"), session.get("pid", 0),
+                    age, MAX_SESSION_AGE_SECONDS,
+                )
+                return False
+        except (ValueError, TypeError):
+            pass
+
     state = session.get("state", "active")
     pid = session.get("pid", 0)
     port = session.get("port", 0)
