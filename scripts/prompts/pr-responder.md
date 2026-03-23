@@ -12,7 +12,7 @@ THEN:
    b. Read inline review comments: `gh api repos/skwallace36/Pepper/pulls/<number>/comments`
    c. Read PR reviews: `gh api repos/skwallace36/Pepper/pulls/<number>/reviews`
    d. Read issue comments (verifier reports, general feedback): `gh api repos/skwallace36/Pepper/issues/<number>/comments`
-4. Pick the first PR that has actionable feedback — review comments, requested changes, OR issue comments with specific fix suggestions (e.g., verifier failure reports with root cause analysis).
+4. Prioritize PRs with comments from **skwallace36** (the repo owner) — always address those first, before any other feedback. Then handle other actionable feedback (review comments, requested changes, verifier failure reports).
 5. Check out the PR branch: `git checkout <branch-name> && git pull origin <branch-name>`
 6. Address each review comment:
    - Make the requested changes
