@@ -57,7 +57,10 @@ if [ "$TOOL" = "Write" ] || [ "$TOOL" = "Edit" ]; then
   [ -z "$FILE" ] && exit 0
 
   # Common no-touch files for all agent types
+  # Note: .claude/worktrees/ contains agent working copies — don't block those
   case "$FILE" in
+    */.claude/worktrees/*)
+      ;;  # allow — these are agent worktree files, not config
     */.claude/*|*/.mcp.json|*/.env|*/.env.*|*/AGENTIC-PLAN.md)
       deny "agents cannot modify $FILE (protected config)."
       ;;
