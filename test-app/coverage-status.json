@@ -166,5 +166,6 @@
   "snapshot.diff":       { "status": "untested",  "surface": "After snapshot save",                       "notes": "New command. Compares current screen state against saved snapshot. Returns added/removed/changed elements and text. Supports ignore_transient and assert_no_diff." },
   "snapshot.list":       { "status": "untested",  "surface": "Any state",                                 "notes": "New command. Lists all saved snapshot names." },
   "snapshot.delete":     { "status": "untested",  "surface": "After snapshot save",                       "notes": "New command. Deletes a saved snapshot by name." },
-  "snapshot.clear":      { "status": "untested",  "surface": "After snapshot save",                       "notes": "New command. Deletes all saved snapshots." }
+  "snapshot.clear":      { "status": "untested",  "surface": "After snapshot save",                       "notes": "New command. Deletes all saved snapshots." },
+  "undo":                { "status": "untested",  "surface": "Any state",                                 "notes": "New command. NSUndoManager inspector — list undo managers, query undo/redo stack state, trigger undo/redo programmatically." }
 }

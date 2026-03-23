@@ -187,14 +187,18 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `snapshot` | list | untested | Any state | New command. Lists all saved snapshot names. |
 | `snapshot` | delete | untested | After snapshot save | New command. Deletes a saved snapshot by name. |
 | `snapshot` | clear | untested | After snapshot save | New command. Deletes all saved snapshots. |
+| `undo` | list | untested |  |  |
+| `undo` | status | untested |  |  |
+| `undo` | undo | untested |  |  |
+| `undo` | redo | untested |  |  |
 
 ## Summary
 
-**165 test points** across 52 commands.
+**169 test points** across 53 commands.
 
 - pass: 127
 - fail: 11
-- untested: 24
+- untested: 28
 
 ## Test App Gaps
 
