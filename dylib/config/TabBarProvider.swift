@@ -33,6 +33,11 @@ protocol TabBarProvider {
 
     /// Resolve a user-provided tab input (name or index string) to a tab index.
     func resolveTabIndex(_ input: String) -> Int?
+
+    /// Return screen-space centers and frames for each tab item.
+    /// Used by introspect Phase 4a to create tab elements even when
+    /// scrollable content occludes some tab buttons from hit-testing.
+    func tabItemFrames(in window: UIWindow) -> [(center: CGPoint, frame: CGRect)]
 }
 
 // MARK: - Default implementations for standard UITabBarController
@@ -80,5 +85,19 @@ extension TabBarProvider {
 
     func resolveTabIndex(_ input: String) -> Int? {
         return nil
+    }
+
+    func tabItemFrames(in window: UIWindow) -> [(center: CGPoint, frame: CGRect)] {
+        // Default: extract from UITabBar buttons
+        guard let tabBar = findTabBar(in: window) as? UITabBar else { return [] }
+        return tabBar.subviews
+            .filter { String(describing: type(of: $0)).contains("TabBarButton") }
+            .sorted { $0.frame.origin.x < $1.frame.origin.x }
+            .map { button in
+                let center = button.convert(
+                    CGPoint(x: button.bounds.midX, y: button.bounds.midY), to: window)
+                let frame = button.convert(button.bounds, to: window)
+                return (center: center, frame: frame)
+            }
     }
 }
