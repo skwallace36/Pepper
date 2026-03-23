@@ -261,6 +261,7 @@ final class PepperDispatcher {
         register(ConstraintsHandler())
         register(SandboxHandler())
         register(ConcurrencyHandler())
+        register(TimersHandler())
     }
 }
 

@@ -1,7 +1,7 @@
 """Debug and introspection tool definitions for Pepper MCP.
 
 Tool definitions for: layers, console, network, timeline, crash_log,
-animations, lifecycle, heap, responder_chain, notifications.
+animations, lifecycle, heap, responder_chain, notifications, timers.
 """
 
 import json
@@ -358,6 +358,41 @@ def register_debug_tools(mcp, resolve_and_send):
         if depth is not None:
             params["depth"] = depth
         return await resolve_and_send(simulator, "constraints", params)
+
+    @mcp.tool()
+    async def timers(
+        simulator: str | None = Field(default=None, description="Simulator UDID"),
+        action: str = Field(default="list", description="Action: start, stop, list, invalidate, status, clear"),
+        timer_id: str | None = Field(default=None, description="Timer/display-link ID to invalidate (e.g. timer_3, dlink_1)"),
+        filter_text: str | None = Field(default=None, description="Filter by target class or selector name"),
+        limit: int | None = Field(default=None, description="Max results to return (default 100)"),
+    ) -> str:
+        """Discover and inspect active NSTimer and CADisplayLink instances.
+
+        Finds leaked timers, unnecessary background work, and battery-draining activity.
+        Call start first to install tracking, then list to see active timers.
+
+        Workflow: start → use the app → list to see timers/display links → invalidate to test.
+
+        Actions:
+        - start: begin tracking timer/display-link creation (installs swizzles)
+        - stop: stop tracking
+        - list: show all tracked active timers and display links
+        - invalidate: cancel a timer/display-link by ID (for testing)
+        - status: check if tracking is active and current counts
+        - clear: reset all tracked data
+
+        Each timer shows: interval, target class, selector, repeat flag, fire date.
+        Each display link shows: target class, selector, preferred FPS, paused state.
+        DispatchSourceTimer tracking is not supported (C-level dispatch objects)."""
+        params: dict = {"action": action}
+        if timer_id:
+            params["id"] = timer_id
+        if filter_text:
+            params["filter"] = filter_text
+        if limit is not None:
+            params["limit"] = limit
+        return await resolve_and_send(simulator, "timers", params)
 
     @mcp.tool()
     async def accessibility_audit(
