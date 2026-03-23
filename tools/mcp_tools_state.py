@@ -161,3 +161,39 @@ def register_state_tools(mcp, resolve_and_send):
         if index is not None:
             params["index"] = index
         return await resolve_and_send(simulator, "undo", params)
+
+    @mcp.tool()
+    async def sandbox(
+        simulator: str | None = Field(default=None, description="Simulator UDID"),
+        action: str = Field(default="paths", description="Action: paths, list, read, write, delete, info, size"),
+        path: str | None = Field(default=None, description="File or directory path. Supports shorthands: documents/, caches/, library/, tmp/, bundle/, ~/ or absolute paths"),
+        content: str | None = Field(default=None, description="File content to write (for write action)"),
+        base64: bool = Field(default=False, description="If true, content is base64-encoded binary data (for write)"),
+        recursive: bool = Field(default=False, description="List files recursively (for list action)"),
+        max_length: int | None = Field(default=None, description="Max characters/bytes to read (default: 50000 for text, 10000 for binary)"),
+    ) -> str:
+        """Browse, read, write, and delete files in the app's sandbox directories.
+        Direct in-process FileManager access — no shell gymnastics to find simulator data paths.
+
+        Actions:
+        - paths: show container directory paths (Documents, Library, Caches, tmp, bundle) with item counts
+        - list: list files/directories with size and modification date. Use path shorthands: documents/, caches/, library/, tmp/, bundle/
+        - read: read file contents — auto-detects format (text, JSON with pretty-print, plist as JSON, binary as base64)
+        - write: write or overwrite a file (creates parent directories). Set base64=true for binary data
+        - delete: remove a file or directory (refuses app bundle writes)
+        - info: file attributes — size, creation date, modification date, permissions
+        - size: directory size summary per subdirectory — great for cache bloat detection
+
+        Related tools: defaults (UserDefaults), cookies (HTTP cookies), keychain (credentials)."""
+        params: dict = {"action": action}
+        if path:
+            params["path"] = path
+        if content is not None:
+            params["content"] = content
+        if base64:
+            params["base64"] = base64
+        if recursive:
+            params["recursive"] = recursive
+        if max_length is not None:
+            params["max_length"] = max_length
+        return await resolve_and_send(simulator, "sandbox", params)

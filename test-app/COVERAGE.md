@@ -199,14 +199,21 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `renders` | diff | untested |  |  |
 | `renders` | reset | untested |  |  |
 | `constraints` | — | untested | Any state | AutoLayout constraint dump with ambiguity detection. Walks view hierarchy dumping NSLayoutConstraints with attributes, relation, constant, multiplier, priority. Flags ambiguous views with _autolayoutTrace. |
+| `sandbox` | paths | untested |  |  |
+| `sandbox` | list | untested |  |  |
+| `sandbox` | read | untested |  |  |
+| `sandbox` | write | untested |  |  |
+| `sandbox` | delete | untested |  |  |
+| `sandbox` | info | untested |  |  |
+| `sandbox` | size | untested |  |  |
 
 ## Summary
 
-**177 test points** across 57 commands.
+**184 test points** across 58 commands.
 
 - pass: 128
 - fail: 11
-- untested: 36
+- untested: 43
 
 ## Test App Gaps
 
