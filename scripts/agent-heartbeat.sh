@@ -14,7 +14,7 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"
 
 PIDFILE="build/logs/heartbeat.pid"
-INTERVAL=30
+INTERVAL=120
 
 mkdir -p build/logs
 
@@ -95,6 +95,25 @@ while true; do
       break
     fi
   done
+
+  # Groom backlog — once per day max
+  GROOMER_RAN_TODAY=$(python3 -c "
+import json
+today = '$(date -u +%Y-%m-%d)'
+try:
+    with open('$REPO_ROOT/build/logs/events.jsonl') as f:
+        for line in f:
+            try:
+                e = json.loads(line.strip())
+                if e.get('agent') == 'groomer' and e.get('event') == 'started' and e.get('ts','').startswith(today):
+                    print('yes'); exit()
+            except: pass
+except FileNotFoundError: pass
+print('no')
+" 2>/dev/null || echo "no")
+  if [ "$GROOMER_RAN_TODAY" != "yes" ]; then
+    launch_if_idle groomer
+  fi
 
   sleep "$INTERVAL"
 done
