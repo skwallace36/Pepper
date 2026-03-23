@@ -1,7 +1,7 @@
 """Navigation and interaction tool definitions for Pepper MCP.
 
 Tool definitions for: look, tap, scroll, input_text, navigate, back, dismiss,
-swipe, screen, scroll_to, dismiss_keyboard.
+swipe, screen, scroll_to, dismiss_keyboard, snapshot.
 """
 
 import asyncio
@@ -202,3 +202,23 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
     ) -> str:
         """Dismiss the on-screen keyboard by resigning first responder. Shows screen state after."""
         return await act_and_look(simulator, "dismiss_keyboard")
+
+    @mcp.tool()
+    async def snapshot(
+        simulator: Optional[str] = Field(default=None, description="Simulator UDID"),
+        action: str = Field(default="save", description="Action: 'save' (capture baseline), 'diff' (compare to baseline), 'list', 'delete', 'clear'"),
+        name: str = Field(default="default", description="Snapshot name for save/diff/delete"),
+        ignore_transient: bool = Field(default=False, description="Ignore volatile/transient text elements (timestamps, animation frames) in diffs"),
+        assert_no_diff: bool = Field(default=False, description="Return error if any diff is detected (for regression testing)"),
+    ) -> str:
+        """Capture screen state as a named snapshot, then diff against it after actions.
+
+        Workflow: snapshot action=save name=baseline → perform actions → snapshot action=diff name=baseline.
+        Returns semantic diff: added/removed/changed elements and text.
+        Use assert_no_diff=true to fail if state changed (regression testing)."""
+        return await resolve_and_send(simulator, "snapshot", {
+            "action": action,
+            "name": name,
+            "ignore_transient": ignore_transient,
+            "assert_no_diff": assert_no_diff,
+        })

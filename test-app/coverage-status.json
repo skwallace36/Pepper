@@ -160,5 +160,11 @@
   "locale.lookup":       { "status": "pass",      "surface": "Localizable.strings (keys defined but not bundled)", "notes": "Command works correctly: returns {key, value, found}. Returns found=false for keys 'greeting' and 'button_tap' — Localizable.strings file exists in source but isn't properly included in app bundle (build config issue, not a Pepper bug). Missing key param returns proper error." },
   "locale.languages":    { "status": "pass",      "surface": "Any state",                                "notes": "Returns {count:1, languages:['en']}. Shows available app localizations from bundle." },
   "responder_chain":     { "status": "untested",  "surface": "Any interactive element",                   "notes": "New command. Dumps gesture recognizer stack, responder chain, and hit-test path for a given point or element." },
-  "notifications":       { "status": "untested",  "surface": "Any state",                                 "notes": "New command. NSNotificationCenter inspector — list observers, post arbitrary notifications, track add/remove over time." }
+  "notifications":       { "status": "untested",  "surface": "Any state",                                 "notes": "New command. NSNotificationCenter inspector — list observers, post arbitrary notifications, track add/remove over time." },
+
+  "snapshot.save":       { "status": "untested",  "surface": "Any state",                                 "notes": "New command. Captures current look/introspect map output as a named baseline for later diffing." },
+  "snapshot.diff":       { "status": "untested",  "surface": "After snapshot save",                       "notes": "New command. Compares current screen state against saved snapshot. Returns added/removed/changed elements and text. Supports ignore_transient and assert_no_diff." },
+  "snapshot.list":       { "status": "untested",  "surface": "Any state",                                 "notes": "New command. Lists all saved snapshot names." },
+  "snapshot.delete":     { "status": "untested",  "surface": "After snapshot save",                       "notes": "New command. Deletes a saved snapshot by name." },
+  "snapshot.clear":      { "status": "untested",  "surface": "After snapshot save",                       "notes": "New command. Deletes all saved snapshots." }
 }
