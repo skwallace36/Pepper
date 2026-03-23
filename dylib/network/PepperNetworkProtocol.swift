@@ -388,6 +388,7 @@ extension PepperNetworkProtocol: URLSessionDataDelegate {
         var headers = PepperNetworkInterceptor.extractHeaders(original)
         headers["Content-Length"] = String(newLength)
         return HTTPURLResponse(
+            // swiftlint:disable:next force_unwrapping
             url: original.url ?? URL(string: "about:blank")!,
             statusCode: original.statusCode,
             httpVersion: nil,

@@ -41,6 +41,7 @@ struct DismissHandler: PepperHandler {
         }
 
         // Dismiss the topmost (last in chain)
+        // swiftlint:disable:next force_unwrapping
         let topmostPresented = chain.last!
         let screenId = topmostPresented.pepper_topMostViewController.pepperScreenID
         topmostPresented.dismiss(animated: true)

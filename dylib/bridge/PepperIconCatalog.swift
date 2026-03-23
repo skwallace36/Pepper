@@ -234,6 +234,7 @@ final class PepperIconCatalog {
         let scaleResults: [ScaleResult]
     }
 
+    // swiftlint:disable:next cyclomatic_complexity
     func identifyDebug(frame: CGRect) -> DebugMatch? {
         ensureBuilt()
         guard let window = UIWindow.pepper_keyWindow else { return nil }
@@ -356,6 +357,7 @@ final class PepperIconCatalog {
         for scale in [0.7, 1.0, 1.5, 1.82] as [CGFloat] {
             if let match = identifyAtScale(frame: effectiveFrame, window: window, scale: scale) {
                 if match.distance == 0 { return match } // Perfect → short-circuit
+                // swiftlint:disable:next force_unwrapping
                 if bestMatch == nil || match.distance < bestMatch!.distance {
                     bestMatch = match
                 }
@@ -372,6 +374,7 @@ final class PepperIconCatalog {
                 if let hash = captureAndHashBgSub(frame: effectiveFrame, window: window, scale: scale),
                    let match = matchHash(hash, threshold: 8, minCatalogBits: 12) {
                     if match.distance == 0 { return match }
+                    // swiftlint:disable:next force_unwrapping
                     if bestMatch == nil || match.distance < bestMatch!.distance {
                         bestMatch = match
                     }

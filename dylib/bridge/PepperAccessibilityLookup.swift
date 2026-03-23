@@ -43,6 +43,7 @@ extension PepperSwiftUIBridge {
                     return v
                 }
             }
+            // swiftlint:disable:next force_unwrapping
             return candidates.first!
         }
 

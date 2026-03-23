@@ -226,6 +226,7 @@ final class PepperInteractiveOverlay {
         btn.setTitle(label, for: .normal)
         btn.titleLabel?.font = .systemFont(ofSize: 11, weight: .semibold)
         btn.setTitleColor(.white, for: .normal)
+        // swiftlint:disable:next force_unwrapping
         btn.backgroundColor = Self.pillColors[colorKey] ?? Self.pillColors["action"]!
         btn.layer.cornerRadius = 13
         btn.contentEdgeInsets = UIEdgeInsets(top: 4, left: 10, bottom: 4, right: 10)

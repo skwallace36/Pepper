@@ -153,6 +153,7 @@ struct HeapSnapshotHandler: PepperHandler {
         var cStrings: [UnsafeMutablePointer<CChar>] = [] // Keep alive
 
         for prefix in prefixes where !prefix.isEmpty {
+            // swiftlint:disable:next force_unwrapping
             let cStr = strdup(prefix)!
             cStrings.append(cStr)
             cPrefixes.append(UnsafePointer(cStr))

@@ -1,0 +1,22 @@
+# SwiftLint configuration for Pepper
+# Focused on unsafe patterns that have caused bugs (BUG-007, BUG-003)
+
+included:
+  - dylib
+
+# Disable all default rules except the ones we want
+only_rules:
+  - force_cast
+  - force_try
+  - force_unwrapping
+  - implicitly_unwrapped_optional
+  - line_length
+  - cyclomatic_complexity
+
+line_length:
+  warning: 400
+  error: 500
+
+cyclomatic_complexity:
+  warning: 15
+  error: 25
