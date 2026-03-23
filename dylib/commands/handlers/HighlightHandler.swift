@@ -165,14 +165,13 @@ struct HighlightHandler: PepperHandler {
             lastError = errorMsg
             if let result = result {
                 let frame: CGRect
-                if result.tapPoint != nil {
+                if let tapPoint = result.tapPoint {
                     if let accFrame = PepperSwiftUIBridge.shared.findAccessibilityElementFrame(
                         label: result.description, exact: false
                     ) {
                         frame = accFrame
                     } else {
-                        // swiftlint:disable:next force_unwrapping
-                        let tp = result.tapPoint!
+                        let tp = tapPoint
                         let size: CGFloat = 44
                         frame = CGRect(x: tp.x - size / 2, y: tp.y - size / 2, width: size, height: size)
                     }

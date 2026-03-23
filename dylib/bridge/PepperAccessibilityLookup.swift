@@ -47,8 +47,7 @@ extension PepperSwiftUIBridge {
                     return v
                 }
             }
-            // swiftlint:disable:next force_unwrapping
-            return candidates.first!
+            return candidates[0]
         }
 
         // Tier 1: on-screen AND hit-reachable (topmost — not behind a modal/sheet)

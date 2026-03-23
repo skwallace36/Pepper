@@ -226,15 +226,12 @@ struct TapHandler: PepperHandler {
                     }
                 }
             }
-            if !allMatches.isEmpty {
+            if !allMatches.isEmpty, let posFilter = positionFilter {
                 let sorted = allMatches.sorted { $0.0.y < $1.0.y }
-                // swiftlint:disable:next force_unwrapping
-                let pick = positionFilter == "bottom" ? sorted.last! : sorted.first!
-                // swiftlint:disable:next force_unwrapping
-                let desc = "\(pick.2) [position:\(positionFilter!)]"
-                return executeTap(
-                    at: pick.0, strategy: pick.1,
-                    description: desc, in: pick.3, command: command)
+                let pick = posFilter == "bottom" ? sorted[sorted.count - 1] : sorted[0]
+                let desc = "\(pick.2) [position:\(posFilter)]"
+                return executeTap(at: pick.0, strategy: pick.1,
+                                  description: desc, in: pick.3, command: command)
             }
         }
 

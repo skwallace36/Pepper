@@ -46,8 +46,7 @@ extension PepperSwiftUIBridge {
 
         for acc in accElements where acc.isInteractive && acc.frame != .zero && acc.frame.width > 0 {
             guard results.count < maxElements else { break }
-            // swiftlint:disable:next force_unwrapping
-            let labeled = acc.label != nil && !acc.label!.isEmpty
+            let labeled = acc.label?.isEmpty == false
             var iconName: String? = nil
             let heuristic =
                 labeled
@@ -91,9 +90,7 @@ extension PepperSwiftUIBridge {
 
         // Phase 2b: Walk topmost VC's view if it's not already covered.
         // SwiftUI .sheet() presents content that may not be in the window's subview tree.
-        if rootView == nil, let topVC = UIWindow.pepper_topViewController {
-            // swiftlint:disable:next force_unwrapping
-            let topView = topVC.view!
+        if rootView == nil, let topVC = UIWindow.pepper_topViewController, let topView = topVC.view {
             let alreadyCovered = topView.isDescendant(of: walkRoot)
             if !alreadyCovered {
                 walkViewHierarchyForInteractive(view: topView, maxElements: maxElements, into: &viewElements)
@@ -114,8 +111,7 @@ extension PepperSwiftUIBridge {
             guard !dedup.isDuplicate(frame: viewFrame, view: view) else { continue }
 
             let label = view.accessibilityLabel
-            // swiftlint:disable:next force_unwrapping
-            let labeled = label != nil && !label!.isEmpty
+            let labeled = label?.isEmpty == false
             let isControl = view is UIControl
             let controlType = classifyControlType(view)
             let source = isControl ? "uiControl" : "gestureRecognizer"
@@ -132,10 +128,8 @@ extension PepperSwiftUIBridge {
                     iconName: &iconName
                 )
 
-            let labelSource: String? =
-                labeled
-                // swiftlint:disable:next force_unwrapping
-                ? Self.classifyLabelSource(view: view, label: label!)
+            let labelSource: String? = labeled
+                ? Self.classifyLabelSource(view: view, label: label ?? "")
                 : nil
             results.append(
                 PepperInteractiveElement(

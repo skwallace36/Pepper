@@ -87,8 +87,7 @@ extension UIView {
                 }
             }
             // 4. First match
-            // swiftlint:disable:next force_unwrapping
-            return pool.first!
+            return pool[0]
         }
 
         // Tier 1: on-screen AND hit-reachable (topmost — not behind a modal/sheet)

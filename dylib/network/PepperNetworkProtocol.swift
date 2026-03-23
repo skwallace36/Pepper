@@ -186,14 +186,15 @@ final class PepperNetworkProtocol: URLProtocol {
             client?.urlProtocol(self, didFailWithError: error)
 
         case .failStatus(let statusCode):
+            // swiftlint:disable:next force_unwrapping — "about:blank" is a valid URL literal
             let responseUrl = request.url ?? URL(string: "about:blank")!
-            let syntheticResponse = HTTPURLResponse(
+            guard let syntheticResponse = HTTPURLResponse(
                 url: responseUrl,
                 statusCode: statusCode,
                 httpVersion: "HTTP/1.1",
                 headerFields: ["X-Pepper-Simulated": "true"]
-            )!
-            let body = "{\"error\":\"Simulated HTTP \(statusCode) (Pepper network condition)\"}".data(using: .utf8)!
+            ) else { return }
+            let body = Data("{\"error\":\"Simulated HTTP \(statusCode) (Pepper network condition)\"}".utf8)
             let respBody = PepperNetworkInterceptor.processBody(body, contentType: "application/json")
             let responseInfo = NetworkResponseInfo(
                 statusCode: statusCode,
@@ -379,8 +380,10 @@ extension PepperNetworkProtocol: URLSessionDataDelegate {
                     Thread.sleep(forTimeInterval: chunkInterval)
                 }
             }
-            self?.client?.urlProtocolDidFinishLoading(self!)
-            self?.forwardSession?.finishTasksAndInvalidate()
+            if let self {
+                self.client?.urlProtocolDidFinishLoading(self)
+                self.forwardSession?.finishTasksAndInvalidate()
+            }
         }
     }
 

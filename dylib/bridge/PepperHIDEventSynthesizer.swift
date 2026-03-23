@@ -131,22 +131,17 @@ struct HIDEventAPI {
             }
         }
 
+        // swiftlint:disable force_unwrapping — validated non-nil by guard loop above
         var api = HIDEventAPI(
-            // swiftlint:disable:next force_unwrapping
             createDigitizerEvent: unsafeBitCast(symbols[0].1!, to: CreateDigitizerEvent.self),
-            // swiftlint:disable:next force_unwrapping
             createDigitizerFingerEvent: unsafeBitCast(symbols[1].1!, to: CreateDigitizerFingerEvent.self),
-            // swiftlint:disable:next force_unwrapping
             eventAppendEvent: unsafeBitCast(symbols[2].1!, to: EventAppendEvent.self),
-            // swiftlint:disable:next force_unwrapping
             eventSetIntegerValue: unsafeBitCast(symbols[3].1!, to: EventSetIntegerValue.self),
-            // swiftlint:disable:next force_unwrapping
             eventSetFloatValue: unsafeBitCast(symbols[4].1!, to: EventSetFloatValue.self),
-            // swiftlint:disable:next force_unwrapping
             eventSetSenderID: unsafeBitCast(symbols[5].1!, to: EventSetSenderID.self),
-            // swiftlint:disable:next force_unwrapping
             setDigitizerInfo: unsafeBitCast(symbols[6].1!, to: SetDigitizerInfo.self)
         )
+        // swiftlint:enable force_unwrapping
 
         // Optional: vendor-defined event + integer getter for marker support.
         // If these can't be loaded, marker events are skipped (graceful degradation).
