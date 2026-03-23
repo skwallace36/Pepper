@@ -11,7 +11,7 @@ import json
 from mcp.types import ImageContent, TextContent
 from mcp_screenshot import capture_screenshot, capture_screenshot_inprocess
 from pepper_common import discover_instance
-from pepper_format import format_look, format_look_compact
+from pepper_format import format_look, format_look_compact, format_look_slim
 from pydantic import Field
 
 
@@ -29,13 +29,15 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
     async def look(
         simulator: str | None = Field(default=None, description="Simulator UDID (optional if only one sim running)"),
         raw: bool = Field(default=False, description="Return raw JSON instead of formatted summary"),
-        compact: bool = Field(default=False, description="Slim output for agent sessions: omits coordinates/frames, shows only changed elements vs previous call, reduces context by ~60-70%"),
+        slim: bool = Field(default=False, description="Slim output for agent sessions: flat element list with tap commands, no y-coordinates or group headers. Stateless (always full screen). Use when you need tap commands but want reduced context."),
+        compact: bool = Field(default=False, description="Diff output for agent sessions: omits coordinates/frames and tap commands, shows only changed elements vs previous call, reduces context by ~60-70%"),
         visual: bool = Field(default=False, description="Include a simulator screenshot alongside the structured data"),
         screenshot_quality: str = Field(default="standard", description="Screenshot quality: 'standard' (70% JPEG) or 'high' (95% JPEG, for PR validation)"),
         save_screenshot: str | None = Field(default=None, description="Save screenshot to this file path (in addition to returning it)"),
     ) -> list:
         """See what's on screen — all interactive elements with tap commands, plus visible text.
-        Use compact=true for agent sessions — omits coordinates, diffs against last call, cuts context ~60-70%.
+        Use slim=true for agent sessions — flat list, no y-coords, tap commands preserved, stateless.
+        Use compact=true for minimal diffs — omits tap commands, only shows changes since last call.
         Use raw=true when you need coordinates, frames, or scroll context.
         Use visual=true to include a screenshot for visual validation.
         Use screenshot_quality='high' + save_screenshot='/tmp/foo.jpg' for PR validation screenshots."""
@@ -64,6 +66,8 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
 
         if raw:
             text = json.dumps(resp, indent=2)
+        elif slim:
+            text = format_look_slim(resp)
         elif compact:
             text = format_look_compact(resp)
         else:
