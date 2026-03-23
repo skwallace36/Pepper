@@ -106,7 +106,12 @@ struct ScrollUntilVisibleHandler: PepperHandler {
 
         let elapsedMs = Int(Date().timeIntervalSince(startTime) * 1000)
         logger.warning("Text '\(text)' not found after scrolling, \(elapsedMs)ms")
-        return .error(id: command.id, message: "Text '\(text)' not found after \(maxScrolls) scrolls (\(elapsedMs)ms)")
+        return .elementNotFound(
+            id: command.id,
+            message: "Text '\(text)' not found after \(maxScrolls) scrolls (\(elapsedMs)ms)",
+            query: text,
+            suggestion: "Try `look` to see current screen state or increase max_scrolls"
+        )
     }
 
     /// Check if text is on screen — its frame must intersect the visible viewport.
