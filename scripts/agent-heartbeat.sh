@@ -79,7 +79,7 @@ while true; do
 
   # Clean stale in-progress claims (tasks with no open PR and no active branch)
   for num in $(gh issue list --repo skwallace36/Pepper --label in-progress --state open --json number --jq '.[].number' 2>/dev/null); do
-    OPEN_PR=$(gh pr list --repo skwallace36/Pepper --state open --search "Fixes #$num" --json number --jq 'length' 2>/dev/null || echo 0)
+    OPEN_PR=$(gh pr list --repo skwallace36/Pepper --state open --search "#$num" --json number --jq 'length' 2>/dev/null || echo 0)
     if [ "$OPEN_PR" = "0" ]; then
       gh issue edit "$num" --repo skwallace36/Pepper --remove-label "in-progress" 2>/dev/null || true
     fi
