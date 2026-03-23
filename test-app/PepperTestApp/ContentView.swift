@@ -1,21 +1,23 @@
 import SwiftUI
 
 struct ContentView: View {
+    @Binding var selectedTab: String
+
     var body: some View {
-        TabView {
-            Tab("Controls", systemImage: "slider.horizontal.3") {
+        TabView(selection: $selectedTab) {
+            Tab("Controls", systemImage: "slider.horizontal.3", value: "controls") {
                 NavigationStack {
                     ControlsView()
                 }
             }
 
-            Tab("List", systemImage: "list.bullet") {
+            Tab("List", systemImage: "list.bullet", value: "list") {
                 NavigationStack {
                     ListTab()
                 }
             }
 
-            Tab("Misc", systemImage: "ellipsis.circle") {
+            Tab("Misc", systemImage: "ellipsis.circle", value: "misc") {
                 NavigationStack {
                     MiscTab()
                 }

@@ -62,6 +62,18 @@ public final class PepperPlane {
         // Wire app-specific configuration before anything else
         PepperAppConfig.shared.appBootstrap?()
 
+        // Auto-detect URL scheme from the host app's Info.plist when no adapter
+        // has configured one. This enables deep link navigation in generic mode
+        // for any app that registers a CFBundleURLSchemes entry.
+        if PepperAppConfig.shared.deeplinkScheme.isEmpty {
+            if let urlTypes = Bundle.main.infoDictionary?["CFBundleURLTypes"] as? [[String: Any]],
+               let schemes = urlTypes.first?["CFBundleURLSchemes"] as? [String],
+               let scheme = schemes.first {
+                PepperAppConfig.shared.deeplinkScheme = scheme
+                pepperLog.info("Auto-detected URL scheme: \(scheme)://", category: .lifecycle)
+            }
+        }
+
         // Register adapter-provided command handlers
         for handler in PepperAppConfig.shared.additionalHandlers {
             if let h = handler as? PepperHandler {
