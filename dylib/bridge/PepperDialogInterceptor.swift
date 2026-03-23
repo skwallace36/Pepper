@@ -58,6 +58,7 @@ final class PepperDialogInterceptor {
     private let lock = NSLock()
     private var installed = false
     private static var authSwizzlesInstalled = false
+    fileprivate static var runtimeClassReinforced = false
 
     private init() {}
 
@@ -73,6 +74,7 @@ final class PepperDialogInterceptor {
         authSwizzlesInstalled = true
 
         installNotificationSwizzle()
+        installCurrentNotificationCenterSwizzle()
         installPhotoLibrarySwizzle()
     }
 
@@ -99,6 +101,27 @@ final class PepperDialogInterceptor {
             }
             pepperLog.info("Notification authorization reinforced on runtime class \(runtimeCls)", category: .lifecycle)
         }
+    }
+
+    /// Swizzle +[UNUserNotificationCenter currentNotificationCenter] so that the
+    /// first time any code resolves .current(), we re-check the runtime class and
+    /// reinforce the authorization swizzle. This closes the window between dylib
+    /// constructor time (where .current() may return a placeholder class) and
+    /// didFinishLaunchingNotification (which fires AFTER didFinishLaunchingWithOptions,
+    /// too late if the app requests notification permission during launch).
+    private static func installCurrentNotificationCenterSwizzle() {
+        guard let metacls = object_getClass(UNUserNotificationCenter.self) else { return }
+        let originalSel = NSSelectorFromString("currentNotificationCenter")
+        let swizzledSel = #selector(UNUserNotificationCenter.pepper_currentNotificationCenter)
+
+        guard let originalMethod = class_getInstanceMethod(metacls, originalSel),
+              let swizzledMethod = class_getInstanceMethod(metacls, swizzledSel) else {
+            pepperLog.error("Failed to swizzle UNUserNotificationCenter.current()", category: .lifecycle)
+            return
+        }
+
+        method_exchangeImplementations(originalMethod, swizzledMethod)
+        pepperLog.info("Notification center .current() swizzle installed", category: .lifecycle)
     }
 
     private static func installPhotoLibrarySwizzle() {
@@ -457,6 +480,25 @@ extension PHPhotoLibrary {
 // MARK: - UNUserNotificationCenter swizzle
 
 extension UNUserNotificationCenter {
+    /// Swizzled +currentNotificationCenter — lazily reinforces the authorization
+    /// swizzle on the actual runtime class the first time .current() is called
+    /// after dylib constructor time.
+    @objc dynamic class func pepper_currentNotificationCenter() -> UNUserNotificationCenter {
+        // Call original (implementations are swapped)
+        let instance = pepper_currentNotificationCenter()
+
+        // Lazily reinforce the authorization swizzle on the runtime class.
+        // At constructor time, .current() may return a placeholder whose class
+        // differs from the one used at app runtime. This ensures the real
+        // runtime subclass is swizzled before any requestAuthorization call.
+        if !PepperDialogInterceptor.runtimeClassReinforced {
+            PepperDialogInterceptor.runtimeClassReinforced = true
+            PepperDialogInterceptor.reinforceNotificationSwizzle()
+        }
+
+        return instance
+    }
+
     /// Swizzled requestAuthorization — auto-grants without showing system dialog.
     @objc dynamic func pepper_requestAuthorization(
         options: UNAuthorizationOptions,
