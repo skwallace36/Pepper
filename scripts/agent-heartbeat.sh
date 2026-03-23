@@ -135,8 +135,9 @@ while true; do
     fi
   done
 
-  # Check for open bugs → bugfix
-  BUG_COUNT=$(gh issue list --repo skwallace36/Pepper --label bug --state open --json number --jq 'length' 2>/dev/null || echo 0)
+  # Check for open bugs → bugfix (exclude already-claimed bugs)
+  BUG_COUNT=$(gh issue list --repo skwallace36/Pepper --label bug --state open --json number,labels \
+    --jq '[.[] | select(.labels | map(.name) | (index("in-progress") | not) and (index("blocked") | not))] | length' 2>/dev/null || echo 0)
   if [ "$BUG_COUNT" -gt 0 ]; then
     if should_backoff bugfix; then
       echo "$(date +%H:%M) bugfix in backoff (${BACKOFF_THRESHOLD}+ consecutive failures) — skipping"
@@ -145,8 +146,9 @@ while true; do
     fi
   fi
 
-  # Check for open tasks → builder
-  TASK_COUNT=$(gh issue list --repo skwallace36/Pepper --state open --json number,labels --jq '[.[] | select(.labels | map(.name) | any(startswith("area:")))] | length' 2>/dev/null || echo 0)
+  # Check for open tasks → builder (exclude already-claimed tasks)
+  TASK_COUNT=$(gh issue list --repo skwallace36/Pepper --state open --json number,labels \
+    --jq '[.[] | select((.labels | map(.name) | any(startswith("area:"))) and (.labels | map(.name) | (index("in-progress") | not) and (index("blocked") | not)))] | length' 2>/dev/null || echo 0)
   if [ "$TASK_COUNT" -gt 0 ]; then
     if should_backoff builder; then
       echo "$(date +%H:%M) builder in backoff (${BACKOFF_THRESHOLD}+ consecutive failures) — skipping"
