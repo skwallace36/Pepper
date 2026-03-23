@@ -142,9 +142,9 @@ def register_state_tools(mcp, resolve_and_send):
 
     @mcp.tool()
     async def undo_manager(
-        simulator: Optional[str] = Field(default=None, description="Simulator UDID"),
+        simulator: str | None = Field(default=None, description="Simulator UDID"),
         action: str = Field(default="list", description="Action: list, status, undo, redo"),
-        index: Optional[int] = Field(default=None, description="Manager index from 'list' (default: 0, the first found)"),
+        index: int | None = Field(default=None, description="Manager index from 'list' (default: 0, the first found)"),
     ) -> str:
         """Inspect and control NSUndoManager — query undo/redo stack state and trigger undo/redo.
         Use this to verify that user actions are properly registered as undoable, test undo/redo
