@@ -8,6 +8,15 @@ THEN:
    gh pr list --repo skwallace36/Pepper --state open --json number,title,headRefName,labels
    ```
    Pick the first PR that does NOT have a `verified` label.
+   BUT FIRST: check for any `needs-approval` PRs that have been approved by a human:
+   ```
+   gh pr list --repo skwallace36/Pepper --label needs-approval --json number,title,reviewDecision
+   ```
+   If any have `reviewDecision: "APPROVED"`, merge them immediately:
+   ```
+   gh pr merge <number> --repo skwallace36/Pepper --squash --delete-branch
+   ```
+   Then continue to unverified PRs.
 3. Read the PR description and diff to understand what it changes and what to test.
 4. Check out the PR branch: `git checkout <branch> && git pull origin <branch>`.
 5. Build and deploy:
