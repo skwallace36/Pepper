@@ -4,6 +4,7 @@ Uses ctypes to call macOS Accessibility APIs directly — no pyobjc dependency.
 Finds the Simulator.app window, walks the accessibility tree to locate system
 dialog buttons ("Allow", "Allow While Using App", etc.), and clicks them.
 """
+from __future__ import annotations
 
 import ctypes
 import ctypes.util
