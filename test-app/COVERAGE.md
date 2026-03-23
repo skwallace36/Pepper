@@ -204,6 +204,13 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `renders` | snapshot | untested |  |  |
 | `renders` | diff | untested |  |  |
 | `renders` | reset | untested |  |  |
+| `renders` | ag_probe | untested |  |  |
+| `renders` | ag_server | untested |  |  |
+| `renders` | ag_dump | untested |  |  |
+| `renders` | signpost | untested |  |  |
+| `renders` | why | untested |  |  |
+| `renders` | install | untested |  |  |
+| `renders` | drain | untested |  |  |
 | `constraints` | — | untested | Any state | AutoLayout constraint dump with ambiguity detection. Walks view hierarchy dumping NSLayoutConstraints with attributes, relation, constant, multiplier, priority. Flags ambiguous views with _autolayoutTrace. |
 | `sandbox` | paths | untested |  |  |
 | `sandbox` | list | untested |  |  |
@@ -215,11 +222,11 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 
 ## Summary
 
-**190 test points** across 59 commands.
+**197 test points** across 59 commands.
 
 - pass: 128
 - fail: 11
-- untested: 49
+- untested: 56
 
 ## Test App Gaps
 
