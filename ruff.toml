@@ -2,7 +2,7 @@
 # Replaces flake8, isort, black, pyupgrade in a single tool.
 
 line-length = 120
-target-version = "py311"
+target-version = "py39"
 
 [lint]
 select = [
