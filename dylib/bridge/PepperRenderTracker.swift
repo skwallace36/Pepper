@@ -1,4 +1,5 @@
 import Foundation
+import ObjectiveC
 import UIKit
 
 /// Tracks SwiftUI render events and captures view tree snapshots via `makeViewDebugData()`.
@@ -7,6 +8,9 @@ import UIKit
 /// Phase 2: View tree snapshots and diffing via private `_UIHostingView` API.
 ///
 /// Rate-limited to avoid performance impact — at most one snapshot per second per hosting view.
+///
+/// Swizzles `layoutSubviews` on `_UIHostingView` to auto-record render events
+/// into the flight recorder timeline for correlation with other event types.
 final class PepperRenderTracker {
 
     static let shared = PepperRenderTracker()
@@ -17,12 +21,21 @@ final class PepperRenderTracker {
     private var renderCounts: [String: Int] = [:]
     private let lock = NSLock()
 
+    /// Whether the swizzle has been applied.
+    private var installed = false
+
     /// Record a render event for a hosting view.
     func recordRender(for hostingView: UIView) {
         let key = addressKey(hostingView)
         lock.lock()
         renderCounts[key, default: 0] += 1
+        let count = renderCounts[key, default: 0]
         lock.unlock()
+
+        // Record into the flight recorder timeline
+        let vcType = resolveViewControllerType(for: hostingView)
+        let summary = "\(vcType) rendered (#\(count))"
+        PepperFlightRecorder.shared.record(type: .render, summary: summary, referenceId: key)
     }
 
     /// Get render count for a hosting view.
@@ -32,6 +45,55 @@ final class PepperRenderTracker {
         let count = renderCounts[key, default: 0]
         lock.unlock()
         return count
+    }
+
+    /// Current render counts per hosting view address.
+    var currentCounts: [String: Int] {
+        lock.lock()
+        let counts = renderCounts
+        lock.unlock()
+        return counts
+    }
+
+    // MARK: - Lifecycle
+
+    /// Install the layoutSubviews swizzle on _UIHostingView. Idempotent.
+    /// Must be called on the main thread (UIKit class resolution).
+    func install() {
+        guard !installed else { return }
+        installed = true
+
+        guard let hostingViewClass = NSClassFromString("_UIHostingView") else {
+            pepperLog.warning("_UIHostingView class not found — render tracking unavailable", category: .lifecycle)
+            return
+        }
+
+        let originalSel = #selector(UIView.layoutSubviews)
+        let swizzledSel = #selector(UIView.pepper_renderTracker_layoutSubviews)
+
+        guard let originalMethod = class_getInstanceMethod(hostingViewClass, originalSel),
+              let swizzledMethod = class_getInstanceMethod(UIView.self, swizzledSel) else {
+            pepperLog.warning("Failed to resolve layoutSubviews methods for render tracking", category: .lifecycle)
+            return
+        }
+
+        // Add swizzled method to _UIHostingView first. If it already exists, just exchange.
+        let didAdd = class_addMethod(
+            hostingViewClass,
+            swizzledSel,
+            method_getImplementation(swizzledMethod),
+            method_getTypeEncoding(swizzledMethod)
+        )
+
+        if didAdd {
+            // Successfully added — now swap so _UIHostingView.layoutSubviews calls our impl
+            guard let addedMethod = class_getInstanceMethod(hostingViewClass, swizzledSel) else { return }
+            method_exchangeImplementations(originalMethod, addedMethod)
+        } else {
+            method_exchangeImplementations(originalMethod, swizzledMethod)
+        }
+
+        pepperLog.info("Render tracker installed (_UIHostingView.layoutSubviews swizzled)", category: .lifecycle)
     }
 
     // MARK: - View Tree Snapshots
@@ -123,6 +185,18 @@ final class PepperRenderTracker {
 
     private func addressKey(_ view: UIView) -> String {
         String(format: "0x%lx", unsafeBitCast(view, to: Int.self))
+    }
+
+    /// Walk the responder chain from a hosting view to find the nearest UIViewController.
+    private func resolveViewControllerType(for view: UIView) -> String {
+        var responder: UIResponder? = view.next
+        while let current = responder {
+            if let vc = current as? UIViewController {
+                return String(describing: type(of: vc))
+            }
+            responder = current.next
+        }
+        return "UnknownVC"
     }
 
     // MARK: - makeViewDebugData() Call
@@ -405,5 +479,17 @@ struct ViewTreeChange {
             dict["new"] = AnyCodable(newValue)
         }
         return dict
+    }
+}
+
+// MARK: - Swizzled method
+
+extension UIView {
+    /// Replacement for `_UIHostingView.layoutSubviews`. After calling the original,
+    /// records a render event. The recursive call invokes the original implementation
+    /// due to method_exchangeImplementations.
+    @objc dynamic func pepper_renderTracker_layoutSubviews() {
+        pepper_renderTracker_layoutSubviews() // calls original via exchange
+        PepperRenderTracker.shared.recordRender(for: self)
     }
 }
