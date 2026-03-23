@@ -232,6 +232,171 @@ def format_look(resp: dict) -> str:
 
 
 # ---------------------------------------------------------------------------
+# format_look_slim — agent-optimised output: no y-coords, tap commands kept
+# ---------------------------------------------------------------------------
+
+
+def format_look_slim(resp: dict) -> str:
+    """Format introspect mode:map response as slim stateless output for agents.
+
+    Compared to format_look:
+    - Flat element list — no y-coordinate group headers or blank separators
+    - Coordinate-free tap commands: prefers text/icon/heuristic over point:x,y
+    - Shorter status flags ([sel] not [selected])
+    - Collapsing single-child groups is implicit (no per-group header overhead)
+
+    Unlike compact mode, tap commands are always included and there is no
+    diffing state — every call returns the full current screen.
+    """
+    import json
+
+    if resp.get("status") != "ok":
+        return json.dumps(resp, indent=2)
+
+    data = resp.get("data", {})
+    screen = data.get("screen", "unknown")
+    rows = data.get("rows", [])
+    ni = data.get("non_interactive", [])
+
+    screen_size = data.get("screen_size", {})
+    vw = screen_size.get("w", 0)
+    vh = screen_size.get("h", 0)
+
+    def in_viewport(element: dict) -> bool:
+        if not vw or not vh:
+            return True
+        cx, cy = element.get("center", [0, 0])
+        if not (0 <= cx <= vw and 0 <= cy <= vh):
+            return False
+        sc = element.get("scroll_context", {})
+        return not (sc and sc.get("visible_in_viewport") is False)
+
+    # Flatten rows to a single ordered list, viewport-filtered
+    all_interactive = []
+    for row in rows:
+        for e in row.get("elements", []):
+            if in_viewport(e):
+                all_interactive.append(e)
+    ni = [e for e in ni if in_viewport(e)]
+
+    # Simplify screen name
+    m = re.search(r'<(_\w+_view)', screen)
+    if m:
+        screen = m.group(1)
+    elif len(screen) > 60:
+        screen = screen[:57] + "..."
+
+    nav_title = data.get("nav_title", "")
+    mem = data.get("memory_mb")
+
+    # Detect active tab (bottom-of-screen selected element)
+    tab_info = ""
+    for e in all_interactive:
+        if "selected" in e.get("traits", []) and e.get("center", [0, 0])[1] > 700:
+            tab_info = e.get("label", "")
+            break
+
+    header = f"Screen: {bold(screen)}"
+    if tab_info:
+        header += f" | Tab: {bold(tab_info)}"
+    header += f"  ({len(all_interactive)} interactive, {len(ni)} text)"
+    if nav_title:
+        header += f'  Title: "{nav_title}"'
+    if mem:
+        header += f"  [{mem:.0f}MB]"
+    lines = [header, ""]
+
+    # System dialog warning
+    dialog_data = data.get("system_dialog_blocking")
+    if dialog_data:
+        for d in dialog_data.get("dialogs", []):
+            title = d.get("title", "")
+            btn_str = ", ".join(str(b) for b in d.get("buttons", []))
+            lines.append(f"  !! DIALOG: {title} [{btn_str}]")
+        lines.append("")
+
+    # Interactive elements — flat list, no y-range headers
+    for e in all_interactive:
+        etype = e.get("type", "?")
+        label = e.get("label", "")
+        tap_cmd = e.get("tap_cmd", "")
+        icon = e.get("icon_name", "")
+        heuristic = e.get("heuristic", "")
+        badge = e.get("badge", "") or _HEURISTIC_BADGES.get(heuristic, "")
+        traits = e.get("traits", [])
+        suggested = e.get("suggested_tap", "")
+
+        # Compact status flags
+        flags = ""
+        if e.get("selected") or "selected" in traits:
+            flags += green(" [sel]")
+        toggle_state = e.get("toggle_state", "")
+        if toggle_state:
+            flags += green(f" [{toggle_state}]") if toggle_state == "on" else yellow(f" [{toggle_state}]")
+        if "notEnabled" in traits:
+            flags += yellow(" [dis]")
+        if not e.get("hit_reachable", True):
+            flags += red(" [blocked]")
+
+        # Element description
+        idx = e.get("index")
+        value = e.get("value", "")
+        if icon and not label:
+            desc = f"[{icon}]"
+        elif label:
+            disp = label if len(label) <= 50 else label[:47] + "..."
+            idx_suffix = f" [{idx}]" if idx else ""
+            val_suffix = f" = {value}" if value and etype in ("textField", "searchField", "textView") else ""
+            desc = f'"{disp}"{idx_suffix}{val_suffix}'
+        else:
+            desc = f"({heuristic or etype})"
+
+        prefix = badge if badge else _TYPE_ABBREV.get(etype, etype[:4])
+
+        # Tap instruction — prefer coordinate-free forms
+        if tap_cmd == "text" and label:
+            lbl = label if len(label) <= 40 else label[:40] + "..."
+            tap = f'tap text:"{lbl}"' + (f" index:{idx}" if idx else "")
+        elif tap_cmd == "icon_name" and (icon or suggested):
+            tap = f"tap icon:{icon or suggested}"
+        elif tap_cmd == "heuristic" and (heuristic or suggested):
+            tap = f"tap heuristic:{suggested or heuristic}"
+        elif label:
+            lbl = label if len(label) <= 40 else label[:40] + "..."
+            tap = f'tap text:"{lbl}"' + (f" index:{idx}" if idx else "")
+        elif icon:
+            tap = f"tap icon:{icon}"
+        elif heuristic or suggested:
+            tap = f"tap heuristic:{suggested or heuristic}"
+        else:
+            cx, cy = e.get("center", [0, 0])
+            tap = f"tap point:{cx},{cy}"
+
+        lines.append(f"  {cyan(prefix):>8s}  {desc:<52s} → {tap}{flags}")
+
+    # Non-interactive text
+    if ni:
+        lines.append("")
+        lines.append(dim("--- text ---"))
+        for e in ni:
+            label = e.get("label", "")
+            if label:
+                lines.append(f"  {dim(label)}")
+
+    # Leak warnings
+    leaks = data.get("leaks", [])
+    if leaks:
+        lines.append("")
+        lines.append("--- leaks ---")
+        for leak in leaks[:5]:
+            cls = leak.get("class", "?")
+            delta = leak.get("delta", 0)
+            lines.append(f"  {cls} (+{delta})")
+
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
 # format_look_compact — slim output for agent sessions (omits coords, diffs)
 # ---------------------------------------------------------------------------
 
