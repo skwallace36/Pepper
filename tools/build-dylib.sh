@@ -229,6 +229,7 @@ xcrun -sdk "$SDK_NAME" swiftc \
     -framework AppTrackingTransparency \
     -framework Contacts \
     -framework CoreLocation \
+    -framework WebKit \
     -Xlinker -install_name -Xlinker @rpath/Pepper.framework/Pepper \
     ${BRIDGING_HEADER:+-import-objc-header "$BRIDGING_HEADER"} \
     "${SWIFT_FILES[@]}" \

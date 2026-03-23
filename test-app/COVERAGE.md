@@ -246,12 +246,15 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `storage` | clear | untested |  |  |
 | `storage` | defaults | untested |  |  |
 | `storage` | keychain | untested |  |  |
+| `webview` | evaluate | untested |  |  |
+| `webview` | url | untested |  |  |
+| `webview` | dom | untested |  |  |
 
 ## Summary
 
-**224 test points** across 64 commands.
+**227 test points** across 65 commands.
 
 - pass: 138
 - fail: 3
-- untested: 82
+- untested: 85
 

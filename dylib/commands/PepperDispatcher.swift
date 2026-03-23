@@ -320,6 +320,7 @@ final class PepperDispatcher {
         register(PerfHandler())
         register(ScreenshotHandler())
         register(StorageHandler())
+        register(WebViewHandler())
     }
 }
 
