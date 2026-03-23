@@ -47,6 +47,9 @@ final class PepperFlightRecorder {
         // Auto-start console capture (tees to original fd, minimal overhead)
         PepperConsoleInterceptor.shared.install()
 
+        // Auto-start render tracking (swizzles _UIHostingView.layoutSubviews)
+        PepperRenderTracker.shared.install()
+
         record(type: .command, summary: "Flight recorder started (buffer: \(bufferSize))")
         pepperLog.info("Flight recorder installed (buffer: \(bufferSize))", category: .lifecycle)
     }
