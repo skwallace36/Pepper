@@ -46,9 +46,11 @@ struct DismissHandler: PepperHandler {
         let screenId = topmostPresented.pepper_topMostViewController.pepperScreenID
         topmostPresented.dismiss(animated: true)
 
-        return .ok(id: command.id, data: [
-            "action": AnyCodable("dismiss"),
-            "dismissed_screen": AnyCodable(screenId),
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "action": AnyCodable("dismiss"),
+                "dismissed_screen": AnyCodable(screenId),
+            ])
     }
 }

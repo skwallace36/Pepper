@@ -48,16 +48,19 @@ struct HeapSnapshotHandler: PepperHandler {
             return .ok(id: command.id, data: ["cleared": AnyCodable(true)])
         case "status":
             if let time = Self.snapshotTime, let snap = Self.savedSnapshot {
-                return .ok(id: command.id, data: [
-                    "has_snapshot": AnyCodable(true),
-                    "class_count": AnyCodable(snap.count),
-                    "taken_at": AnyCodable(ISO8601DateFormatter().string(from: time)),
-                    "seconds_ago": AnyCodable(Int(-time.timeIntervalSinceNow))
-                ])
+                return .ok(
+                    id: command.id,
+                    data: [
+                        "has_snapshot": AnyCodable(true),
+                        "class_count": AnyCodable(snap.count),
+                        "taken_at": AnyCodable(ISO8601DateFormatter().string(from: time)),
+                        "seconds_ago": AnyCodable(Int(-time.timeIntervalSinceNow)),
+                    ])
             }
             return .ok(id: command.id, data: ["has_snapshot": AnyCodable(false)])
         default:
-            return .error(id: command.id, message: "Unknown heap_snapshot action '\(action)'. Use snapshot/diff/clear/status.")
+            return .error(
+                id: command.id, message: "Unknown heap_snapshot action '\(action)'. Use snapshot/diff/clear/status.")
         }
     }
 
@@ -71,12 +74,14 @@ struct HeapSnapshotHandler: PepperHandler {
         let sorted = counts.sorted { $0.value > $1.value }.prefix(30)
         let topClasses = sorted.map { ["class": AnyCodable($0.key), "count": AnyCodable($0.value)] }
 
-        return .ok(id: command.id, data: [
-            "total_classes": AnyCodable(counts.count),
-            "total_instances": AnyCodable(counts.values.reduce(0, +)),
-            "top_30": AnyCodable(topClasses),
-            "memory": AnyCodable(getMemoryInfo())
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "total_classes": AnyCodable(counts.count),
+                "total_instances": AnyCodable(counts.values.reduce(0, +)),
+                "top_30": AnyCodable(topClasses),
+                "memory": AnyCodable(getMemoryInfo()),
+            ])
     }
 
     // MARK: - Diff
@@ -100,14 +105,14 @@ struct HeapSnapshotHandler: PepperHandler {
                     "class": AnyCodable(cls),
                     "before": AnyCodable(baseCount),
                     "after": AnyCodable(currentCount),
-                    "delta": AnyCodable("+\(delta)")
+                    "delta": AnyCodable("+\(delta)"),
                 ])
             } else if delta < -minGrowth {
                 shrinking.append([
                     "class": AnyCodable(cls),
                     "before": AnyCodable(baseCount),
                     "after": AnyCodable(currentCount),
-                    "delta": AnyCodable("\(delta)")
+                    "delta": AnyCodable("\(delta)"),
                 ])
             }
         }
@@ -118,7 +123,7 @@ struct HeapSnapshotHandler: PepperHandler {
                 "class": AnyCodable(cls),
                 "before": AnyCodable(baseCount),
                 "after": AnyCodable(0),
-                "delta": AnyCodable("-\(baseCount)")
+                "delta": AnyCodable("-\(baseCount)"),
             ])
         }
 
@@ -130,27 +135,31 @@ struct HeapSnapshotHandler: PepperHandler {
 
         let elapsed = Int(-baselineTime.timeIntervalSinceNow)
 
-        return .ok(id: command.id, data: [
-            "elapsed_seconds": AnyCodable(elapsed),
-            "growing": AnyCodable(growing),
-            "growing_count": AnyCodable(growing.count),
-            "shrinking_count": AnyCodable(shrinking.count),
-            "unchanged_count": AnyCodable(max(0, current.count - growing.count)),
-            "memory": AnyCodable(getMemoryInfo()),
-            "verdict": AnyCodable(growing.isEmpty ? "No leaks detected" : "\(growing.count) class(es) growing — potential leaks")
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "elapsed_seconds": AnyCodable(elapsed),
+                "growing": AnyCodable(growing),
+                "growing_count": AnyCodable(growing.count),
+                "shrinking_count": AnyCodable(shrinking.count),
+                "unchanged_count": AnyCodable(max(0, current.count - growing.count)),
+                "memory": AnyCodable(getMemoryInfo()),
+                "verdict": AnyCodable(
+                    growing.isEmpty ? "No leaks detected" : "\(growing.count) class(es) growing — potential leaks"),
+            ])
     }
 
     // MARK: - Heap Scan (via C bridge)
 
     private func scanHeap() -> [String: Int] {
         // Build prefix filter from app config
-        let prefixes = [Bundle.main.infoDictionary?["CFBundleName"] as? String ?? ""]
+        let prefixes =
+            [Bundle.main.infoDictionary?["CFBundleName"] as? String ?? ""]
             + PepperAppConfig.shared.classLookupPrefixes
 
         // Convert to C string array
         var cPrefixes: [UnsafePointer<CChar>?] = []
-        var cStrings: [UnsafeMutablePointer<CChar>] = [] // Keep alive
+        var cStrings: [UnsafeMutablePointer<CChar>] = []  // Keep alive
 
         for prefix in prefixes where !prefix.isEmpty {
             // swiftlint:disable:next force_unwrapping

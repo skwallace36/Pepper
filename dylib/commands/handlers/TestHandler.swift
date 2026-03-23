@@ -28,29 +28,34 @@ struct TestHandler: PepperHandler {
             guard let testId = command.params?["test_id"]?.stringValue else {
                 return .error(id: command.id, message: "Missing 'test_id' param")
             }
-            let event = PepperEvent(event: "test_start", data: [
-                "test_id": AnyCodable(testId),
-                "timestamp": AnyCodable(timestamp)
-            ])
+            let event = PepperEvent(
+                event: "test_start",
+                data: [
+                    "test_id": AnyCodable(testId),
+                    "timestamp": AnyCodable(timestamp),
+                ])
             PepperPlane.shared.broadcast(event)
-            return .ok(id: command.id, data: [
-                "test_id": AnyCodable(testId),
-                "status": AnyCodable("started")
-            ])
+            return .ok(
+                id: command.id,
+                data: [
+                    "test_id": AnyCodable(testId),
+                    "status": AnyCodable("started"),
+                ])
 
         case "result":
             guard let testId = command.params?["test_id"]?.stringValue else {
                 return .error(id: command.id, message: "Missing 'test_id' param")
             }
             guard let status = command.params?["status"]?.stringValue,
-                  ["pass", "fail", "skip"].contains(status) else {
+                ["pass", "fail", "skip"].contains(status)
+            else {
                 return .error(id: command.id, message: "Missing or invalid 'status' param (pass, fail, skip)")
             }
 
             var eventData: [String: AnyCodable] = [
                 "test_id": AnyCodable(testId),
                 "status": AnyCodable(status),
-                "timestamp": AnyCodable(timestamp)
+                "timestamp": AnyCodable(timestamp),
             ]
             if let durationMs = command.params?["duration_ms"] {
                 eventData["duration_ms"] = durationMs
@@ -64,9 +69,11 @@ struct TestHandler: PepperHandler {
             return .ok(id: command.id, data: eventData)
 
         case "reset":
-            let event = PepperEvent(event: "test_reset", data: [
-                "timestamp": AnyCodable(timestamp)
-            ])
+            let event = PepperEvent(
+                event: "test_reset",
+                data: [
+                    "timestamp": AnyCodable(timestamp)
+                ])
             PepperPlane.shared.broadcast(event)
             return .ok(id: command.id, data: ["reset": AnyCodable(true)])
 

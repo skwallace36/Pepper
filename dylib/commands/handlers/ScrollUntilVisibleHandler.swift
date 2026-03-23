@@ -39,12 +39,14 @@ struct ScrollUntilVisibleHandler: PepperHandler {
         // Check if already on screen (in viewport) before scrolling
         if textIsOnScreen(text, in: window) {
             let elapsedMs = Int(Date().timeIntervalSince(startTime) * 1000)
-            return .ok(id: command.id, data: [
-                "found": AnyCodable(true),
-                "scrolls": AnyCodable(0),
-                "elapsed_ms": AnyCodable(elapsedMs),
-                "already_visible": AnyCodable(true),
-            ])
+            return .ok(
+                id: command.id,
+                data: [
+                    "found": AnyCodable(true),
+                    "scrolls": AnyCodable(0),
+                    "elapsed_ms": AnyCodable(elapsedMs),
+                    "already_visible": AnyCodable(true),
+                ])
         }
 
         // Compute swipe vectors (scroll direction is opposite to finger direction)
@@ -92,11 +94,13 @@ struct ScrollUntilVisibleHandler: PepperHandler {
             if textIsOnScreen(text, in: window) {
                 let elapsedMs = Int(Date().timeIntervalSince(startTime) * 1000)
                 logger.info("Found '\(text)' after \(scrollCount) scroll(s), \(elapsedMs)ms")
-                return .ok(id: command.id, data: [
-                    "found": AnyCodable(true),
-                    "scrolls": AnyCodable(scrollCount),
-                    "elapsed_ms": AnyCodable(elapsedMs),
-                ])
+                return .ok(
+                    id: command.id,
+                    data: [
+                        "found": AnyCodable(true),
+                        "scrolls": AnyCodable(scrollCount),
+                        "elapsed_ms": AnyCodable(elapsedMs),
+                    ])
             }
         }
 

@@ -66,7 +66,7 @@ final class PepperAppConfig {
 
     /// Additional command handlers registered by the app adapter.
     /// Registered into the dispatcher after built-in handlers.
-    var additionalHandlers: [Any] = []   // [PepperHandler] — uses Any to avoid circular dep
+    var additionalHandlers: [Any] = []  // [PepperHandler] — uses Any to avoid circular dep
 
     private init() {}
 }

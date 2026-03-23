@@ -10,11 +10,14 @@ extension PepperSwiftUIBridge {
     ///
     /// This is the backend for `introspect mode:interactive`.
     // swiftlint:disable:next cyclomatic_complexity
-    func discoverInteractiveElements(rootView: UIView? = nil, hitTestFilter: Bool = true, maxElements: Int = 500) -> [PepperInteractiveElement] {
+    func discoverInteractiveElements(rootView: UIView? = nil, hitTestFilter: Bool = true, maxElements: Int = 500)
+        -> [PepperInteractiveElement]
+    {
         // Return cached result if no UI-mutating events have occurred and TTL hasn't expired.
         // Only use cache when using default root (no scoping).
         if rootView == nil, let cached = cachedInteractive, cached.gen == cacheGeneration,
-           CFAbsoluteTimeGetCurrent() - cached.time < cacheTTL {
+            CFAbsoluteTimeGetCurrent() - cached.time < cacheTTL
+        {
             lastInteractiveTruncated = cached.truncated
             return cached.elements
         }
@@ -46,34 +49,39 @@ extension PepperSwiftUIBridge {
             // swiftlint:disable:next force_unwrapping
             let labeled = acc.label != nil && !acc.label!.isEmpty
             var iconName: String? = nil
-            let heuristic = labeled ? nil : inferHeuristic(
-                className: acc.className,
-                frame: acc.frame,
-                gestures: [],
-                label: acc.label,
-                view: nil,
-                iconName: &iconName
-            )
+            let heuristic =
+                labeled
+                ? nil
+                : inferHeuristic(
+                    className: acc.className,
+                    frame: acc.frame,
+                    gestures: [],
+                    label: acc.label,
+                    view: nil,
+                    iconName: &iconName
+                )
             // staticText trait means the label is rendered visible text (UILabel, SwiftUI Text)
-            let labelSource: String? = labeled
+            let labelSource: String? =
+                labeled
                 ? (acc.traits.contains("staticText") || acc.traits.contains("link") ? "text" : "a11y")
                 : nil
-            results.append(PepperInteractiveElement(
-                className: acc.className,
-                label: acc.label,
-                center: CGPoint(x: acc.frame.midX, y: acc.frame.midY),
-                frame: acc.frame,
-                labeled: labeled,
-                source: "accessibility",
-                gestures: acc.traits.contains("button") ? ["tap"] : [],
-                isControl: false,
-                controlType: nil,
-                hitReachable: true,
-                heuristic: heuristic,
-                iconName: iconName,
-                traits: acc.traits,
-                labelSource: labelSource
-            ))
+            results.append(
+                PepperInteractiveElement(
+                    className: acc.className,
+                    label: acc.label,
+                    center: CGPoint(x: acc.frame.midX, y: acc.frame.midY),
+                    frame: acc.frame,
+                    labeled: labeled,
+                    source: "accessibility",
+                    gestures: acc.traits.contains("button") ? ["tap"] : [],
+                    isControl: false,
+                    controlType: nil,
+                    hitReachable: true,
+                    heuristic: heuristic,
+                    iconName: iconName,
+                    traits: acc.traits,
+                    labelSource: labelSource
+                ))
             dedup.markSeen(frame: acc.frame)
         }
 
@@ -112,35 +120,40 @@ extension PepperSwiftUIBridge {
             let controlType = classifyControlType(view)
             let source = isControl ? "uiControl" : "gestureRecognizer"
             var iconName: String? = nil
-            let heuristic = labeled ? nil : inferHeuristic(
-                className: className,
-                frame: viewFrame,
-                gestures: gestures,
-                label: label,
-                view: view,
-                iconName: &iconName
-            )
+            let heuristic =
+                labeled
+                ? nil
+                : inferHeuristic(
+                    className: className,
+                    frame: viewFrame,
+                    gestures: gestures,
+                    label: label,
+                    view: view,
+                    iconName: &iconName
+                )
 
-            let labelSource: String? = labeled
+            let labelSource: String? =
+                labeled
                 // swiftlint:disable:next force_unwrapping
                 ? Self.classifyLabelSource(view: view, label: label!)
                 : nil
-            results.append(PepperInteractiveElement(
-                className: className,
-                label: label,
-                center: CGPoint(x: viewFrame.midX, y: viewFrame.midY),
-                frame: viewFrame,
-                labeled: labeled,
-                source: source,
-                gestures: gestures,
-                isControl: isControl,
-                controlType: controlType,
-                hitReachable: true,
-                heuristic: heuristic,
-                iconName: iconName,
-                traits: [],
-                labelSource: labelSource
-            ))
+            results.append(
+                PepperInteractiveElement(
+                    className: className,
+                    label: label,
+                    center: CGPoint(x: viewFrame.midX, y: viewFrame.midY),
+                    frame: viewFrame,
+                    labeled: labeled,
+                    source: source,
+                    gestures: gestures,
+                    isControl: isControl,
+                    controlType: controlType,
+                    hitReachable: true,
+                    heuristic: heuristic,
+                    iconName: iconName,
+                    traits: [],
+                    labelSource: labelSource
+                ))
             if gestureContainer {
                 results[results.count - 1].gestureContainerFrame = viewFrame
             }
@@ -172,7 +185,8 @@ extension PepperSwiftUIBridge {
         // Phase 5: Enrich with view controller context
         for i in results.indices {
             if let hitView = window.hitTest(results[i].center, with: nil),
-               let vc = findOwningViewController(for: hitView) {
+                let vc = findOwningViewController(for: hitView)
+            {
                 results[i].viewController = String(describing: type(of: vc))
                 results[i].presentationContext = presentationContext(of: vc)
             }
@@ -183,7 +197,9 @@ extension PepperSwiftUIBridge {
         // Only cache for default-root calls
         if rootView == nil {
             lastInteractiveTruncated = truncated
-            cachedInteractive = (gen: cacheGeneration, elements: results, truncated: truncated, time: CFAbsoluteTimeGetCurrent())
+            cachedInteractive = (
+                gen: cacheGeneration, elements: results, truncated: truncated, time: CFAbsoluteTimeGetCurrent()
+            )
         }
         return results
     }
@@ -239,7 +255,10 @@ extension PepperSwiftUIBridge {
     // MARK: - Interactive Discovery Helpers
 
     /// Recursively walk the UIView hierarchy collecting interactive views.
-    private func walkViewHierarchyForInteractive(view: UIView, maxElements: Int, into results: inout [(view: UIView, gestures: [String], isGestureContainer: Bool)]) {
+    private func walkViewHierarchyForInteractive(
+        view: UIView, maxElements: Int,
+        into results: inout [(view: UIView, gestures: [String], isGestureContainer: Bool)]
+    ) {
         guard results.count < maxElements else { return }
         guard !view.isHidden, view.alpha > 0.01 else { return }
 
@@ -247,7 +266,6 @@ extension PepperSwiftUIBridge {
             let gestures = extractGestureTypes(from: view)
             results.append((view: view, gestures: gestures, isGestureContainer: isGestureContainer(view)))
         }
-
 
         for subview in view.subviews {
             guard results.count < maxElements else { return }
@@ -259,16 +277,24 @@ extension PepperSwiftUIBridge {
     /// without UIView backing. SwiftUI custom controls (custom toggles, sliders,
     /// checkboxes) using .onTapGesture render shapes via CALayer only.
     /// Detects toggles, sliders, and checkboxes by shape/size/sublayer heuristics.
-    private func discoverLayerControls(in view: UIView, window: UIWindow, dedup: inout ElementDedup, results: inout [PepperInteractiveElement], maxElements: Int) {
+    private func discoverLayerControls(
+        in view: UIView, window: UIWindow, dedup: inout ElementDedup, results: inout [PepperInteractiveElement],
+        maxElements: Int
+    ) {
         let screenBounds = UIScreen.main.bounds
         // Collect existing interactive frames — ImageLayer icon_buttons inside these
         // are decorative (e.g., like/share icons inside post cells, gear icons inside
         // pet cards). Only toggles/sliders/checkboxes bypass this filter.
         let existingFrames = results.map { $0.frame }
-        walkLayerTree(layer: view.layer, window: window, screenBounds: screenBounds, dedup: &dedup, results: &results, existingInteractiveFrames: existingFrames, maxElements: maxElements, depth: 0)
+        walkLayerTree(
+            layer: view.layer, window: window, screenBounds: screenBounds, dedup: &dedup, results: &results,
+            existingInteractiveFrames: existingFrames, maxElements: maxElements, depth: 0)
     }
 
-    private func walkLayerTree(layer: CALayer, window: UIWindow, screenBounds: CGRect, dedup: inout ElementDedup, results: inout [PepperInteractiveElement], existingInteractiveFrames: [CGRect], maxElements: Int, depth: Int) {
+    private func walkLayerTree(
+        layer: CALayer, window: UIWindow, screenBounds: CGRect, dedup: inout ElementDedup,
+        results: inout [PepperInteractiveElement], existingInteractiveFrames: [CGRect], maxElements: Int, depth: Int
+    ) {
         guard results.count < maxElements, depth < 40 else { return }
 
         if let heuristic = classifyLayerControl(layer) {
@@ -286,25 +312,27 @@ extension PepperSwiftUIBridge {
             // Skip ImageLayer icon_buttons inside existing interactive elements
             // (decorative icons in cells/cards). Toggles/sliders/checkboxes are
             // real controls and bypass this filter.
-            let isDecorativeIcon = heuristic == "icon_button" && existingInteractiveFrames.contains { $0.contains(centerInWindow) }
+            let isDecorativeIcon =
+                heuristic == "icon_button" && existingInteractiveFrames.contains { $0.contains(centerInWindow) }
 
             if !isDecorativeIcon && !dedup.isDuplicate(frame: frameInWindow) && screenBounds.contains(centerInWindow) {
-                results.append(PepperInteractiveElement(
-                    className: String(describing: type(of: layer)),
-                    label: nil,
-                    center: centerInWindow,
-                    frame: frameInWindow,
-                    labeled: false,
-                    source: "layer",
-                    gestures: ["tap"],
-                    isControl: false,
-                    controlType: nil,
-                    hitReachable: true,
-                    heuristic: heuristic,
-                    iconName: nil,
-                    traits: [],
-                    labelSource: nil
-                ))
+                results.append(
+                    PepperInteractiveElement(
+                        className: String(describing: type(of: layer)),
+                        label: nil,
+                        center: centerInWindow,
+                        frame: frameInWindow,
+                        labeled: false,
+                        source: "layer",
+                        gestures: ["tap"],
+                        isControl: false,
+                        controlType: nil,
+                        hitReachable: true,
+                        heuristic: heuristic,
+                        iconName: nil,
+                        traits: [],
+                        labelSource: nil
+                    ))
                 dedup.markSeen(frame: frameInWindow)
             }
         }
@@ -312,7 +340,9 @@ extension PepperSwiftUIBridge {
         // Recurse into sublayers
         guard let sublayers = layer.sublayers else { return }
         for sublayer in sublayers {
-            walkLayerTree(layer: sublayer, window: window, screenBounds: screenBounds, dedup: &dedup, results: &results, existingInteractiveFrames: existingInteractiveFrames, maxElements: maxElements, depth: depth + 1)
+            walkLayerTree(
+                layer: sublayer, window: window, screenBounds: screenBounds, dedup: &dedup, results: &results,
+                existingInteractiveFrames: existingInteractiveFrames, maxElements: maxElements, depth: depth + 1)
         }
     }
 
@@ -332,7 +362,8 @@ extension PepperSwiftUIBridge {
         let className = String(describing: type(of: layer))
         if className.contains("ImageLayer")
             && w >= 16 && w <= 30 && h >= 16 && h <= 30
-            && abs(w - h) < 6 {
+            && abs(w - h) < 6
+        {
             return "icon_button"
         }
 
@@ -346,11 +377,13 @@ extension PepperSwiftUIBridge {
         // Raised min height from 18→26 to exclude small decorative pills (23pt).
         if isCapsule && w >= 35 && w <= 100 && h >= 26 && h <= 50 && w > h {
             // Higher confidence if layer has a circular sublayer (the knob)
-            if let sublayers = layer.sublayers, sublayers.contains(where: { sub in
-                let sb = sub.bounds
-                return sb.width > 8 && abs(sb.width - sb.height) < 3
-                    && abs(sub.cornerRadius - sb.width / 2) < 2
-            }) {
+            if let sublayers = layer.sublayers,
+                sublayers.contains(where: { sub in
+                    let sb = sub.bounds
+                    return sb.width > 8 && abs(sb.width - sb.height) < 3
+                        && abs(sub.cornerRadius - sb.width / 2) < 2
+                })
+            {
                 return "toggle"
             }
             // Still a toggle candidate even without visible knob sublayer —
@@ -369,7 +402,8 @@ extension PepperSwiftUIBridge {
         if w >= 16 && w <= 34 && h >= 16 && h <= 34
             && abs(w - h) < 4
             && cr >= 2 && cr <= 10
-            && layer.borderWidth > 0 {
+            && layer.borderWidth > 0
+        {
             return "checkbox"
         }
 

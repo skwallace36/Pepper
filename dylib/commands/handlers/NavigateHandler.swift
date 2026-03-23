@@ -30,7 +30,8 @@ struct NavigateHandler: PepperHandler {
         guard deeplink != nil || screenID != nil || tabIndex != nil else {
             return .error(
                 id: command.id,
-                message: "Missing required param: 'deeplink' (deep link path), 'to' (screen ID), 'tab' (tab index), or 'action' ('pop'/'dismiss')"
+                message:
+                    "Missing required param: 'deeplink' (deep link path), 'to' (screen ID), 'tab' (tab index), or 'action' ('pop'/'dismiss')"
             )
         }
 
@@ -63,13 +64,18 @@ struct NavigateHandler: PepperHandler {
 
         // Try popping to the screen in the current nav stack
         if let topVC = UIWindow.pepper_topViewController,
-           let navController = topVC.pepper_effectiveNavController {
+            let navController = topVC.pepper_effectiveNavController
+        {
             if navController.pepper_pop(to: screenID) {
                 return .ok(id: command.id, data: buildScreenData())
             }
         }
 
-        return .error(id: command.id, message: "Cannot navigate to screen: \(screenID). Use 'deeplink' for forward navigation or 'to' with a screen ID in the current nav stack to pop back.")
+        return .error(
+            id: command.id,
+            message:
+                "Cannot navigate to screen: \(screenID). Use 'deeplink' for forward navigation or 'to' with a screen ID in the current nav stack to pop back."
+        )
     }
 
     // MARK: - Pop Navigation
@@ -91,10 +97,12 @@ struct NavigateHandler: PepperHandler {
                 while !animationDone && Date() < deadline {
                     RunLoop.current.run(mode: .default, before: Date(timeIntervalSinceNow: 0.05))
                 }
-                return .ok(id: command.id, data: [
-                    "action": AnyCodable("dismiss"),
-                    "dismissed": AnyCodable(dismissedType)
-                ])
+                return .ok(
+                    id: command.id,
+                    data: [
+                        "action": AnyCodable("dismiss"),
+                        "dismissed": AnyCodable(dismissedType),
+                    ])
             }
             return .error(id: command.id, message: "No navigation controller or presenting VC to pop from")
         }
@@ -110,10 +118,12 @@ struct NavigateHandler: PepperHandler {
                 while !animationDone && Date() < deadline {
                     RunLoop.current.run(mode: .default, before: Date(timeIntervalSinceNow: 0.05))
                 }
-                return .ok(id: command.id, data: [
-                    "action": AnyCodable("dismiss"),
-                    "dismissed": AnyCodable(dismissedType)
-                ])
+                return .ok(
+                    id: command.id,
+                    data: [
+                        "action": AnyCodable("dismiss"),
+                        "dismissed": AnyCodable(dismissedType),
+                    ])
             }
             return .error(id: command.id, message: "Already at root of navigation stack")
         }
@@ -187,10 +197,9 @@ struct NavigateHandler: PepperHandler {
         // Look for custom tab bar views (app-specific, provided by TabBarProvider)
         let customTabBars = window.pepper_findElements { view in
             let name = String(describing: type(of: view))
-            return (name.contains("TabBar") || name.contains("tabBar")) &&
-                   !(view is UITabBar) &&
-                   view.subviews.count >= 2 &&
-                   view.convert(view.bounds, to: nil).origin.y > UIScreen.main.bounds.height * 0.7
+            return (name.contains("TabBar") || name.contains("tabBar")) && !(view is UITabBar)
+                && view.subviews.count >= 2
+                && view.convert(view.bounds, to: nil).origin.y > UIScreen.main.bounds.height * 0.7
         }
         for tabBarView in customTabBars {
             let allButtons = tabBarView.subviews.filter { subview in
@@ -214,10 +223,16 @@ struct NavigateHandler: PepperHandler {
 
     // MARK: - Deep Link Handling
 
-    private func handleDeeplink(_ deeplink: String, params: [String: AnyCodable]?, command: PepperCommand) -> PepperResponse {
+    private func handleDeeplink(_ deeplink: String, params: [String: AnyCodable]?, command: PepperCommand)
+        -> PepperResponse
+    {
         let scheme = PepperAppConfig.shared.deeplinkScheme
         guard !scheme.isEmpty else {
-            return .error(id: command.id, message: "Deep links are not available — no URL scheme configured. This app may not have a Pepper adapter, or the adapter does not define a deeplinkScheme. Use 'tab', 'to', or 'action' params for navigation instead.")
+            return .error(
+                id: command.id,
+                message:
+                    "Deep links are not available — no URL scheme configured. This app may not have a Pepper adapter, or the adapter does not define a deeplinkScheme. Use 'tab', 'to', or 'action' params for navigation instead."
+            )
         }
         var urlString = "\(scheme)://\(deeplink)"
 
@@ -244,7 +259,9 @@ struct NavigateHandler: PepperHandler {
         // URL -> app's deep link resolver -> screen handler
         UIApplication.shared.open(url, options: [:]) { success in
             if !success {
-                pepperLog.warning("UIApplication.open returned false for: \(url.absoluteString)", category: .commands, commandID: command.id)
+                pepperLog.warning(
+                    "UIApplication.open returned false for: \(url.absoluteString)", category: .commands,
+                    commandID: command.id)
             }
         }
 
@@ -253,7 +270,8 @@ struct NavigateHandler: PepperHandler {
         var data = buildScreenData()
         data["deeplink"] = AnyCodable(deeplink)
         data["deeplink_url"] = AnyCodable(url.absoluteString)
-        data["note"] = AnyCodable("Deep link navigation is async. Use 'wait' then 'current_screen' to confirm navigation completed.")
+        data["note"] = AnyCodable(
+            "Deep link navigation is async. Use 'wait' then 'current_screen' to confirm navigation completed.")
 
         // Include available deep links if the requested one isn't recognized
         let knownDeeplinks = PepperAppConfig.shared.resolvedDeeplinkPaths

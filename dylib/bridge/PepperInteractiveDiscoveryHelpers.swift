@@ -60,9 +60,12 @@ extension PepperSwiftUIBridge {
     /// Grid-based visibility check. Samples a grid of points across the element frame
     /// (adaptive density based on element size) and returns (reachable, visible fraction).
     /// `reachable` is true if ANY point passes. `visible` is 0.0–1.0 ratio of passing points.
-    func checkVisibility(for element: PepperInteractiveElement, in window: UIWindow) -> (reachable: Bool, visible: Float) {
+    func checkVisibility(for element: PepperInteractiveElement, in window: UIWindow) -> (
+        reachable: Bool, visible: Float
+    ) {
         guard let grid = sampleGrid(for: element.frame) else {
-            let ok = checkSinglePointHitTest(at: CGPoint(x: element.frame.midX, y: element.frame.midY), for: element, in: window)
+            let ok = checkSinglePointHitTest(
+                at: CGPoint(x: element.frame.midX, y: element.frame.midY), for: element, in: window)
             return (ok, ok ? 1.0 : 0.0)
         }
 
@@ -96,7 +99,8 @@ extension PepperSwiftUIBridge {
 
     /// Check if an element is reachable via hit-test at a single point.
     /// Returns true if the hit view is the element itself, an ancestor, or a descendant.
-    func checkSinglePointHitTest(at point: CGPoint, for element: PepperInteractiveElement, in window: UIWindow) -> Bool {
+    func checkSinglePointHitTest(at point: CGPoint, for element: PepperInteractiveElement, in window: UIWindow) -> Bool
+    {
         guard let hitView = window.hitTest(point, with: nil) else { return false }
 
         // For layer-sourced elements (e.g., CALayer capsule toggles), the hit view
@@ -141,7 +145,9 @@ extension PepperSwiftUIBridge {
     /// Infer the purpose of an unlabeled interactive element from icon catalog, class name, position, and size.
     /// Sets `iconName` to the matched icon asset name if identified via the catalog.
     // swiftlint:disable:next cyclomatic_complexity
-    func inferHeuristic(className: String, frame: CGRect, gestures: [String], label: String?, view: UIView?, iconName: inout String?) -> String? {
+    func inferHeuristic(
+        className: String, frame: CGRect, gestures: [String], label: String?, view: UIView?, iconName: inout String?
+    ) -> String? {
         // If it has a label, no heuristic needed
         if let label = label, !label.isEmpty { return nil }
 
@@ -171,10 +177,11 @@ extension PepperSwiftUIBridge {
         if isSmallSquare && isTopArea && frame.origin.x < 80 {
             // Skip circular elements (profile pictures) — they're not back buttons.
             // Profile pics have cornerRadius ≈ width/2, back chevrons do not.
-            let isCircular = view.map { v in
-                let cr = v.layer.cornerRadius
-                return cr > 0 && abs(cr - frame.width / 2) < 3
-            } ?? false
+            let isCircular =
+                view.map { v in
+                    let cr = v.layer.cornerRadius
+                    return cr > 0 && abs(cr - frame.width / 2) < 3
+                } ?? false
             if !isCircular {
                 return "back_button"
             }
@@ -201,10 +208,14 @@ extension PepperSwiftUIBridge {
         let lowerClassName = className.lowercased()
         if lowerClassName.contains("close") { return "close_button" }
         if lowerClassName.contains("search") { return "search_button" }
-        if lowerClassName.contains("edit") || lowerClassName.contains("pencil") || lowerClassName.contains("pen") { return "edit_button" }
+        if lowerClassName.contains("edit") || lowerClassName.contains("pencil") || lowerClassName.contains("pen") {
+            return "edit_button"
+        }
         if lowerClassName.contains("camera") { return "camera_button" }
         if lowerClassName.contains("like") || lowerClassName.contains("heart") { return "like_button" }
-        if lowerClassName.contains("more") || lowerClassName.contains("menu") || lowerClassName.contains("ellipsis") { return "more_menu" }
+        if lowerClassName.contains("more") || lowerClassName.contains("menu") || lowerClassName.contains("ellipsis") {
+            return "more_menu"
+        }
         if lowerClassName.contains("share") { return "share_button" }
         if lowerClassName.contains("add") || lowerClassName.contains("plus") { return "add_button" }
 
@@ -236,7 +247,8 @@ extension PepperSwiftUIBridge {
     /// accessibilityLabel set) returns "a11y".
     static func classifyLabelSource(view: UIView, label: String) -> String {
         if let button = view as? UIButton,
-           let title = button.currentTitle, !title.isEmpty {
+            let title = button.currentTitle, !title.isEmpty
+        {
             return "text"
         }
         if view is UILabel { return "text" }

@@ -98,14 +98,14 @@ struct AnyCodable: Codable {
 extension AnyCodable: Equatable {
     static func == (lhs: AnyCodable, rhs: AnyCodable) -> Bool {
         switch (lhs.value, rhs.value) {
-        case let (l as String, r as String):       return l == r
-        case let (l as Int, r as Int):             return l == r
-        case let (l as Double, r as Double):       return l == r
-        case let (l as Bool, r as Bool):           return l == r
-        case let (l as [String: AnyCodable], r as [String: AnyCodable]): return l == r
-        case let (l as [AnyCodable], r as [AnyCodable]):                 return l == r
-        case (is NSNull, is NSNull):               return true
-        default:                                   return false
+        case (let l as String, let r as String): return l == r
+        case (let l as Int, let r as Int): return l == r
+        case (let l as Double, let r as Double): return l == r
+        case (let l as Bool, let r as Bool): return l == r
+        case (let l as [String: AnyCodable], let r as [String: AnyCodable]): return l == r
+        case (let l as [AnyCodable], let r as [AnyCodable]): return l == r
+        case (is NSNull, is NSNull): return true
+        default: return false
         }
     }
 }
@@ -115,13 +115,13 @@ extension AnyCodable: Equatable {
 extension AnyCodable: Hashable {
     func hash(into hasher: inout Hasher) {
         switch value {
-        case let v as String:              hasher.combine(v)
-        case let v as Int:                 hasher.combine(v)
-        case let v as Double:              hasher.combine(v)
-        case let v as Bool:                hasher.combine(v)
+        case let v as String: hasher.combine(v)
+        case let v as Int: hasher.combine(v)
+        case let v as Double: hasher.combine(v)
+        case let v as Bool: hasher.combine(v)
         case let v as [String: AnyCodable]: hasher.combine(v)
-        case let v as [AnyCodable]:        hasher.combine(v)
-        default:                           hasher.combine(0)
+        case let v as [AnyCodable]: hasher.combine(v)
+        default: hasher.combine(0)
         }
     }
 }
@@ -277,14 +277,14 @@ extension PepperResponse {
 extension AnyCodable: CustomStringConvertible {
     var description: String {
         switch value {
-        case let v as String:              return "\"\(v)\""
-        case let v as Int:                 return "\(v)"
-        case let v as Double:              return "\(v)"
-        case let v as Bool:                return "\(v)"
+        case let v as String: return "\"\(v)\""
+        case let v as Int: return "\(v)"
+        case let v as Double: return "\(v)"
+        case let v as Bool: return "\(v)"
         case let v as [String: AnyCodable]: return "\(v)"
-        case let v as [AnyCodable]:        return "\(v)"
-        case is NSNull:                    return "null"
-        default:                           return "\(value)"
+        case let v as [AnyCodable]: return "\(v)"
+        case is NSNull: return "null"
+        default: return "\(value)"
         }
     }
 }

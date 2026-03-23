@@ -70,10 +70,10 @@ final class PepperState {
         let screenID = viewController.pepperScreenID
 
         // Skip container VCs (nav, tab, etc.) to avoid noise
-        if viewController is UINavigationController ||
-           viewController is UITabBarController ||
-           viewController is UISplitViewController ||
-           (PepperAppConfig.shared.tabBarProvider?.isTabBarContainer(viewController) == true) {
+        if viewController is UINavigationController || viewController is UITabBarController
+            || viewController is UISplitViewController
+            || (PepperAppConfig.shared.tabBarProvider?.isTabBarContainer(viewController) == true)
+        {
             return
         }
 
@@ -100,10 +100,10 @@ final class PepperState {
     func screenDisappeared(_ viewController: UIViewController) {
         let screenID = viewController.pepperScreenID
 
-        if viewController is UINavigationController ||
-           viewController is UITabBarController ||
-           viewController is UISplitViewController ||
-           (PepperAppConfig.shared.tabBarProvider?.isTabBarContainer(viewController) == true) {
+        if viewController is UINavigationController || viewController is UITabBarController
+            || viewController is UISplitViewController
+            || (PepperAppConfig.shared.tabBarProvider?.isTabBarContainer(viewController) == true)
+        {
             return
         }
 
@@ -117,10 +117,12 @@ final class PepperState {
         // Record to flight recorder
         PepperFlightRecorder.shared.record(type: .screen, summary: "\u{2190} \(screenID)")
 
-        debouncedBroadcast(event: "screen_disappeared", data: [
-            "screen": AnyCodable(screenID),
-            "stack": AnyCodable(currentStack.map { AnyCodable($0) })
-        ])
+        debouncedBroadcast(
+            event: "screen_disappeared",
+            data: [
+                "screen": AnyCodable(screenID),
+                "stack": AnyCodable(currentStack.map { AnyCodable($0) }),
+            ])
     }
 
     // MARK: - State Snapshot
@@ -146,12 +148,14 @@ final class PepperState {
 
     /// Build rich event data for a screen change, including class name, title,
     /// navigation stack depth, and tab info.
-    private func buildScreenEventData(for viewController: UIViewController, screenID: String, stack: [String]) -> [String: AnyCodable] {
+    private func buildScreenEventData(for viewController: UIViewController, screenID: String, stack: [String])
+        -> [String: AnyCodable]
+    {
         var data: [String: AnyCodable] = [
             "screen": AnyCodable(screenID),
             "type": AnyCodable(String(describing: Swift.type(of: viewController))),
             "title": AnyCodable(viewController.title ?? ""),
-            "stack": AnyCodable(stack.map { AnyCodable($0) })
+            "stack": AnyCodable(stack.map { AnyCodable($0) }),
         ]
 
         // Navigation stack depth
@@ -199,7 +203,8 @@ final class PepperState {
 
     private static func swizzleMethod(cls: AnyClass, original: Selector, swizzled: Selector) {
         guard let originalMethod = class_getInstanceMethod(cls, original),
-              let swizzledMethod = class_getInstanceMethod(cls, swizzled) else {
+            let swizzledMethod = class_getInstanceMethod(cls, swizzled)
+        else {
             pepperLog.error("Failed to swizzle \(original)", category: .bridge)
             return
         }

@@ -210,17 +210,20 @@ final class PepperConsoleInterceptor {
         }
 
         // Record to flight recorder (first 120 chars)
-        let truncated = entry.message.count > 120
+        let truncated =
+            entry.message.count > 120
             ? String(entry.message.prefix(120)) + "..."
             : entry.message
         PepperFlightRecorder.shared.record(type: .console, summary: "[\(entry.source)] \(truncated)")
 
         // Broadcast event for real-time streaming
-        let event = PepperEvent(event: "console", data: [
-            "timestamp_ms": AnyCodable(entry.timestampMs),
-            "message": AnyCodable(entry.message),
-            "source": AnyCodable(entry.source),
-        ])
+        let event = PepperEvent(
+            event: "console",
+            data: [
+                "timestamp_ms": AnyCodable(entry.timestampMs),
+                "message": AnyCodable(entry.message),
+                "source": AnyCodable(entry.source),
+            ])
         DispatchQueue.main.async {
             PepperPlane.shared.broadcast(event)
         }

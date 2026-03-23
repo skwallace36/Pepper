@@ -1,5 +1,5 @@
-import UIKit
 import ObjectiveC
+import UIKit
 
 /// Extension-based bridge for navigation control.
 /// Adds control plane awareness to UIKit navigation without modifying upstream code.
@@ -20,17 +20,20 @@ extension UIViewController {
             return presented.pepper_topMostViewController
         }
         if let nav = self as? UINavigationController,
-           let visible = nav.visibleViewController {
+            let visible = nav.visibleViewController
+        {
             return visible.pepper_topMostViewController
         }
         if let tab = self as? UITabBarController,
-           let selected = tab.selectedViewController {
+            let selected = tab.selectedViewController
+        {
             return selected.pepper_topMostViewController
         }
         // Check for app-specific tab bar container (via TabBarProvider).
         if let provider = PepperAppConfig.shared.tabBarProvider,
-           provider.isTabBarContainer(self),
-           let displayed = pepper_currentViewController {
+            provider.isTabBarContainer(self),
+            let displayed = pepper_currentViewController
+        {
             return displayed.pepper_topMostViewController
         }
         return self
@@ -44,7 +47,7 @@ extension UIViewController {
         return nav.viewControllers.map { vc in
             [
                 "screen_id": vc.pepperScreenID,
-                "type": String(describing: type(of: vc))
+                "type": String(describing: type(of: vc)),
             ]
         }
     }
@@ -54,7 +57,7 @@ extension UIViewController {
         return [
             "screen_id": pepperScreenID,
             "type": String(describing: type(of: self)),
-            "title": title ?? ""
+            "title": title ?? "",
         ]
     }
 }
@@ -68,9 +71,11 @@ extension UINavigationController {
     /// - Returns: `true` if a matching VC was found in the stack.
     @discardableResult
     func pepper_pop(to screenID: String, animated: Bool = true) -> Bool {
-        guard let target = viewControllers.first(where: {
-            $0.pepperScreenID == screenID
-        }) else {
+        guard
+            let target = viewControllers.first(where: {
+                $0.pepperScreenID == screenID
+            })
+        else {
             pepperLog.warning("Screen ID not in stack: \(screenID)", category: .bridge)
             return false
         }
@@ -105,13 +110,15 @@ extension UIViewController {
     /// 3. Fall back to first non-HostingController child with a visible view
     var pepper_currentViewController: UIViewController? {
         guard let provider = PepperAppConfig.shared.tabBarProvider,
-              provider.isTabBarContainer(self) else { return nil }
+            provider.isTabBarContainer(self)
+        else { return nil }
 
         // Strategy 1: read currentlyDisplayedViewController directly
         let cdvSel = NSSelectorFromString("currentlyDisplayedViewController")
         if responds(to: cdvSel),
-           let result = perform(cdvSel),
-           let vc = result.takeUnretainedValue() as? UIViewController {
+            let result = perform(cdvSel),
+            let vc = result.takeUnretainedValue() as? UIViewController
+        {
             return vc
         }
 
@@ -120,9 +127,11 @@ extension UIViewController {
         let idxSel = NSSelectorFromString("selectedIndex")
         if responds(to: vcSel), responds(to: idxSel) {
             if let vcsResult = perform(vcSel),
-               let vcs = vcsResult.takeUnretainedValue() as? [UIViewController] {
+                let vcs = vcsResult.takeUnretainedValue() as? [UIViewController]
+            {
                 if let idx = value(forKey: "selectedIndex") as? Int,
-                   idx >= 0, idx < vcs.count {
+                    idx >= 0, idx < vcs.count
+                {
                     return vcs[idx]
                 }
             }
@@ -131,8 +140,8 @@ extension UIViewController {
         // Strategy 3: fallback — first non-HostingController child with visible view
         return children.first(where: { child in
             child.view.superview != nil
-            && !String(describing: type(of: child)).contains("HostingController")
-            && child.view.frame.size != .zero
+                && !String(describing: type(of: child)).contains("HostingController")
+                && child.view.frame.size != .zero
         })
     }
 
@@ -154,7 +163,8 @@ extension UIViewController {
     var pepper_tabInfo: [[String: AnyCodable]] {
         // Custom tab bar provider (adapter mode)
         if let provider = PepperAppConfig.shared.tabBarProvider,
-           provider.isTabBarContainer(self) {
+            provider.isTabBarContainer(self)
+        {
             let selectedName = pepper_selectedTabName
             let names = provider.tabNames()
             let titles = provider.visibleTabTitles()
@@ -165,7 +175,7 @@ extension UIViewController {
                     "index": AnyCodable(index),
                     "name": AnyCodable(name),
                     "title": AnyCodable(title),
-                    "selected": AnyCodable(name == selectedName)
+                    "selected": AnyCodable(name == selectedName),
                 ]
             }
         }
@@ -180,7 +190,7 @@ extension UIViewController {
                     "index": AnyCodable(index),
                     "name": AnyCodable(name),
                     "title": AnyCodable(title),
-                    "selected": AnyCodable(index == selectedIndex)
+                    "selected": AnyCodable(index == selectedIndex),
                 ]
             }
         }
@@ -192,13 +202,15 @@ extension UIViewController {
     var pepper_selectedTabName: String {
         // Custom tab bar provider (adapter mode)
         if let provider = PepperAppConfig.shared.tabBarProvider,
-           provider.isTabBarContainer(self) {
+            provider.isTabBarContainer(self)
+        {
             return provider.selectedTabName() ?? "unknown"
         }
 
         // Standard UITabBarController (generic mode fallback)
         if let tabBarController = self as? UITabBarController,
-           let selectedVC = tabBarController.selectedViewController {
+            let selectedVC = tabBarController.selectedViewController
+        {
             return selectedVC.tabBarItem.title?.lowercased().replacingOccurrences(of: " ", with: "_")
                 ?? selectedVC.title?.lowercased().replacingOccurrences(of: " ", with: "_")
                 ?? "tab_\(tabBarController.selectedIndex)"
@@ -216,7 +228,10 @@ extension UIViewController {
     /// Checks for custom tab bar provider first, then standard UITabBarController.
     var pepper_tabBarController: UIViewController? {
         if let provider = PepperAppConfig.shared.tabBarProvider,
-           provider.isTabBarContainer(self) { return self }
+            provider.isTabBarContainer(self)
+        {
+            return self
+        }
         if self is UITabBarController { return self }
         if let parent = parent { return parent.pepper_tabBarController }
         if let presenting = presentingViewController { return presenting.pepper_tabBarController }
@@ -233,14 +248,18 @@ extension UIWindow {
     }
 }
 
-private extension UIViewController {
-    func pepper_findTabBarController() -> UIViewController? {
+extension UIViewController {
+    fileprivate func pepper_findTabBarController() -> UIViewController? {
         if let provider = PepperAppConfig.shared.tabBarProvider,
-           provider.isTabBarContainer(self) { return self }
+            provider.isTabBarContainer(self)
+        {
+            return self
+        }
         if self is UITabBarController { return self }
         // Search presented
         if let presented = presentedViewController,
-           let found = presented.pepper_findTabBarController() {
+            let found = presented.pepper_findTabBarController()
+        {
             return found
         }
         // Search nav stack
@@ -364,7 +383,8 @@ extension UINavigationController {
         let logger = PepperLogger.logger(category: "nav-bridge")
         pepper_dispatchToMain {
             guard let backButton = self.pepper_findBackButtonView() else {
-                logger.warning("pepper_popBack: back button view not found in navigation bar — SwiftUI pop will silently fail")
+                logger.warning(
+                    "pepper_popBack: back button view not found in navigation bar — SwiftUI pop will silently fail")
                 return
             }
             guard let window = backButton.window else {

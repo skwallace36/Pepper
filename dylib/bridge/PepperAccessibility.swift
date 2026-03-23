@@ -34,9 +34,9 @@ final class PepperAccessibility {
         tagSwiftUIHostingViews(in: viewController)
 
         // Skip standard container VCs
-        if viewController is UINavigationController ||
-           viewController is UITabBarController ||
-           viewController is UISplitViewController {
+        if viewController is UINavigationController || viewController is UITabBarController
+            || viewController is UISplitViewController
+        {
             if let tabVC = viewController as? UITabBarController {
                 tagSystemTabBar(tabVC.tabBar)
             }
@@ -45,7 +45,8 @@ final class PepperAccessibility {
 
         // Custom tab bar controller — tag its tab bar but skip its own content
         if let provider = PepperAppConfig.shared.tabBarProvider,
-           provider.isTabBarContainer(viewController) {
+            provider.isTabBarContainer(viewController)
+        {
             if let view = viewController.view {
                 tagCustomTabBar(view)
             }
@@ -81,7 +82,8 @@ final class PepperAccessibility {
     /// view within the container, then tags UIButton children and item views.
     func tagCustomTabBar(_ containerView: UIView) {
         guard let provider = PepperAppConfig.shared.tabBarProvider,
-              let window = containerView.window else { return }
+            let window = containerView.window
+        else { return }
 
         // Delegate tab bar discovery to the provider
         guard let tabBarView = provider.findTabBar(in: window) else { return }
@@ -151,9 +153,9 @@ final class PepperAccessibility {
             return false
         }
         // Tag interactive controls
-        if view is UIButton || view is UITextField || view is UITextView ||
-           view is UISwitch || view is UISlider || view is UISegmentedControl ||
-           view is UISearchBar {
+        if view is UIButton || view is UITextField || view is UITextView || view is UISwitch || view is UISlider
+            || view is UISegmentedControl || view is UISearchBar
+        {
             return true
         }
         // Tag table/collection cells
@@ -293,8 +295,9 @@ final class PepperAccessibility {
             let childType = String(describing: type(of: child.value))
 
             // If this looks like a SwiftUI view type, try to find and tag the corresponding UIView
-            if childType.contains("View") || childType.contains("Button") ||
-               childType.contains("Text") || childType.contains("Image") {
+            if childType.contains("View") || childType.contains("Button") || childType.contains("Text")
+                || childType.contains("Image")
+            {
                 tagViewIfFound(id: id, in: view)
             }
 
@@ -310,7 +313,9 @@ final class PepperAccessibility {
     private func tagViewIfFound(id: String, in view: UIView) {
         for subview in view.subviews {
             // swiftlint:disable:next force_unwrapping
-            if shouldTag(subview) && (subview.accessibilityIdentifier == nil || subview.accessibilityIdentifier!.isEmpty) {
+            if shouldTag(subview)
+                && (subview.accessibilityIdentifier == nil || subview.accessibilityIdentifier!.isEmpty)
+            {
                 assignIfNeeded(subview, id: id)
                 return
             }
@@ -339,8 +344,9 @@ final class PepperAccessibility {
 
     private func collectUntaggedWithLabels(view: UIView, into results: inout [(view: UIView, label: String)]) {
         if let label = view.accessibilityLabel, !label.isEmpty,
-           // swiftlint:disable:next force_unwrapping
-           (view.accessibilityIdentifier == nil || view.accessibilityIdentifier!.isEmpty) {
+            // swiftlint:disable:next force_unwrapping
+            view.accessibilityIdentifier == nil || view.accessibilityIdentifier!.isEmpty
+        {
             results.append((view: view, label: label))
         }
         for subview in view.subviews {

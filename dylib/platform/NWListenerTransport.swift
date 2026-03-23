@@ -153,7 +153,9 @@ final class NWListenerTransport: WebSocketTransport {
             }
 
             if let content = content, !content.isEmpty,
-               let metadata = context?.protocolMetadata(definition: NWProtocolWebSocket.definition) as? NWProtocolWebSocket.Metadata {
+                let metadata = context?.protocolMetadata(definition: NWProtocolWebSocket.definition)
+                    as? NWProtocolWebSocket.Metadata
+            {
 
                 switch metadata.opcode {
                 case .text:
@@ -222,7 +224,8 @@ final class NWTransportConnection: TransportConnection {
 
     func sendBinary(_ data: Data) {
         guard nwConnection.state == .ready else {
-            pepperLog.debug("Skipping binary send on non-ready connection (state: \(nwConnection.state))", category: .server)
+            pepperLog.debug(
+                "Skipping binary send on non-ready connection (state: \(nwConnection.state))", category: .server)
             return
         }
 

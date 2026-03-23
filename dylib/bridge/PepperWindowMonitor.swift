@@ -46,7 +46,8 @@ final class PepperWindowMonitor {
 
     @objc private func windowDidResignKey(_ notification: Notification) {
         guard let window = notification.object as? UIWindow,
-              window === trackedWindow else { return }
+            window === trackedWindow
+        else { return }
 
         let interceptor = PepperDialogInterceptor.shared
 
@@ -55,9 +56,11 @@ final class PepperWindowMonitor {
 
         interceptor.systemDialogSuspected = true
 
-        let event = PepperEvent(event: "system_dialog_detected", data: [
-            "timestamp": AnyCodable(ISO8601DateFormatter().string(from: Date()))
-        ])
+        let event = PepperEvent(
+            event: "system_dialog_detected",
+            data: [
+                "timestamp": AnyCodable(ISO8601DateFormatter().string(from: Date()))
+            ])
         PepperPlane.shared.broadcast(event)
 
         pepperLog.info("System dialog suspected — key window resigned with no app-side modal", category: .commands)
@@ -65,7 +68,8 @@ final class PepperWindowMonitor {
 
     @objc private func windowDidBecomeKey(_ notification: Notification) {
         guard let window = notification.object as? UIWindow,
-              window === trackedWindow else { return }
+            window === trackedWindow
+        else { return }
 
         let interceptor = PepperDialogInterceptor.shared
 
@@ -73,9 +77,11 @@ final class PepperWindowMonitor {
 
         interceptor.systemDialogSuspected = false
 
-        let event = PepperEvent(event: "system_dialog_cleared", data: [
-            "timestamp": AnyCodable(ISO8601DateFormatter().string(from: Date()))
-        ])
+        let event = PepperEvent(
+            event: "system_dialog_cleared",
+            data: [
+                "timestamp": AnyCodable(ISO8601DateFormatter().string(from: Date()))
+            ])
         PepperPlane.shared.broadcast(event)
 
         pepperLog.info("System dialog cleared — key window regained key status", category: .commands)

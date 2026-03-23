@@ -52,9 +52,13 @@ struct PushHandler: PepperHandler {
         if let dataDict = command.params?["data"]?.dictValue {
             var userInfo: [String: Any] = [:]
             for (key, value) in dataDict {
-                if let str = value.stringValue { userInfo[key] = str }
-                else if let num = value.intValue { userInfo[key] = num }
-                else if let bool = value.boolValue { userInfo[key] = bool }
+                if let str = value.stringValue {
+                    userInfo[key] = str
+                } else if let num = value.intValue {
+                    userInfo[key] = num
+                } else if let bool = value.boolValue {
+                    userInfo[key] = bool
+                }
             }
             content.userInfo = userInfo
         }
@@ -70,12 +74,14 @@ struct PushHandler: PepperHandler {
             }
         }
 
-        return .ok(id: command.id, data: [
-            "delivered": AnyCodable(true),
-            "notification_id": AnyCodable(id),
-            "title": AnyCodable(title),
-            "body": AnyCodable(body),
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "delivered": AnyCodable(true),
+                "notification_id": AnyCodable(id),
+                "title": AnyCodable(title),
+                "body": AnyCodable(body),
+            ])
     }
 
     // MARK: - Pending
@@ -97,17 +103,20 @@ struct PushHandler: PepperHandler {
         }
 
         let entries = pending.map { req in
-            AnyCodable([
-                "id": AnyCodable(req.identifier),
-                "title": AnyCodable(req.content.title),
-                "body": AnyCodable(req.content.body),
-            ] as [String: AnyCodable])
+            AnyCodable(
+                [
+                    "id": AnyCodable(req.identifier),
+                    "title": AnyCodable(req.content.title),
+                    "body": AnyCodable(req.content.body),
+                ] as [String: AnyCodable])
         }
 
-        return .ok(id: command.id, data: [
-            "count": AnyCodable(pending.count),
-            "pending": AnyCodable(entries),
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "count": AnyCodable(pending.count),
+                "pending": AnyCodable(entries),
+            ])
     }
 
     // MARK: - Clear

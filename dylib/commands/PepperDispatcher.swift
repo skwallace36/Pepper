@@ -62,7 +62,8 @@ final class PepperDispatcher {
 
         // Execute on main thread for UIKit safety, with error recovery
         DispatchQueue.main.async { [weak self] in
-            let response = self?.safeExecute(handler: handler, command: command)
+            let response =
+                self?.safeExecute(handler: handler, command: command)
                 ?? .error(id: command.id, message: "Dispatcher was deallocated")
             completion(response)
         }
@@ -92,7 +93,7 @@ final class PepperDispatcher {
     private static let uiMutatingCommands: Set<String> = [
         "tap", "input", "toggle", "scroll", "swipe", "navigate", "back",
         "dismiss", "dialog", "batch",
-        "scroll_to", "dismiss_keyboard", "gesture", "vars"
+        "scroll_to", "dismiss_keyboard", "gesture", "vars",
     ]
 
     /// Commands that trigger animations and should auto-wait for idle.
@@ -100,7 +101,7 @@ final class PepperDispatcher {
     /// `wait_for` (has own polling), `batch` (sub-commands handle their own idle).
     private static let autoIdleCommands: Set<String> = [
         "tap", "navigate", "back", "dismiss", "scroll", "swipe",
-        "scroll_to", "dismiss_keyboard", "gesture"
+        "scroll_to", "dismiss_keyboard", "gesture",
     ]
 
     private func safeExecute(handler: PepperHandler, command: PepperCommand) -> PepperResponse {

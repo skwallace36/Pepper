@@ -21,17 +21,21 @@ extension PepperSwiftUIBridge {
         let screenBounds = UIScreen.main.bounds
 
         // When doing substring matching, exact matches should win over partial.
-        let exactMatches: Set<ObjectIdentifier> = exact ? [] : Set(
-            results.filter { v in
-                guard let vl = v.accessibilityLabel else { return false }
-                return vl.pepperEquals(label)
-            }.map { ObjectIdentifier($0) }
-        )
+        let exactMatches: Set<ObjectIdentifier> =
+            exact
+            ? []
+            : Set(
+                results.filter { v in
+                    guard let vl = v.accessibilityLabel else { return false }
+                    return vl.pepperEquals(label)
+                }.map { ObjectIdentifier($0) }
+            )
 
         // Pick the best match: interactive + exact > interactive > exact > first
         func bestMatch(from candidates: [UIView]) -> UIView {
             if !exactMatches.isEmpty {
-                if let v = candidates.first(where: { exactMatches.contains(ObjectIdentifier($0)) && isInteractive($0) }) {
+                if let v = candidates.first(where: { exactMatches.contains(ObjectIdentifier($0)) && isInteractive($0) })
+                {
                     return v
                 }
             }
@@ -77,7 +81,9 @@ extension PepperSwiftUIBridge {
         return false
     }
 
-    private func collectViewsByAccessibilityLabel(in view: UIView, label: String, exact: Bool, into results: inout [UIView]) {
+    private func collectViewsByAccessibilityLabel(
+        in view: UIView, label: String, exact: Bool, into results: inout [UIView]
+    ) {
         if let viewLabel = view.accessibilityLabel {
             if (exact && viewLabel.pepperEquals(label)) || (!exact && viewLabel.pepperContains(label)) {
                 results.append(view)
@@ -88,7 +94,8 @@ extension PepperSwiftUIBridge {
         if let accessElements = view.accessibilityElements {
             for element in accessElements {
                 if let accElement = element as? UIAccessibilityElement,
-                   let accLabel = accElement.accessibilityLabel {
+                    let accLabel = accElement.accessibilityLabel
+                {
                     if (exact && accLabel.pepperEquals(label)) || (!exact && accLabel.pepperContains(label)) {
                         results.append(view)
                     }
@@ -138,7 +145,10 @@ extension PepperSwiftUIBridge {
             if screenBounds.contains(center) {
                 let isExact = exact || elementLabel.pepperEquals(label)
                 let fullyVis = element.frame.isFullyVisible(in: screenBounds)
-                onScreen.append(Match(center: center, isInteractive: element.isInteractive, isExact: isExact, isFullyVisible: fullyVis))
+                onScreen.append(
+                    Match(
+                        center: center, isInteractive: element.isInteractive, isExact: isExact, isFullyVisible: fullyVis
+                    ))
             } else if fallback == nil {
                 fallback = center
             }
@@ -181,7 +191,10 @@ extension PepperSwiftUIBridge {
             if screenBounds.contains(center) {
                 let isExact = exact || elementLabel.pepperEquals(label)
                 let fullyVis = element.frame.isFullyVisible(in: screenBounds)
-                onScreen.append(Match(frame: element.frame, isInteractive: element.isInteractive, isExact: isExact, isFullyVisible: fullyVis))
+                onScreen.append(
+                    Match(
+                        frame: element.frame, isInteractive: element.isInteractive, isExact: isExact,
+                        isFullyVisible: fullyVis))
             } else if fallback == nil {
                 fallback = element.frame
             }
@@ -214,7 +227,9 @@ extension PepperSwiftUIBridge {
             guard element.isInteractive, element.frame.contains(point) else { continue }
             if let obj = findAccessibilityObject(matching: element, in: rootView) {
                 if obj.accessibilityActivate() {
-                    pepperLog.debug("Activated accessibility element at (\(point.x), \(point.y)): \(element.label ?? "unknown")", category: .bridge)
+                    pepperLog.debug(
+                        "Activated accessibility element at (\(point.x), \(point.y)): \(element.label ?? "unknown")",
+                        category: .bridge)
                     return true
                 }
             }
@@ -241,7 +256,9 @@ extension PepperSwiftUIBridge {
 
     /// Walk the accessibility tree to find the actual NSObject for an element
     /// matching the given info (by label + frame).
-    private func findAccessibilityObject(matching info: PepperAccessibilityElement, in rootView: UIView? = nil) -> NSObject? {
+    private func findAccessibilityObject(matching info: PepperAccessibilityElement, in rootView: UIView? = nil)
+        -> NSObject?
+    {
         let view = rootView ?? UIWindow.pepper_keyWindow
         guard let root = view else { return nil }
 
@@ -252,8 +269,9 @@ extension PepperSwiftUIBridge {
             guard isInteractive else { return false }
 
             if let label = info.label, let objLabel = obj.accessibilityLabel, label == objLabel {
-                let frameDiff = abs(obj.accessibilityFrame.origin.x - info.frame.origin.x) +
-                               abs(obj.accessibilityFrame.origin.y - info.frame.origin.y)
+                let frameDiff =
+                    abs(obj.accessibilityFrame.origin.x - info.frame.origin.x)
+                    + abs(obj.accessibilityFrame.origin.y - info.frame.origin.y)
                 if frameDiff < 2 {
                     result = obj
                     return true
@@ -289,8 +307,9 @@ extension PepperSwiftUIBridge {
         }
 
         if let container = element as? NSObject,
-           let accessElements = container.accessibilityElements,
-           !accessElements.isEmpty {
+            let accessElements = container.accessibilityElements,
+            !accessElements.isEmpty
+        {
             for child in accessElements {
                 walkAccessibilityObjects(element: child, depth: depth + 1, maxDepth: maxDepth, visitor: visitor)
             }

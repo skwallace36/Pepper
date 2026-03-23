@@ -39,7 +39,9 @@ struct BatchHandler: PepperHandler {
         let continueOnError = command.params?["continue_on_error"]?.boolValue ?? false
         let delayMs = command.params?["delay_ms"]?.intValue ?? 0
 
-        logger.info("Batch executing \(commandsArray.count) commands (delay: \(delayMs)ms, continueOnError: \(continueOnError))")
+        logger.info(
+            "Batch executing \(commandsArray.count) commands (delay: \(delayMs)ms, continueOnError: \(continueOnError))"
+        )
 
         var responses: [[String: AnyCodable]] = []
         var errorCount = 0
@@ -49,7 +51,7 @@ struct BatchHandler: PepperHandler {
                 let errResponse: [String: AnyCodable] = [
                     "index": AnyCodable(index),
                     "status": AnyCodable("error"),
-                    "message": AnyCodable("Invalid command at index \(index): expected object")
+                    "message": AnyCodable("Invalid command at index \(index): expected object"),
                 ]
                 responses.append(errResponse)
                 errorCount += 1
@@ -61,7 +63,7 @@ struct BatchHandler: PepperHandler {
                 let errResponse: [String: AnyCodable] = [
                     "index": AnyCodable(index),
                     "status": AnyCodable("error"),
-                    "message": AnyCodable("Missing 'cmd' field at index \(index)")
+                    "message": AnyCodable("Missing 'cmd' field at index \(index)"),
                 ]
                 responses.append(errResponse)
                 errorCount += 1
@@ -82,7 +84,7 @@ struct BatchHandler: PepperHandler {
                 "id": AnyCodable(subID),
                 "cmd": AnyCodable(cmdName),
                 "status": AnyCodable(response.status.rawValue),
-                "data": AnyCodable(response.data ?? [:])
+                "data": AnyCodable(response.data ?? [:]),
             ]
             responses.append(responseDict)
 
@@ -97,11 +99,13 @@ struct BatchHandler: PepperHandler {
             }
         }
 
-        return .ok(id: command.id, data: [
-            "total": AnyCodable(commandsArray.count),
-            "executed": AnyCodable(responses.count),
-            "errors": AnyCodable(errorCount),
-            "responses": AnyCodable(responses.map { AnyCodable($0) })
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "total": AnyCodable(commandsArray.count),
+                "executed": AnyCodable(responses.count),
+                "errors": AnyCodable(errorCount),
+                "responses": AnyCodable(responses.map { AnyCodable($0) }),
+            ])
     }
 }

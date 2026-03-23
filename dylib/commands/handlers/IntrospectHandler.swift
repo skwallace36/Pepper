@@ -42,7 +42,11 @@ struct IntrospectHandler: PepperHandler {
         case "map":
             return handleMap(command)
         default:
-            return .error(id: command.id, message: "Unknown introspect mode: \(mode). Use: full, accessibility, text, tappable, interactive, mirror, platform, map")
+            return .error(
+                id: command.id,
+                message:
+                    "Unknown introspect mode: \(mode). Use: full, accessibility, text, tappable, interactive, mirror, platform, map"
+            )
         }
     }
 
@@ -73,7 +77,8 @@ struct IntrospectHandler: PepperHandler {
             }
             guard vc !== rootVC else { return nil }
             // Only scope for full-screen modals; sheets leave parent visible
-            let isFullScreen = vc.modalPresentationStyle == .fullScreen
+            let isFullScreen =
+                vc.modalPresentationStyle == .fullScreen
                 || vc.modalPresentationStyle == .overFullScreen
                 || vc.modalPresentationStyle == .overCurrentContext
             if isFullScreen { return vc.view }
@@ -88,7 +93,8 @@ struct IntrospectHandler: PepperHandler {
         let accElements = bridge.annotateDepth(bridge.collectAccessibilityElements(from: modalRootView))
 
         // Phase 2: Collect all interactive elements (labeled + unlabeled, with hit-test)
-        let interactiveElements = bridge.discoverInteractiveElements(rootView: modalRootView, hitTestFilter: true, maxElements: 500)
+        let interactiveElements = bridge.discoverInteractiveElements(
+            rootView: modalRootView, hitTestFilter: true, maxElements: 500)
 
         // Phase 3: Merge into a unified list, deduplicated by center proximity
         var mergedInteractive: [MapElement] = []
@@ -118,8 +124,9 @@ struct IntrospectHandler: PepperHandler {
             if elemArea > screenArea * 0.8, elem.label == nil { continue }
             // Skip scroll bar indicators (adjustable trait, thin bars)
             if elem.traits.contains("adjustable"),
-               let label = elem.label,
-               label.lowercased().contains("scroll bar") {
+                let label = elem.label,
+                label.lowercased().contains("scroll bar")
+            {
                 continue
             }
             // Skip sheet grabber handles (accessibility artifacts)
@@ -129,7 +136,8 @@ struct IntrospectHandler: PepperHandler {
             // Skip center duplicates (same element found by multiple discovery phases).
             // Text inputs are never deduped — a UITextField behind a button at the
             // same center is a different element (e.g. sheet text field vs background cell).
-            let isTextInput = elem.controlType == "textField" || elem.controlType == "textView" || elem.controlType == "searchField"
+            let isTextInput =
+                elem.controlType == "textField" || elem.controlType == "textView" || elem.controlType == "searchField"
             if !isTextInput {
                 guard !coveredCenters.contains(x: elem.center.x, y: elem.center.y) else { continue }
             }
@@ -211,15 +219,17 @@ struct IntrospectHandler: PepperHandler {
             let trimmed = label.trimmingCharacters(in: .whitespaces)
             if trimmed.isEmpty { continue }
             // Skip strings that are just space-separated single digits (chart axes)
-            let isDigitAxis = trimmed.allSatisfy { $0.isNumber || $0 == " " }
+            let isDigitAxis =
+                trimmed.allSatisfy { $0.isNumber || $0 == " " }
                 && trimmed.contains(" ")
             if isDigitAxis { continue }
             // Skip chart time axis labels: "12 AM", "6 PM", "12AM", "6PM"
             if isChartTimeLabel(trimmed) { continue }
             // Skip short measurement labels: "0m", "60min", "0.1mi"
             if trimmed.count <= 6, trimmed.first?.isNumber == true,
-               trimmed.hasSuffix("m") || trimmed.hasSuffix("mi") || trimmed.hasSuffix("min")
-                || trimmed.hasSuffix("hr") || trimmed.hasSuffix("lb") || trimmed.hasSuffix("kg") {
+                trimmed.hasSuffix("m") || trimmed.hasSuffix("mi") || trimmed.hasSuffix("min")
+                    || trimmed.hasSuffix("hr") || trimmed.hasSuffix("lb") || trimmed.hasSuffix("kg")
+            {
                 continue
             }
 
@@ -235,21 +245,22 @@ struct IntrospectHandler: PepperHandler {
                 textVisible = bridge.checkFrameVisibility(frame: acc.frame, in: window)
             }
 
-            mergedNonInteractive.append(MapElement(
-                label: label,
-                type: acc.type,
-                center: CGPoint(x: centerX, y: centerY),
-                frame: acc.frame,
-                hitReachable: false,
-                visible: textVisible,
-                heuristic: nil,
-                iconName: nil,
-                isInteractive: false,
-                value: acc.value,
-                traits: [],
-                scrollContext: nil,
-                labelSource: nil
-            ))
+            mergedNonInteractive.append(
+                MapElement(
+                    label: label,
+                    type: acc.type,
+                    center: CGPoint(x: centerX, y: centerY),
+                    frame: acc.frame,
+                    hitReachable: false,
+                    visible: textVisible,
+                    heuristic: nil,
+                    iconName: nil,
+                    isInteractive: false,
+                    value: acc.value,
+                    traits: [],
+                    scrollContext: nil,
+                    labelSource: nil
+                ))
             coveredCenters.insert(x: centerX, y: centerY)
         }
 
@@ -259,7 +270,7 @@ struct IntrospectHandler: PepperHandler {
         let selectedTab = tabBarProvider?.selectedTabName()
         let screenH = screenBounds.height
         let screenW = screenBounds.width
-        let tabBarMinY: CGFloat = screenH - 60 // Tab bar is always in the bottom ~60pt
+        let tabBarMinY: CGFloat = screenH - 60  // Tab bar is always in the bottom ~60pt
 
         // Phase 4a: Label tab bar items from tab bar provider.
         // UITabBarButton labels aren't in the accessibility tree; use tab item titles.
@@ -287,7 +298,7 @@ struct IntrospectHandler: PepperHandler {
                 let maxX = yBand.map { mergedInteractive[$0].center.x }.max() ?? 0
                 tabIndices = (maxX - minX > screenW * 0.6) ? yBand : []
             } else {
-                tabIndices = [] // Not enough candidates for a tab bar
+                tabIndices = []  // Not enough candidates for a tab bar
             }
 
             for (order, idx) in tabIndices.enumerated() where order < tabTitles.count {
@@ -335,13 +346,15 @@ struct IntrospectHandler: PepperHandler {
         // SwiftUI `.contentShape().onTapGesture {}` containers appear as unlabeled
         // interactive elements with their child texts as separate NI entries.
         // Must run before Phase 4b so text adoption doesn't steal individual texts.
-        groupGestureContainerChildren(&mergedInteractive, nonInteractive: &mergedNonInteractive, screenBounds: screenBounds)
+        groupGestureContainerChildren(
+            &mergedInteractive, nonInteractive: &mergedNonInteractive, screenBounds: screenBounds)
 
         // Phase 4a¾: Probe uncovered text for tappable card containers.
         // SwiftUI cards with .contentShape().onTapGesture{} are invisible to
         // gesture recognizer discovery. Detect them via hit-test + ancestor walk
         // for views with cornerRadius + clipping (from .clipShape()).
-        probeUncoveredTextForCards(&mergedInteractive, nonInteractive: &mergedNonInteractive, screenBounds: screenBounds)
+        probeUncoveredTextForCards(
+            &mergedInteractive, nonInteractive: &mergedNonInteractive, screenBounds: screenBounds)
 
         // Phase 4b: Adopt text labels for remaining unlabeled interactive elements.
         // Pass 1: Text center inside element frame (with 5pt tolerance).
@@ -388,13 +401,20 @@ struct IntrospectHandler: PepperHandler {
                 guard let txt = mergedNonInteractive[j].label, txt.count >= 2 else { continue }
                 let tc = mergedNonInteractive[j].center
                 guard iFrame.contains(tc) else { continue }
-                let score: CGFloat = isCell
+                let score: CGFloat =
+                    isCell
                     ? tc.y
                     : hypot(tc.x - mergedInteractive[i].center.x, tc.y - mergedInteractive[i].center.y)
-                if score < bestScore { bestScore = score; bestIdx = j }
+                if score < bestScore {
+                    bestScore = score
+                    bestIdx = j
+                }
             }
             // Pass 2: For text fields, find label text above (within 70pt).
-            if bestIdx == nil && (mergedInteractive[i].type == "textField" || mergedInteractive[i].type == "searchField" || mergedInteractive[i].type == "textView") {
+            if bestIdx == nil
+                && (mergedInteractive[i].type == "textField" || mergedInteractive[i].type == "searchField"
+                    || mergedInteractive[i].type == "textView")
+            {
                 let ef = mergedInteractive[i].frame
                 for j in textIndex.candidates(inYRange: (ef.minY - 70)...ef.minY) {
                     guard !consumedNI.contains(j) else { continue }
@@ -403,7 +423,10 @@ struct IntrospectHandler: PepperHandler {
                     guard tc.y < ef.minY, ef.minY - tc.y < 70 else { continue }
                     guard tc.x >= ef.minX - 20 else { continue }
                     let dist = ef.minY - tc.y
-                    if dist < bestScore { bestScore = dist; bestIdx = j }
+                    if dist < bestScore {
+                        bestScore = dist
+                        bestIdx = j
+                    }
                 }
             }
             // Pass 3: For small controls, find text to the left in same Y-band.
@@ -417,7 +440,10 @@ struct IntrospectHandler: PepperHandler {
                     let tc = mergedNonInteractive[j].center
                     guard abs(tc.y - ec.y) < 20, tc.x < ec.x, ec.x - tc.x < 150 else { continue }
                     let dist = ec.x - tc.x
-                    if dist < bestScore { bestScore = dist; bestIdx = j }
+                    if dist < bestScore {
+                        bestScore = dist
+                        bestIdx = j
+                    }
                 }
             }
             // Pass 4: For buttons < 200pt wide, find text directly below.
@@ -430,7 +456,10 @@ struct IntrospectHandler: PepperHandler {
                     guard tc.y > ef.maxY, tc.y - ef.maxY < 20 else { continue }
                     guard tc.x >= ef.minX - 10, tc.x <= ef.maxX + 10 else { continue }
                     let dist = tc.y - ef.maxY
-                    if dist < bestScore { bestScore = dist; bestIdx = j }
+                    if dist < bestScore {
+                        bestScore = dist
+                        bestIdx = j
+                    }
                 }
             }
             if let j = bestIdx, let txt = mergedNonInteractive[j].label {
@@ -565,7 +594,10 @@ struct IntrospectHandler: PepperHandler {
                 let tc = mergedNonInteractive[j].center
                 guard abs(tc.y - ec.y) < 25, tc.x < ec.x else { continue }
                 let dist = ec.x - tc.x
-                if dist < bestDist { bestDist = dist; bestIdx = j }
+                if dist < bestDist {
+                    bestDist = dist
+                    bestIdx = j
+                }
             }
             // Also check nearby interactive elements (e.g. "Community sharing" cell)
             var interactiveIdx: Int?
@@ -576,7 +608,10 @@ struct IntrospectHandler: PepperHandler {
                     let tc = mergedInteractive[j].center
                     guard abs(tc.y - ec.y) < 25, tc.x < ec.x else { continue }
                     let dist = ec.x - tc.x
-                    if dist < bestDist { bestDist = dist; interactiveIdx = j }
+                    if dist < bestDist {
+                        bestDist = dist
+                        interactiveIdx = j
+                    }
                 }
             }
             let newLabel: String? = {
@@ -616,12 +651,14 @@ struct IntrospectHandler: PepperHandler {
         }
 
         if let nearestDict = command.params?["nearest_to"]?.dictValue,
-           let nx = nearestDict["x"]?.doubleValue,
-           let ny = nearestDict["y"]?.doubleValue {
+            let nx = nearestDict["x"]?.doubleValue,
+            let ny = nearestDict["y"]?.doubleValue
+        {
             let point = CGPoint(x: nx, y: ny)
             let count = nearestDict["count"]?.intValue ?? 5
             let direction = nearestDict["direction"]?.stringValue
-            mergedInteractive = spatialFilterMap(mergedInteractive, nearestTo: point, direction: direction, count: count)
+            mergedInteractive = spatialFilterMap(
+                mergedInteractive, nearestTo: point, direction: direction, count: count)
         }
 
         // Phase 6: Sort interactive elements by Y, assign ordinal indices for
@@ -659,15 +696,16 @@ struct IntrospectHandler: PepperHandler {
         if let title = navTitle, !title.isEmpty {
             let alreadyPresent = textForOutput.contains { $0.label == title }
             if !alreadyPresent {
-                textForOutput.append(MapElement(
-                    label: title, type: "staticText",
-                    center: CGPoint(x: screenW / 2, y: 30),
-                    frame: CGRect(x: 0, y: 20, width: screenW, height: 20),
-                    hitReachable: false, visible: 1.0,
-                    heuristic: nil, iconName: nil,
-                    isInteractive: false, value: nil,
-                    traits: [], scrollContext: nil, labelSource: "nav_title"
-                ))
+                textForOutput.append(
+                    MapElement(
+                        label: title, type: "staticText",
+                        center: CGPoint(x: screenW / 2, y: 30),
+                        frame: CGRect(x: 0, y: 20, width: screenW, height: 20),
+                        hitReachable: false, visible: 1.0,
+                        heuristic: nil, iconName: nil,
+                        isInteractive: false, value: nil,
+                        traits: [], scrollContext: nil, labelSource: "nav_title"
+                    ))
             }
         }
         if let regionRect = parseRegion(from: command.params) {
@@ -678,12 +716,15 @@ struct IntrospectHandler: PepperHandler {
         let nonInteractiveSerialized = serializeNonInteractive(textForOutput, volatileKeys: volatileKeys)
         let screenSize = UIScreen.main.bounds.size
 
-        logger.info("Map introspection: \(mergedInteractive.count) interactive, \(mergedNonInteractive.count) non-interactive, \(rows.count) rows")
+        logger.info(
+            "Map introspection: \(mergedInteractive.count) interactive, \(mergedNonInteractive.count) non-interactive, \(rows.count) rows"
+        )
 
         // Quick memory check (microseconds — no overhead)
         var memMB: Double = 0
         var taskInfo = mach_task_basic_info()
-        var taskInfoCount = mach_msg_type_number_t(MemoryLayout<mach_task_basic_info>.size / MemoryLayout<natural_t>.size)
+        var taskInfoCount = mach_msg_type_number_t(
+            MemoryLayout<mach_task_basic_info>.size / MemoryLayout<natural_t>.size)
         let memResult = withUnsafeMutablePointer(to: &taskInfo) { ptr in
             ptr.withMemoryRebound(to: integer_t.self, capacity: Int(taskInfoCount)) { intPtr in
                 task_info(mach_task_self_, task_flavor_t(MACH_TASK_BASIC_INFO), intPtr, &taskInfoCount)
@@ -697,11 +738,11 @@ struct IntrospectHandler: PepperHandler {
             "screen": AnyCodable(screenID),
             "screen_size": AnyCodable([
                 "w": AnyCodable(Int(screenSize.width)),
-                "h": AnyCodable(Int(screenSize.height))
+                "h": AnyCodable(Int(screenSize.height)),
             ]),
             "element_count": AnyCodable(mergedInteractive.count),
             "rows": AnyCodable(rows),
-            "non_interactive": AnyCodable(nonInteractiveSerialized)
+            "non_interactive": AnyCodable(nonInteractiveSerialized),
         ]
         if let title = navTitle, !title.isEmpty {
             data["nav_title"] = AnyCodable(title)
@@ -742,23 +783,26 @@ struct IntrospectHandler: PepperHandler {
                 var summary: [String: AnyCodable] = [
                     "dialog_id": AnyCodable(dialog.id),
                     "title": AnyCodable(dialog.title ?? ""),
-                    "buttons": AnyCodable(dialog.actions.map { AnyCodable($0.title ?? "") })
+                    "buttons": AnyCodable(dialog.actions.map { AnyCodable($0.title ?? "") }),
                 ]
                 if let message = dialog.message, !message.isEmpty {
                     summary["message"] = AnyCodable(message)
                 }
                 return summary
             }
-            data["system_dialog_blocking"] = AnyCodable([
-                "warning": AnyCodable("\u{26a0}\u{fe0f} system_dialog_blocking"),
-                "description": AnyCodable("A system dialog is covering the app. UI elements behind it are not interactable until the dialog is resolved."),
-                "dialogs": AnyCodable(dialogSummaries.map { AnyCodable($0) }),
-                "suggested_actions": AnyCodable([
-                    AnyCodable("dialog dismiss button=\"<button_title>\" — dismiss with a specific button"),
-                    AnyCodable("dialog auto_dismiss — auto-dismiss permission dialogs"),
-                    AnyCodable("simulator permissions — pre-grant permissions to avoid dialogs")
-                ])
-            ] as [String: AnyCodable])
+            data["system_dialog_blocking"] = AnyCodable(
+                [
+                    "warning": AnyCodable("\u{26a0}\u{fe0f} system_dialog_blocking"),
+                    "description": AnyCodable(
+                        "A system dialog is covering the app. UI elements behind it are not interactable until the dialog is resolved."
+                    ),
+                    "dialogs": AnyCodable(dialogSummaries.map { AnyCodable($0) }),
+                    "suggested_actions": AnyCodable([
+                        AnyCodable("dialog dismiss button=\"<button_title>\" — dismiss with a specific button"),
+                        AnyCodable("dialog auto_dismiss — auto-dismiss permission dialogs"),
+                        AnyCodable("simulator permissions — pre-grant permissions to avoid dialogs"),
+                    ]),
+                ] as [String: AnyCodable])
         }
 
         return .ok(id: command.id, data: data)

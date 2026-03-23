@@ -138,4 +138,3 @@ final class PepperFlightRecorder {
         queue.sync { buffer.count }
     }
 }
-

@@ -28,18 +28,20 @@ extension IntrospectHandler {
         let screenArea = screenBounds.width * screenBounds.height
 
         // Step 1: Find NI text not inside any interactive element's frame (10pt tolerance).
-        let uncoveredSet = Set(nonInteractive.indices.filter { i in
-            let c = nonInteractive[i].center
-            return !interactive.contains {
-                $0.frame.insetBy(dx: -10, dy: -10).contains(c)
-            }
-        })
+        let uncoveredSet = Set(
+            nonInteractive.indices.filter { i in
+                let c = nonInteractive[i].center
+                return !interactive.contains {
+                    $0.frame.insetBy(dx: -10, dy: -10).contains(c)
+                }
+            })
         guard uncoveredSet.count >= 2 else { return }
 
         // Step 2: Walk the CALayer tree to find card-shaped layers.
         var cardFrames: [CGRect] = []
-        findCardLayers(in: window.layer, window: window, screenBounds: screenBounds,
-                       screenArea: screenArea, results: &cardFrames, depth: 0)
+        findCardLayers(
+            in: window.layer, window: window, screenBounds: screenBounds,
+            screenArea: screenArea, results: &cardFrames, depth: 0)
 
         guard !cardFrames.isEmpty else { return }
 
@@ -70,22 +72,23 @@ extension IntrospectHandler {
             guard let topLabel = nonInteractive[contained[0]].label else { continue }
 
             let center = CGPoint(x: cardFrame.midX, y: cardFrame.midY)
-            interactive.append(MapElement(
-                label: topLabel,
-                type: "button",
-                center: center,
-                frame: cardFrame,
-                hitReachable: true,
-                visible: 1.0,
-                heuristic: "card",
-                iconName: nil,
-                isInteractive: true,
-                value: nil,
-                traits: [],
-                scrollContext: nil,
-                labelSource: "text",
-                gestureContainerFrame: cardFrame
-            ))
+            interactive.append(
+                MapElement(
+                    label: topLabel,
+                    type: "button",
+                    center: center,
+                    frame: cardFrame,
+                    hitReachable: true,
+                    visible: 1.0,
+                    heuristic: "card",
+                    iconName: nil,
+                    isInteractive: true,
+                    value: nil,
+                    traits: [],
+                    scrollContext: nil,
+                    labelSource: "text",
+                    gestureContainerFrame: cardFrame
+                ))
 
             claimedIndices.formUnion(contained)
         }
@@ -131,10 +134,11 @@ extension IntrospectHandler {
         // Min 50pt tall (filters map callout badges) and max 250pt tall
         // (filters section wrappers that clip their content).
         if layer.cornerRadius >= 8 && layer.masksToBounds,
-           frameInWindow.width >= 80, frameInWindow.height >= 50,
-           frameInWindow.height <= 250,
-           area < screenArea * 0.5,
-           screenBounds.intersects(frameInWindow) {
+            frameInWindow.width >= 80, frameInWindow.height >= 50,
+            frameInWindow.height <= 250,
+            area < screenArea * 0.5,
+            screenBounds.intersects(frameInWindow)
+        {
             // Skip near-circular layers (avatar images, progress rings):
             // cards have both dimensions > 80pt or clear rectangular shape.
             let minDim = min(frameInWindow.width, frameInWindow.height)
@@ -148,8 +152,9 @@ extension IntrospectHandler {
         // Recurse into sublayers
         guard let sublayers = layer.sublayers else { return }
         for sublayer in sublayers {
-            findCardLayers(in: sublayer, window: window, screenBounds: screenBounds,
-                           screenArea: screenArea, results: &results, depth: depth + 1)
+            findCardLayers(
+                in: sublayer, window: window, screenBounds: screenBounds,
+                screenArea: screenArea, results: &results, depth: depth + 1)
         }
     }
 }

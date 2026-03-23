@@ -15,18 +15,22 @@ struct UnwatchHandler: PepperHandler {
             }
             WatchRegistry.shared.remove(watchID)
             logger.info("Watch \(watchID) stopped")
-            return .ok(id: command.id, data: [
-                "stopped": AnyCodable(watchID)
-            ])
+            return .ok(
+                id: command.id,
+                data: [
+                    "stopped": AnyCodable(watchID)
+                ])
         } else {
             // Stop all watches
             let ids = WatchRegistry.shared.activeIDs
             WatchRegistry.shared.removeAll()
             logger.info("All watches stopped (\(ids.count))")
-            return .ok(id: command.id, data: [
-                "stopped_count": AnyCodable(ids.count),
-                "stopped": AnyCodable(ids.map { AnyCodable($0) })
-            ])
+            return .ok(
+                id: command.id,
+                data: [
+                    "stopped_count": AnyCodable(ids.count),
+                    "stopped": AnyCodable(ids.map { AnyCodable($0) }),
+                ])
         }
     }
 }

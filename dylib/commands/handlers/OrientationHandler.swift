@@ -15,7 +15,11 @@ struct OrientationHandler: PepperHandler {
     func handle(_ command: PepperCommand) -> PepperResponse {
         if let value = command.params?["value"]?.stringValue {
             guard let orientation = parseOrientation(value) else {
-                return .error(id: command.id, message: "Unknown orientation '\(value)'. Use: portrait, landscape_left, landscape_right, portrait_upside_down")
+                return .error(
+                    id: command.id,
+                    message:
+                        "Unknown orientation '\(value)'. Use: portrait, landscape_left, landscape_right, portrait_upside_down"
+                )
             }
             UIDevice.current.setValue(orientation.rawValue, forKey: "orientation")
             NotificationCenter.default.post(name: UIDevice.orientationDidChangeNotification, object: nil)
@@ -29,18 +33,21 @@ struct OrientationHandler: PepperHandler {
         var isPortrait = current.isPortrait
 
         if #available(iOS 15.0, *),
-           let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
+            let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene
+        {
             let iface = scene.interfaceOrientation
             orientStr = interfaceOrientationString(iface)
             isLandscape = iface.isLandscape
             isPortrait = iface.isPortrait
         }
 
-        return .ok(id: command.id, data: [
-            "orientation": AnyCodable(orientStr),
-            "is_landscape": AnyCodable(isLandscape),
-            "is_portrait": AnyCodable(isPortrait),
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "orientation": AnyCodable(orientStr),
+                "is_landscape": AnyCodable(isLandscape),
+                "is_portrait": AnyCodable(isPortrait),
+            ])
     }
 
     private func parseOrientation(_ value: String) -> UIDeviceOrientation? {
