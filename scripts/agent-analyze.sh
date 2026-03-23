@@ -31,7 +31,7 @@ fi
 
 # All analysis done in a single python pass for speed
 python3 - "$EVENTS" "$LAST" "$FILTER_TYPE" "$FILTER_SESSION" <<'PYEOF'
-import json, sys, os
+import json, sys, os, re, subprocess
 from collections import defaultdict
 from datetime import datetime
 
@@ -70,6 +70,8 @@ for e in events:
             "outcome": None,
             "cost": 0,
             "duration": 0,
+            "prs": [],
+            "issue": None,
         }
     elif event in ("done", "failed", "timeout", "killed"):
         if agent in open_sessions:
@@ -90,7 +92,24 @@ for e in events:
                 "outcome": event,
                 "cost": e.get("cost_usd", 0),
                 "duration": e.get("duration_s", 0),
+                "prs": [],
+                "issue": None,
             })
+    elif event == "pr":
+        if agent in open_sessions:
+            open_sessions[agent]["events"].append(e)
+            url = e.get("url", "")
+            if url:
+                open_sessions[agent]["prs"].append(url)
+    elif event == "branch":
+        if agent in open_sessions:
+            open_sessions[agent]["events"].append(e)
+            detail = e.get("detail", "")
+            m = re.search(r'(?:TASK|BUG|ISSUE)-(\d+)', detail, re.IGNORECASE)
+            if not m:
+                m = re.search(r'/(\d+)$', detail)
+            if m:
+                open_sessions[agent]["issue"] = m.group(1)
     else:
         if agent in open_sessions:
             open_sessions[agent]["events"].append(e)
@@ -261,6 +280,66 @@ if len(sessions) > 1:
         avg_bytes = t["bytes"] // t["count"] if t["count"] else 0
         avg_dur = t["duration"] // t["count"] if t["count"] else 0
         print(f"  {agent:<15} {t['count']:>5} {fmt_bytes(t['bytes']):>10} {fmt_bytes(avg_bytes):>10} ${t['cost']:>6.2f} {fmt_dur(avg_dur):>8}")
+
+    # ── Efficiency metrics ──────────────────────────────────────────
+    # Collect per-type: successes (done outcomes), PRs opened, costs
+    eff = defaultdict(lambda: {
+        "total": 0, "done": 0, "failed": 0,
+        "cost": 0.0, "pr_urls": [], "issues": defaultdict(int),
+    })
+    for sess in sessions:
+        a = sess["agent"]
+        eff[a]["total"] += 1
+        if sess["outcome"] == "done":
+            eff[a]["done"] += 1
+        elif sess["outcome"] in ("failed", "timeout"):
+            eff[a]["failed"] += 1
+        try:
+            eff[a]["cost"] += float(sess["cost"])
+        except (ValueError, TypeError):
+            pass
+        eff[a]["pr_urls"].extend(sess.get("prs", []))
+        issue = sess.get("issue")
+        if issue:
+            eff[a]["issues"][issue] += 1
+
+    # Check which PRs are merged (batch gh calls)
+    all_pr_urls = set()
+    for t in eff.values():
+        all_pr_urls.update(t["pr_urls"])
+    merged_urls = set()
+    for url in all_pr_urls:
+        try:
+            result = subprocess.run(
+                ["gh", "pr", "view", url, "--json", "state", "-q", ".state"],
+                capture_output=True, text=True, timeout=10,
+            )
+            if result.returncode == 0 and result.stdout.strip() == "MERGED":
+                merged_urls.add(url)
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            pass
+
+    print(f"\n{BOLD}{'─'*70}")
+    print(f"  Efficiency Metrics{NC}")
+
+    hdr = f"  {'Agent':<15} {'Success%':>8} {'PRs':>5} {'Merged':>7} {'$/PR':>8} {'$/Merged':>9} {'Avg Att':>8}"
+    print(hdr)
+    print(f"  {'─'*62}")
+    for agent, e in sorted(eff.items()):
+        total = e["total"]
+        done = e["done"]
+        rate = (done / total * 100) if total else 0
+        prs = len(e["pr_urls"])
+        merged = sum(1 for u in e["pr_urls"] if u in merged_urls)
+        cost = e["cost"]
+        cost_pr = f"${cost / prs:.2f}" if prs else "—"
+        cost_merged = f"${cost / merged:.2f}" if merged else "—"
+        # Avg attempts: mean sessions per issue for issues with >0 sessions
+        issues = e["issues"]
+        avg_att = f"{sum(issues.values()) / len(issues):.1f}" if issues else "—"
+
+        rc = GREEN if rate >= 70 else (YELLOW if rate >= 40 else RED)
+        print(f"  {agent:<15} {rc}{rate:>7.0f}%{NC} {prs:>5} {merged:>7} {cost_pr:>8} {cost_merged:>9} {avg_att:>8}")
 
     print()
 PYEOF
