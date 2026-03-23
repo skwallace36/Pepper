@@ -173,17 +173,27 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
     @mcp.tool()
     async def input_text(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
-        element_id: str = Field(description="Accessibility ID of the text field"),
+        element_id: str | None = Field(default=None, description="Accessibility ID of the text field. If omitted, types into the focused field or first available text field."),
         value: str = Field(description="Text to type"),
+        clear: bool = Field(default=False, description="Clear existing text before typing"),
+        submit: bool = Field(default=False, description="Submit/return after typing"),
     ) -> str:
-        """Type text into a text field. Automatically shows screen state after input."""
-        return await act_and_look(simulator, "input", {"id": element_id, "value": value})
+        """Type text into a text field. Automatically shows screen state after input.
+        If no element_id is given, types into the currently focused field or the first text field on screen."""
+        params: dict = {"value": value}
+        if element_id:
+            params["element"] = element_id
+        if clear:
+            params["clear"] = True
+        if submit:
+            params["submit"] = True
+        return await act_and_look(simulator, "input", params)
 
     @mcp.tool()
     async def navigate(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
         deeplink: str | None = Field(default=None, description="Deep link destination (e.g. 'home', 'settings')"),
-        tab: int | None = Field(default=None, description="Tab index to switch to"),
+        tab: int | str | None = Field(default=None, description="Tab index (0-based) or tab name to switch to"),
         list_deeplinks: bool = Field(default=False, description="List all available deep link destinations"),
         category: str | None = Field(default=None, description="Filter deep link list by category"),
     ) -> str:
@@ -198,7 +208,11 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
         if deeplink:
             params["deeplink"] = deeplink
         elif tab is not None:
-            params["tab"] = tab
+            if isinstance(tab, int):
+                params["tab"] = tab
+            else:
+                # String tab name — resolve via the "to" param which supports name lookup
+                params["to"] = tab
         else:
             return "Error: specify deeplink, tab, or list_deeplinks=true"
         return await act_and_look(simulator, "navigate", params)
