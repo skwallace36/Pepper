@@ -264,6 +264,29 @@ if [ -n "$CLAIMED_SIM" ]; then
   export SIMULATOR_ID="$CLAIMED_SIM"
 fi
 
+# Sim health check — verify the claimed sim is responsive before launching.
+# A frozen sim (stuck on springboard) wastes the entire agent session.
+if [ -n "$CLAIMED_SIM" ]; then
+  xcrun simctl spawn "$CLAIMED_SIM" launchctl print system >/dev/null 2>&1 &
+  _hc_pid=$!
+  _hc_ok=false
+  for _i in 1 2 3 4 5; do
+    if ! kill -0 "$_hc_pid" 2>/dev/null; then
+      wait "$_hc_pid" 2>/dev/null && _hc_ok=true
+      break
+    fi
+    sleep 1
+  done
+  if [ "$_hc_ok" = false ]; then
+    kill "$_hc_pid" 2>/dev/null || true
+    wait "$_hc_pid" 2>/dev/null || true
+    echo "Sim $CLAIMED_SIM unresponsive — rebooting..."
+    xcrun simctl shutdown "$CLAIMED_SIM" 2>/dev/null || true
+    xcrun simctl boot "$CLAIMED_SIM" 2>/dev/null || true
+    sleep 3
+  fi
+fi
+
 # Agent git identity — agents commit as themselves, not as the user
 export GIT_AUTHOR_NAME="pepper-${TYPE}-agent"
 export GIT_AUTHOR_EMAIL="pepper-${TYPE}-agent@noreply.pepper.dev"
