@@ -5,7 +5,8 @@ struct ControlsView: View {
 
     @State private var showSheet = false
     @State private var showAlert = false
-    @State private var showShareSheet = false
+    // showShareSheet removed — share sheet is presented via UIKit directly
+    // so the Pepper dialog interceptor can detect it
 
     var body: some View {
         @Bindable var state = state
@@ -45,7 +46,7 @@ struct ControlsView: View {
                             }
                             .accessibilityIdentifier("bell_button")
 
-                            Button(action: { showShareSheet = true }) {
+                            Button(action: { presentShareSheet() }) {
                                 Image(systemName: "square.and.arrow.up")
                             }
                             .accessibilityIdentifier("share_button")
@@ -158,9 +159,6 @@ struct ControlsView: View {
         .sheet(isPresented: $showSheet) {
             SheetView()
         }
-        .sheet(isPresented: $showShareSheet) {
-            ShareSheet(items: ["Shared from PepperTestApp"])
-        }
         .alert("Test Alert", isPresented: $showAlert) {
             Button("OK") {
                 print("[PepperTest] Alert OK tapped")
@@ -174,14 +172,16 @@ struct ControlsView: View {
     }
 }
 
-// MARK: - Share Sheet
+// MARK: - Share Sheet (UIKit presentation)
 
-struct ShareSheet: UIViewControllerRepresentable {
-    let items: [Any]
-
-    func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: items, applicationActivities: nil)
-    }
-
-    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
+/// Present UIActivityViewController directly via UIKit so the Pepper dialog
+/// interceptor's swizzled `present(_:animated:completion:)` can detect it.
+private func presentShareSheet() {
+    guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+          let root = scene.windows.first?.rootViewController else { return }
+    // Walk to the topmost presented controller
+    var top = root
+    while let presented = top.presentedViewController { top = presented }
+    let vc = UIActivityViewController(activityItems: ["Shared from PepperTestApp" as Any], applicationActivities: nil)
+    top.present(vc, animated: true)
 }
