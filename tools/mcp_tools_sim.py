@@ -6,12 +6,10 @@ Tool definitions for: raw (send any command), simulator (simctl operations).
 import json
 import os
 import subprocess
-from typing import Optional
-
-from pydantic import Field
 
 import pepper_sessions
 from pepper_common import get_config, list_simulators
+from pydantic import Field
 
 
 def require_parse_json(value, field_name="value"):
@@ -19,7 +17,7 @@ def require_parse_json(value, field_name="value"):
     try:
         return json.loads(value)
     except json.JSONDecodeError as e:
-        raise ValueError(f"{field_name} must be valid JSON: {e}")
+        raise ValueError(f"{field_name} must be valid JSON: {e}") from e
 
 
 def register_sim_tools(mcp, resolve_and_send, resolve_simulator):
@@ -33,9 +31,9 @@ def register_sim_tools(mcp, resolve_and_send, resolve_simulator):
 
     @mcp.tool()
     async def raw(
-        simulator: Optional[str] = Field(default=None, description="Simulator UDID"),
+        simulator: str | None = Field(default=None, description="Simulator UDID"),
         cmd: str = Field(description="Command name"),
-        params: Optional[str] = Field(default=None, description="JSON params string"),
+        params: str | None = Field(default=None, description="JSON params string"),
         timeout: float = Field(default=10, description="Timeout in seconds"),
     ) -> str:
         """Send any raw command to Pepper. Use for commands not covered by other tools."""
@@ -50,18 +48,18 @@ def register_sim_tools(mcp, resolve_and_send, resolve_simulator):
     @mcp.tool()
     async def simulator(
         action: str = Field(description="Action: list, install, uninstall, location, permissions, biometrics, privacy_reset, open_url, addmedia, boot, shutdown, erase, status_bar"),
-        simulator_id: Optional[str] = Field(default=None, description="Simulator UDID (auto-resolved if only one booted)"),
-        app_path: Optional[str] = Field(default=None, description="Path to .app/.ipa for action=install"),
-        bundle_id: Optional[str] = Field(default=None, description="App bundle ID for action=uninstall"),
-        latitude: Optional[float] = Field(default=None, description="Latitude for action=location"),
-        longitude: Optional[float] = Field(default=None, description="Longitude for action=location"),
-        permission: Optional[str] = Field(default=None, description="Permission for action=permissions: photos, camera, microphone, contacts, calendar, reminders, location-always, location-when-in-use, notifications, health"),
-        permission_value: Optional[str] = Field(default=None, description="Permission value: grant, revoke, reset"),
-        biometric_type: Optional[str] = Field(default=None, description="For action=biometrics: enroll or match"),
-        url: Optional[str] = Field(default=None, description="URL for action=open_url (deep link or web)"),
-        media_path: Optional[str] = Field(default=None, description="Path to image/video file for action=addmedia"),
+        simulator_id: str | None = Field(default=None, description="Simulator UDID (auto-resolved if only one booted)"),
+        app_path: str | None = Field(default=None, description="Path to .app/.ipa for action=install"),
+        bundle_id: str | None = Field(default=None, description="App bundle ID for action=uninstall"),
+        latitude: float | None = Field(default=None, description="Latitude for action=location"),
+        longitude: float | None = Field(default=None, description="Longitude for action=location"),
+        permission: str | None = Field(default=None, description="Permission for action=permissions: photos, camera, microphone, contacts, calendar, reminders, location-always, location-when-in-use, notifications, health"),
+        permission_value: str | None = Field(default=None, description="Permission value: grant, revoke, reset"),
+        biometric_type: str | None = Field(default=None, description="For action=biometrics: enroll or match"),
+        url: str | None = Field(default=None, description="URL for action=open_url (deep link or web)"),
+        media_path: str | None = Field(default=None, description="Path to image/video file for action=addmedia"),
         clear_time: bool = Field(default=False, description="For action=status_bar: clear override instead of setting"),
-        time: Optional[str] = Field(default=None, description="For action=status_bar: time string like '09:41'"),
+        time: str | None = Field(default=None, description="For action=status_bar: time string like '09:41'"),
     ) -> str:
         """Control the simulator itself (not the app process) — permissions, GPS, biometrics, and more.
 

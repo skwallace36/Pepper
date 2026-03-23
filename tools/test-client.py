@@ -8,8 +8,6 @@ Connect to the pepper websocket server and send commands interactively.
 import asyncio
 import json
 import os
-import readline
-import signal
 import sys
 import uuid
 from collections import OrderedDict
@@ -21,7 +19,8 @@ except ImportError:
     sys.exit(1)
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from pepper_common import DEFAULT_HOST, discover_port as _discover_port
+from pepper_common import DEFAULT_HOST
+from pepper_common import discover_port as _discover_port
 
 
 def discover_port(simulator=None):
@@ -163,7 +162,7 @@ class PepperClient:
         print(f"  Connecting to {self.url}...")
         try:
             self.ws = await websockets.connect(self.url, compression=None)
-            print(f"  Connected.")
+            print("  Connected.")
             return True
         except (ConnectionRefusedError, OSError) as e:
             print(f"  Connection failed: {e}")
@@ -202,7 +201,7 @@ class PepperClient:
                 # Accept response matching our id, or any non-event message
                 if msg_id is None or data.get("id") == msg_id:
                     return data
-        except asyncio.TimeoutError:
+        except TimeoutError:
             print("  Timeout waiting for response.")
             return None
         except websockets.exceptions.ConnectionClosed:
@@ -220,7 +219,7 @@ class PepperClient:
                     if "event" in data:
                         print(f"\n  [event] {data['event']}: {pretty_json(data.get('data', {}))}")
                         print("fi> ", end="", flush=True)
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     continue
                 except websockets.exceptions.ConnectionClosed:
                     break
@@ -242,7 +241,7 @@ class PepperClient:
         """Interactive command loop."""
         self.running = True
         print_help()
-        print(f"  Ready. Type a command or 'help'.\n")
+        print("  Ready. Type a command or 'help'.\n")
 
         loop = asyncio.get_event_loop()
 
@@ -271,9 +270,8 @@ class PepperClient:
             # Show what we're sending
             print(f"  -> {json.dumps(msg)}")
 
-            if self.ws is None:
-                if not await self.reconnect():
-                    continue
+            if self.ws is None and not await self.reconnect():
+                continue
 
             response = await self.send(msg)
             if response is not None:

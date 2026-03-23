@@ -9,8 +9,6 @@ import os
 import shutil
 import socket
 import sys
-from typing import Optional
-
 
 # ---------------------------------------------------------------------------
 # Shared constants
@@ -87,7 +85,7 @@ def port_alive(port: int, host: str = "localhost", timeout: float = 1.0) -> bool
         s = socket.create_connection((host, port), timeout=timeout)
         s.close()
         return True
-    except (ConnectionRefusedError, OSError, socket.timeout):
+    except (TimeoutError, ConnectionRefusedError, OSError):
         return False
 
 
@@ -95,7 +93,7 @@ def port_alive(port: int, host: str = "localhost", timeout: float = 1.0) -> bool
 # Port discovery
 # ---------------------------------------------------------------------------
 
-def _resolve_port_file(simulator: Optional[str] = None) -> tuple[str, int]:
+def _resolve_port_file(simulator: str | None = None) -> tuple[str, int]:
     """Resolve a single (udid, port) from port files.
 
     If simulator is given, looks up that specific UDID.
@@ -154,7 +152,7 @@ def _resolve_port_file(simulator: Optional[str] = None) -> tuple[str, int]:
     raise RuntimeError("No Pepper instances found. Is the app running with dylib injection?")
 
 
-def discover_port(simulator: Optional[str] = None, fallback: Optional[int] = None) -> int:
+def discover_port(simulator: str | None = None, fallback: int | None = None) -> int:
     """Auto-discover Pepper port from port files.
 
     If fallback is given, returns it instead of raising when no port is found
@@ -169,7 +167,7 @@ def discover_port(simulator: Optional[str] = None, fallback: Optional[int] = Non
         raise
 
 
-def discover_simulator(simulator: Optional[str] = None) -> tuple[str, int]:
+def discover_simulator(simulator: str | None = None) -> tuple[str, int]:
     """Resolve simulator UDID and port. Returns (udid, port)."""
     return _resolve_port_file(simulator)
 
@@ -194,7 +192,7 @@ def list_simulators() -> list[dict]:
 # Device discovery (physical devices via registered endpoints)
 # ---------------------------------------------------------------------------
 
-def _read_device_file(udid: str) -> Optional[dict]:
+def _read_device_file(udid: str) -> dict | None:
     """Read a device registration file. Returns dict with host/port or None."""
     path = os.path.join(DEVICE_DIR, f"{udid}.device")
     try:
@@ -235,7 +233,7 @@ def unregister_device(udid: str) -> bool:
         return False
 
 
-def _resolve_device_file(device: Optional[str] = None) -> tuple[str, int, str]:
+def _resolve_device_file(device: str | None = None) -> tuple[str, int, str]:
     """Resolve a single (host, port, udid) from device files.
 
     If device UDID is given, looks up that specific device.
@@ -304,7 +302,7 @@ def list_devices() -> list[dict]:
 # Unified instance discovery (simulators + devices)
 # ---------------------------------------------------------------------------
 
-def discover_instance(identifier: Optional[str] = None) -> tuple[str, int, str]:
+def discover_instance(identifier: str | None = None) -> tuple[str, int, str]:
     """Discover a Pepper instance — simulator or device. Returns (host, port, udid).
 
     Resolution order:

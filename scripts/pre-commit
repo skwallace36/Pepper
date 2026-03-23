@@ -61,7 +61,18 @@ for py_file in tools/pepper-mcp tools/pepper-ctl tools/pepper-stream tools/peppe
     fi
 done
 
-# 3. MCP server imports (validates all tool definitions parse)
+# 3. Ruff lint (if available)
+if command -v ruff &>/dev/null; then
+    if ruff check "$REPO_DIR/tools/" "$REPO_DIR/scripts/gen-coverage.py" --quiet 2>/dev/null; then
+        pass "Ruff lint"
+    else
+        fail "Ruff lint errors found — run 'make lint-py' to see details"
+    fi
+else
+    warn "ruff not installed — skipping Python lint"
+fi
+
+# 4. MCP server imports (validates all tool definitions parse)
 if [ -f "$REPO_DIR/tools/pepper-mcp" ]; then
     PYTHON=""
     for candidate in python3.11 python3.12 python3.13; do

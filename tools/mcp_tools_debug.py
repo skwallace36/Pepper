@@ -7,12 +7,10 @@ animations, lifecycle, heap, responder_chain, notifications.
 import json
 import os
 import time
-from typing import Optional
-
-from pydantic import Field
 
 from mcp_crash import parse_crash_report
 from pepper_common import get_config
+from pydantic import Field
 
 
 def register_debug_tools(mcp, resolve_and_send):
@@ -25,9 +23,9 @@ def register_debug_tools(mcp, resolve_and_send):
 
     @mcp.tool()
     async def layers(
-        simulator: Optional[str] = Field(default=None, description="Simulator UDID"),
+        simulator: str | None = Field(default=None, description="Simulator UDID"),
         point: str = Field(description="Screen coordinates 'x,y' to inspect"),
-        depth: Optional[int] = Field(default=None, description="Max layer tree depth"),
+        depth: int | None = Field(default=None, description="Max layer tree depth"),
     ) -> str:
         """Inspect the CALayer tree at a screen point. Returns colors, gradients, shadows, transforms."""
         params: dict = {"point": point}
@@ -37,10 +35,10 @@ def register_debug_tools(mcp, resolve_and_send):
 
     @mcp.tool()
     async def console(
-        simulator: Optional[str] = Field(default=None, description="Simulator UDID"),
+        simulator: str | None = Field(default=None, description="Simulator UDID"),
         action: str = Field(description="Action: start, stop, log"),
-        filter_text: Optional[str] = Field(default=None, description="Filter log lines (for log action)"),
-        limit: Optional[int] = Field(default=None, description="Max lines to return (for log action)"),
+        filter_text: str | None = Field(default=None, description="Filter log lines (for log action)"),
+        limit: int | None = Field(default=None, description="Max lines to return (for log action)"),
     ) -> str:
         """Capture and read app logs — both print() (stdout) and NSLog (stderr). Start capture first, then check logs."""
         params: dict = {"action": action}
@@ -52,20 +50,20 @@ def register_debug_tools(mcp, resolve_and_send):
 
     @mcp.tool()
     async def network(
-        simulator: Optional[str] = Field(default=None, description="Simulator UDID"),
+        simulator: str | None = Field(default=None, description="Simulator UDID"),
         action: str = Field(description="Action: start, stop, log, status, clear, simulate, conditions, remove_condition, clear_conditions"),
-        filter_text: Optional[str] = Field(default=None, description="Filter by URL pattern (for log action)"),
-        limit: Optional[int] = Field(default=None, description="Max entries to return (for log action)"),
-        max_body: Optional[int] = Field(default=None, description="Max chars per request/response body (default: 4096). Use 0 for unlimited."),
-        effect: Optional[str] = Field(default=None, description="Condition effect for simulate: latency, fail_status, fail_error, throttle, offline"),
-        latency_ms: Optional[int] = Field(default=None, description="Latency in ms (for effect=latency)"),
-        status_code: Optional[int] = Field(default=None, description="HTTP status code (for effect=fail_status)"),
-        error_domain: Optional[str] = Field(default=None, description="NSError domain (for effect=fail_error, default: NSURLErrorDomain)"),
-        error_code: Optional[int] = Field(default=None, description="NSError code (for effect=fail_error)"),
-        bytes_per_second: Optional[int] = Field(default=None, description="Bandwidth limit in bytes/sec (for effect=throttle)"),
-        url: Optional[str] = Field(default=None, description="URL pattern to match (for simulate — omit to match all requests)"),
-        method: Optional[str] = Field(default=None, description="HTTP method to match (for simulate — e.g., GET, POST)"),
-        condition_id: Optional[str] = Field(default=None, description="Condition ID (for remove_condition, or custom ID for simulate)"),
+        filter_text: str | None = Field(default=None, description="Filter by URL pattern (for log action)"),
+        limit: int | None = Field(default=None, description="Max entries to return (for log action)"),
+        max_body: int | None = Field(default=None, description="Max chars per request/response body (default: 4096). Use 0 for unlimited."),
+        effect: str | None = Field(default=None, description="Condition effect for simulate: latency, fail_status, fail_error, throttle, offline"),
+        latency_ms: int | None = Field(default=None, description="Latency in ms (for effect=latency)"),
+        status_code: int | None = Field(default=None, description="HTTP status code (for effect=fail_status)"),
+        error_domain: str | None = Field(default=None, description="NSError domain (for effect=fail_error, default: NSURLErrorDomain)"),
+        error_code: int | None = Field(default=None, description="NSError code (for effect=fail_error)"),
+        bytes_per_second: int | None = Field(default=None, description="Bandwidth limit in bytes/sec (for effect=throttle)"),
+        url: str | None = Field(default=None, description="URL pattern to match (for simulate — omit to match all requests)"),
+        method: str | None = Field(default=None, description="HTTP method to match (for simulate — e.g., GET, POST)"),
+        condition_id: str | None = Field(default=None, description="Condition ID (for remove_condition, or custom ID for simulate)"),
     ) -> str:
         """Monitor HTTP network traffic and simulate network conditions.
 
@@ -110,15 +108,15 @@ def register_debug_tools(mcp, resolve_and_send):
 
     @mcp.tool()
     async def timeline(
-        simulator: Optional[str] = Field(default=None, description="Simulator UDID"),
+        simulator: str | None = Field(default=None, description="Simulator UDID"),
         action: str = Field(default="query", description="Action: query, status, config, clear"),
-        limit: Optional[int] = Field(default=None, description="Max events to return (default 100)"),
-        types: Optional[str] = Field(default=None, description="Comma-separated event types: network, console, screen, command"),
-        last_seconds: Optional[int] = Field(default=None, description="Events from the last N seconds (convenience for since_ms)"),
-        since_ms: Optional[int] = Field(default=None, description="Only events after this epoch ms timestamp"),
-        filter_text: Optional[str] = Field(default=None, description="Filter events by summary substring"),
-        buffer_size: Optional[int] = Field(default=None, description="Set buffer size (for config action)"),
-        recording: Optional[bool] = Field(default=None, description="Enable/disable recording (for config action)"),
+        limit: int | None = Field(default=None, description="Max events to return (default 100)"),
+        types: str | None = Field(default=None, description="Comma-separated event types: network, console, screen, command"),
+        last_seconds: int | None = Field(default=None, description="Events from the last N seconds (convenience for since_ms)"),
+        since_ms: int | None = Field(default=None, description="Only events after this epoch ms timestamp"),
+        filter_text: str | None = Field(default=None, description="Filter events by summary substring"),
+        buffer_size: int | None = Field(default=None, description="Set buffer size (for config action)"),
+        recording: bool | None = Field(default=None, description="Enable/disable recording (for config action)"),
     ) -> str:
         """Always-on flight recorder timeline. Captures network requests, console logs, screen transitions,
         and command dispatch into a ring buffer — no setup needed. Query to correlate events when debugging."""
@@ -141,7 +139,7 @@ def register_debug_tools(mcp, resolve_and_send):
 
     @mcp.tool()
     async def crash_log(
-        simulator: Optional[str] = Field(default=None, description="Simulator UDID"),
+        simulator: str | None = Field(default=None, description="Simulator UDID"),
         last_n: int = Field(default=1, description="Number of recent crash reports to show (default: 1, max: 5)"),
         seconds: int = Field(default=300, description="Look back this many seconds (default: 300 = 5 minutes)"),
     ) -> str:
@@ -199,10 +197,10 @@ def register_debug_tools(mcp, resolve_and_send):
 
     @mcp.tool()
     async def animations(
-        simulator: Optional[str] = Field(default=None, description="Simulator UDID"),
-        action: Optional[str] = Field(default=None, description="Action: scan (default), trace, or speed"),
-        point: Optional[str] = Field(default=None, description="Coordinates 'x,y' to trace (for trace action)"),
-        speed: Optional[float] = Field(default=None, description="Animation speed multiplier for action=speed: 0=disabled, 0.1=slow-mo, 1=normal, 10=turbo"),
+        simulator: str | None = Field(default=None, description="Simulator UDID"),
+        action: str | None = Field(default=None, description="Action: scan (default), trace, or speed"),
+        point: str | None = Field(default=None, description="Coordinates 'x,y' to trace (for trace action)"),
+        speed: float | None = Field(default=None, description="Animation speed multiplier for action=speed: 0=disabled, 0.1=slow-mo, 1=normal, 10=turbo"),
     ) -> str:
         """Scan active animations, trace view movement, or control animation speed.
         action=scan: find all active CAAnimations. action=trace: sample a view's position over time.
@@ -221,7 +219,7 @@ def register_debug_tools(mcp, resolve_and_send):
 
     @mcp.tool()
     async def lifecycle(
-        simulator: Optional[str] = Field(default=None, description="Simulator UDID"),
+        simulator: str | None = Field(default=None, description="Simulator UDID"),
         action: str = Field(description="Action: background, foreground, memory_warning"),
     ) -> str:
         """Trigger app lifecycle events (background/foreground/memory warning)."""
@@ -229,13 +227,13 @@ def register_debug_tools(mcp, resolve_and_send):
 
     @mcp.tool()
     async def heap(
-        simulator: Optional[str] = Field(default=None, description="Simulator UDID"),
+        simulator: str | None = Field(default=None, description="Simulator UDID"),
         action: str = Field(description="Action: classes, controllers, find, inspect, read, snapshot, diff, snapshot_clear, snapshot_status"),
-        class_name: Optional[str] = Field(default=None, description="Class name or pattern to search for"),
-        pattern: Optional[str] = Field(default=None, description="Pattern for classes search"),
-        key_path: Optional[str] = Field(default=None, description="KVC key path to read (for 'read' action, e.g. 'camera.zoom')"),
-        limit: Optional[int] = Field(default=None, description="Max results to return"),
-        min_growth: Optional[int] = Field(default=None, description="Min instance growth to report in diff (default: 1)"),
+        class_name: str | None = Field(default=None, description="Class name or pattern to search for"),
+        pattern: str | None = Field(default=None, description="Pattern for classes search"),
+        key_path: str | None = Field(default=None, description="KVC key path to read (for 'read' action, e.g. 'camera.zoom')"),
+        limit: int | None = Field(default=None, description="Max results to return"),
+        min_growth: int | None = Field(default=None, description="Min instance growth to report in diff (default: 1)"),
     ) -> str:
         """Find live objects, inspect state, and detect memory leaks.
 
@@ -279,10 +277,10 @@ def register_debug_tools(mcp, resolve_and_send):
 
     @mcp.tool()
     async def responder_chain(
-        simulator: Optional[str] = Field(default=None, description="Simulator UDID"),
-        point: Optional[str] = Field(default=None, description="Screen coordinates 'x,y' to inspect"),
-        element: Optional[str] = Field(default=None, description="Accessibility identifier of the element"),
-        text: Optional[str] = Field(default=None, description="Text label of the element"),
+        simulator: str | None = Field(default=None, description="Simulator UDID"),
+        point: str | None = Field(default=None, description="Screen coordinates 'x,y' to inspect"),
+        element: str | None = Field(default=None, description="Accessibility identifier of the element"),
+        text: str | None = Field(default=None, description="Text label of the element"),
     ) -> str:
         """Dump gesture recognizers, responder chain, and hit-test path for a point or element.
         Shows every gesture recognizer on the view and its ancestors, the full UIResponder chain,
@@ -300,12 +298,12 @@ def register_debug_tools(mcp, resolve_and_send):
 
     @mcp.tool()
     async def notifications(
-        simulator: Optional[str] = Field(default=None, description="Simulator UDID"),
+        simulator: str | None = Field(default=None, description="Simulator UDID"),
         action: str = Field(description="Action: start, stop, list, counts, post, events, status, clear"),
-        name: Optional[str] = Field(default=None, description="Notification name to post (for 'post' action)"),
-        filter_text: Optional[str] = Field(default=None, description="Filter observers/events by notification name or class pattern"),
-        user_info: Optional[str] = Field(default=None, description="JSON string of userInfo dict to include when posting (for 'post' action)"),
-        limit: Optional[int] = Field(default=None, description="Max results to return (for list/events actions)"),
+        name: str | None = Field(default=None, description="Notification name to post (for 'post' action)"),
+        filter_text: str | None = Field(default=None, description="Filter observers/events by notification name or class pattern"),
+        user_info: str | None = Field(default=None, description="JSON string of userInfo dict to include when posting (for 'post' action)"),
+        limit: int | None = Field(default=None, description="Max results to return (for list/events actions)"),
     ) -> str:
         """Inspect NSNotificationCenter observers and post arbitrary notifications.
 
