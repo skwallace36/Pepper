@@ -1,14 +1,32 @@
 import SwiftUI
 import WebKit
 import MapKit
+import UserNotifications
 import os
 
 struct MiscTab: View {
     @Environment(AppState.self) private var state
+    @State private var notificationStatus: String = "unknown"
 
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
+                // MARK: - System Dialogs (for auto-dismiss smoke testing)
+                GroupBox("System Dialogs") {
+                    VStack(spacing: 8) {
+                        Button("Request Notifications Permission") {
+                            requestNotificationsPermission()
+                        }
+                        .accessibilityIdentifier("request_notifications_button")
+
+                        Text("Status: \(notificationStatus)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .accessibilityIdentifier("notification_permission_status")
+                    }
+                }
+                .onAppear { refreshNotificationStatus() }
+
                 // MARK: - Layers (colors, shadows, gradients)
                 GroupBox("Layers") {
                     VStack(spacing: 12) {
@@ -162,6 +180,29 @@ struct MiscTab: View {
             .padding()
         }
         .navigationTitle("Misc")
+    }
+
+    // MARK: - Notification Permission
+
+    private func requestNotificationsPermission() {
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { _, _ in
+            DispatchQueue.main.async { refreshNotificationStatus() }
+        }
+    }
+
+    private func refreshNotificationStatus() {
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            DispatchQueue.main.async {
+                switch settings.authorizationStatus {
+                case .authorized: notificationStatus = "authorized"
+                case .denied: notificationStatus = "denied"
+                case .notDetermined: notificationStatus = "not determined"
+                case .provisional: notificationStatus = "provisional"
+                case .ephemeral: notificationStatus = "ephemeral"
+                @unknown default: notificationStatus = "unknown"
+                }
+            }
+        }
     }
 }
 

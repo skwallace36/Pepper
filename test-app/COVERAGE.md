@@ -93,7 +93,7 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `dialog` | dismiss | pass | Same alert | Dismisses dialog by button name. Tested: dismiss with button='OK' returns {dismissed:true, button:'OK'}. Screen returns to normal 'ui' state. Error case: dismiss with no pending dialog returns proper error 'No pending dialog to dismiss'. |
 | `dialog` | share_sheet | pass | Share button (icon-only SF Symbol) | Share button presents UIActivityViewController via UIKit (bypasses SwiftUI .sheet). Interceptor detects sheet with has_sheet=true, items=['Shared from PepperTestApp'], and sheet_id. |
 | `dialog` | dismiss_sheet | pass | Share button (icon-only SF Symbol) | After triggering share sheet via share button, dismiss_sheet returns {dismissed:true} and sheet is removed. Interceptor broadcasts share_sheet_dismissed event. |
-| `dialog` | detect_system | untested |  |  |
+| `dialog` | detect_system | pass | Misc tab — request_notifications_button triggers system dialog on fresh install | Returns {detected, confidence, positive_signals, total_signals, signals[]}. Four signals: intercepted_dialog, key_window_level, elevated_alert_windows, hit_test_probe. Confidence: high (3+), medium (2), low (1), none (0). On fresh install: tap request_notifications_button, PepperWindowMonitor auto-dismisses via elevated_window_button strategy; detect_system returns detected=false after dismissal. look works immediately after (no timeout). |
 | `dialog` | auto_dismiss | pass | Alert dialog | Enable with buttons=['OK','Cancel']: returns {auto_dismiss:true, buttons:['OK','Cancel'], delay:0.3}. Triggered alert via Show Alert — dialog auto-dismissed within 1s (current returned has_dialog=false). Disable: returns auto_dismiss=false. Default buttons include 'Allow While Using App', 'Allow Once', 'Allow', 'OK'. |
 | `dismiss` | — | pass | Sheet from Show Sheet button | BUG-008 FIXED: DismissHandler now checks modalPresentationStyle (pageSheet/formSheet/automatic) instead of chain depth. SwiftUI .sheet() presentations correctly detected and dismissed. |
 | `status` | — | pass | Any state | Returns port, connections count, and connectionDetails array (id, connectedAt, lastActivity, subscriptions). Tested via direct WebSocket. |
@@ -251,7 +251,7 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 
 **224 test points** across 64 commands.
 
-- pass: 137
+- pass: 138
 - fail: 3
-- untested: 83
+- untested: 82
 
