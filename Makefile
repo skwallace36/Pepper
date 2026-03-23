@@ -26,7 +26,7 @@ LOGS_DIR    := $(PROJECT_DIR)/build/logs
         logs clean test-client pepper-ctl test-app coverage coverage-check \
         docs setup ci smoke smoke-ice-cubes \
         agent agent-monitor agent-status agent-trigger agents-install agents-uninstall agent-cleanup agents-start agents-stop agent-analyze groom pr-digest \
-        fmt fmt-check \
+        fmt fmt-check ci-agents-install ci-agents-check \
         wikipedia-setup wikipedia-deploy wikipedia-smoke
 
 # ============================================================
@@ -338,6 +338,14 @@ agents-stop:
 ## agent-analyze: Analyze agent session context usage and re-reads
 agent-analyze:
 	@./scripts/agent-analyze.sh $(ANALYZE_ARGS)
+
+## ci-agents-install: Install GitHub Actions workflows for CI-based agents
+ci-agents-install:
+	@./scripts/setup-ci-agents.sh
+
+## ci-agents-check: Check CI agent setup (dry run)
+ci-agents-check:
+	@./scripts/setup-ci-agents.sh --check
 
 ## groom: Groom the issue backlog (triage, prioritize, decompose)
 groom:
