@@ -262,12 +262,10 @@ final class DialogHandler: PepperHandler {
         // the app's main window. If a system dialog is covering it, hitTest returns nil
         // or a view from a different window.
         let appWindow = allWindows.last { $0.windowLevel == .normal && $0.rootViewController != nil }
-        var hitTestBlocked = false
         if let appWindow = appWindow {
             let center = CGPoint(x: appWindow.bounds.midX, y: appWindow.bounds.midY)
             let hitView = appWindow.hitTest(center, with: nil)
             if hitView == nil {
-                hitTestBlocked = true
                 detected = true
                 signals.append([
                     "signal": AnyCodable("hit_test_probe"),
@@ -278,7 +276,6 @@ final class DialogHandler: PepperHandler {
                 // Check if the hit view's window is the app window
                 let hitWindow = hitView?.window
                 if hitWindow !== appWindow {
-                    hitTestBlocked = true
                     detected = true
                     signals.append([
                         "signal": AnyCodable("hit_test_probe"),

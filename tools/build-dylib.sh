@@ -188,6 +188,8 @@ xcrun -sdk iphonesimulator swiftc \
     -o "$FRAMEWORK_DIR/Pepper" \
     -Osize \
     -whole-module-optimization \
+    -warnings-as-errors \
+    -strict-concurrency=targeted \
     -DPEPPER_CONTROL -DPEPPER \
     ${HAS_ADAPTER:+-DPEPPER_HAS_ADAPTER} \
     -framework UIKit \
