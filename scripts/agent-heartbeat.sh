@@ -14,7 +14,10 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"
 
 PIDFILE="build/logs/heartbeat.pid"
+EVENTS="$REPO_ROOT/build/logs/events.jsonl"
 INTERVAL=120
+BACKOFF_THRESHOLD=3   # consecutive failures before backing off
+BACKOFF_CYCLES=2      # cycles to skip (2 * 120s = 4 min)
 
 mkdir -p build/logs
 
@@ -60,6 +63,53 @@ count_running() {
   echo "$count"
 }
 
+# Check if an agent type should back off due to consecutive failures.
+# Returns 0 (true) if agent should back off, 1 (false) if OK to launch.
+should_backoff() {
+  local type="$1"
+  [ ! -f "$EVENTS" ] && return 1  # no events file = no history = OK
+  python3 -c "
+import json, time, sys
+agent_type = '$type'
+threshold = $BACKOFF_THRESHOLD
+backoff_s = $BACKOFF_CYCLES * $INTERVAL
+# Collect terminal events for this agent type (most recent last)
+terminals = []
+try:
+    with open('$EVENTS') as f:
+        for line in f:
+            line = line.strip()
+            if not line: continue
+            try: e = json.loads(line)
+            except: continue
+            if e.get('agent') != agent_type: continue
+            ev = e.get('event','')
+            if ev in ('done','failed','timeout','killed'):
+                terminals.append(e)
+except FileNotFoundError:
+    sys.exit(1)  # no file = OK to launch
+if len(terminals) < threshold:
+    sys.exit(1)  # not enough history = OK
+last_n = terminals[-threshold:]
+if any(e['event'] == 'done' for e in last_n):
+    sys.exit(1)  # at least one success = OK
+# All recent runs failed — check if enough time has passed
+from datetime import datetime, timezone
+last_ts = last_n[-1].get('ts','')
+try:
+    last_dt = datetime.fromisoformat(last_ts.replace('Z','+00:00'))
+    elapsed = (datetime.now(timezone.utc) - last_dt).total_seconds()
+except:
+    sys.exit(1)  # can't parse = OK
+if elapsed < backoff_s:
+    sys.exit(0)  # still in backoff
+sys.exit(1)      # backoff expired = OK
+" 2>/dev/null
+  # python exits 0 = in backoff, 1 = OK to launch
+  # Invert for shell: 0 means "yes, should back off"
+  return $?
+}
+
 # Launch an agent type if under its instance cap
 # Runner enforces the actual cap per-type — heartbeat launches one per cycle
 launch_if_slots() {
@@ -88,33 +138,53 @@ while true; do
   # Check for open bugs → bugfix
   BUG_COUNT=$(gh issue list --repo skwallace36/Pepper --label bug --state open --json number --jq 'length' 2>/dev/null || echo 0)
   if [ "$BUG_COUNT" -gt 0 ]; then
-    launch_if_slots bugfix
+    if should_backoff bugfix; then
+      echo "$(date +%H:%M) bugfix in backoff (${BACKOFF_THRESHOLD}+ consecutive failures) — skipping"
+    else
+      launch_if_slots bugfix
+    fi
   fi
 
   # Check for open tasks → builder
   TASK_COUNT=$(gh issue list --repo skwallace36/Pepper --state open --json number,labels --jq '[.[] | select(.labels | map(.name) | any(startswith("area:")))] | length' 2>/dev/null || echo 0)
   if [ "$TASK_COUNT" -gt 0 ]; then
-    launch_if_slots builder
+    if should_backoff builder; then
+      echo "$(date +%H:%M) builder in backoff (${BACKOFF_THRESHOLD}+ consecutive failures) — skipping"
+    else
+      launch_if_slots builder
+    fi
   fi
 
   # Check for unverified PRs → pr-verifier
   UNVERIFIED=$(gh pr list --repo skwallace36/Pepper --state open --json number,labels --jq '[.[] | select(.labels | map(.name) | index("verified") | not)] | length' 2>/dev/null || echo 0)
   if [ "$UNVERIFIED" -gt 0 ]; then
-    launch_if_slots pr-verifier
+    if should_backoff pr-verifier; then
+      echo "$(date +%H:%M) pr-verifier in backoff (${BACKOFF_THRESHOLD}+ consecutive failures) — skipping"
+    else
+      launch_if_slots pr-verifier
+    fi
   fi
 
   # Check for verified PRs with merge conflicts → conflict-resolver
   CONFLICTING=$(gh pr list --repo skwallace36/Pepper --state open --json number,labels,mergeable \
     --jq '[.[] | select(.mergeable == "CONFLICTING" and (.labels | map(.name) | index("verified")))] | length' 2>/dev/null || echo 0)
   if [ "$CONFLICTING" -gt 0 ]; then
-    launch_if_slots conflict-resolver
+    if should_backoff conflict-resolver; then
+      echo "$(date +%H:%M) conflict-resolver in backoff (${BACKOFF_THRESHOLD}+ consecutive failures) — skipping"
+    else
+      launch_if_slots conflict-resolver
+    fi
   fi
 
   # Check for PRs with comments → pr-responder
   for pr in $(gh pr list --repo skwallace36/Pepper --state open --json number --jq '.[].number' 2>/dev/null); do
     COMMENTS=$(gh api "repos/skwallace36/Pepper/pulls/$pr/comments" --jq 'length' 2>/dev/null || echo 0)
     if [ "$COMMENTS" -gt 0 ]; then
-      launch_if_slots pr-responder
+      if should_backoff pr-responder; then
+        echo "$(date +%H:%M) pr-responder in backoff (${BACKOFF_THRESHOLD}+ consecutive failures) — skipping"
+      else
+        launch_if_slots pr-responder
+      fi
       break
     fi
   done
@@ -136,7 +206,11 @@ except FileNotFoundError: pass
 print(count)
 " 2>/dev/null || echo "0")
   if [ "$GROOMER_RUNS_TODAY" -lt 2 ] 2>/dev/null; then
-    launch_if_slots groomer
+    if should_backoff groomer; then
+      echo "$(date +%H:%M) groomer in backoff (${BACKOFF_THRESHOLD}+ consecutive failures) — skipping"
+    else
+      launch_if_slots groomer
+    fi
   fi
 
   sleep "$INTERVAL"
