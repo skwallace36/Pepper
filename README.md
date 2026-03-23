@@ -46,6 +46,29 @@ Pepper is injected into the simulator using `DYLD_INSERT_LIBRARIES`. It spins up
 - Network layer
 - Input system
 
+![Pepper Architecture](docs/architecture.svg)
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  AI agent / Claude Code                                 │
+│    ↓  MCP tool call (look, tap, scroll, ...)            │
+├─────────────────────────────────────────────────────────┤
+│  pepper-mcp  (Python, stdio MCP server)                 │
+│    ↓  WebSocket JSON command  ws://localhost:8770–8869  │
+├─────────────────────────────────────────────────────────┤
+│  Pepper dylib  (Swift, injected via DYLD_INSERT_LIBS)   │
+│  ┌──────────────┐  ┌─────────────────────────────────┐  │
+│  │ PepperServer │  │ PepperDispatcher                │  │
+│  │ (NWListener) │→ │  ├─ UI/UX commands (50+)        │  │
+│  └──────────────┘  │  ├─ Network / heap / state      │  │
+│                    │  └─ Simulator control            │  │
+│                    └─────────────────────────────────┘  │
+│    ↓  UIKit / accessibility / IOHIDEvent APIs           │
+├─────────────────────────────────────────────────────────┤
+│  iOS Simulator app  (any app, unmodified)               │
+└─────────────────────────────────────────────────────────┘
+```
+
 Your MCP client connects to that socket, and all commands run in-process.
 
 No swizzling. No private API wrappers. No integration work.
