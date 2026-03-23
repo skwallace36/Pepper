@@ -156,6 +156,13 @@ final class PepperVarRegistry {
     /// Uses ObjC runtime to find classes with `_$observationRegistrar` ivar,
     /// then the C heap scanner to find live instances. Independent of SwiftUI view tree.
     func discoverFromHeap() {
+        // Safe mode: skip heap scanning entirely. Set PEPPER_SAFE_MODE=1 in CI
+        // or other environments where the heap scan may crash the process.
+        if ProcessInfo.processInfo.environment["PEPPER_SAFE_MODE"] != nil {
+            pepperLog.info("Vars: heap scan skipped (PEPPER_SAFE_MODE)", category: .bridge)
+            return
+        }
+
         // Step 1: Find all ObjC classes that have a _$observationRegistrar ivar
         let observableClasses = findObservableClasses()
         guard !observableClasses.isEmpty else { return }
