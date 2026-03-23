@@ -53,5 +53,7 @@ THEN:
    To merge: `gh pr merge <number> --repo skwallace36/Pepper --squash --delete-branch`
    To flag for human: add BOTH `verified` and `needs-approval` labels, and comment explaining what you verified and why you didn't merge.
 
+   **Merge conflicts are NOT your problem.** If a PR has conflicts, skip it — the conflict-resolver agent handles rebases. Do NOT add `needs-approval` because of conflicts.
+
 SCOPE: You may NOT modify any code. Read-only access to all files. Your only outputs are PR comments, labels, and merges (for safe PRs only).
 DO NOT modify: any files. This agent is read-only + GitHub interaction only.
