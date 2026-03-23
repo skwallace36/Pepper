@@ -47,6 +47,24 @@ static kern_return_t heap_reader(
     return KERN_SUCCESS;
 }
 
+// Safely read the isa pointer from a heap address.
+// Uses vm_read_overwrite instead of direct dereference to avoid SIGSEGV
+// on invalid/read-only pages that the zone enumerator may report.
+// Returns 0 if the memory is not readable.
+static uint64_t safe_read_isa(vm_address_t address) {
+    uint64_t isa_raw = 0;
+    vm_size_t out_size = 0;
+    kern_return_t kr = vm_read_overwrite(
+        mach_task_self(),
+        address,
+        (vm_size_t)sizeof(uint64_t),
+        (vm_address_t)&isa_raw,
+        &out_size
+    );
+    if (kr != KERN_SUCCESS || out_size != sizeof(uint64_t)) return 0;
+    return isa_raw;
+}
+
 
 // Find or insert a class pointer in the context arrays
 static int find_or_insert_class(PepperHeapContext *ctx, const void *cls) {
@@ -76,8 +94,10 @@ static void heap_recorder(
         vm_range_t range = ranges[i];
         if (range.size < sizeof(void *)) continue;
 
-        // Read the first pointer-sized word as a potential isa
-        uint64_t isa_raw = *(uint64_t *)range.address;
+        // Safely read the first pointer-sized word as a potential isa.
+        // Use vm_read_overwrite to avoid SIGSEGV on invalid/read-only pages.
+        uint64_t isa_raw = safe_read_isa(range.address);
+        if (isa_raw == 0) continue;
         uint64_t isa_masked = isa_raw & ctx->isa_mask;
 
         const void *class_ptr = (const void *)(uintptr_t)isa_masked;
@@ -265,7 +285,9 @@ static void find_recorder(
         vm_range_t range = ranges[i];
         if (range.size < sizeof(void *)) continue;
 
-        uint64_t isa_raw = *(uint64_t *)range.address;
+        // Safely read the isa pointer to avoid SIGSEGV on invalid pages.
+        uint64_t isa_raw = safe_read_isa(range.address);
+        if (isa_raw == 0) continue;
         uint64_t isa_masked = isa_raw & ctx->isa_mask;
 
         const void *class_ptr = (const void *)(uintptr_t)isa_masked;
