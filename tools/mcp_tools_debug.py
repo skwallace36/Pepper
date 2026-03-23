@@ -337,6 +337,29 @@ def register_debug_tools(mcp, resolve_and_send):
         return await resolve_and_send(simulator, "notifications", params)
 
     @mcp.tool()
+    async def constraints(
+        simulator: str | None = Field(default=None, description="Simulator UDID"),
+        element: str | None = Field(default=None, description="Accessibility ID to scope to a subtree"),
+        ambiguous_only: bool = Field(default=False, description="Only return views with ambiguous layout"),
+        depth: int | None = Field(default=None, description="Max recursion depth (default: 30)"),
+    ) -> str:
+        """Dump AutoLayout constraints with ambiguity detection (like Chisel paltrace).
+
+        Walks the view hierarchy and returns every NSLayoutConstraint with its attributes,
+        relation, constant, multiplier, and priority. Views with ambiguous layout are flagged
+        and include the private _autolayoutTrace output for debugging.
+
+        Use ambiguous_only=true to quickly find layout issues without scanning the full tree."""
+        params: dict = {}
+        if element:
+            params["element"] = element
+        if ambiguous_only:
+            params["ambiguous_only"] = True
+        if depth is not None:
+            params["depth"] = depth
+        return await resolve_and_send(simulator, "constraints", params)
+
+    @mcp.tool()
     async def accessibility_audit(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
         checks: str | None = Field(

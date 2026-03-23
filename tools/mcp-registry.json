@@ -56,6 +56,7 @@
     {"name": "timeline", "category": "debug", "description": "View event timeline with timestamps"},
     {"name": "crash_log", "category": "debug", "description": "Retrieve crash logs and stack traces"},
     {"name": "animations", "category": "debug", "description": "Inspect in-flight animations"},
+    {"name": "constraints", "category": "debug", "description": "Dump AutoLayout constraints with ambiguity detection"},
     {"name": "lifecycle", "category": "debug", "description": "View app lifecycle events"},
     {"name": "find", "category": "system", "description": "Search the view hierarchy for elements matching a query"},
     {"name": "read_element", "category": "system", "description": "Read detailed properties of a specific element"},
