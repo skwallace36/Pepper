@@ -95,6 +95,13 @@ while true; do
     launch_if_slots pr-verifier
   fi
 
+  # Check for verified PRs with merge conflicts → conflict-resolver
+  CONFLICTING=$(gh pr list --repo skwallace36/Pepper --state open --json number,labels,mergeable \
+    --jq '[.[] | select(.mergeable == "CONFLICTING" and (.labels | map(.name) | index("verified")))] | length' 2>/dev/null || echo 0)
+  if [ "$CONFLICTING" -gt 0 ]; then
+    launch_if_slots conflict-resolver
+  fi
+
   # Check for PRs with comments → pr-responder
   for pr in $(gh pr list --repo skwallace36/Pepper --state open --json number --jq '.[].number' 2>/dev/null); do
     COMMENTS=$(gh api "repos/skwallace36/Pepper/pulls/$pr/comments" --jq 'length' 2>/dev/null || echo 0)
