@@ -58,6 +58,10 @@ help:
 build:
 	@bash "$(TOOLS_DIR)/build-dylib.sh"
 
+## xcframework: Build Pepper.xcframework (device + simulator)
+xcframework:
+	@bash "$(TOOLS_DIR)/build-xcframework.sh"
+
 ## launch: Launch app on simulator with Pepper injected
 launch:
 	@if [ ! -f "$(DYLIB_PATH)" ]; then \
