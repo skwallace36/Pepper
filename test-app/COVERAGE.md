@@ -205,6 +205,9 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `accessibility_action` | magic_tap | untested |  |  |
 | `accessibility_action` | increment | untested |  |  |
 | `accessibility_action` | decrement | untested |  |  |
+| `renders` | start | untested |  |  |
+| `renders` | stop | untested |  |  |
+| `renders` | counts | untested |  |  |
 | `renders` | snapshot | untested |  |  |
 | `renders` | diff | untested |  |  |
 | `renders` | reset | untested |  |  |
@@ -227,6 +230,12 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `concurrency` | actors | untested |  |  |
 | `concurrency` | tasks | untested |  |  |
 | `concurrency` | cancel | untested |  |  |
+| `timers` | start | untested |  |  |
+| `timers` | stop | untested |  |  |
+| `timers` | status | untested |  |  |
+| `timers` | list | untested |  |  |
+| `timers` | invalidate | untested |  |  |
+| `timers` | clear | untested |  |  |
 | `perf` | start | untested |  |  |
 | `perf` | stop | untested |  |  |
 | `perf` | mark | untested |  |  |
@@ -234,11 +243,11 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 
 ## Summary
 
-**205 test points** across 61 commands.
+**218 test points** across 62 commands.
 
 - pass: 128
 - fail: 11
-- untested: 64
+- untested: 77
 
 ## Test App Gaps
 
