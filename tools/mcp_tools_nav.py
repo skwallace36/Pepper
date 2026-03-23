@@ -7,92 +7,11 @@ swipe, screen, scroll_to, dismiss_keyboard, snapshot, diff.
 import asyncio
 import base64
 import json
-import os
-import tempfile
-
 from mcp.types import ImageContent, TextContent
+from mcp_screenshot import capture_screenshot, capture_screenshot_inprocess
 from pepper_common import discover_instance
 from pepper_format import format_look, format_look_compact
 from pydantic import Field
-
-
-async def capture_screenshot(udid: str, quality: str = "standard") -> str | None:
-    """Capture simulator screenshot. Returns base64-encoded image. Returns None on failure.
-
-    quality:
-      "standard" — 1x resize, 70% JPEG (for inline look augmentation)
-      "high"     — 1x resize, 95% JPEG (for PR validation / GitHub posting)
-    """
-    png_path = None
-    out_path = None
-    try:
-        # Create temp files
-        fd, png_path = tempfile.mkstemp(suffix='.png', prefix='pepper-vis-')
-        os.close(fd)
-
-        # Capture screenshot
-        proc = await asyncio.create_subprocess_exec(
-            'xcrun', 'simctl', 'io', udid, 'screenshot', png_path,
-            stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL,
-        )
-        await asyncio.wait_for(proc.wait(), timeout=5)
-        if proc.returncode != 0:
-            return None
-
-        # Get actual image height and derive 1x logical height (divide by scale factor)
-        height_proc = await asyncio.create_subprocess_exec(
-            'sips', '-g', 'pixelHeight', png_path,
-            stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL,
-        )
-        height_out, _ = await height_proc.communicate()
-        # sips output: "  pixelHeight: 1748\n" — extract the number
-        logical_height = 874  # fallback
-        for line in height_out.decode().splitlines():
-            if 'pixelHeight' in line:
-                try:
-                    px = int(line.split(':')[-1].strip())
-                    # Common scales: 2x (most sims) or 3x (Plus models)
-                    # Divide by 2 for standard retina; if result > 1000, likely 3x
-                    h2 = px // 2
-                    logical_height = h2 if h2 <= 1000 else px // 3
-                except (ValueError, IndexError):
-                    pass
-                break
-
-        if quality == "high":
-            # High quality: 1x resize, 95% JPEG
-            out_path = png_path.replace('.png', '-hq.jpg')
-            proc = await asyncio.create_subprocess_exec(
-                'sips', '-Z', str(logical_height), '-s', 'format', 'jpeg',
-                '-s', 'formatOptions', '95',
-                png_path, '--out', out_path,
-                stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL,
-            )
-        else:
-            # Standard: 1x resize, 70% JPEG
-            out_path = png_path.replace('.png', '.jpg')
-            proc = await asyncio.create_subprocess_exec(
-                'sips', '-Z', str(logical_height), '-s', 'format', 'jpeg',
-                '-s', 'formatOptions', '70',
-                png_path, '--out', out_path,
-                stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL,
-            )
-
-        await asyncio.wait_for(proc.wait(), timeout=5)
-        if proc.returncode != 0:
-            return None
-
-        with open(out_path, 'rb') as f:
-            return base64.b64encode(f.read()).decode('ascii')
-    except (TimeoutError, OSError):
-        return None
-    finally:
-        for p in [png_path, out_path]:
-            if p:
-                try:
-                    os.unlink(p)
-                except OSError:
-                    pass
 
 
 def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
@@ -125,13 +44,19 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
             return [TextContent(type="text", text=str(e))]
 
         if visual or save_screenshot:
-            # Run introspect and screenshot in parallel
+            # Run introspect and screenshot in parallel.
+            # Try fast in-process capture first; fall back to simctl if unavailable.
             quality = screenshot_quality if screenshot_quality in ("standard", "high") else "standard"
             introspect_task = asyncio.create_task(
                 send_command(port, "look", {}, host=host)
             )
-            screenshot_task = asyncio.create_task(capture_screenshot(udid, quality=quality))
+            screenshot_task = asyncio.create_task(
+                capture_screenshot_inprocess(send_command, port, quality, host=host)
+            )
             resp, screenshot_b64 = await asyncio.gather(introspect_task, screenshot_task)
+            # Fallback to simctl if in-process capture failed
+            if screenshot_b64 is None:
+                screenshot_b64 = await capture_screenshot(udid, quality=quality)
         else:
             resp = await send_command(port, "look", {}, host=host)
             screenshot_b64 = None
@@ -154,6 +79,48 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
                     result[0] = TextContent(type="text", text=f"{text}\n\n[Screenshot saved to {save_screenshot}]")
                 except OSError as e:
                     result[0] = TextContent(type="text", text=f"{text}\n\n[Screenshot save failed: {e}]")
+        return result
+
+    @mcp.tool()
+    async def screenshot(
+        simulator: str | None = Field(default=None, description="Simulator UDID"),
+        element: str | None = Field(default=None, description="Accessibility ID of a specific view to capture"),
+        text: str | None = Field(default=None, description="Visible text/label of a specific view to capture"),
+        quality: str = Field(default="standard", description="'standard' (70% JPEG) or 'high' (95% JPEG)"),
+        save_to: str | None = Field(default=None, description="Save screenshot to this file path"),
+    ) -> list:
+        """Capture a screenshot in-process (faster than simctl). Supports per-view snapshots.
+        Omit element/text to capture the full screen.
+        Specify element or text to capture just that view."""
+        try:
+            host, port, udid = discover_instance(simulator)
+        except RuntimeError as e:
+            return [TextContent(type="text", text=str(e))]
+
+        q = quality if quality in ("standard", "high") else "standard"
+        screenshot_b64 = await capture_screenshot_inprocess(
+            send_command, port, q, element=element, text=text, host=host,
+        )
+        if screenshot_b64 is None:
+            # Fallback to simctl for full-screen only (no per-view support)
+            if element is None and text is None:
+                screenshot_b64 = await capture_screenshot(udid, q)
+            if screenshot_b64 is None:
+                return [TextContent(type="text", text="Screenshot capture failed")]
+
+        result: list = []
+        scope = "element" if (element or text) else "fullscreen"
+        result.append(ImageContent(type="image", data=screenshot_b64, mimeType="image/jpeg"))
+
+        if save_to:
+            try:
+                with open(save_to, 'wb') as f:
+                    f.write(base64.b64decode(screenshot_b64))
+                result.append(TextContent(type="text", text=f"[{scope} screenshot saved to {save_to}]"))
+            except OSError as e:
+                result.append(TextContent(type="text", text=f"[Save failed: {e}]"))
+        else:
+            result.append(TextContent(type="text", text=f"[{scope} screenshot captured]"))
         return result
 
     @mcp.tool()

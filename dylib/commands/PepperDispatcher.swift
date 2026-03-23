@@ -263,6 +263,7 @@ final class PepperDispatcher {
         register(ConcurrencyHandler())
         register(TimersHandler())
         register(PerfHandler())
+        register(ScreenshotHandler())
     }
 }
 
