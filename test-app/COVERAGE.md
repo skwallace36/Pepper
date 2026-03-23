@@ -169,7 +169,7 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 
 **142 test points** across 49 commands.
 
-- pass: 125
+- pass: 127
 - fail: 11
 - untested: 1
 
