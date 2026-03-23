@@ -1,4 +1,5 @@
 import Foundation
+import QuartzCore
 import os
 
 /// Protocol that all command handlers conform to.
@@ -47,7 +48,14 @@ final class PepperDispatcher {
     /// Dispatch a command to its handler.
     /// Executes the handler on the main thread (required for UIKit operations).
     /// Returns the response via the completion closure.
-    func dispatch(_ command: PepperCommand, completion: @escaping (PepperResponse) -> Void) {
+    /// The optional `cancelled` flag allows the server to skip execution of
+    /// timed-out commands, preventing stale handler blocks from accumulating
+    /// on the main queue and creating cascading main-thread blockage.
+    func dispatch(
+        _ command: PepperCommand,
+        cancelled: LockedFlag? = nil,
+        completion: @escaping (PepperResponse) -> Void
+    ) {
         logger.info("Dispatching command: \(command.cmd) [id: \(command.id)]")
 
         let handler: PepperHandler? = queue.sync {
@@ -60,8 +68,15 @@ final class PepperDispatcher {
             return
         }
 
-        // Execute on main thread for UIKit safety, with error recovery
+        // Execute on main thread for UIKit safety, with error recovery.
+        // Check cancelled before running — timed-out commands are skipped
+        // to prevent stale handlers from blocking the main queue.
         DispatchQueue.main.async { [weak self] in
+            if cancelled?.isSet == true {
+                self?.logger.debug(
+                    "Skipping timed-out command '\(command.cmd)' id=\(command.id)")
+                return
+            }
             let response =
                 self?.safeExecute(handler: handler, command: command)
                 ?? .error(id: command.id, message: "Dispatcher was deallocated")
@@ -137,10 +152,12 @@ final class PepperDispatcher {
                 // Skip animation checking — RunLoop spin causes feedback loops.
                 // The minimum settle ensures layout/display refresh/async callbacks
                 // complete even for non-navigation taps.
-                let _ = PepperIdleMonitor.shared.waitForIdle(
-                    timeout: 1.0, pollInterval: 0.05, stableCount: 2,
-                    checkAnimations: false, minimumMs: 250
-                )
+                // Flush pending CA transactions so the next introspect sees
+                // committed layer state. No RunLoop spin — it processes pending
+                // dispatch blocks which can cascade on heavy screens, blocking
+                // main thread for seconds and starving subsequent commands.
+                // The MCP layer's 300ms async pause provides the settling window.
+                CATransaction.flush()
             }
         }
 
