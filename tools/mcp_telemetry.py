@@ -3,7 +3,7 @@
 import asyncio
 import json
 from functools import partial
-from typing import Callable, Optional
+from typing import Any, Callable, Coroutine, Optional
 
 from mcp_crash import fetch_crash_info
 from pepper_common import discover_instance
@@ -11,7 +11,7 @@ from pepper_format import format_look
 
 # Type alias for the send_command callable expected by these functions.
 # Signature: async (port, cmd, params=None, timeout=10) -> dict
-SendFn = Callable[..., "asyncio.Future[dict]"]
+SendFn = Callable[..., Coroutine[Any, Any, dict]]
 
 
 async def snapshot_counts(port: int, send_fn: SendFn) -> dict:
