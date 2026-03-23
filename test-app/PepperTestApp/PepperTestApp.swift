@@ -84,7 +84,13 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
     /// Request all permission types so Pepper's authorization swizzles can be tested.
     /// On a fresh simctl install, each of these triggers a system dialog.
     /// If Pepper's swizzles are working, the dialogs are auto-granted silently.
+    /// Skipped when PEPPER_SKIP_PERMISSIONS=1 (agent mode) — agents use simctl
+    /// privacy grant instead, and these requests trigger blocking dialogs.
     private func requestAllPermissions() {
+        if ProcessInfo.processInfo.environment["PEPPER_SKIP_PERMISSIONS"] == "1" {
+            print("[PepperTest] Skipping permission requests (PEPPER_SKIP_PERMISSIONS=1)")
+            return
+        }
         // Notifications
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, _ in
             print("[PepperTest] Notification auth: \(granted)")
