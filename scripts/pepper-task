@@ -12,8 +12,16 @@ set -euo pipefail
 #   pepper-task blocked ISSUE_NUM MSG   # mark as blocked with comment
 
 REPO="skwallace36/Pepper"
+EVENTS_LOG="${PEPPER_EVENTS_LOG:-}"
+AGENT="${PEPPER_AGENT_TYPE:-unknown}"
 CMD="${1:?Usage: pepper-task next|claim|list|done|blocked}"
 shift
+
+# Emit task events to events.jsonl if running inside an agent
+emit_task() {
+  [ -z "$EVENTS_LOG" ] && return
+  echo "{\"ts\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"agent\":\"${AGENT}\",\"event\":\"$1\",\"detail\":\"$2\"}" >> "$EVENTS_LOG"
+}
 
 case "$CMD" in
   next)
@@ -63,6 +71,7 @@ case "$CMD" in
 
       # Found unclaimed task — claim it
       gh issue edit "$NUM" --repo "$REPO" --add-label "in-progress" 2>/dev/null || true
+      emit_task "task-claimed" "#$NUM $TITLE"
       echo "$issue" | jq -c '{number: .number, title: .title, body: .body, labels: [.labels[].name]}'
       FOUND=1
       break
