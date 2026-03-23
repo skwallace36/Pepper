@@ -31,6 +31,18 @@ if [ "$TOOL" = "Bash" ]; then
     echo "DENY: agents must use agent/{type}/* branch names. Got: $(echo "$CMD" | grep -oE '(-b|-c) [^ ]+' | tail -1)"
     exit 0
   fi
+
+  # Block PR merge when diff touches protected paths
+  if echo "$CMD" | grep -qE 'gh pr merge'; then
+    PR_NUM=$(echo "$CMD" | grep -oE '[0-9]+' | head -1)
+    if [ -n "$PR_NUM" ]; then
+      CHANGED=$(gh pr diff "$PR_NUM" --repo skwallace36/Pepper --name-only 2>/dev/null || true)
+      if echo "$CHANGED" | grep -qE '^(Makefile|\.claude/|\.github/|scripts/agent-|scripts/hooks/|scripts/prompts/|tools/pepper-mcp|\.env)'; then
+        echo "DENY: PR #$PR_NUM touches protected infrastructure. Human approval required."
+        exit 0
+      fi
+    fi
+  fi
 fi
 
 # --- Write/Edit tool guardrails: file scope enforcement ---
@@ -48,6 +60,9 @@ if [ "$TOOL" = "Write" ] || [ "$TOOL" = "Edit" ]; then
 
   # Type-specific file scope
   case "$AGENT_TYPE" in
+    groomer)
+      echo "DENY: groomer agent cannot modify files. Use gh CLI for issue management only."; exit 0
+      ;;
     bugfix)
       case "$FILE" in
         */dylib/*|*/tools/*|*/scripts/*) ;; # allowed
