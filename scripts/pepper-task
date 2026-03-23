@@ -46,11 +46,20 @@ case "$CMD" in
       echo "$LABELS" | grep -q "^bug$" && continue
       echo "$LABELS" | grep -q "blocked" && continue
 
-      # Check for existing agent branch
+      # Check for existing agent branch (by TASK-ID or issue number)
       TASK_ID=$(echo "$TITLE" | grep -oE 'TASK-[0-9]+' | head -1 || true)
+      HAS_BRANCH=false
       if [ -n "$TASK_ID" ] && git ls-remote --heads origin "agent/*/$TASK_ID" 2>/dev/null | grep -q .; then
-        continue
+        HAS_BRANCH=true
       fi
+      if git ls-remote --heads origin "agent/*/TASK-$NUM" 2>/dev/null | grep -q .; then
+        HAS_BRANCH=true
+      fi
+      # Also check for open PRs referencing this issue
+      if gh pr list --repo "$REPO" --state open --search "Fixes #$NUM" --json number --jq 'length' 2>/dev/null | grep -q '[1-9]'; then
+        HAS_BRANCH=true
+      fi
+      [ "$HAS_BRANCH" = true ] && continue
 
       # Found unclaimed task — claim it
       gh issue edit "$NUM" --repo "$REPO" --add-label "in-progress" 2>/dev/null || true
