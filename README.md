@@ -27,69 +27,15 @@ Then ask your agent to `look` at your app.
 
 50+ tools for observing, interacting with, and debugging iOS apps:
 
-### Observe
+**Observe** — `look`, `screen`, `find`, `tree`, `layers`, `highlight`
 
-| Tool | Description |
-|------|-------------|
-| `look` | See every element on screen — labels, buttons, state, frames |
-| `screen` | Current screen or route name |
-| `find` | Find elements matching a query |
-| `tree` | Full view hierarchy |
-| `layers` | Rendering layers and compositing |
-| `highlight` | Visually highlight elements in the simulator |
+**Interact** — `tap`, `scroll`, `scroll_to`, `swipe`, `gesture`, `input_text`, `toggle`, `navigate`, `back`, `dismiss`, `dialog`
 
-### Interact
+**Debug** — `vars_inspect`, `heap`, `console`, `network`, `crash_log`, `timeline`, `animations`, `lifecycle`
 
-| Tool | Description |
-|------|-------------|
-| `tap` | Tap any element by label, ID, or coordinates |
-| `scroll` | Scroll in any direction |
-| `scroll_to` | Scroll until an element is visible |
-| `swipe` | Swipe gestures |
-| `gesture` | Custom multi-touch gestures |
-| `input_text` | Type into text fields |
-| `toggle` | Toggle switches |
-| `navigate` | Deep link navigation |
-| `back` | Go back |
-| `dismiss` | Dismiss sheets and modals |
-| `dialog` | Handle system permission dialogs |
+**App State** — `defaults`, `clipboard`, `keychain`, `cookies`, `locale`, `flags`, `push`, `orientation`
 
-### Debug
-
-| Tool | Description |
-|------|-------------|
-| `vars_inspect` | Inspect and mutate any property at runtime |
-| `heap` | Snapshot the object graph |
-| `console` | Capture app logs (print, NSLog, os_log) |
-| `network` | Intercept and inspect HTTP traffic |
-| `crash_log` | Read crash logs |
-| `timeline` | Performance event timeline |
-| `animations` | Debug animations |
-| `lifecycle` | View controller lifecycle events |
-
-### App State
-
-| Tool | Description |
-|------|-------------|
-| `defaults` | Read/write UserDefaults |
-| `clipboard` | Read/write pasteboard |
-| `keychain` | Inspect keychain items |
-| `cookies` | HTTP cookies |
-| `locale` | Change app locale at runtime |
-| `flags` | Override feature flags via network interception |
-| `push` | Send simulated push notifications |
-| `orientation` | Change device orientation |
-
-### Automation
-
-| Tool | Description |
-|------|-------------|
-| `wait_for` | Wait for an element or condition |
-| `wait_idle` | Wait for the app to settle |
-| `record` | Screen recording |
-| `deploy` | Build, inject, and launch in one step |
-| `build` | Build the app |
-| `iterate` | Edit code, rebuild, and verify in a loop |
+**Automation** — `wait_for`, `wait_idle`, `record`, `deploy`, `build`, `iterate`
 
 ## How It Works
 
