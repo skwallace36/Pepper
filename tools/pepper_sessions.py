@@ -582,14 +582,15 @@ def find_available_simulator() -> str:
             f"Active sessions:\n{details}"
         )
 
-    # 3. Boot an existing unbooted iPhone sim
-    available = _list_available_iphones()
-    for d in available:
-        udid = d["udid"]
-        if udid not in claimed_udids:
-            return udid
+    # 3. Boot an existing unbooted iPhone sim — only if no booted sims exist at all
+    booted = _list_booted_sims()
+    if not booted:
+        available = _list_available_iphones()
+        for d in available:
+            udid = d["udid"]
+            if udid not in claimed_udids:
+                return udid
 
     raise RuntimeError(
-        "No available iPhone simulators found. "
-        "Install one via Xcode > Settings > Platforms."
+        "No available simulators. Boot one manually or wait for a session to finish."
     )
