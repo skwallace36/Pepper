@@ -24,5 +24,6 @@ ignore = [
 "tools/pepper-ctl" = ["E402"]
 "tools/pepper-stream" = ["E402"]
 # MCP tool files have long Field() descriptions and docstrings
-"tools/mcp_tools_*.py" = ["E501"]
+# B008: Field() in argument defaults is the standard MCP tool pattern
+"tools/mcp_tools_*.py" = ["E501", "B008"]
 "tools/mcp_build.py" = ["E501"]
