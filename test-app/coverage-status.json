@@ -171,5 +171,6 @@
   "accessibility_audit": { "status": "untested",  "surface": "Any state",                                "notes": "" },
   "renders":             { "status": "untested",  "surface": "SwiftUI app",                               "notes": "New command. SwiftUI view tree snapshots via makeViewDebugData() and snapshot diffing." },
   "diff":                { "status": "untested",  "surface": "Any screen",                               "notes": "Quick view hierarchy diff. Delegates to snapshot infrastructure with reserved baseline." },
-  "constraints":         { "status": "untested",  "surface": "Any state",                                "notes": "AutoLayout constraint dump with ambiguity detection. Walks view hierarchy dumping NSLayoutConstraints with attributes, relation, constant, multiplier, priority. Flags ambiguous views with _autolayoutTrace." }
+  "constraints":         { "status": "untested",  "surface": "Any state",                                "notes": "AutoLayout constraint dump with ambiguity detection. Walks view hierarchy dumping NSLayoutConstraints with attributes, relation, constant, multiplier, priority. Flags ambiguous views with _autolayoutTrace." },
+  "sandbox":             { "status": "untested",  "surface": "Any state",                                "notes": "App sandbox file system browser. List, read, write, delete files in Documents/Library/Caches/tmp. Supports plist/JSON auto-detection and directory size summaries." }
 }
