@@ -68,7 +68,7 @@ Interactive REPL for exploring Pepper commands. Good for experimentation.
 Shared modules imported by `pepper-mcp`, `pepper-ctl`, `pepper-stream`, and `test-client.py`. One concern per module.
 
 ### `pepper_common.py`
-Constants and config helpers: `PEPPER_DIR`, `PORT_DIR`, `load_env()`, `get_config()`, `require_tool()`, `discover_port()`, `discover_simulator()`, `list_simulators()`. Port discovery includes liveness checks (TCP connect to confirm the server is actually listening).
+Constants and config helpers: `PEPPER_DIR`, `PORT_DIR`, `load_env()`, `get_config()`, `require_tool()`, `discover_port()`, `discover_simulator()`, `list_simulators()`, `try_parse_json()`, `require_parse_json()`. Port discovery includes liveness checks (TCP connect to confirm the server is actually listening).
 
 ### `pepper_format.py`
 Output formatting: `format_look()` for rendering `introspect map` responses as human-readable text. Optional ANSI color support controlled by `USE_COLOR` flag.
@@ -100,8 +100,6 @@ Extracted from `pepper-mcp` into focused modules. Each is imported by `pepper-mc
 |--------|---------|
 | `mcp_build.py` | Simulator resolution, `xcodebuild` invocation, app deployment with dylib injection, device build/deploy, `iterate()` |
 | `mcp_crash.py` | Crash log parsing (`parse_crash_report()`) and fetching (`fetch_crash_info()`) |
-| `mcp_screenshot.py` | Screenshot capture via `simctl` + `sips` pipeline, standard and high quality modes |
-| `mcp_telemetry.py` | Pre/post action telemetry snapshots (`snapshot_counts()`), delta reporting (`gather_telemetry()`), act-and-look workflow (`act_and_look()`) |
 
 ## Build & deploy scripts
 

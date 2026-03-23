@@ -3,20 +3,8 @@
 Tool definitions for: vars_inspect, defaults, clipboard, keychain, cookies.
 """
 
-import json
-
+from pepper_common import try_parse_json
 from pydantic import Field
-
-
-def try_parse_json(value):
-    """Try to parse a string as JSON for proper typing (bool, int, dict, list).
-    Returns the parsed value on success, or the original string on failure."""
-    if value is None:
-        return None
-    try:
-        return json.loads(value)
-    except (json.JSONDecodeError, TypeError):
-        return value
 
 
 def register_state_tools(mcp, resolve_and_send):
