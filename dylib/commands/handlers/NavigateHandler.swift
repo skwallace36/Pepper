@@ -231,7 +231,7 @@ struct NavigateHandler: PepperHandler {
             return .error(
                 id: command.id,
                 message:
-                    "Deep links are not available — no URL scheme configured. This app may not have a Pepper adapter, or the adapter does not define a deeplinkScheme. Use 'tab', 'to', or 'action' params for navigation instead."
+                    "Deep links are not available — no URL scheme configured for this app. Use 'tab', 'to', or 'action' params for navigation instead."
             )
         }
         var urlString = "\(scheme)://\(deeplink)"
