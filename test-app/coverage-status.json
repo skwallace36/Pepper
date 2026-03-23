@@ -7,7 +7,7 @@
   "status":              { "status": "pass",      "surface": "Any state",                                "notes": "Returns port, connections count, and connectionDetails array (id, connectedAt, lastActivity, subscriptions). Tested via direct WebSocket." },
 
   "navigate.tab":        { "status": "pass",     "surface": "3-tab TabView (Controls, List, Misc)",     "notes": "" },
-  "navigate.deeplink":   { "status": "blocked",   "surface": "NEEDS: URL scheme + routes",               "notes": "Returns 'Deep links are not available — no URL scheme configured'. Generic mode apps have no adapter deeplinkScheme. Cannot test without app adapter." },
+  "navigate.deeplink":   { "status": "pass",      "surface": "Tab deep links (controls, list, misc)",    "notes": "URL scheme auto-detected from Info.plist. peppertest://controls, peppertest://list, peppertest://misc switch tabs via onOpenURL. Other routes show generic DeeplinkView modal." },
   "navigate.pop":        { "status": "fail",      "surface": "Detail nav stack (pushed via Item 0 tap)", "notes": "BUG-001 (same root cause): Returns 'Already at root of navigation stack' even when on a pushed SwiftUI NavigationStack detail view. screen shows can_go_back=false despite detail being visible. SwiftUI NavigationStack state not detectable through UIKit." },
   "navigate.dismiss":    { "status": "fail",      "surface": "Sheet from Show Sheet button",             "notes": "BUG-008: Returns 'Already at root of navigation stack' even when SwiftUI .sheet() is presented. screen correctly shows is_modal=true, screen_id=presentation, but dismiss logic doesn't detect it. GH #40." },
   "back":                { "status": "fail",     "surface": "Detail → Deeper nav stack push",           "notes": "BUG-001" },

@@ -47,7 +47,7 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `wait_for` | has_value | fail | Counter value after tap | BUG-006: has_value requires element ID, which fails for SwiftUI elements. Cannot test the has_value logic itself. Text-based workaround (wait_for text 'Count: N' after tap) works because tap updates synchronously before wait_for starts polling. |
 | `batch` | — | pass | Sequence of ping + screen, tap + look | Executes array of commands sequentially, returns all responses. Tested: (1) ping+screen returns 2 responses with correct data. (2) tap+look returns tap result then screen state. (3) Empty array returns {executed:0, errors:0, responses:[]}. (4) Missing commands param returns proper error. |
 | `navigate` | tab | pass | 3-tab TabView (Controls, List, Misc) |  |
-| `navigate` | deeplink | blocked | NEEDS: URL scheme + routes | Returns 'Deep links are not available — no URL scheme configured'. Generic mode apps have no adapter deeplinkScheme. Cannot test without app adapter. |
+| `navigate` | deeplink | pass | Tab deep links (controls, list, misc) | URL scheme auto-detected from Info.plist. peppertest://controls, peppertest://list, peppertest://misc switch tabs via onOpenURL. Other routes show generic DeeplinkView modal. |
 | `navigate` | pop | fail | Detail nav stack (pushed via Item 0 tap) | BUG-001 (same root cause): Returns 'Already at root of navigation stack' even when on a pushed SwiftUI NavigationStack detail view. screen shows can_go_back=false despite detail being visible. SwiftUI NavigationStack state not detectable through UIKit. |
 | `navigate` | dismiss | fail | Sheet from Show Sheet button | BUG-008: Returns 'Already at root of navigation stack' even when SwiftUI .sheet() is presented. screen correctly shows is_modal=true, screen_id=presentation, but dismiss logic doesn't detect it. GH #40. |
 | `deeplinks` | — | pass | Any state (generic mode) | Returns {count:0, deeplinks:[], note:'No deep links configured...'} in generic mode. Command works correctly; no adapter configured so no deeplinks available. |
@@ -196,7 +196,7 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 
 **169 test points** across 53 commands.
 
-- pass: 127
+- pass: 128
 - fail: 11
 - untested: 28
 
@@ -204,6 +204,5 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 
 Commands that need test app changes before they can be tested:
 
-- `navigate` deeplink — URL scheme + routes
 - `gesture` rotate — rotation gesture on a view
 

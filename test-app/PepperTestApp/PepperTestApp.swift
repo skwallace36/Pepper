@@ -9,14 +9,18 @@ import AppTrackingTransparency
 @main
 struct PepperTestApp: App {
     @State private var appState = AppState()
+    @State private var selectedTab = "controls"
     @State private var deeplinkRoute: String?
     @State private var deeplinkParams: [String: String] = [:]
 
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
+    /// Routes that map directly to a tab (no modal needed).
+    private static let tabRoutes: Set<String> = ["controls", "list", "misc"]
+
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            ContentView(selectedTab: $selectedTab)
                 .environment(appState)
                 .onOpenURL { url in
                     handleDeeplink(url)
@@ -32,13 +36,24 @@ struct PepperTestApp: App {
     private func handleDeeplink(_ url: URL) {
         print("[PepperTest] Deeplink received: \(url)")
         guard url.scheme == "peppertest" else { return }
-        deeplinkRoute = url.host ?? url.path
+
+        let route = url.host ?? url.path
         var params: [String: String] = [:]
         if let components = URLComponents(url: url, resolvingAgainstBaseURL: false) {
             for item in components.queryItems ?? [] {
                 params[item.name] = item.value ?? ""
             }
         }
+
+        // Tab routes switch the selected tab directly
+        if Self.tabRoutes.contains(route) {
+            selectedTab = route
+            print("[PepperTest] Switched to tab: \(route)")
+            return
+        }
+
+        // All other routes show a generic deep link modal
+        deeplinkRoute = route
         deeplinkParams = params
     }
 }
