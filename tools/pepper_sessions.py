@@ -13,8 +13,7 @@ import json
 import logging
 import os
 import socket
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +59,7 @@ def quick_port_check(port: int, timeout: float = 1.0) -> bool:
         s = socket.create_connection(("localhost", port), timeout=timeout)
         s.close()
         return True
-    except (ConnectionRefusedError, OSError, socket.timeout):
+    except (TimeoutError, ConnectionRefusedError, OSError):
         return False
 
 
@@ -77,7 +76,7 @@ def _session_path(udid: str) -> str:
     return os.path.join(SESSION_DIR, f"{udid}.session")
 
 
-def _read_session(udid: str) -> Optional[dict]:
+def _read_session(udid: str) -> dict | None:
     """Read a session file. Returns None if missing or corrupt."""
     path = _session_path(udid)
     try:
@@ -146,7 +145,7 @@ def _is_session_live(session: dict) -> bool:
     if claimed_str:
         try:
             claimed_time = datetime.fromisoformat(claimed_str)
-            age = (datetime.now(timezone.utc) - claimed_time).total_seconds()
+            age = (datetime.now(UTC) - claimed_time).total_seconds()
             if age > MAX_SESSION_AGE_SECONDS:
                 logger.info(
                     "Time-based stale cleanup: session %s (PID %s) aged out at %.0fs (max %ds)",
@@ -166,7 +165,7 @@ def _is_session_live(session: dict) -> bool:
         claimed_str = session.get("claimed_at", "")
         try:
             claimed_time = datetime.fromisoformat(claimed_str)
-            age = (datetime.now(timezone.utc) - claimed_time).total_seconds()
+            age = (datetime.now(UTC) - claimed_time).total_seconds()
             if age < 60:
                 return True
             # Deploy took too long — treat as stale
@@ -180,26 +179,22 @@ def _is_session_live(session: dict) -> bool:
         if heartbeat_str:
             try:
                 heartbeat_time = datetime.fromisoformat(heartbeat_str)
-                age = (datetime.now(timezone.utc) - heartbeat_time).total_seconds()
-                if age > HEARTBEAT_STALE_SECONDS:
+                age = (datetime.now(UTC) - heartbeat_time).total_seconds()
+                if age > HEARTBEAT_STALE_SECONDS and port and not quick_port_check(port):
                     # PID is alive but heartbeat is very old — could be PID reuse.
                     # Be conservative: treat as stale only if the port is also dead.
-                    if port and not quick_port_check(port):
-                        return False
+                    return False
             except (ValueError, TypeError):
                 pass
         return True
 
     # PID is dead — but is the app still running?
     # This covers `make deploy` where the deploy script exits but the app stays up.
-    if port and quick_port_check(port):
-        return True
-
-    return False
+    return bool(port and quick_port_check(port))
 
 
 def claim_simulator(udid: str, bundle_id: str = "", port: int = 0,
-                    label: Optional[str] = None) -> bool:
+                    label: str | None = None) -> bool:
     """Attempt to exclusively claim a simulator for this process.
 
     Returns True if claim succeeded. Returns False if another live session owns it.
@@ -217,7 +212,7 @@ def claim_simulator(udid: str, bundle_id: str = "", port: int = 0,
         # Stale session — remove and reclaim
         _remove_session(udid)
 
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     data = {
         "udid": udid,
         "pid": os.getpid(),
@@ -230,7 +225,7 @@ def claim_simulator(udid: str, bundle_id: str = "", port: int = 0,
     return _write_session_atomic(udid, data)
 
 
-def claim_simulator_deploying(udid: str, label: Optional[str] = None) -> bool:
+def claim_simulator_deploying(udid: str, label: str | None = None) -> bool:
     """Pre-claim a simulator before deploy starts.
 
     Writes a session with state=deploying. This is considered live for 60s,
@@ -262,7 +257,7 @@ def claim_simulator_deploying(udid: str, label: Optional[str] = None) -> bool:
             if existing:
                 _remove_session(udid)
 
-            now = datetime.now(timezone.utc).isoformat()
+            now = datetime.now(UTC).isoformat()
             data = {
                 "udid": udid,
                 "pid": 0,
@@ -287,7 +282,7 @@ def claim_simulator_deploying(udid: str, label: Optional[str] = None) -> bool:
 
 
 def claim_simulator_with_port(udid: str, bundle_id: str = "", port: int = 0,
-                              label: Optional[str] = None) -> bool:
+                              label: str | None = None) -> bool:
     """Claim a simulator using port liveness as the anchor (not PID).
 
     For use by short-lived scripts like `make deploy` where the claiming process
@@ -311,7 +306,7 @@ def claim_simulator_with_port(udid: str, bundle_id: str = "", port: int = 0,
     elif existing:
         _remove_session(udid)
 
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     data = {
         "udid": udid,
         "pid": 0,  # sentinel — liveness determined by port check
@@ -351,7 +346,7 @@ def heartbeat(udid: str, bundle_id: str = "", port: int = 0):
     session = _read_session(udid)
     if not session or session.get("pid") != os.getpid():
         return
-    session["heartbeat"] = datetime.now(timezone.utc).isoformat()
+    session["heartbeat"] = datetime.now(UTC).isoformat()
     if bundle_id:
         session["bundle_id"] = bundle_id
     if port:
@@ -359,7 +354,7 @@ def heartbeat(udid: str, bundle_id: str = "", port: int = 0):
     _write_session_atomic(udid, session)
 
 
-def is_claimed(udid: str) -> Optional[dict]:
+def is_claimed(udid: str) -> dict | None:
     """Check if a simulator is claimed by a live session.
 
     Returns session dict if claimed and live, None otherwise.
@@ -375,7 +370,7 @@ def is_claimed(udid: str) -> Optional[dict]:
     return None
 
 
-def my_session() -> Optional[str]:
+def my_session() -> str | None:
     """Return the UDID claimed by this process, or None."""
     _ensure_session_dir()
     my_pid = os.getpid()
@@ -562,8 +557,7 @@ def find_available_simulator() -> str:
     # 1. Unclaimed sim already running Pepper
     for s in _list_port_files():
         udid = s["udid"]
-        if not is_claimed(udid):
-            if quick_port_check(s["port"]):
+        if not is_claimed(udid) and quick_port_check(s["port"]):
                 return udid
 
     # 2. Unclaimed booted sim

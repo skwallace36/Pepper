@@ -2,8 +2,8 @@
 
 import asyncio
 import json
+from collections.abc import Callable
 from functools import partial
-from typing import Any, Callable, Coroutine, Optional
 
 from mcp_crash import fetch_crash_info
 from pepper_common import discover_instance
@@ -158,9 +158,9 @@ async def gather_telemetry(port: int, pre_counts: dict, send_fn: SendFn) -> str:
 
 
 async def act_and_look(
-    simulator: Optional[str],
+    simulator: str | None,
     cmd: str,
-    params: Optional[dict] = None,
+    params: dict | None = None,
     timeout: float = 10,
     *,
     send_fn: SendFn,

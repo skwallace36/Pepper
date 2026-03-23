@@ -7,11 +7,9 @@ import asyncio
 import os
 import signal
 import time
-from typing import Optional
-
-from pydantic import Field
 
 from pepper_common import discover_instance
+from pydantic import Field
 
 # Active recording sessions: UDID → {"proc": subprocess, "path": str, "start_time": float}
 _active_recordings: dict = {}
@@ -26,9 +24,9 @@ def register_record_tools(mcp):
 
     @mcp.tool()
     async def record(
-        simulator: Optional[str] = Field(default=None, description="Simulator UDID"),
+        simulator: str | None = Field(default=None, description="Simulator UDID"),
         action: str = Field(description="Action: start, stop"),
-        output: Optional[str] = Field(default=None, description="Output path for stop (default: /tmp/pepper-recording.mp4). Use .gif extension for GIF output."),
+        output: str | None = Field(default=None, description="Output path for stop (default: /tmp/pepper-recording.mp4). Use .gif extension for GIF output."),
         fps: int = Field(default=12, description="GIF frame rate, ignored for mp4 (default: 12)"),
     ) -> str:
         """Record the simulator screen. Outputs mp4 (default) or GIF (if output ends in .gif).
@@ -87,7 +85,7 @@ def register_record_tools(mcp):
             proc.send_signal(signal.SIGINT)
             try:
                 await asyncio.wait_for(proc.wait(), timeout=10)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 proc.kill()
                 return "Recording process didn't stop cleanly."
 

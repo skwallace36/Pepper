@@ -7,7 +7,6 @@ Only supports unmasked text frames (sufficient for pepper JSON protocol).
 """
 
 import base64
-import hashlib
 import os
 import socket
 import struct
@@ -30,10 +29,6 @@ class RawWebSocket:
 
         # Generate random key
         key = base64.b64encode(os.urandom(16)).decode()
-        expected_accept = base64.b64encode(
-            hashlib.sha1((key + cls.MAGIC.decode()).encode()).digest()
-        ).decode()
-
         # Send HTTP upgrade
         req = (
             f"GET / HTTP/1.1\r\n"
