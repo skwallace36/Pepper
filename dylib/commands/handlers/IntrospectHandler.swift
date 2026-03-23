@@ -274,53 +274,101 @@ struct IntrospectHandler: PepperHandler {
 
         // Phase 4a: Label tab bar items from tab bar provider.
         // UITabBarButton labels aren't in the accessibility tree; use tab item titles.
-        if !tabTitles.isEmpty {
-            // Find tab candidates: below tab bar top, not full-screen containers,
-            // and small enough to be individual tab buttons (< 120pt wide).
-            let candidates = mergedInteractive.indices.filter { i in
-                let e = mergedInteractive[i]
-                guard e.center.y > tabBarMinY else { return false }
-                guard e.frame.width < 120, e.frame.height < 120 else { return false }
-                return true
-            }.sorted(by: { mergedInteractive[$0].center.x < mergedInteractive[$1].center.x })
+        // Strategy: use provider's tabItemFrames for authoritative positions, then
+        // match to discovered elements or create synthetic ones for occluded tabs.
+        if !tabTitles.isEmpty, let window = UIWindow.pepper_keyWindow {
+            let providerFrames = tabBarProvider?.tabItemFrames(in: window) ?? []
 
-            // Real tab buttons: share a Y band, span most of the screen width,
-            // and there should be at least as many as tab titles.
-            let tabIndices: [Int]
-            if candidates.count >= tabTitles.count {
-                let medianY = candidates.map { mergedInteractive[$0].center.y }
-                    .sorted()[candidates.count / 2]
-                let yBand = candidates.filter { i in
-                    abs(mergedInteractive[i].center.y - medianY) < 15
+            if providerFrames.count == tabTitles.count {
+                // Provider knows exact tab positions — match or create elements.
+                for (order, tabFrame) in providerFrames.enumerated() where order < tabTitles.count {
+                    let isTabSelected: Bool? = {
+                        guard let sel = selectedTab, order < tabNamesList.count else { return nil }
+                        return tabNamesList[order] == sel ? true : nil
+                    }()
+
+                    // Find existing discovered element near this tab position
+                    let matchIdx = mergedInteractive.indices.first { i in
+                        let e = mergedInteractive[i]
+                        return abs(e.center.x - tabFrame.center.x) < 20
+                            && abs(e.center.y - tabFrame.center.y) < 20
+                            && e.frame.width < 120
+                    }
+
+                    if let idx = matchIdx {
+                        // Relabel existing element
+                        var tabElem = MapElement(
+                            label: tabTitles[order], type: mergedInteractive[idx].type,
+                            center: mergedInteractive[idx].center, frame: mergedInteractive[idx].frame,
+                            hitReachable: mergedInteractive[idx].hitReachable,
+                            visible: mergedInteractive[idx].visible,
+                            heuristic: "tab_button", iconName: mergedInteractive[idx].iconName,
+                            isInteractive: true, value: mergedInteractive[idx].value,
+                            traits: mergedInteractive[idx].traits,
+                            scrollContext: mergedInteractive[idx].scrollContext,
+                            labelSource: "tab"
+                        )
+                        tabElem.selected = isTabSelected
+                        mergedInteractive[idx] = tabElem
+                    } else {
+                        // Tab was occluded by content — create synthetic element
+                        var tabElem = MapElement(
+                            label: tabTitles[order], type: "button",
+                            center: tabFrame.center, frame: tabFrame.frame,
+                            hitReachable: true, visible: 1.0,
+                            heuristic: "tab_button", iconName: nil,
+                            isInteractive: true, value: nil,
+                            traits: ["button"],
+                            scrollContext: nil,
+                            labelSource: "tab"
+                        )
+                        tabElem.selected = isTabSelected
+                        mergedInteractive.append(tabElem)
+                    }
                 }
-                // Tab bar spans the full screen width — leftmost near 0, rightmost near screenW
-                let minX = yBand.map { mergedInteractive[$0].center.x }.min() ?? 0
-                let maxX = yBand.map { mergedInteractive[$0].center.x }.max() ?? 0
-                tabIndices = (maxX - minX > screenW * 0.6) ? yBand : []
             } else {
-                tabIndices = []  // Not enough candidates for a tab bar
-            }
+                // No provider frames — fall back to candidate matching.
+                let candidates = mergedInteractive.indices.filter { i in
+                    let e = mergedInteractive[i]
+                    guard e.center.y > tabBarMinY else { return false }
+                    guard e.frame.width < 120, e.frame.height < 120 else { return false }
+                    return true
+                }.sorted(by: { mergedInteractive[$0].center.x < mergedInteractive[$1].center.x })
 
-            for (order, idx) in tabIndices.enumerated() where order < tabTitles.count {
-                // Mark selected tab: compare internal tab name at this position
-                let isTabSelected: Bool? = {
-                    guard let sel = selectedTab, order < tabNamesList.count else { return nil }
-                    return tabNamesList[order] == sel ? true : nil
-                }()
+                let tabIndices: [Int]
+                if candidates.count >= tabTitles.count {
+                    let medianY = candidates.map { mergedInteractive[$0].center.y }
+                        .sorted()[candidates.count / 2]
+                    let yBand = candidates.filter { i in
+                        abs(mergedInteractive[i].center.y - medianY) < 15
+                    }
+                    let minX = yBand.map { mergedInteractive[$0].center.x }.min() ?? 0
+                    let maxX = yBand.map { mergedInteractive[$0].center.x }.max() ?? 0
+                    tabIndices = (maxX - minX > screenW * 0.6) ? yBand : []
+                } else {
+                    tabIndices = []
+                }
 
-                var tabElem = MapElement(
-                    label: tabTitles[order], type: mergedInteractive[idx].type,
-                    center: mergedInteractive[idx].center, frame: mergedInteractive[idx].frame,
-                    hitReachable: mergedInteractive[idx].hitReachable,
-                    visible: mergedInteractive[idx].visible,
-                    heuristic: "tab_button", iconName: mergedInteractive[idx].iconName,
-                    isInteractive: true, value: mergedInteractive[idx].value,
-                    traits: mergedInteractive[idx].traits,
-                    scrollContext: mergedInteractive[idx].scrollContext,
-                    labelSource: "tab"
-                )
-                tabElem.selected = isTabSelected
-                mergedInteractive[idx] = tabElem
+                for (order, idx) in tabIndices.enumerated() where order < tabTitles.count {
+                    let isTabSelected: Bool? = {
+                        guard let sel = selectedTab, order < tabNamesList.count else { return nil }
+                        return tabNamesList[order] == sel ? true : nil
+                    }()
+
+                    var tabElem = MapElement(
+                        label: tabTitles[order], type: mergedInteractive[idx].type,
+                        center: mergedInteractive[idx].center, frame: mergedInteractive[idx].frame,
+                        hitReachable: mergedInteractive[idx].hitReachable,
+                        visible: mergedInteractive[idx].visible,
+                        heuristic: "tab_button", iconName: mergedInteractive[idx].iconName,
+                        isInteractive: true, value: mergedInteractive[idx].value,
+                        traits: mergedInteractive[idx].traits,
+                        scrollContext: mergedInteractive[idx].scrollContext,
+                        labelSource: "tab"
+                    )
+                    tabElem.selected = isTabSelected
+                    mergedInteractive[idx] = tabElem
+                }
             }
         }
 
