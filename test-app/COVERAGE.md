@@ -219,14 +219,18 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `sandbox` | delete | untested |  |  |
 | `sandbox` | info | untested |  |  |
 | `sandbox` | size | untested |  |  |
+| `concurrency` | summary | untested |  |  |
+| `concurrency` | actors | untested |  |  |
+| `concurrency` | tasks | untested |  |  |
+| `concurrency` | cancel | untested |  |  |
 
 ## Summary
 
-**197 test points** across 59 commands.
+**201 test points** across 60 commands.
 
 - pass: 128
 - fail: 11
-- untested: 56
+- untested: 60
 
 ## Test App Gaps
 
