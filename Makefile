@@ -22,7 +22,7 @@ DYLIB_PATH  := $(PROJECT_DIR)/build/Pepper.framework/Pepper
 
 LOGS_DIR    := $(PROJECT_DIR)/build/logs
 
-.PHONY: help build deploy launch kill relaunch ping check lint \
+.PHONY: help build deploy launch kill relaunch ping check lint smoke \
         logs clean test-client pepper-ctl test-app coverage coverage-check \
         docs setup ci smoke smoke-ice-cubes \
         agent agent-monitor agent-status agent-trigger agents-install agents-uninstall agent-cleanup agents-start agents-stop agent-analyze groom \
@@ -145,6 +145,23 @@ fmt-check:
 ## ping: Quick health check — test if control plane is responding
 ping:
 	@python3 "$(TOOLS_DIR)/pepper-ctl" --port $(PORT) ping
+
+## smoke: Run smoke tests against a running Pepper server
+smoke:
+	@python3 "$(TOOLS_DIR)/pepper-ctl" --port $(PORT) \
+		test-report --file "$(PROJECT_DIR)/scripts/smoke-tests.json" \
+		--format json --output "$(PROJECT_DIR)/build/smoke-results.json" \
+		--continue-on-error
+	@echo ""
+	@python3 -c "\
+import json, sys; \
+data = json.load(open('$(PROJECT_DIR)/build/smoke-results.json')); \
+results = data.get('results', data) if isinstance(data, dict) else data; \
+passed = sum(1 for r in results if r.get('status') == 'pass'); \
+failed = [r for r in results if r.get('status') != 'pass']; \
+[print(f'  FAIL: {f[\"name\"]} — {f.get(\"message\", \"unknown\")}') for f in failed]; \
+print(f'{passed}/{len(results)} tests passed'); \
+sys.exit(1 if failed else 0)"
 
 ## logs: Tail simulator system log for the injected app
 logs:
