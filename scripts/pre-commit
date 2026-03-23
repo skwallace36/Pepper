@@ -34,7 +34,20 @@ else
     echo "$BUILD_OUTPUT" | grep "error:" | head -10
 fi
 
-# 2. Python syntax check (pepper-mcp, pepper-ctl)
+# 2. SwiftLint
+if command -v swiftlint &>/dev/null; then
+    LINT_OUTPUT=$(swiftlint lint --strict 2>&1)
+    if [ $? -eq 0 ]; then
+        pass "SwiftLint"
+    else
+        fail "SwiftLint violations found"
+        echo "$LINT_OUTPUT" | grep "error\|warning" | head -10
+    fi
+else
+    warn "SwiftLint not installed — skipping (brew install swiftlint)"
+fi
+
+# 3. Python syntax check (pepper-mcp, pepper-ctl)
 for py_file in tools/pepper-mcp tools/pepper-ctl tools/pepper-stream tools/pepper-context; do
     if [ -f "$REPO_DIR/$py_file" ]; then
         if python3 -m py_compile "$REPO_DIR/$py_file" 2>/dev/null; then

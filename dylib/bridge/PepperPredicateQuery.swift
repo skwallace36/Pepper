@@ -103,6 +103,7 @@ enum PepperPredicateQuery {
     }
 
     /// Infer a user-friendly type string from element properties.
+    // swiftlint:disable:next cyclomatic_complexity
     private static func inferType(_ el: PepperInteractiveElement) -> String {
         // Explicit control type from UIKit classification
         if let ct = el.controlType { return ct }

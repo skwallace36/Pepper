@@ -49,6 +49,7 @@ struct AnimationsHandler: PepperHandler {
         ])
     }
 
+    // swiftlint:disable:next cyclomatic_complexity
     private func scanLayer(_ layer: CALayer, windowLayer: CALayer, depth: Int, now: CFTimeInterval, results: inout [[String: AnyCodable]]) {
         guard depth < 30 else { return }
 
@@ -356,6 +357,7 @@ struct AnimationsHandler: PepperHandler {
 
             if containsPoint && depth > deepestDepth {
                 // Prefer leaf layers or layers with visible content
+                // swiftlint:disable:next force_unwrapping
                 let isLeaf = current.sublayers == nil || current.sublayers!.isEmpty
                 let layerType = String(describing: type(of: current))
                 let hasContent = current.backgroundColor != nil

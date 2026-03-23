@@ -112,6 +112,7 @@ struct ReadHandler: PepperHandler {
 
     // MARK: - Type Detection
 
+    // swiftlint:disable:next cyclomatic_complexity
     private func elementType(for view: UIView) -> String {
         switch view {
         case is UIButton: return "button"

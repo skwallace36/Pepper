@@ -22,7 +22,7 @@ DYLIB_PATH  := $(PROJECT_DIR)/build/Pepper.framework/Pepper
 
 LOGS_DIR    := $(PROJECT_DIR)/build/logs
 
-.PHONY: help build deploy launch kill relaunch ping check \
+.PHONY: help build deploy launch kill relaunch ping check lint \
         logs clean test-client pepper-ctl test-app coverage coverage-check \
         docs setup ci agent agent-monitor agent-status agent-trigger agents-install agents-uninstall agent-cleanup agents-start agents-stop agent-analyze groom
 
@@ -99,6 +99,15 @@ relaunch: kill launch
 # ============================================================
 # Quality checks
 # ============================================================
+
+## lint: Run SwiftLint on dylib sources
+lint:
+	@if command -v swiftlint >/dev/null 2>&1; then \
+		swiftlint lint --strict; \
+	else \
+		echo "SwiftLint not installed. Run: brew install swiftlint" >&2; \
+		exit 1; \
+	fi
 
 ## check: Run all pre-commit checks (build, syntax, MCP, paths)
 check:

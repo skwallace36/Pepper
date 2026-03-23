@@ -237,6 +237,7 @@ extension PepperSwiftUIBridge {
     /// 1. accessibilityElements array (custom elements)
     /// 2. accessibilityElementCount + accessibilityElement(at:) (indexed access)
     /// 3. Subviews that are themselves accessibility elements
+    // swiftlint:disable:next cyclomatic_complexity
     func walkAccessibilityTree(element: Any, depth: Int, maxDepth: Int, includeUnlabeled: Bool = false, into results: inout [PepperAccessibilityElement]) {
         guard depth < maxDepth else { return }
         guard results.count < Self.maxElementCount else { return }
