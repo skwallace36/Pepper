@@ -78,7 +78,7 @@ final class PepperDialogInterceptor {
         authSwizzlesInstalled = true
 
         installNotificationSwizzle()
-        installCurrentNotificationCenterSwizzle()
+        // installCurrentNotificationCenterSwizzle() — DISABLED: crashes on iOS 26 (BUG-307)
         installPhotoLibrarySwizzle()
         installTrackingSwizzle()
         installCaptureDeviceSwizzle()
@@ -138,26 +138,10 @@ final class PepperDialogInterceptor {
         }
     }
 
-    /// Swizzle +[UNUserNotificationCenter currentNotificationCenter] so that the
-    /// first time any code resolves .current(), we re-check the runtime class and
-    /// reinforce the authorization swizzle. This closes the window between dylib
-    /// constructor time (where .current() may return a placeholder class) and
-    /// didFinishLaunchingNotification (which fires AFTER didFinishLaunchingWithOptions,
-    /// too late if the app requests notification permission during launch).
-    private static func installCurrentNotificationCenterSwizzle() {
-        guard let metacls = object_getClass(UNUserNotificationCenter.self) else { return }
-        let originalSel = NSSelectorFromString("currentNotificationCenter")
-        let swizzledSel = #selector(UNUserNotificationCenter.pepper_currentNotificationCenter)
-
-        guard let originalMethod = class_getInstanceMethod(metacls, originalSel),
-              let swizzledMethod = class_getInstanceMethod(metacls, swizzledSel) else {
-            pepperLog.error("Failed to swizzle UNUserNotificationCenter.current()", category: .lifecycle)
-            return
-        }
-
-        method_exchangeImplementations(originalMethod, swizzledMethod)
-        pepperLog.info("Notification center .current() swizzle installed", category: .lifecycle)
-    }
+    // installCurrentNotificationCenterSwizzle — DISABLED: crashes on iOS 26 (BUG-307).
+    // The +currentNotificationCenter swizzle triggers ___forwarding___ / swift_dynamicCast
+    // crash when the runtime subclass doesn't bridge cleanly to UNUserNotificationCenter.
+    // Notification dialogs are now handled by AX dismiss from the MCP side instead.
 
     private static func installPhotoLibrarySwizzle() {
         let cls: AnyClass = PHPhotoLibrary.self
@@ -585,21 +569,13 @@ extension UNUserNotificationCenter {
     /// Swizzled +currentNotificationCenter — lazily reinforces the authorization
     /// swizzle on the actual runtime class the first time .current() is called
     /// after dylib constructor time.
-    @objc dynamic class func pepper_currentNotificationCenter() -> UNUserNotificationCenter {
-        // Call original (implementations are swapped)
-        let instance = pepper_currentNotificationCenter()
-
-        // Lazily reinforce the authorization swizzle on the runtime class.
-        // At constructor time, .current() may return a placeholder whose class
-        // differs from the one used at app runtime. This ensures the real
-        // runtime subclass is swizzled before any requestAuthorization call.
-        if !PepperDialogInterceptor.runtimeClassReinforced {
-            PepperDialogInterceptor.runtimeClassReinforced = true
-            PepperDialogInterceptor.reinforceNotificationSwizzle()
-        }
-
-        return instance
-    }
+    // NOTE: pepper_currentNotificationCenter swizzle DISABLED.
+    // It crashes on iOS 26 with EXC_BREAKPOINT in swift_dynamicCast when the
+    // runtime subclass returned by the original +currentNotificationCenter
+    // triggers ___forwarding___ during type bridging. The reinforceNotificationSwizzle
+    // is now called from didFinishLaunchingWithOptions instead, which is safe because
+    // the notification center is fully initialized by that point.
+    // See BUG-307.
 
     /// Swizzled requestAuthorization — auto-grants without showing system dialog.
     @objc dynamic func pepper_requestAuthorization(
