@@ -51,7 +51,7 @@ def register_debug_tools(mcp, resolve_and_send):
     @mcp.tool()
     async def network(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
-        action: str = Field(description="Action: start, stop, log, status, clear, simulate, conditions, remove_condition, clear_conditions"),
+        action: str = Field(description="Action: start, stop, log, status, clear, simulate, conditions, remove_condition, clear_conditions, mock, mocks, remove_mock, clear_mocks"),
         filter_text: str | None = Field(default=None, description="Filter by URL pattern (for log action)"),
         limit: int | None = Field(default=None, description="Max entries to return (for log action)"),
         max_body: int | None = Field(default=None, description="Max chars per request/response body (default: 4096). Use 0 for unlimited."),
@@ -61,11 +61,14 @@ def register_debug_tools(mcp, resolve_and_send):
         error_domain: str | None = Field(default=None, description="NSError domain (for effect=fail_error, default: NSURLErrorDomain)"),
         error_code: int | None = Field(default=None, description="NSError code (for effect=fail_error)"),
         bytes_per_second: int | None = Field(default=None, description="Bandwidth limit in bytes/sec (for effect=throttle)"),
-        url: str | None = Field(default=None, description="URL pattern to match (for simulate — omit to match all requests)"),
-        method: str | None = Field(default=None, description="HTTP method to match (for simulate — e.g., GET, POST)"),
+        url: str | None = Field(default=None, description="URL pattern to match (for simulate/mock — substring, case-insensitive)"),
+        method: str | None = Field(default=None, description="HTTP method to match (for simulate/mock — e.g., GET, POST)"),
         condition_id: str | None = Field(default=None, description="Condition ID (for remove_condition, or custom ID for simulate)"),
+        mock_status: int | None = Field(default=None, description="HTTP status code for mock response (default: 200)"),
+        mock_body: str | None = Field(default=None, description="Response body for mock (JSON string)"),
+        mock_id: str | None = Field(default=None, description="Mock ID (for remove_mock, or custom ID for mock)"),
     ) -> str:
-        """Monitor HTTP network traffic and simulate network conditions.
+        """Monitor HTTP network traffic, simulate network conditions, and mock API responses.
 
         Monitoring: start/stop/log/status/clear — see every API call, status code, and response body.
 
@@ -75,6 +78,12 @@ def register_debug_tools(mcp, resolve_and_send):
         - fail_error: return NSError (e.g., NSURLErrorNotConnectedToInternet)
         - throttle: limit bandwidth (bytes/sec) for matching requests
         - offline: fail all matching requests as if no network
+
+        Mocking: intercept requests and return stubbed responses without hitting the network:
+        - mock: stub a URL pattern with a custom status code and body
+        - mocks: list active mock rules
+        - remove_mock/clear_mocks: manage active mocks
+        Mocks take priority over overrides and conditions.
 
         Per-domain rules: use 'url' to target specific endpoints (e.g., slow images but not API calls).
         Multiple conditions stack — latency adds up, first fail wins, lowest throttle wins.
@@ -104,6 +113,12 @@ def register_debug_tools(mcp, resolve_and_send):
             params["method"] = method
         if condition_id:
             params["id"] = condition_id
+        if mock_status is not None:
+            params["status"] = mock_status
+        if mock_body is not None:
+            params["body"] = mock_body
+        if mock_id:
+            params["id"] = mock_id
         return await resolve_and_send(simulator, "network", params)
 
     @mcp.tool()

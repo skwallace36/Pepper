@@ -21,6 +21,11 @@ import os
 ///   {"cmd":"network", "params":{"action":"simulate", "effect":"fail_status", "status_code":500, "url":"api.example.com"}}
 ///   {"cmd":"network", "params":{"action":"simulate", "effect":"fail_error", "error_domain":"NSURLErrorDomain", "error_code":-1009}}
 ///   {"cmd":"network", "params":{"action":"simulate", "effect":"throttle", "bytes_per_second":1024, "url":"cdn.example.com"}}
+///   {"cmd":"network", "params":{"action":"mock", "url":"api.example.com/pets", "status":200, "body":"{\"pets\":[]}"}}
+///   {"cmd":"network", "params":{"action":"mock", "url":"api.example.com/error", "status":500, "body":"{\"error\":\"fail\"}", "method":"POST"}}
+///   {"cmd":"network", "params":{"action":"mocks"}}
+///   {"cmd":"network", "params":{"action":"remove_mock", "id":"mock-id"}}
+///   {"cmd":"network", "params":{"action":"clear_mocks"}}
 ///   {"cmd":"network", "params":{"action":"conditions"}}
 ///   {"cmd":"network", "params":{"action":"remove_condition", "id":"condition-id"}}
 ///   {"cmd":"network", "params":{"action":"clear_conditions"}}
@@ -32,7 +37,7 @@ struct NetworkHandler: PepperHandler {
 
     func handle(_ command: PepperCommand) -> PepperResponse {
         guard let action = command.params?["action"]?.stringValue else {
-            return .error(id: command.id, message: "Missing 'action' param. Available: start, stop, status, log, clear, simulate, conditions, remove_condition, clear_conditions")
+            return .error(id: command.id, message: "Missing 'action' param. Available: start, stop, status, log, clear, simulate, conditions, remove_condition, clear_conditions, mock, mocks, remove_mock, clear_mocks")
         }
 
         let interceptor = PepperNetworkInterceptor.shared
@@ -58,46 +63,10 @@ struct NetworkHandler: PepperHandler {
                 ])
 
         case "status":
-            let dupes = interceptor.recentDuplicates(limit: 5)
-            let conditions = interceptor.activeConditions
-            var statusData: [String: AnyCodable] = [
-                "active": AnyCodable(interceptor.isIntercepting),
-                "buffer_size": AnyCodable(interceptor.bufferSize),
-                "buffer_count": AnyCodable(interceptor.transactionCount),
-                "total_recorded": AnyCodable(interceptor.totalRecorded),
-                "conditions_count": AnyCodable(conditions.count),
-            ]
-            if !dupes.isEmpty {
-                statusData["duplicate_warnings"] = AnyCodable(
-                    dupes.map { d in
-                        [
-                            "endpoint": AnyCodable(d.endpoint),
-                            "count": AnyCodable(d.count),
-                            "window_ms": AnyCodable(Int(d.windowMs)),
-                            "seconds_ago": AnyCodable(Int(-d.timestamp.timeIntervalSinceNow)),
-                        ] as [String: AnyCodable]
-                    })
-            }
-            if !conditions.isEmpty {
-                statusData["conditions"] = AnyCodable(conditions.map { AnyCodable($0.toDictionary()) })
-            }
-            return .ok(id: command.id, data: statusData)
+            return handleStatus(command)
 
         case "log":
-            let limit = command.params?["limit"]?.intValue ?? 50
-            let filter = command.params?["filter"]?.stringValue
-            let maxBodyRaw = command.params?["max_body"]?.intValue ?? 4096
-            let maxBody: Int? = maxBodyRaw > 0 ? maxBodyRaw : nil
-            let sinceMs: Int64? =
-                (command.params?["since_ms"]?.value as? Int).map { Int64($0) }
-                ?? (command.params?["since_ms"]?.value as? Int64)
-            let transactions = interceptor.recentTransactions(limit: limit, filter: filter, sinceMs: sinceMs)
-            return .ok(
-                id: command.id,
-                data: [
-                    "count": AnyCodable(transactions.count),
-                    "transactions": AnyCodable(transactions.map { AnyCodable($0.toDictionary(maxBody: maxBody)) }),
-                ])
+            return handleLog(command)
 
         case "clear":
             interceptor.clearBuffer()
@@ -132,9 +101,67 @@ struct NetworkHandler: PepperHandler {
                 "cleared": AnyCodable(true),
             ])
 
+        case "mock", "mocks", "remove_mock", "clear_mocks":
+            return handleMockAction(action, command)
+
         default:
-            return .error(id: command.id, message: "Unknown action '\(action)'. Available: start, stop, status, log, clear, simulate, conditions, remove_condition, clear_conditions")
+            return .error(id: command.id, message: "Unknown action '\(action)'. Available: start, stop, status, log, clear, simulate, conditions, remove_condition, clear_conditions, mock, mocks, remove_mock, clear_mocks")
         }
+    }
+
+    // MARK: - Status
+
+    private func handleStatus(_ command: PepperCommand) -> PepperResponse {
+        let interceptor = PepperNetworkInterceptor.shared
+        let dupes = interceptor.recentDuplicates(limit: 5)
+        let conditions = interceptor.activeConditions
+        let mocks = interceptor.activeMocks
+        var statusData: [String: AnyCodable] = [
+            "active": AnyCodable(interceptor.isIntercepting),
+            "buffer_size": AnyCodable(interceptor.bufferSize),
+            "buffer_count": AnyCodable(interceptor.transactionCount),
+            "total_recorded": AnyCodable(interceptor.totalRecorded),
+            "conditions_count": AnyCodable(conditions.count),
+            "mocks_count": AnyCodable(mocks.count),
+        ]
+        if !dupes.isEmpty {
+            statusData["duplicate_warnings"] = AnyCodable(
+                dupes.map { d in
+                    [
+                        "endpoint": AnyCodable(d.endpoint),
+                        "count": AnyCodable(d.count),
+                        "window_ms": AnyCodable(Int(d.windowMs)),
+                        "seconds_ago": AnyCodable(Int(-d.timestamp.timeIntervalSinceNow)),
+                    ] as [String: AnyCodable]
+                })
+        }
+        if !conditions.isEmpty {
+            statusData["conditions"] = AnyCodable(conditions.map { AnyCodable($0.toDictionary()) })
+        }
+        if !mocks.isEmpty {
+            statusData["mocks"] = AnyCodable(mocks.map { AnyCodable($0.toDictionary()) })
+        }
+        return .ok(id: command.id, data: statusData)
+    }
+
+    // MARK: - Log
+
+    private func handleLog(_ command: PepperCommand) -> PepperResponse {
+        let interceptor = PepperNetworkInterceptor.shared
+        let limit = command.params?["limit"]?.intValue ?? 50
+        let filter = command.params?["filter"]?.stringValue
+        let maxBodyRaw = command.params?["max_body"]?.intValue ?? 4096
+        let maxBody: Int? = maxBodyRaw > 0 ? maxBodyRaw : nil
+        let sinceMs: Int64? =
+            (command.params?["since_ms"]?.value as? Int).map { Int64($0) }
+            ?? (command.params?["since_ms"]?.value as? Int64)
+        let transactions = interceptor.recentTransactions(limit: limit, filter: filter, sinceMs: sinceMs)
+        return .ok(
+            id: command.id,
+            data: [
+                "count": AnyCodable(transactions.count),
+                "transactions": AnyCodable(transactions.map { AnyCodable($0.toDictionary(maxBody: maxBody)) }),
+            ])
     }
 
     // MARK: - Simulate
@@ -217,6 +244,91 @@ struct NetworkHandler: PepperHandler {
             "effect": AnyCodable(effectName),
             "description": AnyCodable(description),
             "active_conditions": AnyCodable(interceptor.activeConditions.count),
+        ])
+    }
+
+    // MARK: - Mock
+
+    private func handleMockAction(_ action: String, _ command: PepperCommand) -> PepperResponse {
+        let interceptor = PepperNetworkInterceptor.shared
+
+        switch action {
+        case "mock":
+            return handleMock(command)
+        case "mocks":
+            let mocks = interceptor.activeMocks
+            return .ok(id: command.id, data: [
+                "count": AnyCodable(mocks.count),
+                "mocks": AnyCodable(mocks.map { AnyCodable($0.toDictionary()) }),
+            ])
+        case "remove_mock":
+            guard let mockId = command.params?["id"]?.stringValue else {
+                return .error(id: command.id, message: "Missing 'id' param for remove_mock")
+            }
+            interceptor.removeMock(id: mockId)
+            return .ok(id: command.id, data: [
+                "removed": AnyCodable(mockId),
+            ])
+        case "clear_mocks":
+            interceptor.removeAllMocks()
+            return .ok(id: command.id, data: [
+                "cleared": AnyCodable(true),
+            ])
+        default:
+            return .error(id: command.id, message: "Unknown mock action '\(action)'")
+        }
+    }
+
+    private func handleMock(_ command: PepperCommand) -> PepperResponse {
+        guard let urlPattern = command.params?["url"]?.stringValue else {
+            return .error(id: command.id, message: "Missing 'url' param — URL pattern to match (substring, case-insensitive)")
+        }
+
+        let interceptor = PepperNetworkInterceptor.shared
+        let statusCode = command.params?["status"]?.intValue ?? 200
+        let bodyString = command.params?["body"]?.stringValue ?? ""
+        let bodyData = Data(bodyString.utf8)
+        let methodFilter = command.params?["method"]?.stringValue
+
+        // Build headers — default to application/json if not specified
+        var headers: [String: String] = ["Content-Type": "application/json"]
+        if let customHeaders = command.params?["headers"]?.dictValue {
+            for (key, value) in customHeaders {
+                if let str = value.stringValue {
+                    headers[key] = str
+                }
+            }
+        }
+
+        // Build description
+        var description = "Mock \(statusCode)"
+        description += " [url~\(urlPattern)]"
+        if let m = methodFilter { description += " [\(m)]" }
+        description += " (\(PepperNetworkInterceptor.formatBytes(bodyData.count)) body)"
+
+        let matcher = RequestMatcher(urlContains: urlPattern, method: methodFilter)
+
+        // Auto-start interception if not already active
+        if !interceptor.isIntercepting {
+            interceptor.install()
+        }
+
+        let mockId = command.params?["id"]?.stringValue ?? UUID().uuidString
+        let mock = PepperNetworkMock(
+            id: mockId,
+            matcher: matcher,
+            statusCode: statusCode,
+            headers: headers,
+            body: bodyData,
+            description: description
+        )
+        interceptor.addMock(mock)
+
+        return .ok(id: command.id, data: [
+            "mock_id": AnyCodable(mockId),
+            "status_code": AnyCodable(statusCode),
+            "description": AnyCodable(description),
+            "active_mocks": AnyCodable(interceptor.activeMocks.count),
         ])
     }
 }

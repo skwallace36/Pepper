@@ -62,6 +62,9 @@ final class PepperNetworkInterceptor {
     /// Active network condition rules — checked by PepperNetworkProtocol for each request.
     private var conditions: [PepperNetworkCondition] = []
 
+    /// Active mock rules — checked by PepperNetworkProtocol before overrides and conditions.
+    private var mocks: [PepperNetworkMock] = []
+
     struct DuplicateRequestWarning {
         let endpoint: String  // "GET /api/pets" or "POST /graphql (GetPetProfile)"
         let count: Int
@@ -146,6 +149,46 @@ final class PepperNetworkInterceptor {
     /// Snapshot of currently active overrides (for status reporting).
     var activeOverrides: [PepperNetworkOverride] {
         queue.sync { overrides }
+    }
+
+    // MARK: - Network Mocks
+
+    /// Register a mock (replaces any existing mock with the same ID).
+    func addMock(_ mock: PepperNetworkMock) {
+        queue.async(flags: .barrier) {
+            self.mocks.removeAll { $0.id == mock.id }
+            self.mocks.append(mock)
+            self.logger.info("Network mock added: \(mock.id) — \(mock.description)")
+        }
+    }
+
+    /// Remove a specific mock by ID.
+    func removeMock(id: String) {
+        queue.async(flags: .barrier) {
+            self.mocks.removeAll { $0.id == id }
+            self.logger.info("Network mock removed: \(id)")
+        }
+    }
+
+    /// Remove all mocks.
+    func removeAllMocks() {
+        queue.async(flags: .barrier) {
+            let count = self.mocks.count
+            self.mocks.removeAll()
+            self.logger.info("All network mocks removed (\(count))")
+        }
+    }
+
+    /// Find the first mock matching a request. Called by PepperNetworkProtocol.
+    func matchingMock(url: String, method: String, body: String?) -> PepperNetworkMock? {
+        queue.sync {
+            mocks.first { $0.matcher.matches(url: url, method: method, body: body) }
+        }
+    }
+
+    /// Snapshot of currently active mocks (for status reporting).
+    var activeMocks: [PepperNetworkMock] {
+        queue.sync { mocks }
     }
 
     // MARK: - Network Conditions
