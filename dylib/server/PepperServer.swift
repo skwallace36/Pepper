@@ -174,7 +174,13 @@ final class PepperServer {
             return
         }
 
-        guard let data = try? encoder.encode(response) else { return }
+        guard let data = try? encoder.encode(response) else {
+            pepperLog.warning(
+                "Failed to encode response id=\(response.id) status=\(response.status.rawValue) — "
+                + "response dropped (possible non-finite float or unencodable value)",
+                category: .server)
+            return
+        }
         connectionManager.send(data: data, to: connectionID)
     }
 }
