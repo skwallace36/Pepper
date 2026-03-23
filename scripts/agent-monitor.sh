@@ -28,6 +28,7 @@ icon_for() {
     pr-responder) echo "R" ;;
     pr-verifier|verifier) echo "V" ;;
     researcher)   echo "?" ;;
+    groomer)      echo "G" ;;
     *)            echo " " ;;
   esac
 }
@@ -41,6 +42,7 @@ color_for() {
     pr-responder) echo "33" ;;  # yellow
     pr-verifier|verifier) echo "32" ;;  # green
     researcher)   echo "34" ;;  # blue
+    groomer)      echo "37" ;;  # white
     *)            echo "37" ;;  # white
   esac
 }
@@ -66,7 +68,7 @@ print_banner() {
     [ -f "$lock" ] || continue
     local lpid atype
     lpid=$(cat "$lock" 2>/dev/null)
-    atype=$(basename "$lock" | sed 's/^\.lock-//')
+    atype=$(basename "$lock" | sed 's/^\.lock-//; s/-[0-9]*$//')
     if kill -0 "$lpid" 2>/dev/null; then
       local acol
       acol=$(color_for "$atype")
