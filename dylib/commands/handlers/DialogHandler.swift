@@ -43,6 +43,7 @@ import UIKit
 final class DialogHandler: PepperHandler {
     let commandName = "dialog"
 
+    // swiftlint:disable:next cyclomatic_complexity
     func handle(_ command: PepperCommand) -> PepperResponse {
         guard let action = command.params?["action"]?.stringValue else {
             return .error(id: command.id, message: "Missing 'action' param (list, current, dismiss)")

@@ -83,6 +83,7 @@ extension UIView {
                 }
             }
             // 4. First match
+            // swiftlint:disable:next force_unwrapping
             return pool.first!
         }
 

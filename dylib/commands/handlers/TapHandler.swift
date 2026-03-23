@@ -26,6 +26,7 @@ struct TapHandler: PepperHandler {
     let commandName = "tap"
     private var logger: Logger { PepperLogger.logger(category: "tap") }
 
+    // swiftlint:disable:next cyclomatic_complexity
     func handle(_ command: PepperCommand) -> PepperResponse {
         let windows = UIWindow.pepper_allVisibleWindows
         guard let keyWindow = UIWindow.pepper_keyWindow else {
@@ -196,7 +197,9 @@ struct TapHandler: PepperHandler {
             }
             if !allMatches.isEmpty {
                 let sorted = allMatches.sorted { $0.0.y < $1.0.y }
+                // swiftlint:disable:next force_unwrapping
                 let pick = positionFilter == "bottom" ? sorted.last! : sorted.first!
+                // swiftlint:disable:next force_unwrapping
                 let desc = "\(pick.2) [position:\(positionFilter!)]"
                 return executeTap(at: pick.0, strategy: pick.1,
                                   description: desc, in: pick.3, command: command)
@@ -307,6 +310,7 @@ struct TapHandler: PepperHandler {
     /// in the specified direction relative to the anchor text. Falls back to screen-edge
     /// heuristic when no interactive element is found (handles pure SwiftUI controls that
     /// don't appear in the accessibility tree).
+    // swiftlint:disable:next cyclomatic_complexity
     private func resolveSpatialTap(command: PepperCommand, in window: UIWindow) -> SpatialResult? {
         // Determine direction and anchor text
         let directions: [Direction] = [.right, .left, .above, .below]

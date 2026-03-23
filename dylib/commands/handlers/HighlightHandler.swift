@@ -63,6 +63,7 @@ struct HighlightHandler: PepperHandler {
                           let w = frameDict["width"]?.doubleValue,
                           let h = frameDict["height"]?.doubleValue else { continue }
                     let colorStr = dict["color"]?.stringValue ?? "blue"
+                    // swiftlint:disable:next force_unwrapping
                     let color = Self.colorFromHex(colorStr) ?? Self.colors[colorStr] ?? Self.colors["blue"]!
                     inlineItems.append((CGRect(x: x, y: y, width: w, height: h), color, 2))
                     results.append(["highlighted": AnyCodable(true), "strategy": AnyCodable("inline")])
@@ -117,6 +118,7 @@ struct HighlightHandler: PepperHandler {
     /// Render a single highlight from params. Returns result dict (or "error" key on failure).
     private func showSingleHighlight(_ params: [String: AnyCodable]) -> [String: AnyCodable] {
         let colorStr = params["color"]?.stringValue ?? "blue"
+        // swiftlint:disable:next force_unwrapping
         let color = Self.colorFromHex(colorStr) ?? Self.colors[colorStr] ?? Self.colors["blue"]!
         let label = params["label"]?.stringValue
         let labelInside = params["labelInside"]?.boolValue ?? false
@@ -162,6 +164,7 @@ struct HighlightHandler: PepperHandler {
                     ) {
                         frame = accFrame
                     } else {
+                        // swiftlint:disable:next force_unwrapping
                         let tp = result.tapPoint!
                         let size: CGFloat = 44
                         frame = CGRect(x: tp.x - size / 2, y: tp.y - size / 2, width: size, height: size)

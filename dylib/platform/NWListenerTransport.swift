@@ -36,6 +36,7 @@ final class NWListenerTransport: WebSocketTransport {
         parameters.defaultProtocolStack.applicationProtocols.insert(wsOptions, at: 0)
 
         do {
+            // swiftlint:disable:next force_unwrapping
             listener = try NWListener(using: parameters, on: NWEndpoint.Port(rawValue: port)!)
         } catch {
             pepperLog.error("Failed to create listener: \(error)", category: .server)

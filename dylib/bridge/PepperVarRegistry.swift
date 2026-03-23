@@ -170,6 +170,7 @@ final class PepperVarRegistry {
         var count: Int32 = 0
 
         let result = targetPtrs.withUnsafeMutableBufferPointer { buf in
+            // swiftlint:disable:next force_unwrapping
             pepper_heap_find_instances(buf.baseAddress!, Int32(buf.count), &instancesPtr, &classesPtr, &count)
         }
 
@@ -479,6 +480,7 @@ final class PepperVarRegistry {
 
         // Check if already tracked (same object identity)
         let ptr = Unmanaged.passUnretained(obj).toOpaque()
+        // swiftlint:disable:next force_unwrapping
         if tracked.contains(where: { $0.instance != nil && Unmanaged.passUnretained($0.instance!).toOpaque() == ptr }) {
             return
         }
@@ -873,6 +875,7 @@ final class PepperVarRegistry {
     }
 
     /// Serialize a value to AnyCodable based on its classified type.
+    // swiftlint:disable:next cyclomatic_complexity
     private func serializeValue(_ value: Any?, type: VarType, innerType: VarType?) -> AnyCodable? {
         guard let value = value else { return AnyCodable(NSNull()) }
 

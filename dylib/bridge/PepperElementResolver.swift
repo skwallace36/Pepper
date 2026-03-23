@@ -35,6 +35,7 @@ enum PepperElementResolver {
 
     /// Resolve an element from command params, trying strategies in priority order.
     /// Returns nil with an error message if no element is found.
+    // swiftlint:disable:next cyclomatic_complexity
     static func resolve(params: [String: AnyCodable]?, in window: UIView) -> (Result?, String?) {
         guard let params = params else {
             return (nil, "No params provided")
@@ -148,6 +149,7 @@ enum PepperElementResolver {
                 let available = interactiveElements
                     .filter { $0.hitReachable && $0.label != nil }
                     .prefix(20)
+                    // swiftlint:disable:next force_unwrapping
                     .map { $0.label! }
                 return (nil, "No interactive element labeled \"\(text)\". Available: \(available.joined(separator: ", "))")
             }

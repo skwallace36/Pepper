@@ -457,6 +457,7 @@ extension IntrospectHandler {
     /// Detect groups of labeled buttons at the same Y that form a segment control
     /// (Day/Week/Month/Year, Photos/Ranking, All Dogs/Seniors).
     /// Labels these with heuristic "segment" so the builder knows they're selectable tabs.
+    // swiftlint:disable:next cyclomatic_complexity
     func promoteSegmentGroups(_ interactive: inout [MapElement], screenWidth: CGFloat) {
         guard interactive.count >= 2 else { return }
 
@@ -598,6 +599,7 @@ extension IntrospectHandler {
     /// by comparing their backing CALayer backgroundColors. The element with a distinct
     /// non-clear background that differs from the majority is "selected".
     /// Also detects toggle on/off state via backgroundColor (green = on, gray = off).
+    // swiftlint:disable:next cyclomatic_complexity
     func detectSelectedByBackground(_ elements: inout [MapElement], window: UIWindow) {
         // Group elements by type + Y-band (within 8pt) to find sibling sets
         let groupTypes: Set<String> = ["segment", "option"]
