@@ -18,7 +18,7 @@ struct ReadHandler: PepperHandler {
         }
 
         guard let view = window.pepper_findElement(id: elementID) else {
-            return .error(id: command.id, message: "Element not found: \(elementID)")
+            return .elementNotFound(id: command.id, message: "Element not found: \(elementID)", query: elementID)
         }
 
         logger.info("Reading element: \(elementID)")
