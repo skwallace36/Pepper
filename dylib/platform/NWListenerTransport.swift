@@ -1,5 +1,6 @@
 import Foundation
 import Network
+import os
 
 /// Concrete `WebSocketTransport` backed by Network.framework's NWListener.
 ///
@@ -120,18 +121,27 @@ final class NWListenerTransport: WebSocketTransport {
             pepperLog.warning("Connection \(conn.connectionId) failed: \(error)", category: .server)
             cleanup(conn)
         case .cancelled:
-            pepperLog.debug("Connection \(conn.connectionId) cancelled", category: .server)
+            // cleanup() already handled removal and delegate notification.
+            // Just ensure it's gone from the dict (idempotent).
             connections.removeValue(forKey: conn.connectionId)
-            delegate?.transportDidClose(conn)
         default:
             break
         }
     }
 
     private func cleanup(_ conn: NWTransportConnection) {
-        connections.removeValue(forKey: conn.connectionId)
+        // Guard against duplicate cleanup — receive errors and state changes
+        // can both trigger cleanup for the same connection.
+        guard connections.removeValue(forKey: conn.connectionId) != nil else {
+            return
+        }
         delegate?.transportDidClose(conn)
-        conn.nwConnection.cancel()
+        // Defer cancel to avoid deadlock: cancel() may drain pending operations
+        // synchronously, but those operations' completions run on THIS serial
+        // queue. Deferring lets pending completions drain first.
+        queue.async {
+            conn.nwConnection.cancel()
+        }
     }
 
     // MARK: - Message Receive Loop
@@ -216,7 +226,10 @@ final class NWTransportConnection: TransportConnection {
             isComplete: true,
             completion: .contentProcessed { error in
                 if let error = error {
-                    pepperLog.warning("Send error: \(error)", category: .server)
+                    // Use os_log directly — NOT pepperLog which broadcasts via eventSink,
+                    // triggering sends to other dead connections, creating an exponential
+                    // cascade of millions of broken pipe errors that blocks the transport queue.
+                    os_log(.error, "Send error: %{public}@", "\(error)")
                 }
             }
         )
@@ -241,7 +254,7 @@ final class NWTransportConnection: TransportConnection {
             isComplete: true,
             completion: .contentProcessed { error in
                 if let error = error {
-                    pepperLog.warning("Binary send error: \(error)", category: .server)
+                    os_log(.error, "Binary send error: %{public}@", "\(error)")
                 }
             }
         )

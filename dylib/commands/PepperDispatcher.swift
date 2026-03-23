@@ -1,5 +1,7 @@
+import AVFoundation
 import Foundation
 import QuartzCore
+import UIKit
 import os
 
 /// Protocol that all command handlers conform to.
@@ -69,9 +71,12 @@ final class PepperDispatcher {
         }
 
         // Execute on main thread for UIKit safety, with error recovery.
-        // Check cancelled before running — timed-out commands are skipped
-        // to prevent stale handlers from blocking the main queue.
-        DispatchQueue.main.async { [weak self] in
+        // Use CFRunLoopPerformBlock instead of DispatchQueue.main.async —
+        // RunLoop blocks execute at the TOP of each pass (before timers),
+        // while GCD drain happens AFTER timers. When a CADisplayLink floods
+        // the RunLoop with timer callbacks (e.g. video playback), GCD blocks
+        // starve indefinitely. RunLoop blocks squeeze in between frames.
+        CFRunLoopPerformBlock(CFRunLoopGetMain(), CFRunLoopMode.commonModes.rawValue) { [weak self] in
             if cancelled?.isSet == true {
                 self?.logger.debug(
                     "Skipping timed-out command '\(command.cmd)' id=\(command.id)")
@@ -82,6 +87,8 @@ final class PepperDispatcher {
                 ?? .error(id: command.id, message: "Dispatcher was deallocated")
             completion(response)
         }
+        // Wake the RunLoop in case it's sleeping between timer firings.
+        CFRunLoopWakeUp(CFRunLoopGetMain())
     }
 
     /// Synchronous dispatch — used when already on main thread or for tests.
@@ -119,8 +126,39 @@ final class PepperDispatcher {
         "scroll_to", "dismiss_keyboard", "gesture",
     ]
 
+    /// Pause any active AVPlayers to prevent video frame rendering from
+    /// saturating the main thread and starving command execution.
+    /// Called at the start of each command — cheap no-op when no video is playing.
+    /// Walks ALL windows (not just keyWindow) in case video is in a secondary window.
+    private func pauseActiveVideoPlayers() {
+        for window in UIApplication.shared.connectedScenes
+            .compactMap({ $0 as? UIWindowScene })
+            .flatMap({ $0.windows })
+        {
+            pausePlayersInLayer(window.layer)
+        }
+    }
+
+    private func pausePlayersInLayer(_ layer: CALayer) {
+        if let playerLayer = layer as? AVPlayerLayer, let player = playerLayer.player,
+            player.rate > 0
+        {
+            player.pause()
+            logger.debug("Paused active AVPlayer to free main thread")
+        }
+        guard let sublayers = layer.sublayers else { return }
+        for sublayer in sublayers {
+            pausePlayersInLayer(sublayer)
+        }
+    }
+
     private func safeExecute(handler: PepperHandler, command: PepperCommand) -> PepperResponse {
         let startMs = Int64(Date().timeIntervalSince1970 * 1000)
+
+        // Pause video players before command execution — active AVPlayers
+        // flood the main queue with frame rendering callbacks, starving
+        // command dispatch and making the main thread permanently unresponsive.
+        pauseActiveVideoPlayers()
 
         // withoutActuallyEscaping is not needed here — we use withExtendedLifetime to
         // ensure the handler stays alive through the call.
