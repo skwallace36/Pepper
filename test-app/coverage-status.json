@@ -170,5 +170,6 @@
   "undo":                { "status": "untested",  "surface": "Any state",                                 "notes": "New command. NSUndoManager inspector — list undo managers, query undo/redo stack state, trigger undo/redo programmatically." },
   "accessibility_audit": { "status": "untested",  "surface": "Any state",                                "notes": "" },
   "renders":             { "status": "untested",  "surface": "SwiftUI app",                               "notes": "New command. SwiftUI view tree snapshots via makeViewDebugData() and snapshot diffing." },
-  "diff":                { "status": "untested",  "surface": "Any screen",                               "notes": "Quick view hierarchy diff. Delegates to snapshot infrastructure with reserved baseline." }
+  "diff":                { "status": "untested",  "surface": "Any screen",                               "notes": "Quick view hierarchy diff. Delegates to snapshot infrastructure with reserved baseline." },
+  "constraints":         { "status": "untested",  "surface": "Any state",                                "notes": "AutoLayout constraint dump with ambiguity detection. Walks view hierarchy dumping NSLayoutConstraints with attributes, relation, constant, multiplier, priority. Flags ambiguous views with _autolayoutTrace." }
 }
