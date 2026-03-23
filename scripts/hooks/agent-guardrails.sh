@@ -83,8 +83,18 @@ if [ "$TOOL" = "Write" ] || [ "$TOOL" = "Edit" ]; then
       ;;
     pr-responder)
       # PR responder can only modify files already in the PR diff.
-      # We can't easily check this in a hook, so we allow all files
-      # except protected ones (already blocked above).
+      # Get the list of files changed on this branch vs main.
+      PR_FILES=$(git diff origin/main...HEAD --name-only 2>/dev/null || true)
+      if [ -z "$PR_FILES" ]; then
+        echo "DENY: pr-responder cannot determine PR diff (no commits ahead of main). Cannot modify $FILE"; exit 0
+      fi
+      # Resolve to repo-relative path for comparison
+      REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
+      REL_FILE="${FILE#$REPO_ROOT/}"
+      if ! echo "$PR_FILES" | grep -qxF "$REL_FILE"; then
+        echo "DENY: pr-responder can only modify files in the PR diff. $REL_FILE is not in the diff."
+        exit 0
+      fi
       ;;
   esac
 fi
