@@ -47,7 +47,7 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `wait_for` | has_value | fail | Counter value after tap | BUG-006: has_value requires element ID, which fails for SwiftUI elements. Cannot test the has_value logic itself. Text-based workaround (wait_for text 'Count: N' after tap) works because tap updates synchronously before wait_for starts polling. |
 | `batch` | — | pass | Sequence of ping + screen, tap + look | Executes array of commands sequentially, returns all responses. Tested: (1) ping+screen returns 2 responses with correct data. (2) tap+look returns tap result then screen state. (3) Empty array returns {executed:0, errors:0, responses:[]}. (4) Missing commands param returns proper error. |
 | `navigate` | tab | pass | 3-tab TabView (Controls, List, Misc) |  |
-| `navigate` | deeplink | blocked | NEEDS: URL scheme + routes | Returns 'Deep links are not available — no URL scheme configured'. Generic mode apps have no adapter deeplinkScheme. Cannot test without app adapter. |
+| `navigate` | deeplink | pass | Tab deep links (controls, list, misc) | URL scheme auto-detected from Info.plist. peppertest://controls, peppertest://list, peppertest://misc switch tabs via onOpenURL. Other routes show generic DeeplinkView modal. |
 | `navigate` | pop | fail | Detail nav stack (pushed via Item 0 tap) | BUG-001 (same root cause): Returns 'Already at root of navigation stack' even when on a pushed SwiftUI NavigationStack detail view. screen shows can_go_back=false despite detail being visible. SwiftUI NavigationStack state not detectable through UIKit. |
 | `navigate` | dismiss | fail | Sheet from Show Sheet button | BUG-008: Returns 'Already at root of navigation stack' even when SwiftUI .sheet() is presented. screen correctly shows is_modal=true, screen_id=presentation, but dismiss logic doesn't detect it. GH #40. |
 | `deeplinks` | — | pass | Any state (generic mode) | Returns {count:0, deeplinks:[], note:'No deep links configured...'} in generic mode. Command works correctly; no adapter configured so no deeplinks available. |
@@ -72,6 +72,15 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `network` | status | pass | Any state | Returns active, buffer_size, buffer_count, total_recorded. All fields accurate across start/stop/clear lifecycle. |
 | `network` | log | pass | After start + Fetch HTTP button | Returns {count:N, transactions:[...]}. Each transaction has request (method, url, headers), response (status_code, headers, body, content_length), timing, and id. Captured GET https://httpbin.org/json → 200 with full JSON body. Limit param works correctly. |
 | `network` | clear | pass | After log capture | Returns {cleared:true}. Verified buffer_count drops to 0 after clear, total_recorded preserved. |
+| `network` | simulate | untested |  |  |
+| `network` | conditions | untested |  |  |
+| `network` | remove_condition | untested |  |  |
+| `network` | clear_conditions | untested |  |  |
+| `network` | latency | untested |  |  |
+| `network` | fail_status | untested |  |  |
+| `network` | fail_error | untested |  |  |
+| `network` | throttle | untested |  |  |
+| `network` | offline | untested |  |  |
 | `test` | start | pass | Any state | Starts test session with test_id. Returns {test_id, status:'started'}. Missing test_id returns proper error. |
 | `test` | result | pass | After start | Records test result. Tested: result with test_id='task024', status='pass', notes='All good'. Returns {test_id, timestamp, status:'pass'}. |
 | `test` | reset | pass | After result | Resets test state. Returns {reset:true}. Works both with and without active test session. |
@@ -164,19 +173,37 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `timeline` | status | pass | Any state | Returns recording, buffer_size, buffer_count, total_recorded, enabled_types. Always-on flight recorder starts automatically. Default enabled_types: network, screen, command, console. |
 | `timeline` | config | pass | Any state | Accepts buffer_size, recording (bool), enabled_types params. Tested: buffer_size 2000→5000 (verified via subsequent status). recording=false pauses recording. Note: config response returns pre-update values due to async barrier dispatch — subsequent status shows correct values. |
 | `timeline` | clear | pass | Any state | Returns {cleared:true}. Verified buffer_count drops to 0 after clear. total_recorded preserved (historical count). Error case: unknown action returns proper error listing available actions. |
+| `responder_chain` | — | untested | Any interactive element | New command. Dumps gesture recognizer stack, responder chain, and hit-test path for a given point or element. |
+| `notifications` | start | untested |  |  |
+| `notifications` | stop | untested |  |  |
+| `notifications` | status | untested |  |  |
+| `notifications` | list | untested |  |  |
+| `notifications` | counts | untested |  |  |
+| `notifications` | post | untested |  |  |
+| `notifications` | events | untested |  |  |
+| `notifications` | clear | untested |  |  |
+| `snapshot` | save | untested | Any state | New command. Captures current look/introspect map output as a named baseline for later diffing. |
+| `snapshot` | diff | untested | After snapshot save | New command. Compares current screen state against saved snapshot. Returns added/removed/changed elements and text. Supports ignore_transient and assert_no_diff. |
+| `snapshot` | list | untested | Any state | New command. Lists all saved snapshot names. |
+| `snapshot` | delete | untested | After snapshot save | New command. Deletes a saved snapshot by name. |
+| `snapshot` | clear | untested | After snapshot save | New command. Deletes all saved snapshots. |
+| `undo` | list | untested |  |  |
+| `undo` | status | untested |  |  |
+| `undo` | undo | untested |  |  |
+| `undo` | redo | untested |  |  |
+| `accessibility_audit` | — | untested | Any state |  |
 
 ## Summary
 
-**142 test points** across 49 commands.
+**170 test points** across 54 commands.
 
-- pass: 127
+- pass: 128
 - fail: 11
-- untested: 1
+- untested: 29
 
 ## Test App Gaps
 
 Commands that need test app changes before they can be tested:
 
-- `navigate` deeplink — URL scheme + routes
 - `gesture` rotate — rotation gesture on a view
 

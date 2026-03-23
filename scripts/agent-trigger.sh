@@ -7,8 +7,6 @@
 #   ./scripts/agent-trigger.sh pr-opened        # new PR → pr-verifier
 #   ./scripts/agent-trigger.sh pr-reviewed      # review comment → pr-responder
 #   ./scripts/agent-trigger.sh push-to-main     # code merged → tester (if coverage gaps)
-#
-# Heartbeat agents (tester, builder, researcher) use agent-heartbeat.sh
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"
