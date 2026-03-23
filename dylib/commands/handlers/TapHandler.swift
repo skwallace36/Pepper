@@ -290,9 +290,10 @@ struct TapHandler: PepperHandler {
             }
         }
 
-        // Nothing found in any window — report error from key window resolution
+        // Nothing found in any window — report enriched error with on-screen suggestions
         let (_, errorMsg) = PepperElementResolver.resolve(params: command.params, in: keyWindow)
-        return .error(id: command.id, message: errorMsg ?? "Element not found")
+        let query = command.params?["text"]?.stringValue ?? command.params?["element"]?.stringValue
+        return .elementNotFound(id: command.id, message: errorMsg ?? "Element not found", query: query)
     }
 
     private func executeTap(

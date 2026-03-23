@@ -76,7 +76,16 @@ struct WaitHandler: PepperHandler {
             }
 
             handler.logger.warning("Wait timed out after \(timeoutMs)ms")
-            pollResult = .error(id: command.id, message: "Timeout after \(timeoutMs)ms")
+            var found: [String] = []
+            DispatchQueue.main.sync {
+                found = PepperElementSuggestions.nearbyLabels(maxResults: 5)
+            }
+            var data: [String: AnyCodable] = ["message": AnyCodable("Timeout after \(timeoutMs)ms")]
+            if !found.isEmpty {
+                data["found"] = AnyCodable(found.map { AnyCodable($0) })
+            }
+            data["suggestion"] = AnyCodable("Try `look` to see current screen state")
+            pollResult = PepperResponse(id: command.id, status: .error, data: data)
             group.leave()
         }
 
