@@ -286,6 +286,14 @@ if [ -n "$CLAIMED_SIM" ]; then
     xcrun simctl boot "$CLAIMED_SIM" 2>/dev/null || true
     sleep 3
   fi
+
+  # Pre-grant permissions so system dialogs never block agents.
+  # Fresh simctl install resets permissions; these grants prevent the
+  # out-of-process SpringBoard dialogs that auto-dismiss can't handle (BUG-307).
+  BUNDLE_ID="${APP_BUNDLE_ID:-com.pepper.PepperTestApp}"
+  for _perm in location-always camera microphone photos contacts reminders; do
+    xcrun simctl privacy "$CLAIMED_SIM" grant "$_perm" "$BUNDLE_ID" 2>/dev/null || true
+  done
 fi
 
 # Agent git identity — agents commit as themselves, not as the user
