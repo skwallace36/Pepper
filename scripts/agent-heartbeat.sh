@@ -17,7 +17,7 @@ PIDFILE="build/logs/heartbeat.pid"
 EVENTS="$REPO_ROOT/build/logs/events.jsonl"
 INTERVAL=120
 BACKOFF_THRESHOLD=3   # consecutive failures before backing off
-BACKOFF_CYCLES=2      # cycles to skip (2 * 120s = 4 min)
+BACKOFF_CYCLES=5      # cycles to skip (5 * 120s = 10 min)
 
 mkdir -p build/logs
 
