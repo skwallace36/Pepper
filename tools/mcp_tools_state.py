@@ -185,3 +185,32 @@ def register_state_tools(mcp, resolve_and_send):
         if max_length is not None:
             params["max_length"] = max_length
         return await resolve_and_send(simulator, "sandbox", params)
+
+    @mcp.tool()
+    async def storage(
+        simulator: str | None = Field(default=None, description="Simulator UDID"),
+        action: str = Field(default="summary", description="Action: summary, coredata, clear"),
+        entity: str | None = Field(default=None, description="Core Data entity name (for coredata detail or clear coredata)"),
+        type: str | None = Field(default=None, description="Storage type to clear: defaults, keychain, coredata (for clear action)"),
+        limit: int | None = Field(default=None, description="Max rows to return (for coredata, default 50)"),
+    ) -> str:
+        """Unified persistence inspector — view UserDefaults, Keychain, and Core Data in one place.
+
+        Actions:
+        - summary: overview of all storage layers (key counts, Core Data entities and rows)
+        - coredata: list Core Data entities and row counts, or pass entity name to see rows
+        - clear: reset a storage layer (pass type=defaults/keychain/coredata)
+
+        For direct UserDefaults or Keychain access, use the dedicated `defaults` and `keychain`
+        tools which have full read/write support.
+
+        Related tools: defaults (UserDefaults read/write), keychain (credential management),
+        cookies (HTTP cookies)."""
+        params: dict = {"action": action}
+        if entity:
+            params["entity"] = entity
+        if type:
+            params["type"] = type
+        if limit is not None:
+            params["limit"] = limit
+        return await resolve_and_send(simulator, "storage", params)
