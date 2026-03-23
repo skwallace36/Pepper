@@ -256,6 +256,7 @@ final class PepperDispatcher {
         register(DiffHandler())
         register(UndoHandler())
         register(AccessibilityAuditHandler())
+        register(AccessibilityActionHandler())
         register(RendersHandler())
         register(ConstraintsHandler())
         register(SandboxHandler())
