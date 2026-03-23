@@ -250,6 +250,7 @@ final class PepperDispatcher {
         register(HookHandler())
         register(TimelineHandler())
         register(ResponderChainHandler())
+        register(NotificationsHandler())
     }
 }
 

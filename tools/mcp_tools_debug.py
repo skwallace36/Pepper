@@ -1,9 +1,10 @@
 """Debug and introspection tool definitions for Pepper MCP.
 
 Tool definitions for: layers, console, network, timeline, crash_log,
-animations, lifecycle, heap, responder_chain.
+animations, lifecycle, heap, responder_chain, notifications.
 """
 
+import json
 import os
 import time
 from typing import Optional
@@ -256,3 +257,43 @@ def register_debug_tools(mcp, resolve_and_send):
         if text:
             params["text"] = text
         return await resolve_and_send(simulator, "responder_chain", params)
+
+    @mcp.tool()
+    async def notifications(
+        simulator: Optional[str] = Field(default=None, description="Simulator UDID"),
+        action: str = Field(description="Action: start, stop, list, counts, post, events, status, clear"),
+        name: Optional[str] = Field(default=None, description="Notification name to post (for 'post' action)"),
+        filter_text: Optional[str] = Field(default=None, description="Filter observers/events by notification name or class pattern"),
+        user_info: Optional[str] = Field(default=None, description="JSON string of userInfo dict to include when posting (for 'post' action)"),
+        limit: Optional[int] = Field(default=None, description="Max results to return (for list/events actions)"),
+    ) -> str:
+        """Inspect NSNotificationCenter observers and post arbitrary notifications.
+
+        Start tracking first, then list/count observers. Useful for debugging
+        'why didn't my view update?' — see what's observing what, detect leaked
+        observers (growing counts), and trigger behavior by posting test notifications.
+
+        Workflow: start → use the app → list/counts to see registrations → post to test.
+
+        Actions:
+        - start: begin tracking observer add/remove (installs swizzles)
+        - stop: stop tracking
+        - list: show tracked observers, optionally filtered by name/class pattern
+        - counts: observer counts grouped by notification name (detect leaks)
+        - post: fire a notification (provide name, optional user_info as JSON)
+        - events: chronological add/remove history
+        - status: check if tracking is active
+        - clear: reset all tracked data"""
+        params = {"action": action}
+        if name:
+            params["name"] = name
+        if filter_text:
+            params["filter"] = filter_text
+        if user_info:
+            try:
+                params["user_info"] = json.loads(user_info)
+            except json.JSONDecodeError:
+                return "Error: user_info must be valid JSON"
+        if limit is not None:
+            params["limit"] = limit
+        return await resolve_and_send(simulator, "notifications", params)
