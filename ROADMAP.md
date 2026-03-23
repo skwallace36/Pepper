@@ -13,55 +13,84 @@ Pepper is the only in-process iOS runtime inspector exposed via MCP. A dylib inj
 
 Every other tool in this space (mobile-mcp, Appium MCP, ios-simulator-mcp, Maestro) operates externally via accessibility APIs or screenshots. Pepper runs *inside* the app, providing deep access to heap, network, console, keychain, layers, lifecycle, and 40+ other capabilities that no competitor can match.
 
-A purpose-built test app (`test-app/`, bundle ID `com.pepper.testapp`) exists for testing Pepper against generic SwiftUI/UIKit patterns. First test run (2026-03-21) surfaced 3 bugs (see GitHub Issues). Agent system is operational (2026-03-22) — 6 agent types, all validated.
+**As of 2026-03-23:** 128 PRs merged, all known bugs fixed, agent system operational with 8 agent types (builder, bugfix, tester, pr-verifier, pr-responder, conflict-resolver, groomer, researcher). Agents run autonomously via heartbeat supervisor, auto-merge safe PRs, and self-improve their own infrastructure.
 
 ## Priorities
 
-### P1: Fix known bugs
-All bugs tracked in GitHub Issues (`gh issue list --label bug`). Agent-addressable. PRs open for all 3.
+### P1: Packaging & distribution — make it real
+README with animated demo + 3-step install + architecture diagram. Homebrew tap for one-command install. MCP directory listings. This is what makes Pepper a portfolio piece vs a side project.
 
-### P2: Complete test app coverage
-Run every Pepper command against the test app. 132 untested command variants. Tracked as GitHub Issues. Will surface more bugs.
+- #79 README with demo, install, architecture
+- #80 Homebrew tap
+- #82 Demo video (60s showing Claude Code + Pepper)
 
-### P3: Modularize `tools/` and clean up `pepper-mcp`
+### P2: Review and merge agent-built features
+Agents built a wave of new capabilities overnight. They need human review, sim testing, and merge. 8 PRs open:
 
-`pepper-mcp` is a 2865-line monolith. Split into logical modules, extract shared code (`discover_port`, `load_env`, `format_look`) used by pepper-ctl/pepper-stream/test-client into a common library, and clean up the tools directory (inconsistent error handling, hardcoded paths, broad exception swallowing). Tracked as GitHub Issues.
+- #247 macOS Accessibility dialog dismissal (system prompts fix)
+- #244 Frame performance profiler (CADisplayLink)
+- #245 Network mock/stub
+- #246 Unified storage inspector
+- #254 FPS/hitch detection
+- #255 In-process screenshot capture
+- #257 Timer & RunLoop inspector
 
-### P4: CI/CD integration
-GitHub Actions workflow that boots a simulator, injects Pepper, runs tests, and reports results. Proves the tool works end-to-end without anyone trusting your word for it. `DYLD_INSERT_LIBRARIES` works as-is on macOS runners — main gaps are a health check command, workflow template, and JUnit/JSON result export. Tracked as GitHub Issues.
+### P3: System dialog handling
+Permission dialogs still block agent sim testing. The notification swizzle (#200) is merged. Need swizzles for ATTrackingManager, camera, contacts, calendar, location. #220 is closed (agent attempted) but the fix needs verification.
 
-### P5: Device support
-Extend Pepper from simulator-only to real iOS devices via build-time framework embedding (xcframework). The WebSocket server already uses Network.framework (works on device). Needs xcframework packaging, Bonjour/local network configuration, and a non-simulator port resolution path. No one else in this space works on devices either. Tracked as GitHub Issues.
+### P4: Real-world app testing
+Test Pepper against real apps — Wikipedia (#208 merged setup), Ice Cubes (#209 merged setup). Validates that Pepper works beyond the purpose-built test app. This is what proves it to employers.
 
-### P6: Packaging & distribution
-README with animated demo + 3-step install + architecture diagram. Homebrew tap for installation. Listings on MCP directories (mcp.so, awesome-mcp-servers, Cline marketplace, official MCP registry, Glama, PulseMCP). Tracked as GitHub Issues.
+### P5: Test coverage completion
+A few stragglers remain:
+- #139 Re-verify 11 failing tests against bug fixes
+- #140 Test dialog.detect_system
+- #142 Add icon assets for tap.icon_name
+- #145 Rotation gesture view
+- #146 Update ROADMAP P2 status
 
-### P7: Generic mode cleanup
-Running without an adapter exposed build failures and app-specific assumptions. Tracked as GitHub Issues.
+### P6: CI/CD
+GitHub Actions minutes exhausted. CI is manual-only (`workflow_dispatch`). Options:
+- Wait for monthly reset
+- Self-hosted runner on this Mac
+- Lighter CI that doesn't need macOS runners
 
-### P8: Real-world app testing
-After the test app is green, inject into Wikipedia, Ice Cubes, etc. to pressure-test against real UIs.
+Issues: #71 (workflow template), #72 (test script)
 
-### P9: New capabilities
-Accessibility audit, touch failure debugging, layout inspector, performance profiling, in-process view capture. Tracked as GitHub Issues.
+### P7: SwiftUI render tracking
+Agents built phases 1-3. PRs need review and merge. Phase 4 (AttributeGraph) is research-grade. This is a signature capability — no other tool can do runtime render tracking from a dylib.
 
-### P10: Agent context optimization
-Measured 2026-03-22: 30% of file reads are duplicates (~85KB wasted across 10 sessions). Builder reads COVERAGE.md (33KB) and coverage-status.json (17KB) every run. Tester sessions with 300+ `look` calls accumulate stale screen state that never leaves context — unmeasured but likely the biggest rot source. Specific opportunities:
-- **Read-dedup hook**: PreToolUse hook that blocks re-reads of files already in the session. Cheap, high impact.
-- **Tighter prompts**: Tell agents exactly what to read instead of letting them explore. Builder doesn't need full COVERAGE.md.
-- **MCP response trimming**: Slim `look` output for agents (omit coordinates, collapse unchanged regions). Needs measurement from tester runs first.
-- **Model selection**: Haiku for pr-responder/researcher, Sonnet for builder/tester, Opus for bugfix only.
-- **Pre-assembled context**: Runner injects task-specific context (PR diff, issue body, relevant files) so agents don't explore.
+### P8: Generic mode cleanup
+#97 — audit core code for app-specific assumptions. Low priority now that test app + Wikipedia + Ice Cubes testing exists.
+
+### P9: Device support
+Agents built xcframework packaging and Bonjour discovery (merged). Remaining: actual on-device testing, non-simulator port resolution. No competitor works on devices either.
+
+### P10: Agent system refinement
+The system works but has rough edges:
+- Verifier too conservative with `needs-approval` — prompt needs tuning
+- Stale `in-progress` claims still accumulate (improved but not eliminated)
+- Context optimization (P11 from old roadmap): read-dedup, slimmer `look` responses, pre-assembled context
 
 ### P11: Android port (deferred)
-Not pursuing yet. A premature platform abstraction layer (~1,500 lines of unused protocols/wrappers) was built and deleted — zero handler migration completed. When Android is actually on the table, design the abstraction with real Android constraints in hand. Research plan in `docs/plans/ANDROID-PORT.md`. Related GitHub Issues closed as not-planned.
+Not pursuing. Focus is iOS quality and packaging first.
 
 ## Done
 
-- [x] Test app scaffolded and building (`test-app/PepperTestApp`) *(2026-03-21)*
+- [x] Test app scaffolded and building *(2026-03-21)*
 - [x] Pepper builds and injects into test app in generic mode *(2026-03-21)*
-- [x] First test run — `look`, `tap`, `scroll`, `heap`, `screen`, `console start`, timer all work *(2026-03-21)*
-- [x] Agent system operational — runner, monitor, hooks, guardrails, 6 agent types *(2026-03-22)*
+- [x] First test run — look, tap, scroll, heap, screen, console all work *(2026-03-21)*
+- [x] Agent system operational — 8 agent types, heartbeat supervisor *(2026-03-22)*
+- [x] All known bugs fixed (BUG-001 through BUG-011, heap SIGSEGV, dismiss race, etc.) *(2026-03-23)*
+- [x] 128 PRs merged via autonomous agent pipeline *(2026-03-23)*
+- [x] Agent auto-merge with guardrails (LGTM flow, needs-approval gate) *(2026-03-23)*
+- [x] Agent self-improvement: retry backoff, sim health check, conflict resolver, stale claim cleanup *(2026-03-23)*
+- [x] Sonnet routing for cheaper agents, session summaries, context tracking *(2026-03-23)*
+- [x] Notification authorization swizzle (.current() lazy reinforcement) *(2026-03-23)*
+- [x] SwiftLint, swift-format, ruff, pyright, warnings-as-errors — code quality tooling *(2026-03-23)*
+- [x] MCP modularization cleanup *(2026-03-23)*
+- [x] Wikipedia + Ice Cubes test infrastructure *(2026-03-23)*
+- [x] Device support: xcframework packaging, Bonjour discovery *(2026-03-23)*
 
 ---
 
