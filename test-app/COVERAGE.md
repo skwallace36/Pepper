@@ -107,7 +107,7 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `scroll_to` | right | pass | Misc tab horizontal scroll (15 items) | Horizontal ScrollView available for right-direction scroll_to validation |
 | `dismiss_keyboard` | — | pass | Focus TextField then dismiss | Returns {dismissed:true} in all cases. Tested: (1) no keyboard showing — returns dismissed:true (no-op). (2) After input command focuses text_field — keyboard active, dismiss_keyboard dismisses it. No error cases. |
 | `gesture` | pinch | pass | Misc tab | Executes pinch gesture at point. Returns {gesture:'pinch', start_distance:200, end_distance:50, center}. Scale parameter controls zoom. Command injects multi-touch HID events correctly. |
-| `gesture` | rotate | blocked | NEEDS: rotation gesture on a view | No rotation gesture recognizer in test app. Cannot verify rotation gesture injection without a target view. |
+| `gesture` | rotate | pass | Misc tab – Rotation Gesture GroupBox | UIRotationGestureRecognizer on RotatableView. Rotates a hex shape and displays cumulative angle in degrees (rotation_angle label). gesture.rotate injects HID rotation events; angle label updates on each gesture change. |
 | `memory` | snapshot | pass | Any state | Returns {timestamp_ms, virtual_mb, footprint_mb, resident_mb}. Tested: resident_mb=586.3, footprint_mb=205.07. Provides process-level memory snapshot via task_info. |
 | `memory` | vm | pass | Any state | Returns {timestamp_ms, phys_footprint_mb, internal_mb, compressed_mb, purgeable_mb}. Tested: phys_footprint_mb=205.1, internal_mb=157, compressed_mb=44.52. More granular VM region breakdown. |
 | `orientation` | portrait | pass | Any state | Returns {orientation:'portrait', is_portrait:true, is_landscape:false}. Command accepted, notification posted. Query-only (no value param) also works. |
@@ -205,6 +205,9 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `accessibility_action` | magic_tap | untested |  |  |
 | `accessibility_action` | increment | untested |  |  |
 | `accessibility_action` | decrement | untested |  |  |
+| `renders` | start | untested |  |  |
+| `renders` | stop | untested |  |  |
+| `renders` | counts | untested |  |  |
 | `renders` | snapshot | untested |  |  |
 | `renders` | diff | untested |  |  |
 | `renders` | reset | untested |  |  |
@@ -237,18 +240,18 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `perf` | stop | untested |  |  |
 | `perf` | mark | untested |  |  |
 | `perf` | status | untested |  |  |
+| `screenshot` | — | untested |  |  |
+| `storage` | summary | untested |  |  |
+| `storage` | coredata | untested |  |  |
+| `storage` | clear | untested |  |  |
+| `storage` | defaults | untested |  |  |
+| `storage` | keychain | untested |  |  |
 
 ## Summary
 
-**215 test points** across 62 commands.
+**224 test points** across 64 commands.
 
-- pass: 136
+- pass: 137
 - fail: 3
-- untested: 74
-
-## Test App Gaps
-
-Commands that need test app changes before they can be tested:
-
-- `gesture` rotate — rotation gesture on a view
+- untested: 83
 
