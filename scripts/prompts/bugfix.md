@@ -7,7 +7,10 @@ THEN:
    ```
    gh issue list --repo skwallace36/Pepper --label bug --state open --json number,title,body
    ```
-3. Pick the first open issue. Check if a branch already exists: `git ls-remote --heads origin agent/bugfix/BUG-NNN`. If it exists, skip to the next issue. If all are claimed, exit with no changes.
+3. Pick the first open issue. Before starting work, check for duplicates:
+   - Branch check: `git ls-remote --heads origin agent/bugfix/BUG-NNN`. If it exists, skip to the next issue.
+   - PR check: `gh pr list --repo skwallace36/Pepper --state open --search "Fixes #NNN" --json number --jq 'length'`. If this returns a non-zero count, an open PR already targets this bug — skip to the next issue.
+   If all issues are claimed or already have PRs, exit with no changes.
 4. **Plan gate check:** If the issue has a `needs-plan` label (check via `gh issue view NNN --repo skwallace36/Pepper --json labels --jq '.labels[].name'`), do NOT implement. Instead:
    a. Read the relevant source code to understand the bug.
    b. Post a comment on the issue with your diagnosis and proposed fix: root cause analysis, what files you'd change, and any risks. End the comment with `— pepper-agent/bugfix`.
