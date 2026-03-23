@@ -230,12 +230,12 @@ print(f'{total:.2f}')
 TYPE_COST_TODAY=$(sum_cost "type")
 TOTAL_COST_TODAY=$(sum_cost "all")
 
-if [ "$(echo "$TYPE_COST_TODAY > 75" | bc)" = "1" ]; then
+if [ "$(echo "$TYPE_COST_TODAY > 150" | bc)" = "1" ]; then
   emit "failed" ",\"detail\":\"daily budget exceeded for ${TYPE}: \$${TYPE_COST_TODAY}\""
-  echo "Daily budget exceeded for ${TYPE}: \$${TYPE_COST_TODAY}/\$75. Skipping."
+  echo "Daily budget exceeded for ${TYPE}: \$${TYPE_COST_TODAY}/\$150. Skipping."
   exit 0
 fi
-if [ "$(echo "$TOTAL_COST_TODAY > 300" | bc)" = "1" ]; then
+if [ "$(echo "$TOTAL_COST_TODAY > 500" | bc)" = "1" ]; then
   emit "failed" ",\"detail\":\"total daily budget exceeded: \$${TOTAL_COST_TODAY}\""
   echo "Total daily budget exceeded: \$${TOTAL_COST_TODAY}/\$300. Skipping."
   exit 0
