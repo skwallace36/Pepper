@@ -84,6 +84,11 @@ final class PepperDialogInterceptor {
         installCaptureDeviceSwizzle()
         installContactsSwizzle()
         installLocationSwizzle()
+
+        // EventKit (calendar/reminders) — must be installed early so swizzles are
+        // in place before didFinishLaunchingWithOptions where apps typically request
+        // calendar access. PepperEventKitInterceptor.install() is idempotent.
+        PepperEventKitInterceptor.shared.install()
     }
 
     /// Re-resolve the UNUserNotificationCenter runtime class and ensure our
@@ -232,7 +237,6 @@ final class PepperDialogInterceptor {
         }
 
         let replacementIMP = method_getImplementation(swizzledMethod)
-        let typeEncoding = method_getTypeEncoding(swizzledMethod)
 
         // 1. Swizzle the base class — always resolvable at constructor time.
         //    This catches calls when no subclass overrides the method.
@@ -244,24 +248,13 @@ final class PepperDialogInterceptor {
         pepperLog.info(
             "Notification authorization auto-grant installed on UNUserNotificationCenter", category: .lifecycle)
 
-        // 2. Also install on the runtime subclass (class cluster pattern).
-        //    UNUserNotificationCenter.current() may return a private subclass
-        //    that overrides requestAuthorization. class_addMethod installs our
-        //    IMP directly on the subclass (no-op if it already has the method),
-        //    then method_setImplementation ensures it points to our replacement
-        //    regardless. This covers both "subclass inherits" and "subclass
-        //    overrides" cases.
-        let instance = UNUserNotificationCenter.current()
-        let runtimeCls: AnyClass = type(of: instance)
-
-        if runtimeCls !== UNUserNotificationCenter.self {
-            class_addMethod(runtimeCls, originalSel, replacementIMP, typeEncoding)
-            if let runtimeMethod = class_getInstanceMethod(runtimeCls, originalSel) {
-                method_setImplementation(runtimeMethod, replacementIMP)
-            }
-            pepperLog.info(
-                "Notification authorization auto-grant installed on runtime class \(runtimeCls)", category: .lifecycle)
-        }
+        // 2. Runtime subclass handling is deferred — calling .current() at
+        //    C constructor time on iOS 26+ triggers a system-level notification
+        //    dialog before the app even launches. Instead, we rely on the
+        //    .current() swizzle (installCurrentNotificationCenterSwizzle) to
+        //    reinforce the auth swizzle on the actual runtime class the first
+        //    time app code resolves .current(). The base class swizzle above
+        //    covers the common case where the subclass inherits the method.
     }
 
     // MARK: - Installation
