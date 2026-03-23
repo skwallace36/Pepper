@@ -1,0 +1,26 @@
+{
+  "suite": "ice-cubes-smoke",
+  "description": "Smoke tests for Pepper injected into Ice Cubes (SwiftUI Mastodon client)",
+  "app": {
+    "bundle_id": "com.thomasricouard.IceCubesApp",
+    "name": "Ice Cubes",
+    "repo": "https://github.com/Dimillian/IceCubesApp"
+  },
+  "tests": [
+    {"name": "server responds to ping", "cmd": "ping"},
+    {"name": "look returns screen map", "cmd": "introspect", "params": {"mode": "map"}},
+    {"name": "tree returns view hierarchy", "cmd": "tree"},
+    {"name": "screen returns display info", "cmd": "screen"},
+    {"name": "status returns app state", "cmd": "status"},
+    {"name": "console returns logs", "cmd": "console"},
+    {"name": "network captures Mastodon API calls", "cmd": "network"},
+    {"name": "lifecycle returns events", "cmd": "lifecycle"},
+    {"name": "layers returns view layers", "cmd": "layers"},
+    {"name": "find locates tab bar", "cmd": "find", "params": {"text": "Home"}},
+    {"name": "scroll timeline down", "cmd": "scroll", "params": {"direction": "down", "amount": 300}},
+    {"name": "scroll timeline up", "cmd": "scroll", "params": {"direction": "up", "amount": 300}},
+    {"name": "heap scan runs without crash", "cmd": "heap", "params": {"query": "Observable"}},
+    {"name": "animations returns state", "cmd": "animations"},
+    {"name": "orientation returns info", "cmd": "orientation"}
+  ]
+}

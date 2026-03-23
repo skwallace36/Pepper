@@ -24,7 +24,8 @@ LOGS_DIR    := $(PROJECT_DIR)/build/logs
 
 .PHONY: help build deploy launch kill relaunch ping check lint \
         logs clean test-client pepper-ctl test-app coverage coverage-check \
-        docs setup ci agent agent-monitor agent-status agent-trigger agents-install agents-uninstall agent-cleanup agents-start agents-stop agent-analyze groom
+        docs setup ci smoke smoke-ice-cubes \
+        agent agent-monitor agent-status agent-trigger agents-install agents-uninstall agent-cleanup agents-start agents-stop agent-analyze groom
 
 # ============================================================
 # Help
@@ -167,6 +168,17 @@ test-deploy: test-app build
 ## ci: Full boot → inject → test → teardown cycle
 ci:
 	@bash "$(PROJECT_DIR)/scripts/ci.sh" $(CI_ARGS)
+
+## smoke: Run smoke tests against any installed app (e.g. make smoke BUNDLE_ID=com.example.app)
+smoke:
+	@bash "$(PROJECT_DIR)/scripts/real-app-smoke.sh" --bundle-id "$(BUNDLE_ID)" $(SMOKE_ARGS)
+
+## smoke-ice-cubes: Run smoke tests against Ice Cubes app
+smoke-ice-cubes:
+	@bash "$(PROJECT_DIR)/scripts/real-app-smoke.sh" \
+		--bundle-id "com.thomasricouard.IceCubesApp" \
+		--suite "$(PROJECT_DIR)/scripts/smoke-ice-cubes.json" \
+		$(SMOKE_ARGS)
 
 # ============================================================
 # Housekeeping
