@@ -46,7 +46,7 @@ elif command -v swiftlint &>/dev/null; then
         fail "SwiftLint violations found"
         echo "$LINT_OUTPUT" | grep "error\|warning" | head -10
     fi
-else
+elif ! command -v swiftlint &>/dev/null; then
     warn "SwiftLint not installed — skipping (brew install swiftlint)"
 fi
 

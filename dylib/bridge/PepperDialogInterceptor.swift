@@ -1,3 +1,7 @@
+import AppTrackingTransparency
+import AVFoundation
+import Contacts
+import CoreLocation
 import Photos
 import UIKit
 import UserNotifications
@@ -76,6 +80,10 @@ final class PepperDialogInterceptor {
         installNotificationSwizzle()
         installCurrentNotificationCenterSwizzle()
         installPhotoLibrarySwizzle()
+        installTrackingSwizzle()
+        installCaptureDeviceSwizzle()
+        installContactsSwizzle()
+        installLocationSwizzle()
     }
 
     /// Re-resolve the UNUserNotificationCenter runtime class and ensure our
@@ -151,6 +159,66 @@ final class PepperDialogInterceptor {
         {
             method_setImplementation(originalMethod, method_getImplementation(swizzledMethod))
             pepperLog.info("Photo library legacy authorization auto-grant installed", category: .lifecycle)
+        }
+    }
+
+    private static func installTrackingSwizzle() {
+        let cls: AnyClass = ATTrackingManager.self
+        let originalSel = NSSelectorFromString("requestTrackingAuthorizationWithCompletionHandler:")
+        let swizzledSel = #selector(ATTrackingManager.pepper_requestTrackingAuthorization(completionHandler:))
+
+        if let originalMethod = class_getClassMethod(cls, originalSel),
+            let swizzledMethod = class_getClassMethod(cls, swizzledSel)
+        {
+            method_setImplementation(originalMethod, method_getImplementation(swizzledMethod))
+            pepperLog.info("ATT authorization auto-grant installed", category: .lifecycle)
+        } else {
+            pepperLog.error("Failed to swizzle ATTrackingManager.requestTrackingAuthorization", category: .lifecycle)
+        }
+    }
+
+    private static func installCaptureDeviceSwizzle() {
+        let cls: AnyClass = AVCaptureDevice.self
+        let originalSel = NSSelectorFromString("requestAccessForMediaType:completionHandler:")
+        let swizzledSel = #selector(AVCaptureDevice.pepper_requestAccess(for:completionHandler:))
+
+        if let originalMethod = class_getClassMethod(cls, originalSel),
+            let swizzledMethod = class_getClassMethod(cls, swizzledSel)
+        {
+            method_setImplementation(originalMethod, method_getImplementation(swizzledMethod))
+            pepperLog.info("Camera/mic authorization auto-grant installed", category: .lifecycle)
+        } else {
+            pepperLog.error("Failed to swizzle AVCaptureDevice.requestAccess(for:completionHandler:)", category: .lifecycle)
+        }
+    }
+
+    private static func installContactsSwizzle() {
+        let cls: AnyClass = CNContactStore.self
+        let originalSel = NSSelectorFromString("requestAccessForEntityType:completionHandler:")
+        let swizzledSel = #selector(CNContactStore.pepper_requestAccess(for:completionHandler:))
+
+        if let originalMethod = class_getInstanceMethod(cls, originalSel),
+            let swizzledMethod = class_getInstanceMethod(cls, swizzledSel)
+        {
+            method_setImplementation(originalMethod, method_getImplementation(swizzledMethod))
+            pepperLog.info("Contacts authorization auto-grant installed", category: .lifecycle)
+        } else {
+            pepperLog.error("Failed to swizzle CNContactStore.requestAccess(for:completionHandler:)", category: .lifecycle)
+        }
+    }
+
+    private static func installLocationSwizzle() {
+        let cls: AnyClass = CLLocationManager.self
+        let originalSel = NSSelectorFromString("requestWhenInUseAuthorization")
+        let swizzledSel = #selector(CLLocationManager.pepper_requestWhenInUseAuthorization)
+
+        if let originalMethod = class_getInstanceMethod(cls, originalSel),
+            let swizzledMethod = class_getInstanceMethod(cls, swizzledSel)
+        {
+            method_setImplementation(originalMethod, method_getImplementation(swizzledMethod))
+            pepperLog.info("Location authorization auto-grant installed", category: .lifecycle)
+        } else {
+            pepperLog.error("Failed to swizzle CLLocationManager.requestWhenInUseAuthorization()", category: .lifecycle)
         }
     }
 
@@ -527,6 +595,55 @@ extension UNUserNotificationCenter {
         // Call completion immediately with granted=true, no error.
         // Skip calling original — that would show the system dialog.
         completionHandler(true, nil)
+    }
+}
+
+// MARK: - ATTrackingManager swizzle
+
+extension ATTrackingManager {
+    /// Swizzled requestTrackingAuthorization — auto-grants .authorized.
+    @objc dynamic class func pepper_requestTrackingAuthorization(
+        completionHandler: @escaping (UInt) -> Void
+    ) {
+        pepperLog.info("ATT authorization auto-granted", category: .commands)
+        completionHandler(ATTrackingManager.AuthorizationStatus.authorized.rawValue)
+    }
+}
+
+// MARK: - AVCaptureDevice swizzle
+
+extension AVCaptureDevice {
+    /// Swizzled requestAccess(for:completionHandler:) — auto-grants camera/mic access.
+    @objc dynamic class func pepper_requestAccess(
+        for mediaType: AVMediaType,
+        completionHandler: @escaping (Bool) -> Void
+    ) {
+        pepperLog.info("Camera/mic authorization auto-granted (type: \(mediaType.rawValue))", category: .commands)
+        completionHandler(true)
+    }
+}
+
+// MARK: - CNContactStore swizzle
+
+extension CNContactStore {
+    /// Swizzled requestAccess(for:completionHandler:) — auto-grants contacts access.
+    @objc dynamic func pepper_requestAccess(
+        for entityType: CNEntityType,
+        completionHandler: @escaping (Bool, Error?) -> Void
+    ) {
+        pepperLog.info(
+            "Contacts authorization auto-granted (entity: \(entityType.rawValue))", category: .commands)
+        completionHandler(true, nil)
+    }
+}
+
+// MARK: - CLLocationManager swizzle
+
+extension CLLocationManager {
+    /// Swizzled requestWhenInUseAuthorization — suppresses system dialog.
+    @objc dynamic func pepper_requestWhenInUseAuthorization() {
+        pepperLog.info("Location authorization dialog suppressed", category: .commands)
+        // No-op — skip the system dialog that would block the agent.
     }
 }
 
