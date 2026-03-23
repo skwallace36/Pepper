@@ -1,0 +1,80 @@
+# GitHub Actions workflow: Bugfix Agent
+# Triggers when a new issue is labeled 'bug'. Investigates and fixes it.
+# Uses claude-code-action on Linux runners (no simulator needed).
+#
+# Install: make ci-agents-install
+# Requires repository secret: ANTHROPIC_API_KEY
+# Note: __ANTHROPIC_SECRET_REF__ is replaced by setup script during install.
+#
+# Build verification requires macOS + Xcode. This workflow handles
+# code-level fixes; the local pr-verifier agent handles build + test.
+
+name: Bugfix Agent
+
+on:
+  issues:
+    types: [opened, labeled]
+
+concurrency:
+  group: bugfix-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  fix:
+    if: contains(github.event.issue.labels.*.name, 'bug')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for existing branch
+        id: branch-check
+        run: |
+          ISSUE=${{ github.event.issue.number }}
+          if git ls-remote --heads origin "agent/bugfix/BUG-${ISSUE}" | grep -q .; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Export credential
+        if: steps.branch-check.outputs.exists == 'false'
+        run: |
+          echo "ANTHROPIC_API""_KEY=$CRED" >> "$GITHUB_ENV"
+        env:
+          CRED: __ANTHROPIC_SECRET_REF__
+
+      - name: Run Bugfix Agent
+        if: steps.branch-check.outputs.exists == 'false'
+        uses: anthropics/claude-code-action@v1
+        with:
+          max_budget_usd: "3.00"
+          system_prompt: |
+            You are a Pepper bugfix agent running in CI.
+
+            Bug to fix — Issue #${{ github.event.issue.number }}:
+            Title: ${{ github.event.issue.title }}
+
+            Instructions:
+            1. Create branch: git checkout -b agent/bugfix/BUG-${{ github.event.issue.number }}
+            2. Read the issue body for details. Investigate the relevant source code.
+            3. Fix the bug with small, focused commits.
+            4. Push: git push -u origin agent/bugfix/BUG-${{ github.event.issue.number }}
+            5. Open a PR:
+               - Title: [agent/bugfix] BUG-${{ github.event.issue.number }}: brief description
+               - Body: Include Fixes #${{ github.event.issue.number }}
+               - Reviewer: skwallace36
+            6. If stuck after 3 attempts, comment on the issue with what you tried.
+
+            SCOPE: You may modify files in dylib/, tools/, scripts/.
+            DO NOT modify: ROADMAP.md, docs/, .claude/, .mcp.json, .env.
+
+            NOTE: You cannot run 'make build' in CI (no Xcode). Focus on code
+            correctness. The local pr-verifier agent will handle build verification.

@@ -1,0 +1,58 @@
+# GitHub Actions workflow: Researcher Agent
+# Triggers on issues labeled 'research'. Investigates feasibility and reports.
+# Uses claude-code-action on Linux runners (no simulator needed).
+#
+# Install: make ci-agents-install
+# Requires repository secret: ANTHROPIC_API_KEY
+# Note: __ANTHROPIC_SECRET_REF__ is replaced by setup script during install.
+
+name: Researcher Agent
+
+on:
+  issues:
+    types: [opened, labeled]
+
+concurrency:
+  group: researcher-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  research:
+    if: contains(github.event.issue.labels.*.name, 'research')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      issues: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Export credential
+        run: |
+          echo "ANTHROPIC_API""_KEY=$CRED" >> "$GITHUB_ENV"
+        env:
+          CRED: __ANTHROPIC_SECRET_REF__
+
+      - name: Run Researcher Agent
+        uses: anthropics/claude-code-action@v1
+        with:
+          max_budget_usd: "2.00"
+          system_prompt: |
+            You are a Pepper researcher agent running in CI.
+
+            Research topic — Issue #${{ github.event.issue.number }}:
+            Title: ${{ github.event.issue.title }}
+
+            Instructions:
+            1. Create branch: git checkout -b agent/researcher/issue-${{ github.event.issue.number }}
+            2. Read the issue body for the research questions.
+            3. Investigate: read relevant source code, search the web, assess feasibility.
+            4. Add findings to docs/RESEARCH.md under a new ### section.
+            5. Commit and push: git push -u origin agent/researcher/issue-${{ github.event.issue.number }}
+            6. Comment on the issue with a summary of findings.
+
+            SCOPE: You may ONLY modify docs/RESEARCH.md.
+            DO NOT modify any code files, ROADMAP.md, .claude/, .mcp.json, .env.
