@@ -64,6 +64,8 @@ final class PepperWindowMonitor {
         PepperPlane.shared.broadcast(event)
 
         pepperLog.info("System dialog suspected — key window resigned with no app-side modal", category: .commands)
+
+        scheduleAutoDismiss()
     }
 
     @objc private func windowDidBecomeKey(_ notification: Notification) {
