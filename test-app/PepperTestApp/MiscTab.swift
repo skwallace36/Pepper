@@ -121,7 +121,7 @@ struct MiscTab: View {
 
                 // MARK: - Web View (with cookie)
                 GroupBox("Web View") {
-                    CookieWebView(url: URL(string: "https://example.com")!)
+                    CookieWebView(url: URL(string: "https://example.com") ?? URL(fileURLWithPath: "/"))
                         .frame(height: 200)
                         .clipShape(RoundedRectangle(cornerRadius: 8))
                         .accessibilityIdentifier("web_view")
@@ -240,15 +240,32 @@ struct RotatableView: UIViewRepresentable {
         container.backgroundColor = .systemTeal.withAlphaComponent(0.2)
         container.layer.cornerRadius = 12
 
-        let label = UILabel()
-        label.text = "Rotate Me"
-        label.textAlignment = .center
-        label.translatesAutoresizingMaskIntoConstraints = false
-        container.addSubview(label)
+        let shapeLabel = UILabel()
+        shapeLabel.text = "⬡"
+        shapeLabel.font = .systemFont(ofSize: 36)
+        shapeLabel.textAlignment = .center
+        shapeLabel.translatesAutoresizingMaskIntoConstraints = false
+        shapeLabel.accessibilityIdentifier = "rotation_shape"
+        container.addSubview(shapeLabel)
+
+        let angleLabel = UILabel()
+        angleLabel.text = "0°"
+        angleLabel.font = .monospacedDigitSystemFont(ofSize: 13, weight: .regular)
+        angleLabel.textColor = .secondaryLabel
+        angleLabel.textAlignment = .center
+        angleLabel.translatesAutoresizingMaskIntoConstraints = false
+        angleLabel.accessibilityIdentifier = "rotation_angle"
+        container.addSubview(angleLabel)
+
         NSLayoutConstraint.activate([
-            label.centerXAnchor.constraint(equalTo: container.centerXAnchor),
-            label.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            shapeLabel.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+            shapeLabel.centerYAnchor.constraint(equalTo: container.centerYAnchor, constant: -10),
+            angleLabel.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+            angleLabel.topAnchor.constraint(equalTo: shapeLabel.bottomAnchor, constant: 4),
         ])
+
+        context.coordinator.shapeLabel = shapeLabel
+        context.coordinator.angleLabel = angleLabel
 
         let rotationGesture = UIRotationGestureRecognizer(
             target: context.coordinator, action: #selector(Coordinator.handleRotation(_:))
@@ -264,11 +281,18 @@ struct RotatableView: UIViewRepresentable {
     func makeCoordinator() -> Coordinator { Coordinator() }
 
     class Coordinator: NSObject {
+        weak var shapeLabel: UILabel?
+        weak var angleLabel: UILabel?
+        private var cumulativeAngle: CGFloat = 0
+
         @objc func handleRotation(_ gesture: UIRotationGestureRecognizer) {
-            guard let view = gesture.view else { return }
-            view.transform = view.transform.rotated(by: gesture.rotation)
+            guard let shape = shapeLabel else { return }
+            cumulativeAngle += gesture.rotation
+            shape.transform = CGAffineTransform(rotationAngle: cumulativeAngle)
+            let degrees = Int((cumulativeAngle * 180 / .pi).truncatingRemainder(dividingBy: 360))
+            angleLabel?.text = "\(degrees)°"
             gesture.rotation = 0
-            print("[PepperTest] Rotation gesture: \(view.transform)")
+            print("[PepperTest] Rotation: \(degrees)°")
         }
     }
 }
@@ -283,15 +307,18 @@ struct CookieWebView: UIViewRepresentable {
         let webView = WKWebView(frame: .zero, configuration: config)
 
         // Seed a test cookie
-        let cookie = HTTPCookie(properties: [
+        if let cookie = HTTPCookie(properties: [
             .name: "pepper_session",
             .value: "test-session-abc123",
             .domain: "example.com",
             .path: "/",
             .expires: Date().addingTimeInterval(86400),
-        ])!
-        webView.configuration.websiteDataStore.httpCookieStore.setCookie(cookie) {
-            print("[PepperTest] Cookie seeded: pepper_session")
+        ]) {
+            webView.configuration.websiteDataStore.httpCookieStore.setCookie(cookie) {
+                print("[PepperTest] Cookie seeded: pepper_session")
+                webView.load(URLRequest(url: self.url))
+            }
+        } else {
             webView.load(URLRequest(url: self.url))
         }
 
