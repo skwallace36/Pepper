@@ -72,6 +72,15 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `network` | status | pass | Any state | Returns active, buffer_size, buffer_count, total_recorded. All fields accurate across start/stop/clear lifecycle. |
 | `network` | log | pass | After start + Fetch HTTP button | Returns {count:N, transactions:[...]}. Each transaction has request (method, url, headers), response (status_code, headers, body, content_length), timing, and id. Captured GET https://httpbin.org/json → 200 with full JSON body. Limit param works correctly. |
 | `network` | clear | pass | After log capture | Returns {cleared:true}. Verified buffer_count drops to 0 after clear, total_recorded preserved. |
+| `network` | simulate | untested |  |  |
+| `network` | conditions | untested |  |  |
+| `network` | remove_condition | untested |  |  |
+| `network` | clear_conditions | untested |  |  |
+| `network` | latency | untested |  |  |
+| `network` | fail_status | untested |  |  |
+| `network` | fail_error | untested |  |  |
+| `network` | throttle | untested |  |  |
+| `network` | offline | untested |  |  |
 | `test` | start | pass | Any state | Starts test session with test_id. Returns {test_id, status:'started'}. Missing test_id returns proper error. |
 | `test` | result | pass | After start | Records test result. Tested: result with test_id='task024', status='pass', notes='All good'. Returns {test_id, timestamp, status:'pass'}. |
 | `test` | reset | pass | After result | Resets test state. Returns {reset:true}. Works both with and without active test session. |
@@ -176,11 +185,11 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 
 ## Summary
 
-**151 test points** across 51 commands.
+**160 test points** across 51 commands.
 
 - pass: 127
 - fail: 11
-- untested: 10
+- untested: 19
 
 ## Test App Gaps
 

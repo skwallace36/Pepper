@@ -59,6 +59,9 @@ final class PepperNetworkInterceptor {
     /// Registered response overrides — checked by PepperNetworkProtocol for each request.
     private var overrides: [PepperNetworkOverride] = []
 
+    /// Active network condition rules — checked by PepperNetworkProtocol for each request.
+    private var conditions: [PepperNetworkCondition] = []
+
     struct DuplicateRequestWarning {
         let endpoint: String  // "GET /api/pets" or "POST /graphql (GetPetProfile)"
         let count: Int
@@ -143,6 +146,49 @@ final class PepperNetworkInterceptor {
     /// Snapshot of currently active overrides (for status reporting).
     var activeOverrides: [PepperNetworkOverride] {
         queue.sync { overrides }
+    }
+
+    // MARK: - Network Conditions
+
+    /// Add a network condition rule (replaces any existing rule with the same ID).
+    func addCondition(_ condition: PepperNetworkCondition) {
+        queue.async(flags: .barrier) {
+            self.conditions.removeAll { $0.id == condition.id }
+            self.conditions.append(condition)
+            self.logger.info("Network condition added: \(condition.id) — \(condition.description)")
+        }
+    }
+
+    /// Remove a specific condition by ID.
+    func removeCondition(id: String) {
+        queue.async(flags: .barrier) {
+            self.conditions.removeAll { $0.id == id }
+            self.logger.info("Network condition removed: \(id)")
+        }
+    }
+
+    /// Remove all conditions.
+    func removeAllConditions() {
+        queue.async(flags: .barrier) {
+            let count = self.conditions.count
+            self.conditions.removeAll()
+            self.logger.info("All network conditions removed (\(count))")
+        }
+    }
+
+    /// Find all conditions matching a request. Called by PepperNetworkProtocol.
+    func matchingConditions(url: String, method: String, body: String?) -> [PepperNetworkCondition] {
+        queue.sync {
+            conditions.filter { condition in
+                guard let matcher = condition.matcher else { return true }
+                return matcher.matches(url: url, method: method, body: body)
+            }
+        }
+    }
+
+    /// Snapshot of currently active conditions (for status reporting).
+    var activeConditions: [PepperNetworkCondition] {
+        queue.sync { conditions }
     }
 
     // MARK: - Recording

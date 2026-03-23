@@ -53,12 +53,34 @@ def register_debug_tools(mcp, resolve_and_send):
     @mcp.tool()
     async def network(
         simulator: Optional[str] = Field(default=None, description="Simulator UDID"),
-        action: str = Field(description="Action: start, stop, log"),
+        action: str = Field(description="Action: start, stop, log, status, clear, simulate, conditions, remove_condition, clear_conditions"),
         filter_text: Optional[str] = Field(default=None, description="Filter by URL pattern (for log action)"),
         limit: Optional[int] = Field(default=None, description="Max entries to return (for log action)"),
         max_body: Optional[int] = Field(default=None, description="Max chars per request/response body (default: 4096). Use 0 for unlimited."),
+        effect: Optional[str] = Field(default=None, description="Condition effect for simulate: latency, fail_status, fail_error, throttle, offline"),
+        latency_ms: Optional[int] = Field(default=None, description="Latency in ms (for effect=latency)"),
+        status_code: Optional[int] = Field(default=None, description="HTTP status code (for effect=fail_status)"),
+        error_domain: Optional[str] = Field(default=None, description="NSError domain (for effect=fail_error, default: NSURLErrorDomain)"),
+        error_code: Optional[int] = Field(default=None, description="NSError code (for effect=fail_error)"),
+        bytes_per_second: Optional[int] = Field(default=None, description="Bandwidth limit in bytes/sec (for effect=throttle)"),
+        url: Optional[str] = Field(default=None, description="URL pattern to match (for simulate — omit to match all requests)"),
+        method: Optional[str] = Field(default=None, description="HTTP method to match (for simulate — e.g., GET, POST)"),
+        condition_id: Optional[str] = Field(default=None, description="Condition ID (for remove_condition, or custom ID for simulate)"),
     ) -> str:
-        """Monitor HTTP network traffic — see every API call, status code, and response body. Use this to check if data is loading instead of adding print statements."""
+        """Monitor HTTP network traffic and simulate network conditions.
+
+        Monitoring: start/stop/log/status/clear — see every API call, status code, and response body.
+
+        Simulation: simulate adverse conditions without external tools:
+        - latency: add delay (ms) to matching requests
+        - fail_status: return synthetic HTTP error (e.g., 500, 503)
+        - fail_error: return NSError (e.g., NSURLErrorNotConnectedToInternet)
+        - throttle: limit bandwidth (bytes/sec) for matching requests
+        - offline: fail all matching requests as if no network
+
+        Per-domain rules: use 'url' to target specific endpoints (e.g., slow images but not API calls).
+        Multiple conditions stack — latency adds up, first fail wins, lowest throttle wins.
+        Use conditions/remove_condition/clear_conditions to manage active rules."""
         params = {"action": action}
         if filter_text:
             params["filter"] = filter_text
@@ -66,6 +88,24 @@ def register_debug_tools(mcp, resolve_and_send):
             params["limit"] = limit
         if max_body is not None:
             params["max_body"] = max_body
+        if effect:
+            params["effect"] = effect
+        if latency_ms is not None:
+            params["latency_ms"] = latency_ms
+        if status_code is not None:
+            params["status_code"] = status_code
+        if error_domain:
+            params["error_domain"] = error_domain
+        if error_code is not None:
+            params["error_code"] = error_code
+        if bytes_per_second is not None:
+            params["bytes_per_second"] = bytes_per_second
+        if url:
+            params["url"] = url
+        if method:
+            params["method"] = method
+        if condition_id:
+            params["id"] = condition_id
         return await resolve_and_send(simulator, "network", params)
 
     @mcp.tool()
