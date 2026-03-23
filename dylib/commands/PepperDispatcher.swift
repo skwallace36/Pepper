@@ -262,6 +262,7 @@ final class PepperDispatcher {
         register(SandboxHandler())
         register(ConcurrencyHandler())
         register(TimersHandler())
+        register(PerfHandler())
     }
 }
 
