@@ -480,6 +480,37 @@ SUMMARY_EOF
 TURNS=$(jq -r '.num_turns // 0' "$TRANSCRIPT" 2>/dev/null || echo 0)
 EXIT_REASON=$(jq -r '.result // ""' "$TRANSCRIPT" 2>/dev/null | head -c 200 | tr '\n' ' ' | jq -Rs '.' 2>/dev/null || echo '""')
 
+# Detect unproductive runs: short duration + guardrail blocks + no commits/pushes
+# These should count as "failed" so the heartbeat backoff kicks in
+UNPRODUCTIVE=false
+if [ "$DURATION" -lt 120 ] && [ $EXIT_CODE -eq 0 ]; then
+  # Count guardrail blocks and productive actions during this session
+  GUARDRAIL_BLOCKS=$(python3 -c "
+import json, sys
+from datetime import datetime, timezone
+start_ts = datetime.fromtimestamp($START, tz=timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+blocks = commits = pushes = 0
+with open('$EVENTS') as f:
+    for line in f:
+        line = line.strip()
+        if not line: continue
+        try: e = json.loads(line)
+        except: continue
+        if e.get('agent') != '$TYPE' or e.get('ts','') < start_ts: continue
+        ev = e.get('event','')
+        if ev == 'guardrail-block': blocks += 1
+        elif ev == 'commit': commits += 1
+        elif ev == 'push': pushes += 1
+print(f'{blocks} {commits} {pushes}')
+" 2>/dev/null || echo "0 0 0")
+  GB_COUNT=$(echo "$GUARDRAIL_BLOCKS" | cut -d' ' -f1)
+  COMMIT_COUNT=$(echo "$GUARDRAIL_BLOCKS" | cut -d' ' -f2)
+  PUSH_COUNT=$(echo "$GUARDRAIL_BLOCKS" | cut -d' ' -f3)
+  if [ "$GB_COUNT" -gt 0 ] && [ "$COMMIT_COUNT" -eq 0 ] && [ "$PUSH_COUNT" -eq 0 ]; then
+    UNPRODUCTIVE=true
+  fi
+fi
+
 # Emit final event based on outcome
 if [ "$TIMED_OUT" = true ]; then
   emit_final "timeout" ",\"detail\":\"killed after ${TIMEOUT_S}s\",\"cost_usd\":${COST},\"duration_s\":${DURATION},\"turns\":${TURNS}"
@@ -487,6 +518,8 @@ elif [ -f .pepper-kill ]; then
   emit_final "killed" ",\"detail\":\"kill switch activated mid-run\",\"cost_usd\":${COST},\"duration_s\":${DURATION},\"turns\":${TURNS}"
 elif [ $EXIT_CODE -ne 0 ]; then
   emit_final "failed" ",\"detail\":${EXIT_REASON},\"cost_usd\":${COST},\"duration_s\":${DURATION},\"turns\":${TURNS}"
+elif [ "$UNPRODUCTIVE" = true ]; then
+  emit_final "failed" ",\"detail\":\"unproductive run (${GB_COUNT} guardrail blocks, no commits, ${DURATION}s)\",\"cost_usd\":${COST},\"duration_s\":${DURATION},\"turns\":${TURNS}"
 else
   emit_final "done" ",\"cost_usd\":${COST},\"duration_s\":${DURATION},\"turns\":${TURNS},\"exit_reason\":${EXIT_REASON}"
 fi
