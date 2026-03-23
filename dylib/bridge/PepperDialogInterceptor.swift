@@ -91,10 +91,16 @@ final class PepperDialogInterceptor {
         PepperEventKitInterceptor.shared.install()
     }
 
-    /// Re-resolve the UNUserNotificationCenter runtime class and ensure our
-    /// swizzle is installed there. Called from didFinishLaunching as a safety
-    /// net — at constructor time, .current() may return a placeholder class
-    /// that differs from the one used at runtime.
+    /// Enumerate ALL ObjC runtime subclasses of UNUserNotificationCenter and
+    /// install our auto-grant swizzle on each. Called from didFinishLaunching
+    /// as a safety net — at constructor time, .current() may return a
+    /// placeholder class that differs from the one used at runtime.
+    ///
+    /// Previous implementation relied on `type(of: .current())` which only
+    /// catches one subclass and depends on `.current()` dispatch going through
+    /// `objc_msgSend`. Class clusters may have multiple private subclasses,
+    /// and the Swift compiler may devirtualize the `.current()` class method
+    /// call for well-known framework types, bypassing the swizzle entirely.
     static func reinforceNotificationSwizzle() {
         let originalSel = NSSelectorFromString("requestAuthorizationWithOptions:completionHandler:")
         let swizzledSel = #selector(UNUserNotificationCenter.pepper_requestAuthorization(options:completionHandler:))
@@ -104,15 +110,31 @@ final class PepperDialogInterceptor {
         let replacementIMP = method_getImplementation(swizzledMethod)
         let typeEncoding = method_getTypeEncoding(swizzledMethod)
 
-        let instance = UNUserNotificationCenter.current()
-        let runtimeCls: AnyClass = type(of: instance)
+        let baseCls: AnyClass = UNUserNotificationCenter.self
 
-        if runtimeCls !== UNUserNotificationCenter.self {
-            class_addMethod(runtimeCls, originalSel, replacementIMP, typeEncoding)
-            if let runtimeMethod = class_getInstanceMethod(runtimeCls, originalSel) {
-                method_setImplementation(runtimeMethod, replacementIMP)
+        // Enumerate all registered ObjC classes to find every
+        // UNUserNotificationCenter subclass (private class-cluster internals
+        // like _UNUserNotificationCenterInternal). class_replaceMethod adds
+        // the method if absent on the subclass, or replaces the existing
+        // override — either way, requestAuthorization is intercepted.
+        var classCount: UInt32 = 0
+        guard let classList = objc_copyClassList(&classCount) else { return }
+        defer { free(UnsafeMutableRawPointer(classList)) }
+
+        for i in 0..<Int(classCount) {
+            let cls: AnyClass = classList[i]
+            guard cls !== baseCls else { continue }
+            // Walk the superclass chain — only swizzle direct descendants
+            var ancestor: AnyClass? = class_getSuperclass(cls)
+            while let a = ancestor {
+                if a === baseCls { break }
+                ancestor = class_getSuperclass(a)
             }
-            pepperLog.info("Notification authorization reinforced on runtime class \(runtimeCls)", category: .lifecycle)
+            guard ancestor != nil else { continue }
+
+            class_replaceMethod(cls, originalSel, replacementIMP, typeEncoding)
+            pepperLog.info(
+                "Notification authorization reinforced on subclass \(cls)", category: .lifecycle)
         }
     }
 
