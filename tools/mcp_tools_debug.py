@@ -30,7 +30,7 @@ def register_debug_tools(mcp, resolve_and_send):
         depth: Optional[int] = Field(default=None, description="Max layer tree depth"),
     ) -> str:
         """Inspect the CALayer tree at a screen point. Returns colors, gradients, shadows, transforms."""
-        params = {"point": point}
+        params: dict = {"point": point}
         if depth is not None:
             params["depth"] = depth
         return await resolve_and_send(simulator, "layers", params)
@@ -43,7 +43,7 @@ def register_debug_tools(mcp, resolve_and_send):
         limit: Optional[int] = Field(default=None, description="Max lines to return (for log action)"),
     ) -> str:
         """Capture and read app logs — both print() (stdout) and NSLog (stderr). Start capture first, then check logs."""
-        params = {"action": action}
+        params: dict = {"action": action}
         if filter_text:
             params["filter"] = filter_text
         if limit is not None:
@@ -81,7 +81,7 @@ def register_debug_tools(mcp, resolve_and_send):
         Per-domain rules: use 'url' to target specific endpoints (e.g., slow images but not API calls).
         Multiple conditions stack — latency adds up, first fail wins, lowest throttle wins.
         Use conditions/remove_condition/clear_conditions to manage active rules."""
-        params = {"action": action}
+        params: dict = {"action": action}
         if filter_text:
             params["filter"] = filter_text
         if limit is not None:
@@ -122,7 +122,7 @@ def register_debug_tools(mcp, resolve_and_send):
     ) -> str:
         """Always-on flight recorder timeline. Captures network requests, console logs, screen transitions,
         and command dispatch into a ring buffer — no setup needed. Query to correlate events when debugging."""
-        params = {"action": action}
+        params: dict = {"action": action}
         if limit is not None:
             params["limit"] = limit
         if types:

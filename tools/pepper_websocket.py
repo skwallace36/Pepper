@@ -44,7 +44,7 @@ def _send_command_sync(host, port, msg, timeout=10, on_event=None):
             remaining = deadline - time.monotonic()
             if remaining <= 0:
                 raise asyncio.TimeoutError()
-            raw = ws.recv(timeout=remaining)
+            raw = ws.recv(timeout=remaining)  # type: ignore[arg-type]
             data = json.loads(raw)
             if "event" in data:
                 if on_event:
