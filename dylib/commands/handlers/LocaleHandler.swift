@@ -52,8 +52,8 @@ struct LocaleHandler: PepperHandler {
         let override = PepperLocaleOverride.shared.currentOverride
 
         var data: [String: AnyCodable] = [
-            "language": AnyCodable(locale.languageCode ?? "unknown"),
-            "region": AnyCodable(locale.regionCode ?? "unknown"),
+            "language": AnyCodable(locale.language.languageCode?.identifier ?? "unknown"),
+            "region": AnyCodable(locale.region?.identifier ?? "unknown"),
             "identifier": AnyCodable(locale.identifier),
         ]
 
