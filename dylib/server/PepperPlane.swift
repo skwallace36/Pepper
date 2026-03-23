@@ -30,6 +30,7 @@ public final class PepperPlane {
     // MARK: - Internal components
 
     private var server: PepperServer?
+    private var bonjourAdvertiser: PepperBonjourAdvertiser?
     private let dispatcher = PepperDispatcher()
     private let lock = NSLock()
     private var logger: Logger { PepperLogger.logger(category: "lifecycle") }
@@ -124,6 +125,12 @@ public final class PepperPlane {
         }
 
         server.start()
+
+        // Advertise via Bonjour for device-to-host discovery
+        let advertiser = PepperBonjourAdvertiser(port: port)
+        advertiser.start()
+        self.bonjourAdvertiser = advertiser
+
         state = .running
 
         // Write port file for auto-discovery by pepper-ctl
@@ -141,6 +148,8 @@ public final class PepperPlane {
 
         guard state == .running else { return }
 
+        bonjourAdvertiser?.stop()
+        bonjourAdvertiser = nil
         server?.stop()
         server = nil
         currentPort = nil
