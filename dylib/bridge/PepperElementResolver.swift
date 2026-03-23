@@ -154,15 +154,11 @@ enum PepperElementResolver {
                 )
             }
             if interactiveOnly {
-                let available =
-                    interactiveElements
-                    .filter { $0.hitReachable && $0.label != nil }
+                let available = interactiveElements
+                    .filter { $0.hitReachable }
                     .prefix(20)
-                    // swiftlint:disable:next force_unwrapping
-                    .map { $0.label! }
-                return (
-                    nil, "No interactive element labeled \"\(text)\". Available: \(available.joined(separator: ", "))"
-                )
+                    .compactMap { $0.label }
+                return (nil, "No interactive element labeled \"\(text)\". Available: \(available.joined(separator: ", "))")
             }
             return (nil, "Element not found by text: \"\(text)\"")
         }

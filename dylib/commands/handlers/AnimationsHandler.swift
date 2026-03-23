@@ -368,8 +368,7 @@ struct AnimationsHandler: PepperHandler {
 
             if containsPoint && depth > deepestDepth {
                 // Prefer leaf layers or layers with visible content
-                // swiftlint:disable:next force_unwrapping
-                let isLeaf = current.sublayers == nil || current.sublayers!.isEmpty
+                let isLeaf = current.sublayers?.isEmpty ?? true
                 let layerType = String(describing: type(of: current))
                 let hasContent =
                     current.backgroundColor != nil

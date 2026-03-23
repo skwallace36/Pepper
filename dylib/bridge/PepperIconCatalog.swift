@@ -374,9 +374,8 @@ final class PepperIconCatalog {
         var bestMatch: IconMatch?
         for scale in [0.7, 1.0, 1.5, 1.82] as [CGFloat] {
             if let match = identifyAtScale(frame: effectiveFrame, window: window, scale: scale) {
-                if match.distance == 0 { return match }  // Perfect → short-circuit
-                // swiftlint:disable:next force_unwrapping
-                if bestMatch == nil || match.distance < bestMatch!.distance {
+                if match.distance == 0 { return match } // Perfect → short-circuit
+                if match.distance < (bestMatch?.distance ?? Int.max) {
                     bestMatch = match
                 }
             }
@@ -393,8 +392,7 @@ final class PepperIconCatalog {
                     let match = matchHash(hash, threshold: 8, minCatalogBits: 12)
                 {
                     if match.distance == 0 { return match }
-                    // swiftlint:disable:next force_unwrapping
-                    if bestMatch == nil || match.distance < bestMatch!.distance {
+                    if match.distance < (bestMatch?.distance ?? Int.max) {
                         bestMatch = match
                     }
                 }

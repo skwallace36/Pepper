@@ -179,6 +179,7 @@ struct SnapshotHandler: PepperHandler {
 
     // MARK: - Diff Computation
 
+    // swiftlint:disable:next cyclomatic_complexity
     private func computeDiff(baseline: ScreenState, current: ScreenState, ignoreTransient: Bool) -> ScreenDiff {
         let screenChanged = baseline.screen != current.screen
 
