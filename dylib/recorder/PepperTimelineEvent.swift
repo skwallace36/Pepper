@@ -6,6 +6,7 @@ enum TimelineEventType: String, Codable, CaseIterable {
     case console  // Console log line (stdout/stderr)
     case screen  // VC appeared/disappeared
     case command  // Pepper command dispatched
+    case render  // SwiftUI hosting view re-rendered
 }
 
 /// A lightweight event in the flight recorder timeline.
