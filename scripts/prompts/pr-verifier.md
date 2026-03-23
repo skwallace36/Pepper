@@ -25,20 +25,13 @@ THEN:
    - If the fix works: comment on the PR with what you tested and verified. Add the `verified` label.
    - If the fix fails: comment on the PR describing what failed, with the `look` output showing the issue. Do NOT add the label.
 9. Take screenshots with `look visual=true` for evidence.
-10. Auto-merge decision:
-   Check which files the PR changes: `gh pr diff <number> --repo skwallace36/Pepper --name-only`
-   - If ANY changed file matches these paths → do NOT merge, just label `verified` for human review:
-     - `Makefile`
-     - `.claude/` (settings, hooks config)
-     - `.github/` (CI, workflows)
-     - `scripts/agent-*.sh` or `scripts/hooks/` (agent system infrastructure)
-     - `scripts/prompts/` (agent prompts)
-     - `tools/pepper-mcp` (MCP server)
-     - `.env*`
-   - Otherwise → merge it:
-     ```
-     gh pr merge <number> --repo skwallace36/Pepper --squash --delete-branch
-     ```
+10. Merge decision — use your judgment:
+   After verifying, decide whether to merge or flag for human review. Consider:
+   - **Merge** if: the change is straightforward, isolated, builds clean, and you verified it works.
+   - **Don't merge** if: the change touches build infrastructure (Makefile, CI, agent scripts, hooks, prompts, .claude/, .github/), has broad blast radius, changes core architecture, or you're not confident in the fix.
+
+   To merge: `gh pr merge <number> --repo skwallace36/Pepper --squash --delete-branch`
+   To flag: add `verified` label and comment explaining what you verified. Human will merge.
 
 SCOPE: You may NOT modify any code. Read-only access to all files. Your only outputs are PR comments, labels, and merges (for safe PRs only).
 DO NOT modify: any files. This agent is read-only + GitHub interaction only.
