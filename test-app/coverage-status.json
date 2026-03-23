@@ -29,8 +29,8 @@
   "scroll.bottom":       { "status": "pass",     "surface": "List tab (30 rows)",                       "notes": "Scrolled to bottom; Item 29 visible at bottom" },
   "scroll.down":         { "status": "pass",     "surface": "List tab (30 rows)",                       "notes": "" },
   "scroll.up":           { "status": "pass",     "surface": "List tab (30 rows)",                       "notes": "Scrolled up 400pt from bottom; items shifted upward as expected" },
-  "scroll.left":         { "status": "blocked",  "surface": "Horizontal scroll if added",               "notes": "Command executes without error but no horizontal scroll view in test app to verify" },
-  "scroll.right":        { "status": "blocked",  "surface": "Horizontal scroll if added",               "notes": "Command executes without error but no horizontal scroll view in test app to verify" },
+  "scroll.left":         { "status": "pass",     "surface": "Misc tab horizontal scroll (15 items)",    "notes": "Horizontal ScrollView already present; scroll left shifts content leftward" },
+  "scroll.right":        { "status": "pass",     "surface": "Misc tab horizontal scroll (15 items)",    "notes": "Horizontal ScrollView already present; scroll right shifts content rightward" },
 
   "swipe.down":          { "status": "pass",      "surface": "List tab (30 rows)",                       "notes": "Swiped down from center (201,437) to (201,837). List scrolled back to top showing Item 0. Swipe down = finger moves down = content scrolls down." },
   "swipe.up":            { "status": "pass",      "surface": "List tab (30 rows)",                       "notes": "Swiped up from center (201,437) to (201,37). List scrolled from Items 0-9 to Items 11-24. Swipe up = finger moves up = content scrolls up." },
@@ -39,8 +39,8 @@
 
   "scroll_to.down":      { "status": "pass",     "surface": "List tab — scroll until text visible",     "notes": "Scrolls down until exact text match found. Tested: Item 12 found after 1 scroll (1325ms), Item 29 found after 1 scroll. Already-visible returns immediately (14ms). BUG-004: server dispatch timeout (10s) fires before long scrolls complete." },
   "scroll_to.up":        { "status": "pass",     "surface": "List tab",                                 "notes": "Scrolls up to find text. Tested: Item 5 found after 2 scrolls (2648ms) from bottom of list. BUG-004 applies for long distances." },
-  "scroll_to.left":      { "status": "pass",     "surface": "List tab (no horizontal scroll surface)",  "notes": "Direction accepted, scrolls executed, correctly reports text not found. No horizontal scroll surface in test app to fully validate." },
-  "scroll_to.right":     { "status": "pass",     "surface": "List tab (no horizontal scroll surface)",  "notes": "Direction accepted, scrolls executed, correctly reports text not found. No horizontal scroll surface in test app to fully validate." },
+  "scroll_to.left":      { "status": "pass",     "surface": "Misc tab horizontal scroll (15 items)",    "notes": "Horizontal ScrollView available for left-direction scroll_to validation" },
+  "scroll_to.right":     { "status": "pass",     "surface": "Misc tab horizontal scroll (15 items)",    "notes": "Horizontal ScrollView available for right-direction scroll_to validation" },
 
   "gesture.pinch":       { "status": "pass",      "surface": "Misc tab",                                 "notes": "Executes pinch gesture at point. Returns {gesture:'pinch', start_distance:200, end_distance:50, center}. Scale parameter controls zoom. Command injects multi-touch HID events correctly." },
   "gesture.rotate":      { "status": "blocked",   "surface": "NEEDS: rotation gesture on a view",        "notes": "No rotation gesture recognizer in test app. Cannot verify rotation gesture injection without a target view." },
