@@ -92,6 +92,7 @@ enum PepperSimDetect {
         let data = Array(udid.utf8)
         var hash = [UInt8](repeating: 0, count: 16)
         data.withUnsafeBufferPointer { buf in
+            // swiftlint:disable:next force_unwrapping
             pepper_md5(buf.baseAddress!, UInt32(buf.count), &hash)
         }
         // First 4 hex chars = first 2 bytes, big-endian

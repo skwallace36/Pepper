@@ -48,6 +48,7 @@ struct IntrospectHandler: PepperHandler {
 
     // MARK: - Map mode (structured screen state)
 
+    // swiftlint:disable:next cyclomatic_complexity
     private func handleMap(_ command: PepperCommand) -> PepperResponse {
         // Layout settle: force pending CoreAnimation and UIKit layout to complete.
         // CATransaction.flush() synchronously commits all pending layer changes.

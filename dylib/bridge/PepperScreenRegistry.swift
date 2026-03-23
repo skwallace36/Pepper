@@ -58,6 +58,7 @@ enum PepperScreenRegistry {
     ///
     /// The actual view name (HomeView) is buried inside layers of ModifiedContent wrappers.
     /// This function extracts it by recursively unwrapping known wrapper types.
+    // swiftlint:disable:next cyclomatic_complexity
     private static func extractSwiftUIViewName(from typeName: String) -> String {
         // Known SwiftUI wrapper types that should be stripped to find the real view
         let wrapperPrefixes = [

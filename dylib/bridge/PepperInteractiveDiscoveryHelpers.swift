@@ -140,6 +140,7 @@ extension PepperSwiftUIBridge {
 
     /// Infer the purpose of an unlabeled interactive element from icon catalog, class name, position, and size.
     /// Sets `iconName` to the matched icon asset name if identified via the catalog.
+    // swiftlint:disable:next cyclomatic_complexity
     func inferHeuristic(className: String, frame: CGRect, gestures: [String], label: String?, view: UIView?, iconName: inout String?) -> String? {
         // If it has a label, no heuristic needed
         if let label = label, !label.isEmpty { return nil }
