@@ -8,12 +8,13 @@ pick a different simulator. Stale sessions (dead PID) are cleaned up automatical
 Designed for zero-config single-user use: if only one session exists, everything works
 exactly as before. The session layer is purely additive.
 """
+from __future__ import annotations
 
 import json
 import logging
 import os
 import socket
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -145,7 +146,7 @@ def _is_session_live(session: dict) -> bool:
     if claimed_str:
         try:
             claimed_time = datetime.fromisoformat(claimed_str)
-            age = (datetime.now(UTC) - claimed_time).total_seconds()
+            age = (datetime.now(timezone.utc) - claimed_time).total_seconds()
             if age > MAX_SESSION_AGE_SECONDS:
                 logger.info(
                     "Time-based stale cleanup: session %s (PID %s) aged out at %.0fs (max %ds)",
@@ -165,7 +166,7 @@ def _is_session_live(session: dict) -> bool:
         claimed_str = session.get("claimed_at", "")
         try:
             claimed_time = datetime.fromisoformat(claimed_str)
-            age = (datetime.now(UTC) - claimed_time).total_seconds()
+            age = (datetime.now(timezone.utc) - claimed_time).total_seconds()
             if age < 60:
                 return True
             # Deploy took too long — treat as stale
@@ -179,7 +180,7 @@ def _is_session_live(session: dict) -> bool:
         if heartbeat_str:
             try:
                 heartbeat_time = datetime.fromisoformat(heartbeat_str)
-                age = (datetime.now(UTC) - heartbeat_time).total_seconds()
+                age = (datetime.now(timezone.utc) - heartbeat_time).total_seconds()
                 if age > HEARTBEAT_STALE_SECONDS and port and not quick_port_check(port):
                     # PID is alive but heartbeat is very old — could be PID reuse.
                     # Be conservative: treat as stale only if the port is also dead.
@@ -212,7 +213,7 @@ def claim_simulator(udid: str, bundle_id: str = "", port: int = 0,
         # Stale session — remove and reclaim
         _remove_session(udid)
 
-    now = datetime.now(UTC).isoformat()
+    now = datetime.now(timezone.utc).isoformat()
     data = {
         "udid": udid,
         "pid": os.getpid(),
@@ -257,7 +258,7 @@ def claim_simulator_deploying(udid: str, label: str | None = None) -> bool:
             if existing:
                 _remove_session(udid)
 
-            now = datetime.now(UTC).isoformat()
+            now = datetime.now(timezone.utc).isoformat()
             data = {
                 "udid": udid,
                 "pid": 0,
@@ -306,7 +307,7 @@ def claim_simulator_with_port(udid: str, bundle_id: str = "", port: int = 0,
     elif existing:
         _remove_session(udid)
 
-    now = datetime.now(UTC).isoformat()
+    now = datetime.now(timezone.utc).isoformat()
     data = {
         "udid": udid,
         "pid": 0,  # sentinel — liveness determined by port check
@@ -346,7 +347,7 @@ def heartbeat(udid: str, bundle_id: str = "", port: int = 0):
     session = _read_session(udid)
     if not session or session.get("pid") != os.getpid():
         return
-    session["heartbeat"] = datetime.now(UTC).isoformat()
+    session["heartbeat"] = datetime.now(timezone.utc).isoformat()
     if bundle_id:
         session["bundle_id"] = bundle_id
     if port:
