@@ -368,6 +368,82 @@ DURATION=$((END - START))
 # Extract cost from transcript
 COST=$(jq -r '.total_cost_usd // .cost_usd // 0' "$TRANSCRIPT" 2>/dev/null || echo 0)
 
+# Emit session-summary: aggregate stats from events emitted during this run
+python3 - "$EVENTS" "$TYPE" "$START" "$TRANSCRIPT" <<'SUMMARY_EOF'
+import json, sys
+from collections import defaultdict
+from datetime import datetime, timezone
+
+events_file, agent = sys.argv[1], sys.argv[2]
+start_epoch, transcript = int(sys.argv[3]), sys.argv[4]
+start_ts = datetime.fromtimestamp(start_epoch, tz=timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+
+events = []
+try:
+    with open(events_file) as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                e = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if e.get('agent') != agent or e.get('ts', '') < start_ts:
+                continue
+            events.append(e)
+except FileNotFoundError:
+    sys.exit(0)
+
+lifecycle = ('started', 'done', 'failed', 'timeout', 'killed', 'session-summary')
+tool_calls = defaultdict(int)
+bytes_read = 0
+bytes_written = 0
+file_reads = defaultdict(int)
+
+for e in events:
+    ev = e.get('event', '')
+    if ev in lifecycle:
+        continue
+    tool_calls[ev] += 1
+    b = 0
+    try:
+        b = int(e.get('bytes', 0))
+    except (ValueError, TypeError):
+        pass
+    if ev == 'read':
+        bytes_read += b
+        file_reads[e.get('file', '?')] += 1
+    elif ev == 'write':
+        bytes_written += b
+
+total_reads = sum(file_reads.values())
+rereads = sum(max(0, c - 1) for c in file_reads.values())
+
+hit_compact = False
+try:
+    with open(transcript) as f:
+        content = f.read()
+        hit_compact = '"compact"' in content
+except (FileNotFoundError, OSError):
+    pass
+
+summary = {
+    "ts": datetime.now(tz=timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
+    "agent": agent,
+    "event": "session-summary",
+    "bytes_read": bytes_read,
+    "bytes_written": bytes_written,
+    "file_reads": total_reads,
+    "file_rereads": rereads,
+    "tool_calls": dict(tool_calls),
+    "hit_compact": hit_compact,
+}
+
+with open(events_file, 'a') as f:
+    f.write(json.dumps(summary, separators=(',', ':')) + '\n')
+SUMMARY_EOF
+
 # Emit final event based on outcome
 if [ "$TIMED_OUT" = true ]; then
   emit_final "timeout" ",\"detail\":\"killed after ${TIMEOUT_S}s\",\"cost_usd\":${COST},\"duration_s\":${DURATION}"
