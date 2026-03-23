@@ -21,8 +21,17 @@ final class PepperRenderTracker {
     private var renderCounts: [String: Int] = [:]
     private let lock = NSLock()
 
-    /// Whether the swizzle has been applied.
+    /// Whether the layoutSubviews swizzle has been applied (auto-installed at startup).
     private var installed = false
+
+    /// Whether the spike swizzles (updateRootView, didRender, setNeedsUpdate) are active.
+    private(set) var spikeActive = false
+
+    /// Per-method call counters for the spike, keyed by method name.
+    private var methodCounts: [String: Int] = [:]
+
+    /// Tracks installed spike swizzles so stop() can reverse them.
+    private var installedSpikeSwizzles: [(cls: AnyClass, originalSel: Selector, swizzledSel: Selector)] = []
 
     /// Record a render event for a hosting view.
     func recordRender(for hostingView: UIView) {
@@ -94,6 +103,176 @@ final class PepperRenderTracker {
         }
 
         pepperLog.info("Render tracker installed (_UIHostingView.layoutSubviews swizzled)", category: .lifecycle)
+    }
+
+    // MARK: - Spike: start/stop for updateRootView, didRender, setNeedsUpdate
+
+    /// Start the render spike — swizzle updateRootView, didRender, and setNeedsUpdate
+    /// on _UIHostingView and all subclasses. Logs to console for observability.
+    /// Returns a report of what was installed.
+    @discardableResult
+    func start() -> [String: Any] {
+        guard !spikeActive else {
+            return ["status": "already_active", "note": "Call stop first to restart."]
+        }
+
+        guard let baseClass = NSClassFromString("_UIHostingView") else {
+            let msg = "_UIHostingView class not found — spike unavailable"
+            print("[PepperRenderTracker] \(msg)")
+            return ["status": "error", "message": msg]
+        }
+
+        // Also ensure layoutSubviews tracking is installed
+        install()
+
+        let targetClasses = findHostingViewClasses(base: baseClass)
+        print("[PepperRenderTracker] Found \(targetClasses.count) hosting view class(es): \(targetClasses.map { NSStringFromClass($0) })")
+
+        // Methods to swizzle with their replacement selectors
+        let methodMap: [(name: String, swizzledSel: Selector)] = [
+            ("updateRootView", #selector(UIView.pepper_spike_updateRootView)),
+            ("didRender", #selector(UIView.pepper_spike_didRender)),
+            ("setNeedsUpdate", #selector(UIView.pepper_spike_setNeedsUpdate)),
+        ]
+
+        var report: [[String: String]] = []
+
+        for cls in targetClasses {
+            let className = NSStringFromClass(cls)
+            for (methodName, swizzledSel) in methodMap {
+                let originalSel = NSSelectorFromString(methodName)
+
+                guard let originalMethod = class_getInstanceMethod(cls, originalSel) else {
+                    let msg = "\(className).\(methodName) — not found, skipping"
+                    print("[PepperRenderTracker] \(msg)")
+                    report.append(["class": className, "method": methodName, "status": "not_found"])
+                    continue
+                }
+
+                guard let swizzledMethod = class_getInstanceMethod(UIView.self, swizzledSel) else {
+                    report.append(["class": className, "method": methodName, "status": "swizzle_method_missing"])
+                    continue
+                }
+
+                let didAdd = class_addMethod(
+                    cls,
+                    swizzledSel,
+                    method_getImplementation(swizzledMethod),
+                    method_getTypeEncoding(swizzledMethod)
+                )
+
+                if didAdd {
+                    guard let addedMethod = class_getInstanceMethod(cls, swizzledSel) else { continue }
+                    method_exchangeImplementations(originalMethod, addedMethod)
+                } else {
+                    method_exchangeImplementations(originalMethod, swizzledMethod)
+                }
+
+                installedSpikeSwizzles.append((cls: cls, originalSel: originalSel, swizzledSel: swizzledSel))
+                let msg = "\(className).\(methodName) — swizzled OK"
+                print("[PepperRenderTracker] \(msg)")
+                report.append(["class": className, "method": methodName, "status": "installed"])
+            }
+        }
+
+        lock.lock()
+        methodCounts.removeAll()
+        lock.unlock()
+
+        spikeActive = true
+        print("[PepperRenderTracker] Spike started. \(installedSpikeSwizzles.count) swizzle(s) active. Interact with the app and observe console output.")
+
+        return [
+            "status": "started",
+            "swizzles_installed": installedSpikeSwizzles.count,
+            "classes_found": targetClasses.count,
+            "details": report,
+        ]
+    }
+
+    /// Stop the render spike — reverse all spike swizzles and report statistics.
+    @discardableResult
+    func stop() -> [String: Any] {
+        guard spikeActive else {
+            return ["status": "not_active"]
+        }
+
+        // Reverse swizzles by exchanging again (symmetric operation)
+        var removed = 0
+        for swizzle in installedSpikeSwizzles {
+            guard let origMethod = class_getInstanceMethod(swizzle.cls, swizzle.originalSel),
+                  let swizMethod = class_getInstanceMethod(swizzle.cls, swizzle.swizzledSel) else { continue }
+            method_exchangeImplementations(origMethod, swizMethod)
+            removed += 1
+        }
+
+        installedSpikeSwizzles.removeAll()
+        spikeActive = false
+
+        lock.lock()
+        let finalCounts = methodCounts
+        lock.unlock()
+
+        print("[PepperRenderTracker] Spike stopped. \(removed) swizzle(s) removed.")
+        print("[PepperRenderTracker] Method call counts:")
+        for (method, count) in finalCounts.sorted(by: { $0.key < $1.key }) {
+            print("  \(method): \(count)")
+        }
+
+        return [
+            "status": "stopped",
+            "swizzles_removed": removed,
+            "method_counts": finalCounts,
+        ]
+    }
+
+    /// Record a spike method call — increments per-method counter and logs to console.
+    func recordSpikeCall(method: String, view: UIView) {
+        let address = addressKey(view)
+        let vcType = resolveViewControllerType(for: view)
+
+        lock.lock()
+        methodCounts[method, default: 0] += 1
+        let count = methodCounts[method, default: 0]
+        lock.unlock()
+
+        print("[PepperRenderTracker] \(method) fired — \(vcType) [\(address)] (total: \(count))")
+        PepperFlightRecorder.shared.record(
+            type: .render,
+            summary: "\(method) \(vcType) (#\(count))",
+            referenceId: address
+        )
+    }
+
+    /// Current spike method counts.
+    var spikeMethodCounts: [String: Int] {
+        lock.lock()
+        let counts = methodCounts
+        lock.unlock()
+        return counts
+    }
+
+    /// Find _UIHostingView and all its subclasses via objc_getClassList.
+    private func findHostingViewClasses(base: AnyClass) -> [AnyClass] {
+        var count: UInt32 = 0
+        guard let classList = objc_copyClassList(&count) else { return [base] }
+        defer { free(UnsafeMutableRawPointer(mutating: classList)) }
+
+        var result: [AnyClass] = [base]
+        for i in 0..<Int(count) {
+            let cls: AnyClass = classList[i]
+            if cls !== base {
+                var superclass: AnyClass? = class_getSuperclass(cls)
+                while let sc = superclass {
+                    if sc === base {
+                        result.append(cls)
+                        break
+                    }
+                    superclass = class_getSuperclass(sc)
+                }
+            }
+        }
+        return result
     }
 
     // MARK: - View Tree Snapshots
@@ -482,7 +661,7 @@ struct ViewTreeChange {
     }
 }
 
-// MARK: - Swizzled method
+// MARK: - Swizzled methods
 
 extension UIView {
     /// Replacement for `_UIHostingView.layoutSubviews`. After calling the original,
@@ -491,5 +670,28 @@ extension UIView {
     @objc dynamic func pepper_renderTracker_layoutSubviews() {
         pepper_renderTracker_layoutSubviews() // calls original via exchange
         PepperRenderTracker.shared.recordRender(for: self)
+    }
+
+    // MARK: - Spike swizzle targets
+
+    /// Replacement for `_UIHostingView.updateRootView()`.
+    /// Called when SwiftUI evaluates the body.
+    @objc dynamic func pepper_spike_updateRootView() {
+        pepper_spike_updateRootView() // calls original via exchange
+        PepperRenderTracker.shared.recordSpikeCall(method: "updateRootView", view: self)
+    }
+
+    /// Replacement for `_UIHostingView.didRender()`.
+    /// Called after a render pass completes.
+    @objc dynamic func pepper_spike_didRender() {
+        pepper_spike_didRender() // calls original via exchange
+        PepperRenderTracker.shared.recordSpikeCall(method: "didRender", view: self)
+    }
+
+    /// Replacement for `_UIHostingView.setNeedsUpdate()`.
+    /// Called when state changes invalidate the view graph.
+    @objc dynamic func pepper_spike_setNeedsUpdate() {
+        pepper_spike_setNeedsUpdate() // calls original via exchange
+        PepperRenderTracker.shared.recordSpikeCall(method: "setNeedsUpdate", view: self)
     }
 }
