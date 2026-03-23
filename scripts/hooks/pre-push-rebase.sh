@@ -6,6 +6,19 @@
 
 BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
 
+# Protect main: reject direct pushes if local is behind remote (prevents commit loss)
+if [ "$BRANCH" = "main" ]; then
+  git fetch origin main --quiet 2>/dev/null || exit 0
+  LOCAL=$(git rev-parse HEAD 2>/dev/null)
+  REMOTE=$(git rev-parse origin/main 2>/dev/null)
+  BASE=$(git merge-base HEAD origin/main 2>/dev/null)
+  if [ "$REMOTE" != "$BASE" ]; then
+    echo "BLOCKED: your main is behind origin/main — push would lose commits."
+    echo "Run: git pull --rebase origin main"
+    exit 1
+  fi
+fi
+
 # Only rebase agent branches
 case "$BRANCH" in
   agent/*) ;;
