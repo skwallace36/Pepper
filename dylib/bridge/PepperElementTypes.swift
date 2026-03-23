@@ -92,12 +92,9 @@ struct PepperAccessibilityElement {
 
     /// Whether this element has any meaningful content to report.
     var hasContent: Bool {
-        // swiftlint:disable:next force_unwrapping
-        return (label != nil && !label!.isEmpty)
-            // swiftlint:disable:next force_unwrapping
-            || (value != nil && !value!.isEmpty)
-            // swiftlint:disable:next force_unwrapping
-            || (identifier != nil && !identifier!.isEmpty)
+        return (label?.isEmpty == false) ||
+               (value?.isEmpty == false) ||
+               (identifier?.isEmpty == false)
     }
 
     /// Serialize to a dictionary for JSON transmission.

@@ -496,8 +496,10 @@ final class PepperVarRegistry {
 
         // Check if already tracked (same object identity)
         let ptr = Unmanaged.passUnretained(obj).toOpaque()
-        // swiftlint:disable:next force_unwrapping
-        if tracked.contains(where: { $0.instance != nil && Unmanaged.passUnretained($0.instance!).toOpaque() == ptr }) {
+        if tracked.contains(where: {
+            guard let instance = $0.instance else { return false }
+            return Unmanaged.passUnretained(instance).toOpaque() == ptr
+        }) {
             return
         }
 
