@@ -1,5 +1,5 @@
-import UIKit
 import QuartzCore
+import UIKit
 import os
 
 /// EarlGrey/DetoxSync-inspired idle detection with 3 layers:
@@ -164,9 +164,11 @@ final class PepperIdleMonitor {
         var consecutiveIdle = 0
 
         while Date() < deadline {
-            let idle = checkAnimations
+            let idle =
+                checkAnimations
                 ? isIdle(includeNetwork: includeNetwork)
-                : (pendingVCTransitions == 0 && PepperDispatchTracker.shared.pendingBlockCount == 0 && (!includeNetwork || PepperNetworkInterceptor.shared.activeRequestCount == 0))
+                : (pendingVCTransitions == 0 && PepperDispatchTracker.shared.pendingBlockCount == 0
+                    && (!includeNetwork || PepperNetworkInterceptor.shared.activeRequestCount == 0))
 
             if idle && Date() >= minimumDeadline {
                 consecutiveIdle += 1
@@ -182,7 +184,8 @@ final class PepperIdleMonitor {
         }
 
         let elapsed = Int(Date().timeIntervalSince(start) * 1000)
-        logger.info("Idle timeout after \(elapsed)ms (vc=\(self.pendingVCTransitions) anim=\(self.hasTransientAnimations()))")
+        logger.info(
+            "Idle timeout after \(elapsed)ms (vc=\(self.pendingVCTransitions) anim=\(self.hasTransientAnimations()))")
         return (false, elapsed)
     }
 
@@ -322,7 +325,8 @@ final class PepperIdleMonitor {
 
     private func swizzleMethod(cls: AnyClass, original: Selector, swizzled: Selector) {
         guard let originalMethod = class_getInstanceMethod(cls, original),
-              let swizzledMethod = class_getInstanceMethod(cls, swizzled) else {
+            let swizzledMethod = class_getInstanceMethod(cls, swizzled)
+        else {
             logger.error("Failed to swizzle \(NSStringFromSelector(original))")
             return
         }
@@ -350,7 +354,7 @@ final class PepperIdleMonitor {
 extension UIViewController {
 
     @objc func pepper_viewWillAppear(_ animated: Bool) {
-        pepper_viewWillAppear(animated) // calls original (swizzled)
+        pepper_viewWillAppear(animated)  // calls original (swizzled)
         PepperIdleMonitor.shared.vcWillAppear(self)
 
         // Clear stale overlays immediately on real navigation transitions

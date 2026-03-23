@@ -67,13 +67,14 @@ struct IdentifyIconsHandler: PepperHandler {
                 }
                 // Per-scale debug output
                 let scales = debug.scaleResults.map { sr in
-                    AnyCodable([
-                        "scale": AnyCodable(sr.scale),
-                        "method": AnyCodable(sr.method),
-                        "hash": AnyCodable(sr.hashHex),
-                        "best": AnyCodable(sr.bestName),
-                        "dist": AnyCodable(sr.bestDistance),
-                    ] as [String: AnyCodable])
+                    AnyCodable(
+                        [
+                            "scale": AnyCodable(sr.scale),
+                            "method": AnyCodable(sr.method),
+                            "hash": AnyCodable(sr.hashHex),
+                            "best": AnyCodable(sr.bestName),
+                            "dist": AnyCodable(sr.bestDistance),
+                        ] as [String: AnyCodable])
                 }
                 entry["scales"] = AnyCodable(scales)
             } else {
@@ -93,11 +94,12 @@ struct IdentifyIconsHandler: PepperHandler {
         var data: [String: AnyCodable] = [
             "icons": AnyCodable(icons),
             "count": AnyCodable(icons.count),
-            "catalog": AnyCodable([
-                "built": AnyCodable(info.built),
-                "icon_count": AnyCodable(info.iconCount),
-                "bundle": AnyCodable(info.bundlePath as Any),
-            ] as [String: AnyCodable]),
+            "catalog": AnyCodable(
+                [
+                    "built": AnyCodable(info.built),
+                    "icon_count": AnyCodable(info.iconCount),
+                    "bundle": AnyCodable(info.bundlePath as Any),
+                ] as [String: AnyCodable]),
         ]
         if let ti = targetInfo { data["target_icon"] = AnyCodable(ti) }
         return .ok(id: command.id, data: data)

@@ -39,8 +39,9 @@ extension PepperHIDEventSynthesizer {
     /// If it matches, fires and removes the corresponding callback.
     func checkForMarkerEvent(_ event: AnyObject) {
         guard let api = HIDEventAPI.shared,
-              let getInt = api.eventGetIntegerValue,
-              let hidEvent = event as? PepperHIDEvent else { return }
+            let getInt = api.eventGetIntegerValue,
+            let hidEvent = event as? PepperHIDEvent
+        else { return }
 
         // Check if this is a vendor-defined event on our usage page
         let usagePage = getInt(hidEvent, HIDEventAPI.fieldVendorDefinedUsagePage)
@@ -68,7 +69,8 @@ extension PepperHIDEventSynthesizer {
     /// Falls back to the caller using fixed timing when this returns false.
     func waitForMarker(timeout: TimeInterval = 0.5, in window: UIWindow) -> Bool {
         guard let api = HIDEventAPI.shared,
-              let createVendor = api.createVendorDefinedEvent else {
+            let createVendor = api.createVendorDefinedEvent
+        else {
             return false
         }
 

@@ -26,14 +26,16 @@ struct WatchHandler: PepperHandler {
             let exact = params?["exact"]?.boolValue ?? false
             target = .label(text: label, exact: exact)
         } else if let pointDict = params?["point"]?.value as? [String: AnyCodable],
-                  let x = pointDict["x"]?.doubleValue,
-                  let y = pointDict["y"]?.doubleValue {
+            let x = pointDict["x"]?.doubleValue,
+            let y = pointDict["y"]?.doubleValue
+        {
             target = .point(CGPoint(x: x, y: y))
         } else if let regionDict = params?["region"]?.value as? [String: AnyCodable],
-                  let x = regionDict["x"]?.doubleValue,
-                  let y = regionDict["y"]?.doubleValue,
-                  let w = regionDict["w"]?.doubleValue,
-                  let h = regionDict["h"]?.doubleValue {
+            let x = regionDict["x"]?.doubleValue,
+            let y = regionDict["y"]?.doubleValue,
+            let w = regionDict["w"]?.doubleValue,
+            let h = regionDict["h"]?.doubleValue
+        {
             target = .region(CGRect(x: x, y: y, width: w, height: h))
         } else {
             return .error(id: command.id, message: "Missing watch target. Provide: label, point, or region")
@@ -54,12 +56,15 @@ struct WatchHandler: PepperHandler {
         WatchRegistry.shared.register(watch)
         startPolling(watch: watch)
 
-        logger.info("Watch \(watchID) started: \(String(describing: target)), interval=\(intervalMs)ms, timeout=\(timeoutMs)ms")
+        logger.info(
+            "Watch \(watchID) started: \(String(describing: target)), interval=\(intervalMs)ms, timeout=\(timeoutMs)ms")
 
-        return .ok(id: command.id, data: [
-            "watch_id": AnyCodable(watchID),
-            "initial": AnyCodable(initialSnapshot?.toDictionary() ?? [:])
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "watch_id": AnyCodable(watchID),
+                "initial": AnyCodable(initialSnapshot?.toDictionary() ?? [:]),
+            ])
     }
 
     // MARK: - Polling
@@ -83,11 +88,13 @@ struct WatchHandler: PepperHandler {
                 timer.cancel()
 
                 // Push timeout event
-                let event = PepperEvent(event: "watch_update", data: [
-                    "watch_id": AnyCodable(watch.id),
-                    "change": AnyCodable("timeout"),
-                    "elapsed_ms": AnyCodable(Int(elapsed * 1000))
-                ])
+                let event = PepperEvent(
+                    event: "watch_update",
+                    data: [
+                        "watch_id": AnyCodable(watch.id),
+                        "change": AnyCodable("timeout"),
+                        "elapsed_ms": AnyCodable(Int(elapsed * 1000)),
+                    ])
                 PepperPlane.shared.broadcast(event)
                 return
             }
@@ -101,7 +108,7 @@ struct WatchHandler: PepperHandler {
                 var eventData: [String: AnyCodable] = [
                     "watch_id": AnyCodable(watch.id),
                     "change": AnyCodable(change),
-                    "elapsed_ms": AnyCodable(elapsedMs)
+                    "elapsed_ms": AnyCodable(elapsedMs),
                 ]
 
                 if let snap = newSnapshot {
@@ -242,8 +249,8 @@ struct ElementSnapshot {
                 AnyCodable(Int(frame.origin.x)),
                 AnyCodable(Int(frame.origin.y)),
                 AnyCodable(Int(frame.size.width)),
-                AnyCodable(Int(frame.size.height))
-            ])
+                AnyCodable(Int(frame.size.height)),
+            ]),
         ]
         if let label = label {
             dict["label"] = AnyCodable(label)
@@ -331,4 +338,3 @@ final class WatchRegistry {
         }
     }
 }
-

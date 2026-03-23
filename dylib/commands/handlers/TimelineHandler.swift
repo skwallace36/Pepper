@@ -22,7 +22,8 @@ struct TimelineHandler: PepperHandler {
         case "query":
             let limit = command.params?["limit"]?.intValue ?? 100
             let filter = command.params?["filter"]?.stringValue
-            let sinceMs: Int64? = (command.params?["since_ms"]?.value as? Int).map { Int64($0) }
+            let sinceMs: Int64? =
+                (command.params?["since_ms"]?.value as? Int).map { Int64($0) }
                 ?? (command.params?["since_ms"]?.value as? Int64)
 
             // Parse event type filter
@@ -37,19 +38,23 @@ struct TimelineHandler: PepperHandler {
 
             let events = recorder.query(limit: limit, types: typeFilter, sinceMs: sinceMs, filter: filter)
 
-            return .ok(id: command.id, data: [
-                "count": AnyCodable(events.count),
-                "events": AnyCodable(events.map { AnyCodable($0.toDictionary()) }),
-            ])
+            return .ok(
+                id: command.id,
+                data: [
+                    "count": AnyCodable(events.count),
+                    "events": AnyCodable(events.map { AnyCodable($0.toDictionary()) }),
+                ])
 
         case "status":
-            return .ok(id: command.id, data: [
-                "recording": AnyCodable(recorder.isRecording),
-                "buffer_size": AnyCodable(recorder.bufferSize),
-                "buffer_count": AnyCodable(recorder.entryCount),
-                "total_recorded": AnyCodable(recorder.totalRecorded),
-                "enabled_types": AnyCodable(recorder.enabledTypes.map { AnyCodable($0.rawValue) }),
-            ])
+            return .ok(
+                id: command.id,
+                data: [
+                    "recording": AnyCodable(recorder.isRecording),
+                    "buffer_size": AnyCodable(recorder.bufferSize),
+                    "buffer_count": AnyCodable(recorder.entryCount),
+                    "total_recorded": AnyCodable(recorder.totalRecorded),
+                    "enabled_types": AnyCodable(recorder.enabledTypes.map { AnyCodable($0.rawValue) }),
+                ])
 
         case "config":
             if let size = command.params?["buffer_size"]?.intValue {
@@ -66,20 +71,25 @@ struct TimelineHandler: PepperHandler {
                     }
                 }
             }
-            return .ok(id: command.id, data: [
-                "recording": AnyCodable(recorder.isRecording),
-                "buffer_size": AnyCodable(recorder.bufferSize),
-                "enabled_types": AnyCodable(recorder.enabledTypes.map { AnyCodable($0.rawValue) }),
-            ])
+            return .ok(
+                id: command.id,
+                data: [
+                    "recording": AnyCodable(recorder.isRecording),
+                    "buffer_size": AnyCodable(recorder.bufferSize),
+                    "enabled_types": AnyCodable(recorder.enabledTypes.map { AnyCodable($0.rawValue) }),
+                ])
 
         case "clear":
             recorder.clearBuffer()
-            return .ok(id: command.id, data: [
-                "cleared": AnyCodable(true),
-            ])
+            return .ok(
+                id: command.id,
+                data: [
+                    "cleared": AnyCodable(true)
+                ])
 
         default:
-            return .error(id: command.id, message: "Unknown action '\(action)'. Available: query, status, config, clear")
+            return .error(
+                id: command.id, message: "Unknown action '\(action)'. Available: query, status, config, clear")
         }
     }
 }

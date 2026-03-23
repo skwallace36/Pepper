@@ -47,113 +47,115 @@ public final class PepperPlane {
     ///     Falls back to PEPPER_SIM_UDID env var if nil.
     public func start(port: UInt16 = 8765, simulatorUDID: String? = nil) {
         #if PEPPER_CONTROL
-        lock.lock()
-        defer { lock.unlock() }
+            lock.lock()
+            defer { lock.unlock() }
 
-        guard state != .running else {
-            logger.info("Control plane already running on port \(self.currentPort ?? 0)")
-            return
-        }
-
-        // Resolve simulator UDID: explicit param > env var > nil (no port file)
-        self.resolvedUDID = simulatorUDID
-            ?? ProcessInfo.processInfo.environment["PEPPER_SIM_UDID"]
-
-        // Wire app-specific configuration before anything else
-        PepperAppConfig.shared.appBootstrap?()
-
-        // Auto-detect URL scheme from the host app's Info.plist when no adapter
-        // has configured one. This enables deep link navigation in generic mode
-        // for any app that registers a CFBundleURLSchemes entry.
-        if PepperAppConfig.shared.deeplinkScheme.isEmpty {
-            if let urlTypes = Bundle.main.infoDictionary?["CFBundleURLTypes"] as? [[String: Any]],
-               let schemes = urlTypes.first?["CFBundleURLSchemes"] as? [String],
-               let scheme = schemes.first {
-                PepperAppConfig.shared.deeplinkScheme = scheme
-                pepperLog.info("Auto-detected URL scheme: \(scheme)://", category: .lifecycle)
+            guard state != .running else {
+                logger.info("Control plane already running on port \(self.currentPort ?? 0)")
+                return
             }
-        }
 
-        // Register adapter-provided command handlers
-        for handler in PepperAppConfig.shared.additionalHandlers {
-            if let h = handler as? PepperHandler {
-                dispatcher.register(h)
+            // Resolve simulator UDID: explicit param > env var > nil (no port file)
+            self.resolvedUDID =
+                simulatorUDID
+                ?? ProcessInfo.processInfo.environment["PEPPER_SIM_UDID"]
+
+            // Wire app-specific configuration before anything else
+            PepperAppConfig.shared.appBootstrap?()
+
+            // Auto-detect URL scheme from the host app's Info.plist when no adapter
+            // has configured one. This enables deep link navigation in generic mode
+            // for any app that registers a CFBundleURLSchemes entry.
+            if PepperAppConfig.shared.deeplinkScheme.isEmpty {
+                if let urlTypes = Bundle.main.infoDictionary?["CFBundleURLTypes"] as? [[String: Any]],
+                    let schemes = urlTypes.first?["CFBundleURLSchemes"] as? [String],
+                    let scheme = schemes.first
+                {
+                    PepperAppConfig.shared.deeplinkScheme = scheme
+                    pepperLog.info("Auto-detected URL scheme: \(scheme)://", category: .lifecycle)
+                }
             }
-        }
 
-        let transport = NWListenerTransport(port: port)
-        let server = PepperServer(transport: transport, dispatcher: dispatcher)
-        self.server = server
-        self.currentPort = port
+            // Register adapter-provided command handlers
+            for handler in PepperAppConfig.shared.additionalHandlers {
+                if let h = handler as? PepperHandler {
+                    dispatcher.register(h)
+                }
+            }
 
-        // Wire up log streaming to connected clients
-        pepperLog.eventSink = { [weak server] event in
-            server?.broadcast(event)
-        }
+            let transport = NWListenerTransport(port: port)
+            let server = PepperServer(transport: transport, dispatcher: dispatcher)
+            self.server = server
+            self.currentPort = port
 
-        // Wire up state observation events to connected clients
-        PepperState.shared.eventSink = { [weak server] event in
-            server?.broadcast(event)
-        }
+            // Wire up log streaming to connected clients
+            pepperLog.eventSink = { [weak server] event in
+                server?.broadcast(event)
+            }
 
-        // Install idle monitor — swizzles viewWillAppear for VC transition tracking
-        // (Layer 1) and animation detection (Layer 2).
-        PepperIdleMonitor.shared.install()
+            // Wire up state observation events to connected clients
+            PepperState.shared.eventSink = { [weak server] event in
+                server?.broadcast(event)
+            }
 
-        // Install dispatch tracking — hooks dispatch_async/dispatch_after on main queue
-        // for Layer 3 idle detection (pending async block counting).
-        PepperDispatchTracker.shared.install()
+            // Install idle monitor — swizzles viewWillAppear for VC transition tracking
+            // (Layer 1) and animation detection (Layer 2).
+            PepperIdleMonitor.shared.install()
 
-        // Install swizzling for viewDidAppear/viewDidDisappear observation
-        // (also triggers PepperAccessibility.shared.tagElements from the swizzle,
-        //  and notifies PepperIdleMonitor for VC transition tracking)
-        PepperState.shared.install()
+            // Install dispatch tracking — hooks dispatch_async/dispatch_after on main queue
+            // for Layer 3 idle detection (pending async block counting).
+            PepperDispatchTracker.shared.install()
 
-        // Install dialog interceptor — catches UIAlertController presentations
-        // so the test runner can inspect and dismiss system dialogs programmatically.
-        PepperDialogInterceptor.shared.install()
+            // Install swizzling for viewDidAppear/viewDidDisappear observation
+            // (also triggers PepperAccessibility.shared.tagElements from the swizzle,
+            //  and notifies PepperIdleMonitor for VC transition tracking)
+            PepperState.shared.install()
 
-        // Install EventKit interceptor — auto-grants calendar/reminders access
-        // without showing system dialogs (SpringBoard remote alerts).
-        PepperEventKitInterceptor.shared.install()
+            // Install dialog interceptor — catches UIAlertController presentations
+            // so the test runner can inspect and dismiss system dialogs programmatically.
+            PepperDialogInterceptor.shared.install()
 
-        // Install window key-status monitor — detects system dialogs (SpringBoard alerts)
-        // that our present() swizzle can't intercept.
-        PepperWindowMonitor.shared.install()
+            // Install EventKit interceptor — auto-grants calendar/reminders access
+            // without showing system dialogs (SpringBoard remote alerts).
+            PepperEventKitInterceptor.shared.install()
 
-        // Install inline overlay scroll observer — swizzles UIScrollView.setContentOffset
-        // to auto-refresh builder highlights when scrolling stops.
-        PepperInlineOverlay.shared.install()
+            // Install window key-status monitor — detects system dialogs (SpringBoard alerts)
+            // that our present() swizzle can't intercept.
+            PepperWindowMonitor.shared.install()
 
-        // Install flight recorder — always-on timeline of network, console, screen,
-        // and command events. Auto-starts network + console capture.
-        PepperFlightRecorder.shared.install()
+            // Install inline overlay scroll observer — swizzles UIScrollView.setContentOffset
+            // to auto-refresh builder highlights when scrolling stops.
+            PepperInlineOverlay.shared.install()
 
-        // Pre-build icon catalog asynchronously so first icon match doesn't
-        // block startup. Must run on main thread — UIImage(named:in:with:)
-        // requires it for asset catalog access on iOS 26+.
-        DispatchQueue.main.async {
-            PepperIconCatalog.shared.ensureBuilt()
-        }
+            // Install flight recorder — always-on timeline of network, console, screen,
+            // and command events. Auto-starts network + console capture.
+            PepperFlightRecorder.shared.install()
 
-        server.start()
+            // Pre-build icon catalog asynchronously so first icon match doesn't
+            // block startup. Must run on main thread — UIImage(named:in:with:)
+            // requires it for asset catalog access on iOS 26+.
+            DispatchQueue.main.async {
+                PepperIconCatalog.shared.ensureBuilt()
+            }
 
-        // Advertise via Bonjour for device-to-host discovery
-        let advertiser = PepperBonjourAdvertiser(port: port)
-        advertiser.start()
-        self.bonjourAdvertiser = advertiser
+            server.start()
 
-        state = .running
+            // Advertise via Bonjour for device-to-host discovery
+            let advertiser = PepperBonjourAdvertiser(port: port)
+            advertiser.start()
+            self.bonjourAdvertiser = advertiser
 
-        // Write port file for auto-discovery by pepper-ctl
-        writePortFile(port: port)
+            state = .running
 
-        // Write a readiness sentinel so CI scripts can detect successful startup
-        // without relying on WebSocket connectivity (useful when diagnosing launch issues).
-        writeReadinessSentinel(port: port)
+            // Write port file for auto-discovery by pepper-ctl
+            writePortFile(port: port)
 
-        pepperLog.info("Control plane started on port \(port)", category: .lifecycle)
-        logger.info("[pepper] Control plane started on port \(port)")
+            // Write a readiness sentinel so CI scripts can detect successful startup
+            // without relying on WebSocket connectivity (useful when diagnosing launch issues).
+            writeReadinessSentinel(port: port)
+
+            pepperLog.info("Control plane started on port \(port)", category: .lifecycle)
+            logger.info("[pepper] Control plane started on port \(port)")
         #endif
     }
 

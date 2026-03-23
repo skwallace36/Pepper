@@ -41,17 +41,21 @@ struct NetworkHandler: PepperHandler {
         case "start":
             let bufferSize = command.params?["buffer_size"]?.intValue
             interceptor.install(bufferSize: bufferSize)
-            return .ok(id: command.id, data: [
-                "active": AnyCodable(true),
-                "buffer_size": AnyCodable(interceptor.bufferSize),
-            ])
+            return .ok(
+                id: command.id,
+                data: [
+                    "active": AnyCodable(true),
+                    "buffer_size": AnyCodable(interceptor.bufferSize),
+                ])
 
         case "stop":
             interceptor.uninstall()
-            return .ok(id: command.id, data: [
-                "active": AnyCodable(false),
-                "transactions_captured": AnyCodable(interceptor.totalRecorded),
-            ])
+            return .ok(
+                id: command.id,
+                data: [
+                    "active": AnyCodable(false),
+                    "transactions_captured": AnyCodable(interceptor.totalRecorded),
+                ])
 
         case "status":
             let dupes = interceptor.recentDuplicates(limit: 5)
@@ -64,14 +68,15 @@ struct NetworkHandler: PepperHandler {
                 "conditions_count": AnyCodable(conditions.count),
             ]
             if !dupes.isEmpty {
-                statusData["duplicate_warnings"] = AnyCodable(dupes.map { d in
-                    [
-                        "endpoint": AnyCodable(d.endpoint),
-                        "count": AnyCodable(d.count),
-                        "window_ms": AnyCodable(Int(d.windowMs)),
-                        "seconds_ago": AnyCodable(Int(-d.timestamp.timeIntervalSinceNow))
-                    ] as [String: AnyCodable]
-                })
+                statusData["duplicate_warnings"] = AnyCodable(
+                    dupes.map { d in
+                        [
+                            "endpoint": AnyCodable(d.endpoint),
+                            "count": AnyCodable(d.count),
+                            "window_ms": AnyCodable(Int(d.windowMs)),
+                            "seconds_ago": AnyCodable(Int(-d.timestamp.timeIntervalSinceNow)),
+                        ] as [String: AnyCodable]
+                    })
             }
             if !conditions.isEmpty {
                 statusData["conditions"] = AnyCodable(conditions.map { AnyCodable($0.toDictionary()) })
@@ -83,19 +88,24 @@ struct NetworkHandler: PepperHandler {
             let filter = command.params?["filter"]?.stringValue
             let maxBodyRaw = command.params?["max_body"]?.intValue ?? 4096
             let maxBody: Int? = maxBodyRaw > 0 ? maxBodyRaw : nil
-            let sinceMs: Int64? = (command.params?["since_ms"]?.value as? Int).map { Int64($0) }
+            let sinceMs: Int64? =
+                (command.params?["since_ms"]?.value as? Int).map { Int64($0) }
                 ?? (command.params?["since_ms"]?.value as? Int64)
             let transactions = interceptor.recentTransactions(limit: limit, filter: filter, sinceMs: sinceMs)
-            return .ok(id: command.id, data: [
-                "count": AnyCodable(transactions.count),
-                "transactions": AnyCodable(transactions.map { AnyCodable($0.toDictionary(maxBody: maxBody)) }),
-            ])
+            return .ok(
+                id: command.id,
+                data: [
+                    "count": AnyCodable(transactions.count),
+                    "transactions": AnyCodable(transactions.map { AnyCodable($0.toDictionary(maxBody: maxBody)) }),
+                ])
 
         case "clear":
             interceptor.clearBuffer()
-            return .ok(id: command.id, data: [
-                "cleared": AnyCodable(true),
-            ])
+            return .ok(
+                id: command.id,
+                data: [
+                    "cleared": AnyCodable(true)
+                ])
 
         case "simulate":
             return handleSimulate(command)

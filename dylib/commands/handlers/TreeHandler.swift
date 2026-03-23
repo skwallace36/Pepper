@@ -38,11 +38,13 @@ struct TreeHandler: PepperHandler {
 
         logger.info("Tree captured \(nodeCount) nodes (depth limit: \(depthLimit))")
 
-        return .ok(id: command.id, data: [
-            "tree": AnyCodable(tree),
-            "nodeCount": AnyCodable(nodeCount),
-            "truncated": AnyCodable(nodeCount >= Self.maxNodes)
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "tree": AnyCodable(tree),
+                "nodeCount": AnyCodable(nodeCount),
+                "truncated": AnyCodable(nodeCount >= Self.maxNodes),
+            ])
     }
 
     // MARK: - Tree Building
@@ -56,8 +58,8 @@ struct TreeHandler: PepperHandler {
                 "x": AnyCodable(Double(view.frame.origin.x)),
                 "y": AnyCodable(Double(view.frame.origin.y)),
                 "width": AnyCodable(Double(view.frame.size.width)),
-                "height": AnyCodable(Double(view.frame.size.height))
-            ])
+                "height": AnyCodable(Double(view.frame.size.height)),
+            ]),
         ]
 
         if let id = view.accessibilityIdentifier, !id.isEmpty {
@@ -98,31 +100,31 @@ struct TreeHandler: PepperHandler {
             return [
                 "type": AnyCodable("button"),
                 "title": AnyCodable(button.currentTitle ?? ""),
-                "enabled": AnyCodable(button.isEnabled)
+                "enabled": AnyCodable(button.isEnabled),
             ]
         case let field as UITextField:
             return [
                 "type": AnyCodable("textField"),
                 "text": AnyCodable(field.text ?? ""),
                 "placeholder": AnyCodable(field.placeholder ?? ""),
-                "enabled": AnyCodable(field.isEnabled)
+                "enabled": AnyCodable(field.isEnabled),
             ]
         case let textView as UITextView:
             return [
                 "type": AnyCodable("textView"),
                 "text": AnyCodable(textView.text ?? ""),
-                "editable": AnyCodable(textView.isEditable)
+                "editable": AnyCodable(textView.isEditable),
             ]
         case let toggle as UISwitch:
             return [
                 "type": AnyCodable("switch"),
                 "isOn": AnyCodable(toggle.isOn),
-                "enabled": AnyCodable(toggle.isEnabled)
+                "enabled": AnyCodable(toggle.isEnabled),
             ]
         case let label as UILabel:
             return [
                 "type": AnyCodable("label"),
-                "text": AnyCodable(label.text ?? "")
+                "text": AnyCodable(label.text ?? ""),
             ]
         default:
             return nil

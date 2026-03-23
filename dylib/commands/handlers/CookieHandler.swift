@@ -40,11 +40,13 @@ struct CookieHandler: PepperHandler {
             if entries.count >= limit { break }
         }
 
-        return .ok(id: command.id, data: [
-            "count": AnyCodable(entries.count),
-            "total": AnyCodable(cookies.count),
-            "cookies": AnyCodable(entries)
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "count": AnyCodable(entries.count),
+                "total": AnyCodable(cookies.count),
+                "cookies": AnyCodable(entries),
+            ])
     }
 
     private func handleGet(_ command: PepperCommand, storage: HTTPCookieStorage) -> PepperResponse {
@@ -53,11 +55,13 @@ struct CookieHandler: PepperHandler {
         }
         let cookies = (storage.cookies ?? []).filter { $0.domain.contains(domain) }
         let entries = cookies.map { cookieDict($0) }
-        return .ok(id: command.id, data: [
-            "count": AnyCodable(entries.count),
-            "domain": AnyCodable(domain),
-            "cookies": AnyCodable(entries)
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "count": AnyCodable(entries.count),
+                "domain": AnyCodable(domain),
+                "cookies": AnyCodable(entries),
+            ])
     }
 
     private func handleDelete(_ command: PepperCommand, storage: HTTPCookieStorage) -> PepperResponse {
@@ -71,19 +75,23 @@ struct CookieHandler: PepperHandler {
         for cookie in cookies {
             storage.deleteCookie(cookie)
         }
-        return .ok(id: command.id, data: [
-            "removed": AnyCodable(cookies.count),
-            "name": AnyCodable(name),
-            "domain": AnyCodable(domain)
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "removed": AnyCodable(cookies.count),
+                "name": AnyCodable(name),
+                "domain": AnyCodable(domain),
+            ])
     }
 
     private func handleClear(_ command: PepperCommand, storage: HTTPCookieStorage) -> PepperResponse {
         let count = storage.cookies?.count ?? 0
         storage.cookies?.forEach { storage.deleteCookie($0) }
-        return .ok(id: command.id, data: [
-            "removed": AnyCodable(count)
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "removed": AnyCodable(count)
+            ])
     }
 
     private func cookieDict(_ cookie: HTTPCookie) -> [String: AnyCodable] {
@@ -93,7 +101,7 @@ struct CookieHandler: PepperHandler {
             "path": AnyCodable(cookie.path),
             "secure": AnyCodable(cookie.isSecure),
             "httpOnly": AnyCodable(cookie.isHTTPOnly),
-            "sessionOnly": AnyCodable(cookie.isSessionOnly)
+            "sessionOnly": AnyCodable(cookie.isSessionOnly),
         ]
         // Truncate value to avoid huge tokens
         let val = cookie.value

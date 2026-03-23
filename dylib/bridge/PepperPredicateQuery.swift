@@ -67,11 +67,13 @@ enum PepperPredicateQuery {
         // (not a Swift error), so we catch it via ObjC exception handling.
         var predicate: NSPredicate = NSPredicate(value: false)
         var parseError: String?
-        PepperObjCExceptionCatcher.try({
-            predicate = NSPredicate(format: format, argumentArray: nil)
-        }, catch: { exception in
-            parseError = "Invalid predicate: \(exception.reason ?? exception.name.rawValue)"
-        })
+        PepperObjCExceptionCatcher.try(
+            {
+                predicate = NSPredicate(format: format, argumentArray: nil)
+            },
+            catch: { exception in
+                parseError = "Invalid predicate: \(exception.reason ?? exception.name.rawValue)"
+            })
         if let parseError = parseError {
             return ([], [], parseError)
         }
@@ -137,7 +139,7 @@ enum PepperPredicateQuery {
             "type": AnyCodable(inferType(el)),
             "center": AnyCodable([
                 "x": AnyCodable(Int(el.center.x)),
-                "y": AnyCodable(Int(el.center.y))
+                "y": AnyCodable(Int(el.center.y)),
             ]),
         ]
         if let label = el.label {

@@ -13,9 +13,9 @@ final class PepperIconCatalog {
     private var logger: Logger { PepperLogger.logger(category: "icon-catalog") }
 
     struct IconMatch {
-        let iconName: String    // Icon asset name (e.g. "close-icon")
+        let iconName: String  // Icon asset name (e.g. "close-icon")
         let heuristic: String?  // Mapped heuristic label (e.g. "close_button") or nil
-        let distance: Int       // Hamming distance (0 = exact match)
+        let distance: Int  // Hamming distance (0 = exact match)
     }
 
     // Catalog: dHash → asset name (internal for extension access)
@@ -47,7 +47,9 @@ final class PepperIconCatalog {
         let allNames = Array(configuredNames.union(discoveredNames)).sorted()
         let dynamicCount = discoveredNames.subtracting(configuredNames).count
         let newIcons = discoveredNames.subtracting(configuredNames).sorted()
-        logger.info("Icon catalog: \(allNames.count) total icons (\(configuredNames.count) configured + \(dynamicCount) discovered). Discovery found \(discoveredNames.count) in asset catalog.")
+        logger.info(
+            "Icon catalog: \(allNames.count) total icons (\(configuredNames.count) configured + \(dynamicCount) discovered). Discovery found \(discoveredNames.count) in asset catalog."
+        )
         if dynamicCount > 0 {
             logger.info("Icon catalog: new icons from discovery: \(newIcons.prefix(20).joined(separator: ", "))")
         }
@@ -57,7 +59,8 @@ final class PepperIconCatalog {
         var failedHash: [String] = []
         for name in allNames {
             // Try bundle first, then main, then nil (searches all)
-            let image = UIImage(named: name, in: bundle, with: nil)
+            let image =
+                UIImage(named: name, in: bundle, with: nil)
                 ?? UIImage(named: name, in: Bundle.main, with: nil)
                 ?? UIImage(named: name)
             guard let image = image, image.cgImage != nil else {
@@ -78,15 +81,20 @@ final class PepperIconCatalog {
                 catalog[hash] = name
                 anyFillOk = true
             }
-            if !anyFillOk { failedHash.append(name); continue }
+            if !anyFillOk {
+                failedHash.append(name)
+                continue
+            }
             loaded += 1
         }
 
         sortedCatalog = catalog.sorted(by: { $0.value < $1.value })
         built = true
-        logger.info("Icon catalog built: \(loaded)/\(allNames.count) icons loaded (\(dynamicCount) discovered dynamically)")
+        logger.info(
+            "Icon catalog built: \(loaded)/\(allNames.count) icons loaded (\(dynamicCount) discovered dynamically)")
         if !failedLoad.isEmpty {
-            logger.warning("Icon catalog: \(failedLoad.count) failed to load: \(failedLoad.prefix(10).joined(separator: ", "))")
+            logger.warning(
+                "Icon catalog: \(failedLoad.count) failed to load: \(failedLoad.prefix(10).joined(separator: ", "))")
         }
         if !failedHash.isEmpty {
             logger.warning("Icon catalog: \(failedHash.count) failed to hash: \(failedHash.joined(separator: ", "))")
@@ -186,7 +194,8 @@ final class PepperIconCatalog {
             return []
         }
 
-        typealias InitMethod = @convention(c) (AnyObject, Selector, NSURL, UnsafeMutablePointer<NSError?>?) -> AnyObject?
+        typealias InitMethod =
+            @convention(c) (AnyObject, Selector, NSURL, UnsafeMutablePointer<NSError?>?) -> AnyObject?
         let imp = rawInstance.method(for: initSel)
         let initFunc = unsafeBitCast(imp, to: InitMethod.self)
         var error: NSError?
@@ -199,7 +208,8 @@ final class PepperIconCatalog {
         // Get all image names via allImageNames selector
         let allNamesSel = NSSelectorFromString("allImageNames")
         guard catalog.responds(to: allNamesSel),
-              let names = catalog.perform(allNamesSel)?.takeUnretainedValue() as? [String] else {
+            let names = catalog.perform(allNamesSel)?.takeUnretainedValue() as? [String]
+        else {
             logger.info("Icon discovery: allImageNames not available")
             return []
         }
@@ -220,7 +230,7 @@ final class PepperIconCatalog {
     /// Debug: identify with extra info for the identify_icons command.
     struct ScaleResult {
         let scale: CGFloat
-        let method: String   // "dhash" or "bgsub"
+        let method: String  // "dhash" or "bgsub"
         let hashHex: String
         let bestName: String
         let bestDistance: Int
@@ -280,49 +290,57 @@ final class PepperIconCatalog {
                     bestMethod = "dhash"
                 }
             }
-            scaleResults.append(ScaleResult(
-                scale: scale, method: "dhash", hashHex: hashHex,
-                bestName: scaleBest.0, bestDistance: scaleBest.1
-            ))
+            scaleResults.append(
+                ScaleResult(
+                    scale: scale, method: "dhash", hashHex: hashHex,
+                    bestName: scaleBest.0, bestDistance: scaleBest.1
+                ))
         }
 
         // Background subtraction pass: only for frames >= 30pt (small icons produce
         // too-sparse hashes at 13×12 resolution, causing false positives)
-        if effectiveFrame.width >= 30 || effectiveFrame.height >= 30 { for scale in [0.7, 1.0, 1.15, 1.5] as [CGFloat] {
-            guard let hash = captureAndHashBgSub(frame: effectiveFrame, window: window, scale: scale) else { continue }
-            let hashHex = hash.map { String(format: "%02x", $0) }.joined()
-            var scaleBest = ("", Int.max)
-            for (catalogHash, name) in sortedCatalog {
-                // Skip sparse catalog entries — prevents sparse↔sparse false positives
-                let catBits = catalogHash.reduce(0) { $0 + $1.nonzeroBitCount }
-                if catBits < 12 { continue }
-                let dist = hammingDistance(hash, catalogHash)
-                if dist < scaleBest.1 { scaleBest = (name, dist) }
-                if dist < overallBestDistance {
-                    overallBestDistance = dist
-                    overallBestName = name
-                    bestHashHex = hashHex
-                    bestMethod = "bgsub"
+        if effectiveFrame.width >= 30 || effectiveFrame.height >= 30 {
+            for scale in [0.7, 1.0, 1.15, 1.5] as [CGFloat] {
+                guard let hash = captureAndHashBgSub(frame: effectiveFrame, window: window, scale: scale) else {
+                    continue
                 }
+                let hashHex = hash.map { String(format: "%02x", $0) }.joined()
+                var scaleBest = ("", Int.max)
+                for (catalogHash, name) in sortedCatalog {
+                    // Skip sparse catalog entries — prevents sparse↔sparse false positives
+                    let catBits = catalogHash.reduce(0) { $0 + $1.nonzeroBitCount }
+                    if catBits < 12 { continue }
+                    let dist = hammingDistance(hash, catalogHash)
+                    if dist < scaleBest.1 { scaleBest = (name, dist) }
+                    if dist < overallBestDistance {
+                        overallBestDistance = dist
+                        overallBestName = name
+                        bestHashHex = hashHex
+                        bestMethod = "bgsub"
+                    }
+                }
+                scaleResults.append(
+                    ScaleResult(
+                        scale: scale, method: "bgsub", hashHex: hashHex,
+                        bestName: scaleBest.0, bestDistance: scaleBest.1
+                    ))
             }
-            scaleResults.append(ScaleResult(
-                scale: scale, method: "bgsub", hashHex: hashHex,
-                bestName: scaleBest.0, bestDistance: scaleBest.1
-            ))
-        } }
+        }
 
         // Apply method-appropriate threshold: bg-sub hashes are sparser, need wider tolerance
         let matchThreshold = bestMethod == "bgsub" ? 8 : 5
         var match: IconMatch?
         if overallBestDistance <= matchThreshold, let name = overallBestName {
-            match = IconMatch(iconName: name, heuristic: Self.resolveHeuristic(for: name), distance: overallBestDistance)
+            match = IconMatch(
+                iconName: name, heuristic: Self.resolveHeuristic(for: name), distance: overallBestDistance)
         }
         if match == nil {
             match = identifyByThreshold(frame: effectiveFrame, window: window)
         }
 
-        return DebugMatch(match: match, bestDistance: overallBestDistance, bestName: overallBestName,
-                          hashHex: bestHashHex, scaleResults: scaleResults)
+        return DebugMatch(
+            match: match, bestDistance: overallBestDistance, bestName: overallBestName,
+            hashHex: bestHashHex, scaleResults: scaleResults)
     }
 
     /// Identify an icon at the given screen frame.
@@ -356,7 +374,7 @@ final class PepperIconCatalog {
         var bestMatch: IconMatch?
         for scale in [0.7, 1.0, 1.5, 1.82] as [CGFloat] {
             if let match = identifyAtScale(frame: effectiveFrame, window: window, scale: scale) {
-                if match.distance == 0 { return match } // Perfect → short-circuit
+                if match.distance == 0 { return match }  // Perfect → short-circuit
                 // swiftlint:disable:next force_unwrapping
                 if bestMatch == nil || match.distance < bestMatch!.distance {
                     bestMatch = match
@@ -372,7 +390,8 @@ final class PepperIconCatalog {
         if effectiveFrame.width >= 30 || effectiveFrame.height >= 30 {
             for scale in [0.7, 1.0, 1.15, 1.5] as [CGFloat] {
                 if let hash = captureAndHashBgSub(frame: effectiveFrame, window: window, scale: scale),
-                   let match = matchHash(hash, threshold: 8, minCatalogBits: 12) {
+                    let match = matchHash(hash, threshold: 8, minCatalogBits: 12)
+                {
                     if match.distance == 0 { return match }
                     // swiftlint:disable:next force_unwrapping
                     if bestMatch == nil || match.distance < bestMatch!.distance {

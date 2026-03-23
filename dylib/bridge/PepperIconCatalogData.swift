@@ -84,12 +84,12 @@ extension PepperIconCatalog {
     private static func normalizeVariants(_ name: String) -> String {
         var result = name
         let variantSuffixes = [
-            "-fill",      // filled variant (most common)
-            "-on", "-off", // state toggles
-            "-up",         // state (volume-up; thumbs-up caught by prefix rule first)
-            "-alt",        // alternative design
-            "-color",      // colorized variant
-            "-inverted",   // inverted variant
+            "-fill",  // filled variant (most common)
+            "-on", "-off",  // state toggles
+            "-up",  // state (volume-up; thumbs-up caught by prefix rule first)
+            "-alt",  // alternative design
+            "-color",  // colorized variant
+            "-inverted",  // inverted variant
             "-single", "-multi",  // cardinality variants
         ]
 

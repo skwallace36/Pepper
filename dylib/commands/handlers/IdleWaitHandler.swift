@@ -25,9 +25,11 @@ struct IdleWaitHandler: PepperHandler {
             includeNetwork: includeNetwork
         )
 
-        return .ok(id: command.id, data: [
-            "idle": AnyCodable(result.idle),
-            "elapsed_ms": AnyCodable(result.elapsedMs),
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "idle": AnyCodable(result.idle),
+                "elapsed_ms": AnyCodable(result.elapsedMs),
+            ])
     }
 }

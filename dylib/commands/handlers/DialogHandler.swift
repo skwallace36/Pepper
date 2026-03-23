@@ -56,19 +56,23 @@ final class DialogHandler: PepperHandler {
             let dialogs = interceptor.pending.map { dialog in
                 dialogData(dialog)
             }
-            return .ok(id: command.id, data: [
-                "dialogs": AnyCodable(dialogs.map { AnyCodable($0) }),
-                "count": AnyCodable(dialogs.count),
-                "system_dialog_suspected": AnyCodable(interceptor.systemDialogSuspected)
-            ])
+            return .ok(
+                id: command.id,
+                data: [
+                    "dialogs": AnyCodable(dialogs.map { AnyCodable($0) }),
+                    "count": AnyCodable(dialogs.count),
+                    "system_dialog_suspected": AnyCodable(interceptor.systemDialogSuspected),
+                ])
 
         case "current":
             guard let dialog = interceptor.current else {
-                return .ok(id: command.id, data: [
-                    "dialog": AnyCodable(NSNull()),
-                    "has_dialog": AnyCodable(false),
-                    "system_dialog_suspected": AnyCodable(interceptor.systemDialogSuspected)
-                ])
+                return .ok(
+                    id: command.id,
+                    data: [
+                        "dialog": AnyCodable(NSNull()),
+                        "has_dialog": AnyCodable(false),
+                        "system_dialog_suspected": AnyCodable(interceptor.systemDialogSuspected),
+                    ])
             }
             var data = dialogData(dialog)
             data["has_dialog"] = AnyCodable(true)
@@ -87,35 +91,43 @@ final class DialogHandler: PepperHandler {
             )
 
             if dismissed {
-                return .ok(id: command.id, data: [
-                    "dismissed": AnyCodable(true),
-                    "button": AnyCodable(buttonTitle ?? "default")
-                ])
+                return .ok(
+                    id: command.id,
+                    data: [
+                        "dismissed": AnyCodable(true),
+                        "button": AnyCodable(buttonTitle ?? "default"),
+                    ])
             } else {
                 return .error(id: command.id, message: "No pending dialog to dismiss (or button not found)")
             }
 
         case "share_sheet":
             guard let sheet = interceptor.currentSheet else {
-                return .ok(id: command.id, data: [
-                    "has_sheet": AnyCodable(false),
-                    "items": AnyCodable([String]())
-                ])
+                return .ok(
+                    id: command.id,
+                    data: [
+                        "has_sheet": AnyCodable(false),
+                        "items": AnyCodable([String]()),
+                    ])
             }
-            return .ok(id: command.id, data: [
-                "has_sheet": AnyCodable(true),
-                "sheet_id": AnyCodable(sheet.id),
-                "items": AnyCodable(sheet.items.map { AnyCodable($0) }),
-                "timestamp": AnyCodable(ISO8601DateFormatter().string(from: sheet.timestamp))
-            ])
+            return .ok(
+                id: command.id,
+                data: [
+                    "has_sheet": AnyCodable(true),
+                    "sheet_id": AnyCodable(sheet.id),
+                    "items": AnyCodable(sheet.items.map { AnyCodable($0) }),
+                    "timestamp": AnyCodable(ISO8601DateFormatter().string(from: sheet.timestamp)),
+                ])
 
         case "dismiss_sheet":
             let sheetId = command.params?["sheet_id"]?.stringValue
             let dismissed = interceptor.dismissSheet(sheetId: sheetId)
             if dismissed {
-                return .ok(id: command.id, data: [
-                    "dismissed": AnyCodable(true)
-                ])
+                return .ok(
+                    id: command.id,
+                    data: [
+                        "dismissed": AnyCodable(true)
+                    ])
             } else {
                 return .error(id: command.id, message: "No pending share sheet to dismiss")
             }
@@ -140,7 +152,7 @@ final class DialogHandler: PepperHandler {
                 } else if interceptor.autoDismissButtons.isEmpty {
                     // Default permission buttons — covers location, notifications, camera, microphone
                     interceptor.autoDismissButtons = [
-                        "Allow While Using App", "Allow Once", "Allow", "OK"
+                        "Allow While Using App", "Allow Once", "Allow", "OK",
                     ]
                 }
                 if let delay = command.params?["delay"]?.doubleValue {
@@ -148,14 +160,20 @@ final class DialogHandler: PepperHandler {
                 }
             }
 
-            return .ok(id: command.id, data: [
-                "auto_dismiss": AnyCodable(enabled),
-                "buttons": AnyCodable(interceptor.autoDismissButtons.map { AnyCodable($0) }),
-                "delay": AnyCodable(interceptor.autoDismissDelay)
-            ])
+            return .ok(
+                id: command.id,
+                data: [
+                    "auto_dismiss": AnyCodable(enabled),
+                    "buttons": AnyCodable(interceptor.autoDismissButtons.map { AnyCodable($0) }),
+                    "delay": AnyCodable(interceptor.autoDismissDelay),
+                ])
 
         default:
-            return .error(id: command.id, message: "Unknown action: \(action). Use list, current, dismiss, detect_system, auto_dismiss, share_sheet, dismiss_sheet, or dismiss_system (MCP only).")
+            return .error(
+                id: command.id,
+                message:
+                    "Unknown action: \(action). Use list, current, dismiss, detect_system, auto_dismiss, share_sheet, dismiss_sheet, or dismiss_system (MCP only)."
+            )
         }
     }
 
@@ -180,13 +198,13 @@ final class DialogHandler: PepperHandler {
             signals.append([
                 "signal": AnyCodable("intercepted_dialog"),
                 "detail": AnyCodable("Found \(pendingDialogs.count) intercepted dialog(s)"),
-                "positive": AnyCodable(true)
+                "positive": AnyCodable(true),
             ])
         } else {
             signals.append([
                 "signal": AnyCodable("intercepted_dialog"),
                 "detail": AnyCodable("No intercepted dialogs"),
-                "positive": AnyCodable(false)
+                "positive": AnyCodable(false),
             ])
         }
 
@@ -197,14 +215,15 @@ final class DialogHandler: PepperHandler {
             detected = true
             signals.append([
                 "signal": AnyCodable("key_window_level"),
-                "detail": AnyCodable("Key window level \(keyWindowLevel) is above normal (\(UIWindow.Level.normal.rawValue))"),
-                "positive": AnyCodable(true)
+                "detail": AnyCodable(
+                    "Key window level \(keyWindowLevel) is above normal (\(UIWindow.Level.normal.rawValue))"),
+                "positive": AnyCodable(true),
             ])
         } else {
             signals.append([
                 "signal": AnyCodable("key_window_level"),
                 "detail": AnyCodable("Key window level \(keyWindowLevel) is normal"),
-                "positive": AnyCodable(false)
+                "positive": AnyCodable(false),
             ])
         }
 
@@ -226,14 +245,16 @@ final class DialogHandler: PepperHandler {
             detected = true
             signals.append([
                 "signal": AnyCodable("elevated_alert_windows"),
-                "detail": AnyCodable("Found \(alertWindowCount) elevated window(s) with alerts: \(alertWindowDetails.joined(separator: ", "))"),
-                "positive": AnyCodable(true)
+                "detail": AnyCodable(
+                    "Found \(alertWindowCount) elevated window(s) with alerts: \(alertWindowDetails.joined(separator: ", "))"
+                ),
+                "positive": AnyCodable(true),
             ])
         } else {
             signals.append([
                 "signal": AnyCodable("elevated_alert_windows"),
                 "detail": AnyCodable("No elevated windows with alert controllers"),
-                "positive": AnyCodable(false)
+                "positive": AnyCodable(false),
             ])
         }
 
@@ -251,7 +272,7 @@ final class DialogHandler: PepperHandler {
                 signals.append([
                     "signal": AnyCodable("hit_test_probe"),
                     "detail": AnyCodable("Hit-test at app window center returned nil — touch delivery blocked"),
-                    "positive": AnyCodable(true)
+                    "positive": AnyCodable(true),
                 ])
             } else {
                 // Check if the hit view's window is the app window
@@ -261,14 +282,15 @@ final class DialogHandler: PepperHandler {
                     detected = true
                     signals.append([
                         "signal": AnyCodable("hit_test_probe"),
-                        "detail": AnyCodable("Hit-test reached a different window (level \(hitWindow?.windowLevel.rawValue ?? -1))"),
-                        "positive": AnyCodable(true)
+                        "detail": AnyCodable(
+                            "Hit-test reached a different window (level \(hitWindow?.windowLevel.rawValue ?? -1))"),
+                        "positive": AnyCodable(true),
                     ])
                 } else {
                     signals.append([
                         "signal": AnyCodable("hit_test_probe"),
                         "detail": AnyCodable("Hit-test reached app window — touch delivery OK"),
-                        "positive": AnyCodable(false)
+                        "positive": AnyCodable(false),
                     ])
                 }
             }
@@ -276,7 +298,7 @@ final class DialogHandler: PepperHandler {
             signals.append([
                 "signal": AnyCodable("hit_test_probe"),
                 "detail": AnyCodable("No app window found for hit-test"),
-                "positive": AnyCodable(false)
+                "positive": AnyCodable(false),
             ])
         }
 
@@ -293,15 +315,17 @@ final class DialogHandler: PepperHandler {
             confidence = "none"
         }
 
-        return .ok(id: command.id, data: [
-            "detected": AnyCodable(detected),
-            "confidence": AnyCodable(confidence),
-            "positive_signals": AnyCodable(positiveCount),
-            "total_signals": AnyCodable(signals.count),
-            "signals": AnyCodable(signals.map { AnyCodable($0) }),
-            "window_count": AnyCodable(allWindows.count),
-            "intercepted_dialog_count": AnyCodable(pendingDialogs.count)
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "detected": AnyCodable(detected),
+                "confidence": AnyCodable(confidence),
+                "positive_signals": AnyCodable(positiveCount),
+                "total_signals": AnyCodable(signals.count),
+                "signals": AnyCodable(signals.map { AnyCodable($0) }),
+                "window_count": AnyCodable(allWindows.count),
+                "intercepted_dialog_count": AnyCodable(pendingDialogs.count),
+            ])
     }
 
     /// Walk the presented view controller chain looking for a UIAlertController.
@@ -333,14 +357,16 @@ final class DialogHandler: PepperHandler {
             "dialog_id": AnyCodable(dialog.id),
             "title": AnyCodable(dialog.title ?? ""),
             "message": AnyCodable(dialog.message ?? ""),
-            "actions": AnyCodable(dialog.actions.map { action in
-                AnyCodable([
-                    "title": AnyCodable(action.title ?? ""),
-                    "style": AnyCodable(styleString(action.style)),
-                    "index": AnyCodable(action.index)
-                ] as [String: AnyCodable])
-            }),
-            "timestamp": AnyCodable(ISO8601DateFormatter().string(from: dialog.timestamp))
+            "actions": AnyCodable(
+                dialog.actions.map { action in
+                    AnyCodable(
+                        [
+                            "title": AnyCodable(action.title ?? ""),
+                            "style": AnyCodable(styleString(action.style)),
+                            "index": AnyCodable(action.index),
+                        ] as [String: AnyCodable])
+                }),
+            "timestamp": AnyCodable(ISO8601DateFormatter().string(from: dialog.timestamp)),
         ]
     }
 

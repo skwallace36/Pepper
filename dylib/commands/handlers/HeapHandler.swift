@@ -35,7 +35,8 @@ struct HeapHandler: PepperHandler {
         case "controllers":
             return handleControllers(command)
         default:
-            return .error(id: command.id, message: "Unknown heap action '\(action)'. Use find/inspect/read/classes/controllers.")
+            return .error(
+                id: command.id, message: "Unknown heap action '\(action)'. Use find/inspect/read/classes/controllers.")
         }
     }
 
@@ -47,7 +48,8 @@ struct HeapHandler: PepperHandler {
         }
 
         guard let (obj, resolvedClass, method) = findInstance(className: className) else {
-            return .error(id: command.id, message: "No instance found for '\(className)'. Try 'classes' action to search.")
+            return .error(
+                id: command.id, message: "No instance found for '\(className)'. Try 'classes' action to search.")
         }
 
         let mirror = Mirror(reflecting: obj)
@@ -60,13 +62,15 @@ struct HeapHandler: PepperHandler {
             ])
         }
 
-        return .ok(id: command.id, data: [
-            "class": AnyCodable(resolvedClass),
-            "found_via": AnyCodable(method),
-            "address": AnyCodable(String(format: "%p", unsafeBitCast(obj as AnyObject, to: Int.self))),
-            "property_count": AnyCodable(props.count),
-            "properties": AnyCodable(props),
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "class": AnyCodable(resolvedClass),
+                "found_via": AnyCodable(method),
+                "address": AnyCodable(String(format: "%p", unsafeBitCast(obj as AnyObject, to: Int.self))),
+                "property_count": AnyCodable(props.count),
+                "properties": AnyCodable(props),
+            ])
     }
 
     // MARK: - Inspect (alias for find with full dump)
@@ -97,14 +101,19 @@ struct HeapHandler: PepperHandler {
         // Read via KVC, catching ObjC exceptions for invalid key paths
         var result: Any?
         var caughtException: NSException?
-        PepperObjCExceptionCatcher.try({
-            result = nsObj.value(forKeyPath: keyPath)
-        }, catch: { exception in
-            caughtException = exception
-        })
+        PepperObjCExceptionCatcher.try(
+            {
+                result = nsObj.value(forKeyPath: keyPath)
+            },
+            catch: { exception in
+                caughtException = exception
+            })
 
         if let exception = caughtException {
-            return .error(id: command.id, message: "KVC failed for '\(keyPath)' on \(resolvedClass): \(exception.reason ?? exception.name.rawValue)")
+            return .error(
+                id: command.id,
+                message:
+                    "KVC failed for '\(keyPath)' on \(resolvedClass): \(exception.reason ?? exception.name.rawValue)")
         }
 
         let valueStr: String
@@ -117,13 +126,15 @@ struct HeapHandler: PepperHandler {
             valueType = "nil"
         }
 
-        return .ok(id: command.id, data: [
-            "class": AnyCodable(resolvedClass),
-            "found_via": AnyCodable(method),
-            "key_path": AnyCodable(keyPath),
-            "value": AnyCodable(valueStr),
-            "type": AnyCodable(valueType),
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "class": AnyCodable(resolvedClass),
+                "found_via": AnyCodable(method),
+                "key_path": AnyCodable(keyPath),
+                "value": AnyCodable(valueStr),
+                "type": AnyCodable(valueType),
+            ])
     }
 
     // MARK: - List Classes
@@ -133,7 +144,9 @@ struct HeapHandler: PepperHandler {
         let limit = command.params?["limit"]?.intValue ?? 100
 
         guard let pattern = pattern, !pattern.isEmpty else {
-            return .error(id: command.id, message: "Missing 'pattern' param. Provide a search string (e.g. 'Manager', 'Service').")
+            return .error(
+                id: command.id, message: "Missing 'pattern' param. Provide a search string (e.g. 'Manager', 'Service')."
+            )
         }
 
         let count = Int(objc_getClassList(nil, 0))
@@ -161,12 +174,14 @@ struct HeapHandler: PepperHandler {
             matches = Array(matches.prefix(limit))
         }
 
-        return .ok(id: command.id, data: [
-            "pattern": AnyCodable(pattern ?? "(app classes)"),
-            "total": AnyCodable(total),
-            "showing": AnyCodable(matches.count),
-            "classes": AnyCodable(matches),
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "pattern": AnyCodable(pattern ?? "(app classes)"),
+                "total": AnyCodable(total),
+                "showing": AnyCodable(matches.count),
+                "classes": AnyCodable(matches),
+            ])
     }
 
     // MARK: - List Controllers
@@ -206,10 +221,12 @@ struct HeapHandler: PepperHandler {
             walk(rootVC, depth: 0)
         }
 
-        return .ok(id: command.id, data: [
-            "count": AnyCodable(controllers.count),
-            "controllers": AnyCodable(controllers),
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "count": AnyCodable(controllers.count),
+                "controllers": AnyCodable(controllers),
+            ])
     }
 
     // MARK: - Instance Discovery
@@ -225,8 +242,10 @@ struct HeapHandler: PepperHandler {
         let resolvedName = NSStringFromClass(cls)
 
         // Strategy 1: Try singleton selectors
-        let singletonSelectors = ["shared", "sharedInstance", "default", "defaultManager",
-                                   "current", "main", "standard", "currentUser"]
+        let singletonSelectors = [
+            "shared", "sharedInstance", "default", "defaultManager",
+            "current", "main", "standard", "currentUser",
+        ]
         for selName in singletonSelectors {
             let sel = NSSelectorFromString(selName)
             // Check if the class (as meta-class) responds to this selector

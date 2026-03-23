@@ -175,9 +175,11 @@ enum PepperScreenRegistry {
     private static func firstGenericArg(_ input: String) -> String {
         var depth = 0
         for (i, char) in input.enumerated() {
-            if char == "<" { depth += 1 }
-            else if char == ">" { depth -= 1 }
-            else if char == "," && depth == 0 {
+            if char == "<" {
+                depth += 1
+            } else if char == ">" {
+                depth -= 1
+            } else if char == "," && depth == 0 {
                 return String(input.prefix(i)).trimmingCharacters(in: .whitespaces)
             }
         }

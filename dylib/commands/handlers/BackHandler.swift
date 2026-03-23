@@ -22,18 +22,23 @@ struct BackHandler: PepperHandler {
         // a button on the alert instead (e.g. tap text:"Cancel").
         if isAlertController(topVC) {
             let buttons = alertButtonLabels(topVC)
-            return .error(id: command.id, message: "Cannot use 'back' to dismiss alerts. Tap a button instead: \(buttons.joined(separator: ", "))")
+            return .error(
+                id: command.id,
+                message: "Cannot use 'back' to dismiss alerts. Tap a button instead: \(buttons.joined(separator: ", "))"
+            )
         }
 
         // Check if we should dismiss a modal first
         if topVC.presentingViewController != nil && topVC.pepper_effectiveNavController == nil {
             // This VC was presented modally and isn't inside a nav controller
             topVC.dismiss(animated: true)
-            return .ok(id: command.id, data: [
-                "action": AnyCodable("dismiss"),
-                "dismissed_screen": AnyCodable(previousScreen),
-                "current_screen": AnyCodable(currentScreenID())
-            ])
+            return .ok(
+                id: command.id,
+                data: [
+                    "action": AnyCodable("dismiss"),
+                    "dismissed_screen": AnyCodable(previousScreen),
+                    "current_screen": AnyCodable(currentScreenID()),
+                ])
         }
 
         // Try popping the navigation controller.
@@ -42,21 +47,25 @@ struct BackHandler: PepperHandler {
         if let navController = topVC.pepper_effectiveNavController {
             if navController.pepper_canPop {
                 navController.pepper_popBack(animated: true)
-                return .ok(id: command.id, data: [
-                    "action": AnyCodable("pop"),
-                    "popped_screen": AnyCodable(previousScreen),
-                    "current_screen": AnyCodable(currentScreenID())
-                ])
+                return .ok(
+                    id: command.id,
+                    data: [
+                        "action": AnyCodable("pop"),
+                        "popped_screen": AnyCodable(previousScreen),
+                        "current_screen": AnyCodable(currentScreenID()),
+                    ])
             }
 
             // At root of nav controller — try dismissing the nav controller itself if modal
             if navController.presentingViewController != nil {
                 navController.dismiss(animated: true)
-                return .ok(id: command.id, data: [
-                    "action": AnyCodable("dismiss"),
-                    "dismissed_screen": AnyCodable(previousScreen),
-                    "current_screen": AnyCodable(currentScreenID())
-                ])
+                return .ok(
+                    id: command.id,
+                    data: [
+                        "action": AnyCodable("dismiss"),
+                        "dismissed_screen": AnyCodable(previousScreen),
+                        "current_screen": AnyCodable(currentScreenID()),
+                    ])
             }
         }
 
@@ -64,11 +73,13 @@ struct BackHandler: PepperHandler {
         if let presented = findTopmostPresentedVC() {
             let presentedScreen = presented.pepper_topMostViewController.pepperScreenID
             presented.dismiss(animated: true)
-            return .ok(id: command.id, data: [
-                "action": AnyCodable("dismiss"),
-                "dismissed_screen": AnyCodable(presentedScreen),
-                "current_screen": AnyCodable(currentScreenID())
-            ])
+            return .ok(
+                id: command.id,
+                data: [
+                    "action": AnyCodable("dismiss"),
+                    "dismissed_screen": AnyCodable(presentedScreen),
+                    "current_screen": AnyCodable(currentScreenID()),
+                ])
         }
 
         return .error(id: command.id, message: "Cannot go back: already at root screen")

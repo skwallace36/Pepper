@@ -40,11 +40,14 @@ final class SubscribeHandler: PepperHandler {
             manager.subscribe(connectionID: connectionID, to: eventType)
         }
 
-        pepperLog.info("Connection \(connectionID) subscribed to: \(eventTypes.joined(separator: ", "))", category: .server)
+        pepperLog.info(
+            "Connection \(connectionID) subscribed to: \(eventTypes.joined(separator: ", "))", category: .server)
 
-        return .ok(id: command.id, data: [
-            "subscribed": AnyCodable(eventTypes.map { AnyCodable($0) })
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "subscribed": AnyCodable(eventTypes.map { AnyCodable($0) })
+            ])
     }
 }
 
@@ -80,10 +83,13 @@ final class UnsubscribeHandler: PepperHandler {
             manager.unsubscribe(connectionID: connectionID, from: eventType)
         }
 
-        pepperLog.info("Connection \(connectionID) unsubscribed from: \(eventTypes.joined(separator: ", "))", category: .server)
+        pepperLog.info(
+            "Connection \(connectionID) unsubscribed from: \(eventTypes.joined(separator: ", "))", category: .server)
 
-        return .ok(id: command.id, data: [
-            "unsubscribed": AnyCodable(eventTypes.map { AnyCodable($0) })
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "unsubscribed": AnyCodable(eventTypes.map { AnyCodable($0) })
+            ])
     }
 }

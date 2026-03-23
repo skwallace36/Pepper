@@ -17,7 +17,7 @@ struct CurrentScreenHandler: PepperHandler {
         var data: [String: AnyCodable] = [
             "screen_id": AnyCodable(topVC.pepperScreenID),
             "type": AnyCodable(String(describing: type(of: topVC))),
-            "title": AnyCodable(topVC.title ?? "")
+            "title": AnyCodable(topVC.title ?? ""),
         ]
 
         // Navigation stack (pepper_effectiveNavController finds SwiftUI NavigationStack's

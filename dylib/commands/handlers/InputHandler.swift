@@ -29,34 +29,39 @@ struct InputHandler: PepperHandler {
         }
 
         // If no element selector is given, try the first responder
-        let hasSelector = command.params?["element"] != nil ||
-                          command.params?["text"] != nil ||
-                          command.params?["class"] != nil ||
-                          command.params?["point"] != nil
+        let hasSelector =
+            command.params?["element"] != nil || command.params?["text"] != nil || command.params?["class"] != nil
+            || command.params?["point"] != nil
 
         if !hasSelector {
             // Try the current first responder (focused text field)
             if let responder = findFirstResponderTextField(in: window) {
-                return applyInput(to: responder, value: value, clear: clear, submit: submit,
-                                  command: command, strategy: "first_responder", description: "focused_field")
+                return applyInput(
+                    to: responder, value: value, clear: clear, submit: submit,
+                    command: command, strategy: "first_responder", description: "focused_field")
             }
             // Fallback: find ANY text field in the window (handles SwiftUI TextFields
             // that aren't focused yet — becomeFirstResponder is called in applyInput)
             if let anyField = findTextInput(in: window) {
-                return applyInput(to: anyField, value: value, clear: clear, submit: submit,
-                                  command: command, strategy: "auto_discover", description: "first_available_field")
+                return applyInput(
+                    to: anyField, value: value, clear: clear, submit: submit,
+                    command: command, strategy: "auto_discover", description: "first_available_field")
             }
             // Log what the first responder actually is for debugging
             if let firstResponder = findFirstResponder(in: window) {
                 let typeName = String(describing: type(of: firstResponder))
                 let conformsToTextInput = firstResponder is UITextInput
-                logger.warning("No text field found. First responder is: \(typeName), isUITextInput: \(conformsToTextInput)")
+                logger.warning(
+                    "No text field found. First responder is: \(typeName), isUITextInput: \(conformsToTextInput)")
                 // If first responder conforms to UITextInput, use it as fallback
                 if conformsToTextInput {
-                    return applyInput(to: firstResponder, value: value, clear: clear, submit: submit,
-                                      command: command, strategy: "first_responder_uitextinput", description: "focused_\(typeName)")
+                    return applyInput(
+                        to: firstResponder, value: value, clear: clear, submit: submit,
+                        command: command, strategy: "first_responder_uitextinput", description: "focused_\(typeName)")
                 }
-                return .error(id: command.id, message: "No text field found. First responder: \(typeName) (isTextInput=\(conformsToTextInput))")
+                return .error(
+                    id: command.id,
+                    message: "No text field found. First responder: \(typeName) (isTextInput=\(conformsToTextInput))")
             }
             return .error(id: command.id, message: "No element selector and no text field found (no first responder)")
         }
@@ -72,21 +77,25 @@ struct InputHandler: PepperHandler {
 
         // If the resolved element is directly a text input, use it
         if element is UITextField || element is UITextView || element is UISearchBar {
-            return applyInput(to: element, value: value, clear: clear, submit: submit,
-                              command: command, strategy: result.strategy.rawValue, description: result.description)
+            return applyInput(
+                to: element, value: value, clear: clear, submit: submit,
+                command: command, strategy: result.strategy.rawValue, description: result.description)
         }
 
         // Search within the resolved view for a text input (common with SwiftUI)
         if let textInput = findTextInput(in: element) {
-            return applyInput(to: textInput, value: value, clear: clear, submit: submit,
-                              command: command, strategy: result.strategy.rawValue, description: result.description)
+            return applyInput(
+                to: textInput, value: value, clear: clear, submit: submit,
+                command: command, strategy: result.strategy.rawValue, description: result.description)
         }
 
         // The element might be a label/button near a text field — search siblings
         if let parent = element.superview,
-           let textInput = findTextInput(in: parent) {
-            return applyInput(to: textInput, value: value, clear: clear, submit: submit,
-                              command: command, strategy: result.strategy.rawValue, description: result.description + " (sibling)")
+            let textInput = findTextInput(in: parent)
+        {
+            return applyInput(
+                to: textInput, value: value, clear: clear, submit: submit,
+                command: command, strategy: result.strategy.rawValue, description: result.description + " (sibling)")
         }
 
         let typeName = String(describing: type(of: element))
@@ -95,8 +104,10 @@ struct InputHandler: PepperHandler {
 
     // MARK: - Input application
 
-    private func applyInput(to element: UIView, value: String, clear: Bool, submit: Bool,
-                            command: PepperCommand, strategy: String, description: String) -> PepperResponse {
+    private func applyInput(
+        to element: UIView, value: String, clear: Bool, submit: Bool,
+        command: PepperCommand, strategy: String, description: String
+    ) -> PepperResponse {
         let typeName = String(describing: type(of: element))
         logger.info("Setting input on \(description) via \(strategy) to: \(value)")
 
@@ -128,10 +139,12 @@ struct InputHandler: PepperHandler {
                 textField.sendActions(for: .editingDidEndOnExit)
             }
 
-            return .ok(id: command.id, data: inputResponseData(
-                strategy: strategy, description: description, type: "textField",
-                value: value, placeholder: textField.placeholder
-            ))
+            return .ok(
+                id: command.id,
+                data: inputResponseData(
+                    strategy: strategy, description: description, type: "textField",
+                    value: value, placeholder: textField.placeholder
+                ))
         }
 
         // UITextView
@@ -154,9 +167,11 @@ struct InputHandler: PepperHandler {
                 object: textView
             )
 
-            return .ok(id: command.id, data: inputResponseData(
-                strategy: strategy, description: description, type: "textView", value: value
-            ))
+            return .ok(
+                id: command.id,
+                data: inputResponseData(
+                    strategy: strategy, description: description, type: "textView", value: value
+                ))
         }
 
         // UISearchBar
@@ -170,10 +185,12 @@ struct InputHandler: PepperHandler {
                 searchBar.delegate?.searchBarSearchButtonClicked?(searchBar)
             }
 
-            return .ok(id: command.id, data: inputResponseData(
-                strategy: strategy, description: description, type: "searchBar", value: value,
-                placeholder: searchBar.placeholder
-            ))
+            return .ok(
+                id: command.id,
+                data: inputResponseData(
+                    strategy: strategy, description: description, type: "searchBar", value: value,
+                    placeholder: searchBar.placeholder
+                ))
         }
 
         // Generic UITextInput (SwiftUI TextField backing views)
@@ -191,9 +208,11 @@ struct InputHandler: PepperHandler {
 
             textInput.insertText(value)
 
-            return .ok(id: command.id, data: inputResponseData(
-                strategy: strategy, description: description, type: "textInput(\(typeName))", value: value
-            ))
+            return .ok(
+                id: command.id,
+                data: inputResponseData(
+                    strategy: strategy, description: description, type: "textInput(\(typeName))", value: value
+                ))
         }
 
         return .error(id: command.id, message: "Unsupported text input type: \(typeName)")
@@ -201,13 +220,15 @@ struct InputHandler: PepperHandler {
 
     // MARK: - Helpers
 
-    private func inputResponseData(strategy: String, description: String, type: String,
-                                   value: String, placeholder: String? = nil) -> [String: AnyCodable] {
+    private func inputResponseData(
+        strategy: String, description: String, type: String,
+        value: String, placeholder: String? = nil
+    ) -> [String: AnyCodable] {
         var data: [String: AnyCodable] = [
             "strategy": AnyCodable(strategy),
             "description": AnyCodable(description),
             "type": AnyCodable(type),
-            "value": AnyCodable(value)
+            "value": AnyCodable(value),
         ]
         if let placeholder = placeholder {
             data["placeholder"] = AnyCodable(placeholder)
@@ -247,7 +268,9 @@ struct InputHandler: PepperHandler {
 
     /// Find the current first responder text field in the view hierarchy.
     private func findFirstResponderTextField(in view: UIView) -> UIView? {
-        if view.isFirstResponder && (view is UITextField || view is UITextView || view is UISearchBar || view is UITextInput) {
+        if view.isFirstResponder
+            && (view is UITextField || view is UITextView || view is UISearchBar || view is UITextInput)
+        {
             return view
         }
         for subview in view.subviews {

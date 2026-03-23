@@ -51,15 +51,17 @@ struct GestureHandler: PepperHandler {
         )
 
         if success {
-            return .ok(id: command.id, data: [
-                "gesture": AnyCodable("pinch"),
-                "center": AnyCodable([
-                    "x": AnyCodable(center.x),
-                    "y": AnyCodable(center.y)
-                ]),
-                "start_distance": AnyCodable(startDist),
-                "end_distance": AnyCodable(endDist)
-            ])
+            return .ok(
+                id: command.id,
+                data: [
+                    "gesture": AnyCodable("pinch"),
+                    "center": AnyCodable([
+                        "x": AnyCodable(center.x),
+                        "y": AnyCodable(center.y),
+                    ]),
+                    "start_distance": AnyCodable(startDist),
+                    "end_distance": AnyCodable(endDist),
+                ])
         }
         return .error(id: command.id, message: "Pinch gesture failed — touch synthesis unavailable")
     }
@@ -80,15 +82,17 @@ struct GestureHandler: PepperHandler {
         )
 
         if success {
-            return .ok(id: command.id, data: [
-                "gesture": AnyCodable("rotate"),
-                "center": AnyCodable([
-                    "x": AnyCodable(center.x),
-                    "y": AnyCodable(center.y)
-                ]),
-                "angle": AnyCodable(angle),
-                "radius": AnyCodable(radius)
-            ])
+            return .ok(
+                id: command.id,
+                data: [
+                    "gesture": AnyCodable("rotate"),
+                    "center": AnyCodable([
+                        "x": AnyCodable(center.x),
+                        "y": AnyCodable(center.y),
+                    ]),
+                    "angle": AnyCodable(angle),
+                    "radius": AnyCodable(radius),
+                ])
         }
         return .error(id: command.id, message: "Rotate gesture failed — touch synthesis unavailable")
     }

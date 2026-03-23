@@ -25,7 +25,8 @@ LOGS_DIR    := $(PROJECT_DIR)/build/logs
 .PHONY: help build deploy launch kill relaunch ping check lint \
         logs clean test-client pepper-ctl test-app coverage coverage-check \
         docs setup ci smoke smoke-ice-cubes \
-        agent agent-monitor agent-status agent-trigger agents-install agents-uninstall agent-cleanup agents-start agents-stop agent-analyze groom
+        agent agent-monitor agent-status agent-trigger agents-install agents-uninstall agent-cleanup agents-start agents-stop agent-analyze groom \
+        fmt fmt-check
 
 # ============================================================
 # Help
@@ -117,6 +118,25 @@ lint:
 ## check: Run all pre-commit checks (build, syntax, MCP, paths)
 check:
 	@bash "$(PROJECT_DIR)/scripts/pre-commit"
+
+## fmt: Format Swift files in dylib/ with swift-format
+fmt:
+	@if ! command -v swift-format >/dev/null 2>&1; then \
+		echo "swift-format not found. Install with: brew install swift-format" >&2; \
+		exit 1; \
+	fi
+	@echo "Formatting dylib/ Swift files..."
+	@find "$(CONTROL_DIR)" -name '*.swift' -print0 | xargs -0 swift-format format --configuration "$(PROJECT_DIR)/.swift-format" --in-place
+	@echo "Done."
+
+## fmt-check: Check Swift formatting in dylib/ (no changes, CI-safe)
+fmt-check:
+	@if ! command -v swift-format >/dev/null 2>&1; then \
+		echo "swift-format not found. Install with: brew install swift-format" >&2; \
+		exit 1; \
+	fi
+	@echo "Checking dylib/ Swift formatting..."
+	@find "$(CONTROL_DIR)" -name '*.swift' -print0 | xargs -0 swift-format lint --configuration "$(PROJECT_DIR)/.swift-format" --strict && echo "All files formatted correctly." || (echo "Formatting issues found. Run 'make fmt' to fix." >&2; exit 1)
 
 # ============================================================
 # Control plane commands

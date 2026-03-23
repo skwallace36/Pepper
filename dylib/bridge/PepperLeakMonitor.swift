@@ -1,5 +1,5 @@
-import Foundation
 import CommonCrypto
+import Foundation
 
 /// Tracks heap instance counts per screen and detects growth (potential leaks).
 ///
@@ -85,7 +85,7 @@ final class PepperLeakMonitor {
                             "class": AnyCodable(cls),
                             "before": AnyCodable(prevCount),
                             "after": AnyCodable(currentCount),
-                            "delta": AnyCodable(delta)
+                            "delta": AnyCodable(delta),
                         ])
 
                         let warning = LeakWarning(
@@ -123,7 +123,7 @@ final class PepperLeakMonitor {
                     "before": AnyCodable(w.before),
                     "after": AnyCodable(w.after),
                     "delta": AnyCodable(w.after - w.before),
-                    "seconds_ago": AnyCodable(Int(-w.timestamp.timeIntervalSinceNow))
+                    "seconds_ago": AnyCodable(Int(-w.timestamp.timeIntervalSinceNow)),
                 ]
             }
         }
@@ -140,7 +140,8 @@ final class PepperLeakMonitor {
     // MARK: - Heap scan via C bridge
 
     private func runHeapScan() -> [String: Int] {
-        let prefixes = [Bundle.main.infoDictionary?["CFBundleName"] as? String ?? ""]
+        let prefixes =
+            [Bundle.main.infoDictionary?["CFBundleName"] as? String ?? ""]
             + PepperAppConfig.shared.classLookupPrefixes
 
         var cPrefixes: [UnsafePointer<CChar>?] = []

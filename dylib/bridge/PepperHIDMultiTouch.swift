@@ -48,8 +48,10 @@ extension PepperHIDEventSynthesizer {
         }
 
         let contextId = windowPrivate.contextId
-        let id1 = nextEventId; nextEventId += 1
-        let id2 = nextEventId; nextEventId += 1
+        let id1 = nextEventId
+        nextEventId += 1
+        let id2 = nextEventId
+        nextEventId += 1
 
         let fps = Double(UIScreen.main.maximumFramesPerSecond)
         let steps = max(Int(duration * fps), 10)
@@ -72,7 +74,9 @@ extension PepperHIDEventSynthesizer {
         // Transition-aware settle (same logic as tap — gesture recognizers need
         // extra time after navigation transitions to rewire).
         let timeSinceTransition = PepperState.shared.timeSinceLastTransition
-        let settleTime: TimeInterval = timeSinceTransition < PepperDefaults.transitionRecencyWindow ? PepperDefaults.postTransitionSettleTime : 0.016
+        let settleTime: TimeInterval =
+            timeSinceTransition < PepperDefaults.transitionRecencyWindow
+            ? PepperDefaults.postTransitionSettleTime : 0.016
         RunLoop.current.run(until: Date(timeIntervalSinceNow: settleTime))
 
         // === Touch Began (both fingers simultaneously) ===
@@ -153,8 +157,10 @@ extension PepperHIDEventSynthesizer {
         }
 
         let contextId = windowPrivate.contextId
-        let id1 = nextEventId; nextEventId += 1
-        let id2 = nextEventId; nextEventId += 1
+        let id1 = nextEventId
+        nextEventId += 1
+        let id2 = nextEventId
+        nextEventId += 1
 
         let fps = Double(UIScreen.main.maximumFramesPerSecond)
         let steps = max(Int(duration * fps), 10)
@@ -183,7 +189,9 @@ extension PepperHIDEventSynthesizer {
 
         // Transition-aware settle (same logic as tap)
         let timeSinceTransition = PepperState.shared.timeSinceLastTransition
-        let rotateSettleTime: TimeInterval = timeSinceTransition < PepperDefaults.transitionRecencyWindow ? PepperDefaults.postTransitionSettleTime : 0.016
+        let rotateSettleTime: TimeInterval =
+            timeSinceTransition < PepperDefaults.transitionRecencyWindow
+            ? PepperDefaults.postTransitionSettleTime : 0.016
         RunLoop.current.run(until: Date(timeIntervalSinceNow: rotateSettleTime))
 
         // === Touch Began ===

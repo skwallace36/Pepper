@@ -51,10 +51,13 @@ extension UIView {
 
         // When doing substring matching, exact matches should win over partial matches.
         // e.g. searching "PROD" should prefer a button labeled "PROD" over static text "production".
-        let exactMatches: Set<ObjectIdentifier> = exact ? [] : Set(
-            results.filter { pepper_viewMatchesText($0, text: text, exact: true) }
-                   .map { ObjectIdentifier($0) }
-        )
+        let exactMatches: Set<ObjectIdentifier> =
+            exact
+            ? []
+            : Set(
+                results.filter { pepper_viewMatchesText($0, text: text, exact: true) }
+                    .map { ObjectIdentifier($0) }
+            )
 
         // Pick the best match from a set of candidates.
         // Within each pool: fully visible beats partially visible,
@@ -68,7 +71,8 @@ extension UIView {
 
             // 1. Interactive (UIControl or .button trait) with exact text match
             if !exactMatches.isEmpty {
-                if let v = pool.first(where: { exactMatches.contains(ObjectIdentifier($0)) && pepper_isInteractive($0) }) {
+                if let v = pool.first(where: { exactMatches.contains(ObjectIdentifier($0)) && pepper_isInteractive($0) }
+                ) {
                     return v
                 }
             }
@@ -132,11 +136,11 @@ extension UIView {
         let insetY = max(frame.height * 0.15, 4)
 
         let points: [CGPoint] = [
-            CGPoint(x: frame.midX, y: frame.midY),                           // Center
-            CGPoint(x: frame.minX + insetX, y: frame.minY + insetY),         // Top-left
-            CGPoint(x: frame.maxX - insetX, y: frame.minY + insetY),         // Top-right
-            CGPoint(x: frame.minX + insetX, y: frame.maxY - insetY),         // Bottom-left
-            CGPoint(x: frame.maxX - insetX, y: frame.maxY - insetY),         // Bottom-right
+            CGPoint(x: frame.midX, y: frame.midY),  // Center
+            CGPoint(x: frame.minX + insetX, y: frame.minY + insetY),  // Top-left
+            CGPoint(x: frame.maxX - insetX, y: frame.minY + insetY),  // Top-right
+            CGPoint(x: frame.minX + insetX, y: frame.maxY - insetY),  // Bottom-left
+            CGPoint(x: frame.maxX - insetX, y: frame.maxY - insetY),  // Bottom-right
         ]
 
         for point in points {
@@ -180,7 +184,8 @@ extension UIView {
 
     private func pepper_collectInteractive(into results: inout [PepperElementInfo]) {
         if let id = accessibilityIdentifier, !id.isEmpty,
-           self is UIControl || isUserInteractionEnabled {
+            self is UIControl || isUserInteractionEnabled
+        {
             results.append(pepper_elementInfo)
         }
         for subview in subviews {
@@ -291,7 +296,8 @@ extension UIView {
             pepperLog.debug("Set text on UITextView: \(self.accessibilityIdentifier ?? "unknown")", category: .bridge)
             return true
         } else {
-            pepperLog.warning("View does not support text input: \(self.accessibilityIdentifier ?? "unknown")", category: .bridge)
+            pepperLog.warning(
+                "View does not support text input: \(self.accessibilityIdentifier ?? "unknown")", category: .bridge)
             return false
         }
     }
@@ -314,7 +320,8 @@ extension UIView {
         let newValue = value ?? !uiSwitch.isOn
         uiSwitch.setOn(newValue, animated: false)
         uiSwitch.sendActions(for: .valueChanged)
-        pepperLog.debug("Toggled switch to \(newValue): \(self.accessibilityIdentifier ?? "unknown")", category: .bridge)
+        pepperLog.debug(
+            "Toggled switch to \(newValue): \(self.accessibilityIdentifier ?? "unknown")", category: .bridge)
         return true
     }
 }
@@ -337,8 +344,8 @@ extension UIView {
                 "x": frame.origin.x,
                 "y": frame.origin.y,
                 "width": frame.size.width,
-                "height": frame.size.height
-            ]
+                "height": frame.size.height,
+            ],
         ]
 
         if let id = accessibilityIdentifier {

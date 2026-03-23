@@ -43,13 +43,16 @@ struct TapHandler: PepperHandler {
                 return .error(id: command.id, message: "No hit-reachable element with icon_name '\(iconName)' found")
             }
             guard index < matches.count else {
-                return .error(id: command.id, message: "Icon '\(iconName)' has \(matches.count) match(es), index \(index) out of range")
+                return .error(
+                    id: command.id,
+                    message: "Icon '\(iconName)' has \(matches.count) match(es), index \(index) out of range")
             }
             let match = matches[index]
             let tapPoint = match.center
             let desc = "\(iconName)[\(index)] at (\(Int(tapPoint.x)),\(Int(tapPoint.y)))"
-            return executeTap(at: tapPoint, strategy: "icon_name",
-                              description: desc, in: keyWindow, command: command)
+            return executeTap(
+                at: tapPoint, strategy: "icon_name",
+                description: desc, in: keyWindow, command: command)
         }
 
         // Predicate taps: find first matching element via NSPredicate, tap it.
@@ -66,14 +69,17 @@ struct TapHandler: PepperHandler {
                 return .error(id: command.id, message: "No elements match predicate: \(predFormat)")
             }
             guard index < matches.count else {
-                return .error(id: command.id, message: "Predicate matched \(matches.count) element(s), index \(index) out of range")
+                return .error(
+                    id: command.id,
+                    message: "Predicate matched \(matches.count) element(s), index \(index) out of range")
             }
             let match = matches[index]
             let tapPoint = match.center
             let label = match.label ?? match.heuristic ?? "(\(Int(tapPoint.x)),\(Int(tapPoint.y)))"
             let desc = "predicate[\(index)] '\(label)'"
-            return executeTap(at: tapPoint, strategy: "predicate",
-                              description: desc, in: keyWindow, command: command)
+            return executeTap(
+                at: tapPoint, strategy: "predicate",
+                description: desc, in: keyWindow, command: command)
         }
 
         // Heuristic taps: discover interactive elements, match by heuristic label.
@@ -86,26 +92,32 @@ struct TapHandler: PepperHandler {
                 return .error(id: command.id, message: "No hit-reachable element with heuristic '\(heuristic)' found")
             }
             guard index < matches.count else {
-                return .error(id: command.id, message: "Heuristic '\(heuristic)' has \(matches.count) match(es), index \(index) out of range")
+                return .error(
+                    id: command.id,
+                    message: "Heuristic '\(heuristic)' has \(matches.count) match(es), index \(index) out of range")
             }
             let match = matches[index]
             let tapPoint = match.center
             let desc = "\(heuristic)[\(index)] at (\(Int(tapPoint.x)),\(Int(tapPoint.y)))"
-            return executeTap(at: tapPoint, strategy: "heuristic",
-                              description: desc, in: keyWindow, command: command)
+            return executeTap(
+                at: tapPoint, strategy: "heuristic",
+                description: desc, in: keyWindow, command: command)
         }
 
         // Point taps: use raw coordinates directly.
         // Find the topmost window containing the point so system dialogs are tappable.
         if let pointDict = command.params?["point"]?.dictValue,
-           let x = pointDict["x"]?.doubleValue,
-           let y = pointDict["y"]?.doubleValue {
+            let x = pointDict["x"]?.doubleValue,
+            let y = pointDict["y"]?.doubleValue
+        {
             let tapPoint = CGPoint(x: x, y: y)
-            let targetWindow = windows.first { window in
-                window.bounds.contains(window.convert(tapPoint, from: nil))
-            } ?? keyWindow
-            return executeTap(at: tapPoint, strategy: "point",
-                              description: "(\(x), \(y))", in: targetWindow, command: command)
+            let targetWindow =
+                windows.first { window in
+                    window.bounds.contains(window.convert(tapPoint, from: nil))
+                } ?? keyWindow
+            return executeTap(
+                at: tapPoint, strategy: "point",
+                description: "(\(x), \(y))", in: targetWindow, command: command)
         }
 
         // Tab taps: search key window only (tabs are in the app, not system dialogs)
@@ -114,21 +126,27 @@ struct TapHandler: PepperHandler {
             if let errorMsg = errorMsg, errorMsg.hasPrefix("__tab_selected__:") {
                 let idx = String(errorMsg.dropFirst("__tab_selected__:".count))
                 logger.warning("Tab \(idx) selected programmatically — no tab bar button found for touch synthesis")
-                return .ok(id: command.id, data: [
-                    "strategy": AnyCodable("tab_index"),
-                    "description": AnyCodable("tab[\(idx)]"),
-                    "type": AnyCodable("tab"),
-                    "programmatic": AnyCodable(true),
-                    "warning": AnyCodable("Fell back to programmatic tab selection — tab bar buttons not found in view hierarchy")
-                ])
+                return .ok(
+                    id: command.id,
+                    data: [
+                        "strategy": AnyCodable("tab_index"),
+                        "description": AnyCodable("tab[\(idx)]"),
+                        "type": AnyCodable("tab"),
+                        "programmatic": AnyCodable(true),
+                        "warning": AnyCodable(
+                            "Fell back to programmatic tab selection — tab bar buttons not found in view hierarchy"),
+                    ])
             }
             if let result = result {
-                let tapPoint = result.tapPoint ?? result.view.convert(
-                    CGPoint(x: result.view.bounds.midX, y: result.view.bounds.midY),
-                    to: keyWindow
-                )
-                return executeTap(at: tapPoint, strategy: result.strategy.rawValue,
-                                  description: result.description, in: keyWindow, command: command)
+                let tapPoint =
+                    result.tapPoint
+                    ?? result.view.convert(
+                        CGPoint(x: result.view.bounds.midX, y: result.view.bounds.midY),
+                        to: keyWindow
+                    )
+                return executeTap(
+                    at: tapPoint, strategy: result.strategy.rawValue,
+                    description: result.description, in: keyWindow, command: command)
             }
             return .error(id: command.id, message: errorMsg ?? "Tab not found")
         }
@@ -138,8 +156,9 @@ struct TapHandler: PepperHandler {
         if let spatialResult = resolveSpatialTap(command: command, in: keyWindow) {
             switch spatialResult {
             case .success(let point, let desc):
-                return executeTap(at: point, strategy: "spatial",
-                                  description: desc, in: keyWindow, command: command)
+                return executeTap(
+                    at: point, strategy: "spatial",
+                    description: desc, in: keyWindow, command: command)
             case .error(let msg):
                 return .error(id: command.id, message: msg)
             }
@@ -148,16 +167,19 @@ struct TapHandler: PepperHandler {
         // Priority: if text exactly matches a visible tab title, select it directly.
         // This prevents "Rank" matching "Ranking" text elsewhere on screen.
         if let text = command.params?["text"]?.stringValue,
-           let tabBar = UIWindow.pepper_tabBarController {
+            let tabBar = UIWindow.pepper_tabBarController
+        {
             let normalized = text.lowercased()
             let knownTabs = PepperAppConfig.shared.tabBarProvider?.tabNames() ?? []
             if knownTabs.contains(normalized) {
                 if tabBar.pepper_selectTab(named: text) {
-                    return .ok(id: command.id, data: [
-                        "strategy": AnyCodable("tab_index"),
-                        "description": AnyCodable("tab:\(text)"),
-                        "type": AnyCodable("programmatic_tab"),
-                    ])
+                    return .ok(
+                        id: command.id,
+                        data: [
+                            "strategy": AnyCodable("tab_index"),
+                            "description": AnyCodable("tab:\(text)"),
+                            "type": AnyCodable("programmatic_tab"),
+                        ])
                 }
             }
         }
@@ -173,24 +195,33 @@ struct TapHandler: PepperHandler {
                 let (result, _) = PepperElementResolver.resolve(params: command.params, in: window)
                 if let result = result {
                     let element = result.view
-                    let tapPoint = result.tapPoint ?? element.convert(
-                        CGPoint(x: element.bounds.midX, y: element.bounds.midY),
-                        to: window
-                    )
+                    let tapPoint =
+                        result.tapPoint
+                        ?? element.convert(
+                            CGPoint(x: element.bounds.midX, y: element.bounds.midY),
+                            to: window
+                        )
                     allMatches.append((tapPoint, result.strategy.rawValue, result.description, window))
                 }
             }
             // Also check for multiple matches via accessibility scan
             if allMatches.count <= 1, let text = command.params?["text"]?.stringValue {
-                let elements = PepperSwiftUIBridge.shared.discoverInteractiveElements(hitTestFilter: false, maxElements: 300)
+                let elements = PepperSwiftUIBridge.shared.discoverInteractiveElements(
+                    hitTestFilter: false, maxElements: 300)
                 for el in elements {
                     let label = el.label ?? ""
                     let exact = command.params?["exact"]?.boolValue ?? false
                     let matches = exact ? label == text : label.localizedCaseInsensitiveContains(text)
                     if matches && UIScreen.main.bounds.contains(el.center) {
-                        let isDuplicate = allMatches.contains { abs($0.0.x - el.center.x) < 5 && abs($0.0.y - el.center.y) < 5 }
+                        let isDuplicate = allMatches.contains {
+                            abs($0.0.x - el.center.x) < 5 && abs($0.0.y - el.center.y) < 5
+                        }
                         if !isDuplicate {
-                            allMatches.append((el.center, "position_scan", "'\(label)' at (\(Int(el.center.x)),\(Int(el.center.y)))", keyWindow))
+                            allMatches.append(
+                                (
+                                    el.center, "position_scan",
+                                    "'\(label)' at (\(Int(el.center.x)),\(Int(el.center.y)))", keyWindow
+                                ))
                         }
                     }
                 }
@@ -201,16 +232,19 @@ struct TapHandler: PepperHandler {
                 let pick = positionFilter == "bottom" ? sorted.last! : sorted.first!
                 // swiftlint:disable:next force_unwrapping
                 let desc = "\(pick.2) [position:\(positionFilter!)]"
-                return executeTap(at: pick.0, strategy: pick.1,
-                                  description: desc, in: pick.3, command: command)
+                return executeTap(
+                    at: pick.0, strategy: pick.1,
+                    description: desc, in: pick.3, command: command)
             }
         }
 
         // Text + index: find ALL matches for a text label, pick the Nth occurrence.
         // Used for disambiguating duplicate labels ("Share" #1, #2, etc.)
         if let text = command.params?["text"]?.stringValue,
-           let textIndex = command.params?["index"]?.intValue {
-            let interactiveEls = PepperSwiftUIBridge.shared.discoverInteractiveElements(hitTestFilter: false, maxElements: 300)
+            let textIndex = command.params?["index"]?.intValue
+        {
+            let interactiveEls = PepperSwiftUIBridge.shared.discoverInteractiveElements(
+                hitTestFilter: false, maxElements: 300)
             let exact = command.params?["exact"]?.boolValue ?? false
             var matches: [(CGPoint, String)] = []
             for el in interactiveEls {
@@ -224,10 +258,13 @@ struct TapHandler: PepperHandler {
             if textIndex < matches.count {
                 let pick = matches[textIndex]
                 let desc = "\(text)[\(textIndex)]"
-                return executeTap(at: pick.0, strategy: "interactive_text",
-                                  description: desc, in: keyWindow, command: command)
+                return executeTap(
+                    at: pick.0, strategy: "interactive_text",
+                    description: desc, in: keyWindow, command: command)
             }
-            return .error(id: command.id, message: "Text '\(text)' has \(matches.count) match(es), index \(textIndex) out of range")
+            return .error(
+                id: command.id,
+                message: "Text '\(text)' has \(matches.count) match(es), index \(textIndex) out of range")
         }
 
         // All other resolution (text, element, label, class): search ALL windows front-to-back.
@@ -236,18 +273,23 @@ struct TapHandler: PepperHandler {
             let (result, _) = PepperElementResolver.resolve(params: command.params, in: window)
             if let result = result {
                 let element = result.view
-                let tapPoint = result.tapPoint ?? element.convert(
-                    CGPoint(x: element.bounds.midX, y: element.bounds.midY),
-                    to: window
-                )
+                let tapPoint =
+                    result.tapPoint
+                    ?? element.convert(
+                        CGPoint(x: element.bounds.midX, y: element.bounds.midY),
+                        to: window
+                    )
                 if !isInteractable(element) {
                     logger.warning("Element may not be interactable: \(result.description) — tapping anyway")
                 }
                 if window !== keyWindow {
-                    logger.info("Found element in non-key window (level \(window.windowLevel.rawValue)) — tapping system dialog")
+                    logger.info(
+                        "Found element in non-key window (level \(window.windowLevel.rawValue)) — tapping system dialog"
+                    )
                 }
-                return executeTap(at: tapPoint, strategy: result.strategy.rawValue,
-                                  description: result.description, in: window, command: command)
+                return executeTap(
+                    at: tapPoint, strategy: result.strategy.rawValue,
+                    description: result.description, in: window, command: command)
             }
         }
 
@@ -256,8 +298,10 @@ struct TapHandler: PepperHandler {
         return .error(id: command.id, message: errorMsg ?? "Element not found")
     }
 
-    private func executeTap(at point: CGPoint, strategy: String, description: String,
-                            in window: UIWindow, command: PepperCommand) -> PepperResponse {
+    private func executeTap(
+        at point: CGPoint, strategy: String, description: String,
+        in window: UIWindow, command: PepperCommand
+    ) -> PepperResponse {
         // Visual feedback
         PepperTouchVisualizer.shared.showTap(at: point)
 
@@ -275,15 +319,17 @@ struct TapHandler: PepperHandler {
 
         if success {
             logger.info("Tapped \(description) via HID at (\(point.x), \(point.y))")
-            return .ok(id: command.id, data: [
-                "strategy": AnyCodable(strategy),
-                "description": AnyCodable(description),
-                "type": AnyCodable("hid_touch"),
-                "tap_point": AnyCodable([
-                    "x": AnyCodable(Double(point.x)),
-                    "y": AnyCodable(Double(point.y))
+            return .ok(
+                id: command.id,
+                data: [
+                    "strategy": AnyCodable(strategy),
+                    "description": AnyCodable(description),
+                    "type": AnyCodable("hid_touch"),
+                    "tap_point": AnyCodable([
+                        "x": AnyCodable(Double(point.x)),
+                        "y": AnyCodable(Double(point.y)),
+                    ]),
                 ])
-            ])
         } else {
             return .error(id: command.id, message: "HID tap synthesis failed at (\(point.x), \(point.y))")
         }
@@ -377,7 +423,7 @@ struct TapHandler: PepperHandler {
         let sorted = candidates.sorted { a, b in
             switch direction {
             case .right: return a.center.x < b.center.x
-            case .left:  return a.center.x > b.center.x
+            case .left: return a.center.x > b.center.x
             case .above: return a.center.y > b.center.y
             case .below: return a.center.y < b.center.y
             }
@@ -385,7 +431,8 @@ struct TapHandler: PepperHandler {
 
         if let nearest = sorted.first {
             let targetLabel = nearest.label ?? nearest.className
-            let desc = "\(direction.rawValue) '\(anchorText)' → \(targetLabel) at (\(Int(nearest.center.x)),\(Int(nearest.center.y)))"
+            let desc =
+                "\(direction.rawValue) '\(anchorText)' → \(targetLabel) at (\(Int(nearest.center.x)),\(Int(nearest.center.y)))"
             logger.info("Spatial tap (element): \(desc)")
             return .success(nearest.center, desc)
         }
@@ -407,7 +454,9 @@ struct TapHandler: PepperHandler {
         }
 
         guard screen.contains(tapPoint) else {
-            return .error("Spatial tap target off screen for \(direction.rawValue.replacingOccurrences(of: "_", with: " ")) '\(anchorText)'")
+            return .error(
+                "Spatial tap target off screen for \(direction.rawValue.replacingOccurrences(of: "_", with: " ")) '\(anchorText)'"
+            )
         }
 
         let desc = "\(direction.rawValue) '\(anchorText)' (edge fallback)"
@@ -418,9 +467,7 @@ struct TapHandler: PepperHandler {
     // MARK: - Helpers
 
     private func isInteractable(_ view: UIView) -> Bool {
-        !view.isHidden && view.alpha > 0.01 &&
-        (view.isUserInteractionEnabled || view is UIControl)
+        !view.isHidden && view.alpha > 0.01 && (view.isUserInteractionEnabled || view is UIControl)
     }
-
 
 }

@@ -1,5 +1,5 @@
-import UIKit
 import QuartzCore
+import UIKit
 
 /// Handles {"cmd": "animations"} commands.
 /// Inspects active CAAnimations across the layer tree, traces view movement, and controls animation speed.
@@ -43,14 +43,18 @@ struct AnimationsHandler: PepperHandler {
             scanLayer(window.layer, windowLayer: window.layer, depth: 0, now: now, results: &animations)
         }
 
-        return .ok(id: command.id, data: [
-            "count": AnyCodable(animations.count),
-            "animations": AnyCodable(animations.map { AnyCodable($0) }),
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "count": AnyCodable(animations.count),
+                "animations": AnyCodable(animations.map { AnyCodable($0) }),
+            ])
     }
 
     // swiftlint:disable:next cyclomatic_complexity
-    private func scanLayer(_ layer: CALayer, windowLayer: CALayer, depth: Int, now: CFTimeInterval, results: inout [[String: AnyCodable]]) {
+    private func scanLayer(
+        _ layer: CALayer, windowLayer: CALayer, depth: Int, now: CFTimeInterval, results: inout [[String: AnyCodable]]
+    ) {
         guard depth < 30 else { return }
 
         if let keys = layer.animationKeys(), !keys.isEmpty {
@@ -148,17 +152,18 @@ struct AnimationsHandler: PepperHandler {
                 if let group = anim as? CAAnimationGroup {
                     info["sub_animation_count"] = AnyCodable(group.animations?.count ?? 0)
                     if let subs = group.animations {
-                        info["sub_animations"] = AnyCodable(subs.enumerated().map { (i, sub) -> [String: AnyCodable] in
-                            var subInfo: [String: AnyCodable] = [
-                                "index": AnyCodable(i),
-                                "class": AnyCodable(String(describing: type(of: sub))),
-                                "duration": AnyCodable(sub.duration),
-                            ]
-                            if let basic = sub as? CABasicAnimation {
-                                subInfo["key_path"] = AnyCodable(basic.keyPath ?? "?")
-                            }
-                            return subInfo
-                        }.map { AnyCodable($0) })
+                        info["sub_animations"] = AnyCodable(
+                            subs.enumerated().map { (i, sub) -> [String: AnyCodable] in
+                                var subInfo: [String: AnyCodable] = [
+                                    "index": AnyCodable(i),
+                                    "class": AnyCodable(String(describing: type(of: sub))),
+                                    "duration": AnyCodable(sub.duration),
+                                ]
+                                if let basic = sub as? CABasicAnimation {
+                                    subInfo["key_path"] = AnyCodable(basic.keyPath ?? "?")
+                                }
+                                return subInfo
+                            }.map { AnyCodable($0) })
                     }
                 }
 
@@ -192,15 +197,17 @@ struct AnimationsHandler: PepperHandler {
         if let pointStr = command.params?["point"]?.stringValue {
             let parts = pointStr.split(separator: ",")
             guard parts.count == 2,
-                  let px = Double(parts[0].trimmingCharacters(in: .whitespaces)),
-                  let py = Double(parts[1].trimmingCharacters(in: .whitespaces)) else {
+                let px = Double(parts[0].trimmingCharacters(in: .whitespaces)),
+                let py = Double(parts[1].trimmingCharacters(in: .whitespaces))
+            else {
                 return .error(id: command.id, message: "Invalid point format. Use 'x,y' or {\"x\":N,\"y\":N}.")
             }
             x = px
             y = py
         } else if let pointObj = command.params?["point"]?.dictValue,
-                  let px = pointObj["x"]?.doubleValue,
-                  let py = pointObj["y"]?.doubleValue {
+            let px = pointObj["x"]?.doubleValue,
+            let py = pointObj["y"]?.doubleValue
+        {
             x = px
             y = py
         } else {
@@ -299,15 +306,17 @@ struct AnimationsHandler: PepperHandler {
             initialFrame = layer.frame
         }
 
-        return .ok(id: command.id, data: [
-            "layer_class": AnyCodable(viewClass),
-            "layer_frame": AnyCodable(frameDict(initialFrame)),
-            "point": AnyCodable([x, y]),
-            "duration_ms": AnyCodable(durationMs),
-            "interval_ms": AnyCodable(intervalMs),
-            "sample_count": AnyCodable(samples.count),
-            "samples": AnyCodable(samples.map { AnyCodable($0) }),
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "layer_class": AnyCodable(viewClass),
+                "layer_frame": AnyCodable(frameDict(initialFrame)),
+                "point": AnyCodable([x, y]),
+                "duration_ms": AnyCodable(durationMs),
+                "interval_ms": AnyCodable(intervalMs),
+                "sample_count": AnyCodable(samples.count),
+                "samples": AnyCodable(samples.map { AnyCodable($0) }),
+            ])
     }
 
     // MARK: - Speed: Control global animation speed
@@ -325,10 +334,12 @@ struct AnimationsHandler: PepperHandler {
         }
 
         let currentSpeed = Double(UIWindow.pepper_allVisibleWindows.first?.layer.speed ?? 1.0)
-        return .ok(id: command.id, data: [
-            "speed": AnyCodable(currentSpeed),
-            "animations_enabled": AnyCodable(UIView.areAnimationsEnabled)
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "speed": AnyCodable(currentSpeed),
+                "animations_enabled": AnyCodable(UIView.areAnimationsEnabled),
+            ])
     }
 
     // MARK: - Layer tree walk (window-space frame matching)
@@ -360,7 +371,8 @@ struct AnimationsHandler: PepperHandler {
                 // swiftlint:disable:next force_unwrapping
                 let isLeaf = current.sublayers == nil || current.sublayers!.isEmpty
                 let layerType = String(describing: type(of: current))
-                let hasContent = current.backgroundColor != nil
+                let hasContent =
+                    current.backgroundColor != nil
                     || current.contents != nil
                     || current is CAShapeLayer
                     || current is CAGradientLayer
@@ -395,7 +407,8 @@ struct AnimationsHandler: PepperHandler {
             return "(\(String(format: "%.1f", size.width)) × \(String(format: "%.1f", size.height)))"
         }
         if let rect = value as? CGRect {
-            return "(\(String(format: "%.1f", rect.origin.x)), \(String(format: "%.1f", rect.origin.y)), \(String(format: "%.1f", rect.width)) × \(String(format: "%.1f", rect.height)))"
+            return
+                "(\(String(format: "%.1f", rect.origin.x)), \(String(format: "%.1f", rect.origin.y)), \(String(format: "%.1f", rect.width)) × \(String(format: "%.1f", rect.height)))"
         }
         if CFGetTypeID(value as CFTypeRef) == CGColor.typeID {
             return cgColorToHex(unsafeBitCast(value, to: CGColor.self))
@@ -417,7 +430,8 @@ struct AnimationsHandler: PepperHandler {
             }
             if typeStr == "{CGRect={CGPoint=dd}{CGSize=dd}}" {
                 let r = nsVal.cgRectValue
-                return "(\(String(format: "%.1f", r.origin.x)), \(String(format: "%.1f", r.origin.y)), \(String(format: "%.1f", r.width)) × \(String(format: "%.1f", r.height)))"
+                return
+                    "(\(String(format: "%.1f", r.origin.x)), \(String(format: "%.1f", r.origin.y)), \(String(format: "%.1f", r.width)) × \(String(format: "%.1f", r.height)))"
             }
             if typeStr == "{CGSize=dd}" {
                 let s = nsVal.cgSizeValue
@@ -428,8 +442,10 @@ struct AnimationsHandler: PepperHandler {
     }
 
     private func describeTiming(_ tf: CAMediaTimingFunction) -> String {
-        var c1 = Float.zero, c2 = Float.zero
-        var c3 = Float.zero, c4 = Float.zero
+        var c1 = Float.zero
+        var c2 = Float.zero
+        var c3 = Float.zero
+        var c4 = Float.zero
         tf.getControlPoint(at: 1, values: &c1)
         tf.getControlPoint(at: 1, values: &c2)
         tf.getControlPoint(at: 2, values: &c3)
@@ -458,7 +474,8 @@ struct AnimationsHandler: PepperHandler {
 
     private func cgColorToHex(_ color: CGColor) -> String {
         guard let rgb = color.converted(to: CGColorSpaceCreateDeviceRGB(), intent: .defaultIntent, options: nil),
-              let components = rgb.components, components.count >= 3 else {
+            let components = rgb.components, components.count >= 3
+        else {
             return "#000000FF"
         }
         let r = UInt8(min(max(components[0], 0), 1) * 255)
