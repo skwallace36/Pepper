@@ -93,7 +93,9 @@ final class PepperConnectionManager {
     ///   - sendBinary: Callback to deliver binary data to this connection.
     /// - Returns: The created connection info.
     @discardableResult
-    func addConnection(id: String, send: @escaping (Data) -> Void, sendBinary: @escaping (Data) -> Void) -> PepperConnectionInfo {
+    func addConnection(id: String, send: @escaping (Data) -> Void, sendBinary: @escaping (Data) -> Void)
+        -> PepperConnectionInfo
+    {
         let info = PepperConnectionInfo(id: id, send: send, sendBinary: sendBinary)
         queue.sync {
             connections[id] = info
@@ -211,7 +213,7 @@ final class PepperConnectionManager {
                 "id": AnyCodable(info.id),
                 "connectedAt": AnyCodable(ISO8601DateFormatter().string(from: info.connectedAt)),
                 "lastActivity": AnyCodable(ISO8601DateFormatter().string(from: info.lastActivity)),
-                "subscriptions": AnyCodable(info.subscriptions.map { AnyCodable($0) })
+                "subscriptions": AnyCodable(info.subscriptions.map { AnyCodable($0) }),
             ]
         }
     }

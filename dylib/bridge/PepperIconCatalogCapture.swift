@@ -35,18 +35,21 @@ extension PepperIconCatalog {
         // Convert to grayscale pixels
         let colorSpace = CGColorSpaceCreateDeviceGray()
         var pixels = [UInt8](repeating: 0, count: size * size)
-        guard let ctx = CGContext(
-            data: &pixels, width: size, height: size,
-            bitsPerComponent: 8, bytesPerRow: size,
-            space: colorSpace,
-            bitmapInfo: CGImageAlphaInfo.none.rawValue
-        ) else { return nil }
+        guard
+            let ctx = CGContext(
+                data: &pixels, width: size, height: size,
+                bitsPerComponent: 8, bytesPerRow: size,
+                space: colorSpace,
+                bitmapInfo: CGImageAlphaInfo.none.rawValue
+            )
+        else { return nil }
         UIGraphicsPushContext(ctx)
         captured.draw(in: CGRect(origin: .zero, size: renderSize))
         UIGraphicsPopContext()
 
         // Compute histogram to find foreground/background
-        var brightCount = 0, darkCount = 0
+        var brightCount = 0
+        var darkCount = 0
         for p in pixels {
             if p > 200 { brightCount += 1 }
             if p < 55 { darkCount += 1 }
@@ -71,12 +74,14 @@ extension PepperIconCatalog {
         }
 
         // Convert thresholded pixels to image for dHash
-        guard let threshCtx = CGContext(
-            data: &thresholded, width: size, height: size,
-            bitsPerComponent: 8, bytesPerRow: size,
-            space: colorSpace,
-            bitmapInfo: CGImageAlphaInfo.none.rawValue
-        ), let cgImage = threshCtx.makeImage() else { return nil }
+        guard
+            let threshCtx = CGContext(
+                data: &thresholded, width: size, height: size,
+                bitsPerComponent: 8, bytesPerRow: size,
+                space: colorSpace,
+                bitmapInfo: CGImageAlphaInfo.none.rawValue
+            ), let cgImage = threshCtx.makeImage()
+        else { return nil }
 
         return computeDHash(image: UIImage(cgImage: cgImage))
     }
@@ -141,14 +146,17 @@ extension PepperIconCatalog {
     /// Polarity-invariant: both bright-on-dark and dark-on-light icons produce
     /// dark foreground on white background, matching the catalog's rendering.
     func computeDHashBgSub(image: UIImage) -> Data? {
-        let w = 13, h = 12
+        let w = 13
+        let h = 12
         let colorSpace = CGColorSpaceCreateDeviceGray()
         var pixels = [UInt8](repeating: 0, count: w * h)
-        guard let context = CGContext(
-            data: &pixels, width: w, height: h,
-            bitsPerComponent: 8, bytesPerRow: w,
-            space: colorSpace, bitmapInfo: CGImageAlphaInfo.none.rawValue
-        ) else { return nil }
+        guard
+            let context = CGContext(
+                data: &pixels, width: w, height: h,
+                bitsPerComponent: 8, bytesPerRow: w,
+                space: colorSpace, bitmapInfo: CGImageAlphaInfo.none.rawValue
+            )
+        else { return nil }
         UIGraphicsPushContext(context)
         image.draw(in: CGRect(origin: .zero, size: CGSize(width: w, height: h)))
         UIGraphicsPopContext()
@@ -206,12 +214,14 @@ extension PepperIconCatalog {
         // Render to grayscale bitmap
         let colorSpace = CGColorSpaceCreateDeviceGray()
         var pixels = [UInt8](repeating: 0, count: w * h)
-        guard let context = CGContext(
-            data: &pixels, width: w, height: h,
-            bitsPerComponent: 8, bytesPerRow: w,
-            space: colorSpace,
-            bitmapInfo: CGImageAlphaInfo.none.rawValue
-        ) else { return nil }
+        guard
+            let context = CGContext(
+                data: &pixels, width: w, height: h,
+                bitsPerComponent: 8, bytesPerRow: w,
+                space: colorSpace,
+                bitmapInfo: CGImageAlphaInfo.none.rawValue
+            )
+        else { return nil }
 
         UIGraphicsPushContext(context)
         image.draw(in: CGRect(origin: .zero, size: size))
@@ -244,7 +254,7 @@ extension PepperIconCatalog {
             var xor = a[i] ^ b[i]
             while xor != 0 {
                 dist += 1
-                xor &= (xor - 1) // Clear lowest set bit
+                xor &= (xor - 1)  // Clear lowest set bit
             }
         }
         return dist

@@ -48,10 +48,11 @@ final class PepperInlineOverlay {
     /// Apply colored borders to real app views at each item's center point.
     /// Diff-based: keeps existing matching borders, adds new ones, removes stale ones.
     func apply(items: [(CGRect, UIColor, CGFloat)]) {
-        guard let window = UIApplication.shared.connectedScenes
-            .compactMap({ $0 as? UIWindowScene })
-            .flatMap({ $0.windows })
-            .first(where: { !($0 is PassthroughOverlayWindow) && !$0.isHidden })
+        guard
+            let window = UIApplication.shared.connectedScenes
+                .compactMap({ $0 as? UIWindowScene })
+                .flatMap({ $0.windows })
+                .first(where: { !($0 is PassthroughOverlayWindow) && !$0.isHidden })
         else { return }
 
         var newKeys = Set<String>()
@@ -133,7 +134,7 @@ final class PepperInlineOverlay {
 
 extension UIScrollView {
     @objc func pepper_setContentOffset(_ offset: CGPoint) {
-        pepper_setContentOffset(offset) // calls original (swizzled)
+        pepper_setContentOffset(offset)  // calls original (swizzled)
         PepperInlineOverlay.shared.scrollDidChange()
     }
 }

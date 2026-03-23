@@ -1,6 +1,6 @@
 import Foundation
-import UIKit
 import ObjectiveC
+import UIKit
 
 /// C function — find live instances of specific classes on the heap.
 /// Implemented in PepperHeapScan.c.
@@ -33,17 +33,17 @@ final class PepperVarRegistry {
         case int, double, cgfloat, bool, string
         case cgSize, edgeInsets, color
         case optional  // wraps an inner type
-        case unknown   // read-only, serialized as string description
+        case unknown  // read-only, serialized as string description
     }
 
     /// Cached metadata for a single @Published property.
     struct PropertyInfo {
-        let name: String          // property name (without underscore)
+        let name: String  // property name (without underscore)
         let type: VarType
-        let innerType: VarType?   // for Optional<T>, the inner type
-        let typeName: String      // raw Swift type name string
-        let ivarName: String      // ivar name in the class (with underscore prefix)
-        let ivarOffset: Int?      // byte offset for raw memory access
+        let innerType: VarType?  // for Optional<T>, the inner type
+        let typeName: String  // raw Swift type name string
+        let ivarName: String  // ivar name in the class (with underscore prefix)
+        let ivarOffset: Int?  // byte offset for raw memory access
     }
 
     /// A tracked ObservableObject or @Observable instance with its class name and property catalog.
@@ -130,7 +130,7 @@ final class PepperVarRegistry {
         for window in UIApplication.shared.connectedScenes
             .compactMap({ $0 as? UIWindowScene })
             .flatMap({ $0.windows })
-            where window.isKeyWindow {
+        where window.isKeyWindow {
             if let rootVC = window.rootViewController {
                 discoverFromVCTree(rootVC)
             }
@@ -275,8 +275,9 @@ final class PepperVarRegistry {
             let typeName = String(describing: childMirror.subjectType)
 
             // @StateObject wraps as StateObject<T>, @ObservedObject as ObservedObject<T>
-            if typeName.hasPrefix("StateObject<") || typeName.hasPrefix("ObservedObject<") ||
-               typeName.hasPrefix("EnvironmentObject<") {
+            if typeName.hasPrefix("StateObject<") || typeName.hasPrefix("ObservedObject<")
+                || typeName.hasPrefix("EnvironmentObject<")
+            {
                 // The actual object is in the storage/wrappedValue
                 if let obj = extractObservableObject(from: child.value) {
                     trackInstance(obj)
@@ -307,8 +308,9 @@ final class PepperVarRegistry {
             if typeName.contains("EnvironmentKeyWritingModifier") {
                 let modMirror = Mirror(reflecting: child.value)
                 for modChild in modMirror.children {
-                    if (modChild.label == "value" || modChild.label == "_value"),
-                       "\(modChild.value)" != "nil" {
+                    if modChild.label == "value" || modChild.label == "_value",
+                        "\(modChild.value)" != "nil"
+                    {
                         let obj = modChild.value as AnyObject
                         if isObservableClass(obj) {
                             trackInstance(obj)
@@ -330,10 +332,10 @@ final class PepperVarRegistry {
             // "storage"/"view" pierce AnyView type erasure (AnyViewStorageBase box pattern).
             // "some" handles Optional wrapping in SwiftUI types.
             // Type-based check catches AnyView/Storage containers regardless of label.
-            if label == "content" || label == "body" || label == "modifier" ||
-               label == "storage" || label == "view" || label == "some" ||
-               label == "_tree" || label == "_root" || label.hasPrefix("_") ||
-               typeName.contains("AnyView") || typeName.contains("Storage") {
+            if label == "content" || label == "body" || label == "modifier" || label == "storage" || label == "view"
+                || label == "some" || label == "_tree" || label == "_root" || label.hasPrefix("_")
+                || typeName.contains("AnyView") || typeName.contains("Storage")
+            {
                 discoverFromSwiftUIView(child.value, depth: depth + 1)
             }
         }
@@ -365,15 +367,17 @@ final class PepperVarRegistry {
     private func isObservableObject(_ obj: AnyObject) -> Bool {
         let typeName = String(describing: type(of: obj))
         // Skip framework types — never ObservableObject
-        let skipPrefixes = ["UI", "NS", "CA", "_", "OS_", "Swift.", "Combine.",
-                            "GMS", "GMSx", "WK", "MK", "AV", "CL", "CK", "CN"]
+        let skipPrefixes = [
+            "UI", "NS", "CA", "_", "OS_", "Swift.", "Combine.",
+            "GMS", "GMSx", "WK", "MK", "AV", "CL", "CK", "CN",
+        ]
         for prefix in skipPrefixes {
             if typeName.hasPrefix(prefix) { return false }
         }
         // Known ObservableObject naming patterns
-        if typeName.contains("ViewModel") || typeName.contains("Store") ||
-           typeName.contains("Manager") || typeName.contains("Observable") ||
-           typeName.contains("Model") || typeName.contains("State") {
+        if typeName.contains("ViewModel") || typeName.contains("Store") || typeName.contains("Manager")
+            || typeName.contains("Observable") || typeName.contains("Model") || typeName.contains("State")
+        {
             return true
         }
         // Fallback: check for @Observable (Observation framework)
@@ -401,8 +405,9 @@ final class PepperVarRegistry {
                 let innerMirror = Mirror(reflecting: child.value)
                 for inner in innerMirror.children {
                     let innerLabel = inner.label ?? ""
-                    if innerLabel == "wrappedValue" || innerLabel == "_wrappedValue" ||
-                       innerLabel == "object" || innerLabel == "_object" {
+                    if innerLabel == "wrappedValue" || innerLabel == "_wrappedValue" || innerLabel == "object"
+                        || innerLabel == "_object"
+                    {
                         return inner.value as AnyObject
                     }
                 }
@@ -451,11 +456,15 @@ final class PepperVarRegistry {
                 return obj
             }
             // Internal storage variants
-            if label == "_content" || label == "_store" || label == "content" || label == "storage" || label == "_storage" {
+            if label == "_content" || label == "_store" || label == "content" || label == "storage"
+                || label == "_storage"
+            {
                 let innerMirror = Mirror(reflecting: child.value)
                 for inner in innerMirror.children {
                     let innerLabel = inner.label ?? ""
-                    if innerLabel == "value" || innerLabel == "_value" || innerLabel == ".0" || innerLabel == "wrappedValue" {
+                    if innerLabel == "value" || innerLabel == "_value" || innerLabel == ".0"
+                        || innerLabel == "wrappedValue"
+                    {
                         if "\(inner.value)" == "nil" { continue }
                         return inner.value as AnyObject
                     }
@@ -499,7 +508,8 @@ final class PepperVarRegistry {
         } else {
             props = catalogProperties(of: obj, className: className)
         }
-        tracked.append(TrackedInstance(className: className, instance: obj, properties: props, isObservable: observable))
+        tracked.append(
+            TrackedInstance(className: className, instance: obj, properties: props, isObservable: observable))
         let framework = observable ? "@Observable" : "@Published"
         pepperLog.info("Vars: tracked \(className) with \(props.count) \(framework) properties", category: .bridge)
     }
@@ -521,21 +531,22 @@ final class PepperVarRegistry {
             let childTypeName = String(describing: Mirror(reflecting: child.value).subjectType)
             guard childTypeName.hasPrefix("Published<") else { continue }
 
-            let propertyName = String(label.dropFirst()) // remove leading underscore
+            let propertyName = String(label.dropFirst())  // remove leading underscore
             let innerTypeName = extractGenericParam(from: childTypeName)
             let (varType, innerType) = classifyType(innerTypeName)
 
             // Find ivar offset for raw memory access
             let ivarOffset = findIvarOffset(named: label, in: type(of: obj))
 
-            props.append(PropertyInfo(
-                name: propertyName,
-                type: varType,
-                innerType: innerType,
-                typeName: innerTypeName,
-                ivarName: label,
-                ivarOffset: ivarOffset
-            ))
+            props.append(
+                PropertyInfo(
+                    name: propertyName,
+                    type: varType,
+                    innerType: innerType,
+                    typeName: innerTypeName,
+                    ivarName: label,
+                    ivarOffset: ivarOffset
+                ))
         }
 
         catalogCache[className] = props
@@ -568,14 +579,15 @@ final class PepperVarRegistry {
             let (varType, innerType) = classifyType(childTypeName)
             let ivarOffset = findIvarOffset(named: label, in: type(of: obj))
 
-            props.append(PropertyInfo(
-                name: propertyName,
-                type: varType,
-                innerType: innerType,
-                typeName: childTypeName,
-                ivarName: label,
-                ivarOffset: ivarOffset
-            ))
+            props.append(
+                PropertyInfo(
+                    name: propertyName,
+                    type: varType,
+                    innerType: innerType,
+                    typeName: childTypeName,
+                    ivarName: label,
+                    ivarOffset: ivarOffset
+                ))
         }
 
         catalogCache[className] = props
@@ -587,7 +599,7 @@ final class PepperVarRegistry {
         guard typeName.hasPrefix("Published<"), typeName.hasSuffix(">") else {
             return typeName
         }
-        let start = typeName.index(typeName.startIndex, offsetBy: 10) // "Published<".count
+        let start = typeName.index(typeName.startIndex, offsetBy: 10)  // "Published<".count
         let end = typeName.index(before: typeName.endIndex)
         return String(typeName[start..<end])
     }
@@ -595,14 +607,14 @@ final class PepperVarRegistry {
     /// Classify a type name string into our VarType enum.
     private func classifyType(_ typeName: String) -> (VarType, VarType?) {
         switch typeName {
-        case "Int":         return (.int, nil)
-        case "Double":      return (.double, nil)
-        case "CGFloat":     return (.cgfloat, nil)
-        case "Bool":        return (.bool, nil)
-        case "String":      return (.string, nil)
-        case "CGSize":      return (.cgSize, nil)
-        case "EdgeInsets":  return (.edgeInsets, nil)
-        case "Color":       return (.color, nil)
+        case "Int": return (.int, nil)
+        case "Double": return (.double, nil)
+        case "CGFloat": return (.cgfloat, nil)
+        case "Bool": return (.bool, nil)
+        case "String": return (.string, nil)
+        case "CGSize": return (.cgSize, nil)
+        case "EdgeInsets": return (.edgeInsets, nil)
+        case "Color": return (.color, nil)
         default:
             if typeName.hasPrefix("Optional<") {
                 let innerName = String(typeName.dropFirst(9).dropLast(1))
@@ -647,17 +659,18 @@ final class PepperVarRegistry {
             guard entry.instance != nil else { return nil }
             return [
                 "class": AnyCodable(entry.className),
-                "properties": AnyCodable(entry.properties.map { prop -> [String: AnyCodable] in
-                    var info: [String: AnyCodable] = [
-                        "name": AnyCodable(prop.name),
-                        "type": AnyCodable(prop.typeName),
-                        "writable": AnyCodable(prop.type != .unknown)
-                    ]
-                    if let value = readValue(className: entry.className, propertyName: prop.name) {
-                        info["value"] = value
-                    }
-                    return info
-                })
+                "properties": AnyCodable(
+                    entry.properties.map { prop -> [String: AnyCodable] in
+                        var info: [String: AnyCodable] = [
+                            "name": AnyCodable(prop.name),
+                            "type": AnyCodable(prop.typeName),
+                            "writable": AnyCodable(prop.type != .unknown),
+                        ]
+                        if let value = readValue(className: entry.className, propertyName: prop.name) {
+                            info["value"] = value
+                        }
+                        return info
+                    }),
             ]
         }
     }
@@ -893,7 +906,7 @@ final class PepperVarRegistry {
                 if let first = mirror.children.first {
                     return serializeValue(first.value, type: innerType ?? .unknown, innerType: nil)
                 } else {
-                    return AnyCodable(NSNull()) // nil
+                    return AnyCodable(NSNull())  // nil
                 }
             }
             // Not actually Optional — serialize with inner type
@@ -913,21 +926,25 @@ final class PepperVarRegistry {
             if let v = value as? String { return AnyCodable(v) }
         case .cgSize:
             if let v = value as? CGSize {
-                return AnyCodable(["width": AnyCodable(Double(v.width)),
-                                   "height": AnyCodable(Double(v.height))])
+                return AnyCodable([
+                    "width": AnyCodable(Double(v.width)),
+                    "height": AnyCodable(Double(v.height)),
+                ])
             }
         case .edgeInsets:
             if let v = value as? UIEdgeInsets {
-                return AnyCodable(["top": AnyCodable(Double(v.top)),
-                                   "leading": AnyCodable(Double(v.left)),
-                                   "bottom": AnyCodable(Double(v.bottom)),
-                                   "trailing": AnyCodable(Double(v.right))])
+                return AnyCodable([
+                    "top": AnyCodable(Double(v.top)),
+                    "leading": AnyCodable(Double(v.left)),
+                    "bottom": AnyCodable(Double(v.bottom)),
+                    "trailing": AnyCodable(Double(v.right)),
+                ])
             }
         case .color:
             // Color → hex string
             return AnyCodable(String(describing: value))
         case .optional:
-            break // handled above
+            break  // handled above
         case .unknown:
             return AnyCodable(String(describing: value))
         }
@@ -989,7 +1006,7 @@ final class PepperVarRegistry {
         // Handle null for optionals
         if type == .optional {
             if json.isNull {
-                return NSNull() // will be written as nil
+                return NSNull()  // will be written as nil
             }
             return deserializeValue(json, type: innerType ?? .unknown, innerType: nil)
         }
@@ -1008,17 +1025,19 @@ final class PepperVarRegistry {
             return json.stringValue
         case .cgSize:
             if let dict = json.dictValue,
-               let w = dict["width"]?.doubleValue,
-               let h = dict["height"]?.doubleValue {
+                let w = dict["width"]?.doubleValue,
+                let h = dict["height"]?.doubleValue
+            {
                 return CGSize(width: w, height: h)
             }
             return nil
         case .edgeInsets:
             if let dict = json.dictValue,
-               let top = dict["top"]?.doubleValue,
-               let leading = dict["leading"]?.doubleValue,
-               let bottom = dict["bottom"]?.doubleValue,
-               let trailing = dict["trailing"]?.doubleValue {
+                let top = dict["top"]?.doubleValue,
+                let leading = dict["leading"]?.doubleValue,
+                let bottom = dict["bottom"]?.doubleValue,
+                let trailing = dict["trailing"]?.doubleValue
+            {
                 return UIEdgeInsets(top: top, left: leading, bottom: bottom, right: trailing)
             }
             return nil
@@ -1026,7 +1045,7 @@ final class PepperVarRegistry {
             // Accept hex string — return as-is, actual Color conversion is complex
             return json.stringValue
         case .optional:
-            return nil // handled above
+            return nil  // handled above
         case .unknown:
             return nil
         }
@@ -1041,25 +1060,28 @@ final class PepperVarRegistry {
         if let nsObj = instance as? NSObject {
             // KVC setValue can throw ObjC exceptions that Swift can't catch.
             // Use a simple test first.
-            if nsObj.responds(to: NSSelectorFromString(prop.name)) ||
-               nsObj.responds(to: NSSelectorFromString("set\(prop.name.prefix(1).uppercased())\(prop.name.dropFirst()):")) {
+            if nsObj.responds(to: NSSelectorFromString(prop.name))
+                || nsObj.responds(
+                    to: NSSelectorFromString("set\(prop.name.prefix(1).uppercased())\(prop.name.dropFirst()):"))
+            {
                 if isSettingNil {
                     nsObj.setValue(nil, forKey: prop.name)
                 } else {
                     nsObj.setValue(value, forKey: prop.name)
                 }
-                return nil // success
+                return nil  // success
             }
         }
 
         // Strategy 2: Mirror into Published<T> storage → find CurrentValueSubject → set value
         let instanceMirror = Mirror(reflecting: instance)
         if let publishedChild = instanceMirror.children.first(where: { $0.label == prop.ivarName }) {
-            if let error = writeViaPublishedStorage(published: publishedChild.value, value: value, isNil: isSettingNil) {
+            if let error = writeViaPublishedStorage(published: publishedChild.value, value: value, isNil: isSettingNil)
+            {
                 // Strategy 3 failed too — fall through to raw memory
                 _ = error
             } else {
-                return nil // success
+                return nil  // success
             }
         }
 
@@ -1089,7 +1111,7 @@ final class PepperVarRegistry {
                         } else {
                             subject.setValue(value, forKey: "value")
                         }
-                        return nil // success
+                        return nil  // success
                     }
                 }
             }
@@ -1099,8 +1121,10 @@ final class PepperVarRegistry {
     }
 
     /// Write to raw memory at the ivar offset. Unsafe but works for pure Swift classes.
-    private func writeRawMemory(ptr: UnsafeMutableRawPointer, offset: Int, value: Any,
-                                type: VarType, innerType: VarType?) -> String? {
+    private func writeRawMemory(
+        ptr: UnsafeMutableRawPointer, offset: Int, value: Any,
+        type: VarType, innerType: VarType?
+    ) -> String? {
         let effectiveType = type == .optional ? (innerType ?? .unknown) : type
 
         switch effectiveType {
@@ -1120,7 +1144,7 @@ final class PepperVarRegistry {
             return "Raw memory write not supported for type '\(effectiveType.rawValue)'"
         }
 
-        return nil // success
+        return nil  // success
     }
 
     /// Fire objectWillChange.send() on the instance to trigger SwiftUI re-render.

@@ -20,59 +20,68 @@ let kHIDEventOptionNone: CFOptionFlags = 0
 
 /// Lazily-loaded function pointers into IOKit and BackBoardServices private frameworks.
 struct HIDEventAPI {
-    typealias CreateDigitizerEvent = @convention(c) (
-        _ allocator: CFAllocator?, _ timestamp: UInt64,
-        _ transducerType: UInt32, _ index: UInt32, _ identifier: UInt32,
-        _ eventMask: UInt32, _ buttonEvent: UInt32,
-        _ x: CGFloat, _ y: CGFloat, _ z: CGFloat,
-        _ pressure: CGFloat, _ twist: CGFloat,
-        _ isRange: Bool, _ isTouch: Bool, _ options: CFOptionFlags
-    ) -> PepperHIDEvent
+    typealias CreateDigitizerEvent =
+        @convention(c) (
+            _ allocator: CFAllocator?, _ timestamp: UInt64,
+            _ transducerType: UInt32, _ index: UInt32, _ identifier: UInt32,
+            _ eventMask: UInt32, _ buttonEvent: UInt32,
+            _ x: CGFloat, _ y: CGFloat, _ z: CGFloat,
+            _ pressure: CGFloat, _ twist: CGFloat,
+            _ isRange: Bool, _ isTouch: Bool, _ options: CFOptionFlags
+        ) -> PepperHIDEvent
 
-    typealias CreateDigitizerFingerEvent = @convention(c) (
-        _ allocator: CFAllocator?, _ timestamp: UInt64,
-        _ identifier: UInt32, _ fingerIndex: UInt32,
-        _ eventMask: UInt32,
-        _ x: CGFloat, _ y: CGFloat, _ z: CGFloat,
-        _ pressure: CGFloat, _ twist: CGFloat,
-        _ isRange: Bool, _ isTouch: Bool, _ options: CFOptionFlags
-    ) -> PepperHIDEvent
+    typealias CreateDigitizerFingerEvent =
+        @convention(c) (
+            _ allocator: CFAllocator?, _ timestamp: UInt64,
+            _ identifier: UInt32, _ fingerIndex: UInt32,
+            _ eventMask: UInt32,
+            _ x: CGFloat, _ y: CGFloat, _ z: CGFloat,
+            _ pressure: CGFloat, _ twist: CGFloat,
+            _ isRange: Bool, _ isTouch: Bool, _ options: CFOptionFlags
+        ) -> PepperHIDEvent
 
-    typealias EventAppendEvent = @convention(c) (
-        _ event: PepperHIDEvent, _ subEvent: PepperHIDEvent, _ options: CFOptionFlags
-    ) -> Void
+    typealias EventAppendEvent =
+        @convention(c) (
+            _ event: PepperHIDEvent, _ subEvent: PepperHIDEvent, _ options: CFOptionFlags
+        ) -> Void
 
-    typealias EventSetIntegerValue = @convention(c) (
-        _ event: PepperHIDEvent, _ field: UInt32, _ value: Int
-    ) -> Void
+    typealias EventSetIntegerValue =
+        @convention(c) (
+            _ event: PepperHIDEvent, _ field: UInt32, _ value: Int
+        ) -> Void
 
-    typealias EventSetFloatValue = @convention(c) (
-        _ event: PepperHIDEvent, _ field: UInt32, _ value: CGFloat
-    ) -> Void
+    typealias EventSetFloatValue =
+        @convention(c) (
+            _ event: PepperHIDEvent, _ field: UInt32, _ value: CGFloat
+        ) -> Void
 
-    typealias EventSetSenderID = @convention(c) (
-        _ event: PepperHIDEvent, _ senderID: UInt64
-    ) -> Void
+    typealias EventSetSenderID =
+        @convention(c) (
+            _ event: PepperHIDEvent, _ senderID: UInt64
+        ) -> Void
 
-    typealias SetDigitizerInfo = @convention(c) (
-        _ event: PepperHIDEvent, _ contextID: UInt32,
-        _ systemGestureIsPossible: Bool, _ isSystemGestureStateChangeEvent: Bool,
-        _ displayUUID: CFString?, _ initialTouchTimestamp: CFTimeInterval,
-        _ maxForce: Float
-    ) -> Void
+    typealias SetDigitizerInfo =
+        @convention(c) (
+            _ event: PepperHIDEvent, _ contextID: UInt32,
+            _ systemGestureIsPossible: Bool, _ isSystemGestureStateChangeEvent: Bool,
+            _ displayUUID: CFString?, _ initialTouchTimestamp: CFTimeInterval,
+            _ maxForce: Float
+        ) -> Void
 
     // Vendor-defined event for marker support (Feature 3: HID marker events)
-    typealias CreateVendorDefinedEvent = @convention(c) (
-        _ allocator: CFAllocator?, _ timestamp: UInt64,
-        _ usagePage: UInt32, _ usage: UInt32,
-        _ version: UInt32, _ data: UnsafePointer<UInt8>?, _ length: Int,
-        _ options: CFOptionFlags
-    ) -> PepperHIDEvent
+    typealias CreateVendorDefinedEvent =
+        @convention(c) (
+            _ allocator: CFAllocator?, _ timestamp: UInt64,
+            _ usagePage: UInt32, _ usage: UInt32,
+            _ version: UInt32, _ data: UnsafePointer<UInt8>?, _ length: Int,
+            _ options: CFOptionFlags
+        ) -> PepperHIDEvent
 
     // Read integer field from an IOHIDEvent (used by marker event detection)
-    typealias EventGetIntegerValue = @convention(c) (
-        _ event: PepperHIDEvent, _ field: UInt32
-    ) -> Int
+    typealias EventGetIntegerValue =
+        @convention(c) (
+            _ event: PepperHIDEvent, _ field: UInt32
+        ) -> Int
 
     let createDigitizerEvent: CreateDigitizerEvent
     let createDigitizerFingerEvent: CreateDigitizerFingerEvent
@@ -158,9 +167,9 @@ struct HIDEventAPI {
     static let fieldMinorRadius: UInt32 = 0xB0015
 
     // Vendor-defined event field constants (for marker events)
-    static let fieldVendorDefinedUsagePage: UInt32 = 0x00220001
-    static let fieldVendorDefinedUsage: UInt32 = 0x00220002
-    static let fieldVendorDefinedDataLength: UInt32 = 0x00220005
+    static let fieldVendorDefinedUsagePage: UInt32 = 0x0022_0001
+    static let fieldVendorDefinedUsage: UInt32 = 0x0022_0002
+    static let fieldVendorDefinedDataLength: UInt32 = 0x0022_0005
     // IOHIDEvent type for vendor-defined events
     static let eventTypeVendorDefined: UInt32 = 22
 
@@ -184,7 +193,7 @@ final class PepperHIDEventSynthesizer {
     var logger: Logger { PepperLogger.logger(category: "hid-synth") }
 
     var nextEventId: UInt32 = 100
-    let senderID: UInt64 = 0x0000000123456789
+    let senderID: UInt64 = 0x0000_0001_2345_6789
     let fingerRadius: CGFloat = 5
     let fingerIndex: UInt32 = 2  // rightIndex
 
@@ -230,7 +239,9 @@ final class PepperHIDEventSynthesizer {
         // finalize the responder chain. The standard 16ms (1 frame) is enough for
         // stable UI, but post-transition settling needs ~100ms.
         let timeSinceTransition = PepperState.shared.timeSinceLastTransition
-        let settleTime: TimeInterval = timeSinceTransition < PepperDefaults.transitionRecencyWindow ? PepperDefaults.postTransitionSettleTime : 0.016
+        let settleTime: TimeInterval =
+            timeSinceTransition < PepperDefaults.transitionRecencyWindow
+            ? PepperDefaults.postTransitionSettleTime : 0.016
         RunLoop.current.run(until: Date(timeIntervalSinceNow: settleTime))
 
         logger.info("HID tap at (\(point.x), \(point.y)), contextId=\(contextId), id=\(identifier)")
@@ -307,7 +318,9 @@ final class PepperHIDEventSynthesizer {
 
         // Pre-tap settle
         let timeSinceTransition = PepperState.shared.timeSinceLastTransition
-        let settleTime: TimeInterval = timeSinceTransition < PepperDefaults.transitionRecencyWindow ? PepperDefaults.postTransitionSettleTime : 0.016
+        let settleTime: TimeInterval =
+            timeSinceTransition < PepperDefaults.transitionRecencyWindow
+            ? PepperDefaults.postTransitionSettleTime : 0.016
         RunLoop.current.run(until: Date(timeIntervalSinceNow: settleTime))
 
         logger.info("HID double-tap at (\(point.x), \(point.y)), contextId=\(contextId)")
@@ -315,11 +328,13 @@ final class PepperHIDEventSynthesizer {
         // First tap
         let id1 = nextEventId
         nextEventId += 1
-        sendFingerEvent(api: api, app: appPrivate, contextId: contextId,
-                        point: point, identifier: id1, phase: .began)
+        sendFingerEvent(
+            api: api, app: appPrivate, contextId: contextId,
+            point: point, identifier: id1, phase: .began)
         RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.04))
-        sendFingerEvent(api: api, app: appPrivate, contextId: contextId,
-                        point: point, identifier: id1, phase: .ended)
+        sendFingerEvent(
+            api: api, app: appPrivate, contextId: contextId,
+            point: point, identifier: id1, phase: .ended)
 
         // Inter-tap gap (40ms — fast enough for double-tap recognition, matches real hardware)
         RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.04))
@@ -327,11 +342,13 @@ final class PepperHIDEventSynthesizer {
         // Second tap
         let id2 = nextEventId
         nextEventId += 1
-        sendFingerEvent(api: api, app: appPrivate, contextId: contextId,
-                        point: point, identifier: id2, phase: .began)
+        sendFingerEvent(
+            api: api, app: appPrivate, contextId: contextId,
+            point: point, identifier: id2, phase: .began)
         RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.04))
-        sendFingerEvent(api: api, app: appPrivate, contextId: contextId,
-                        point: point, identifier: id2, phase: .ended)
+        sendFingerEvent(
+            api: api, app: appPrivate, contextId: contextId,
+            point: point, identifier: id2, phase: .ended)
 
         // Wait for delivery
         if !waitForMarker(timeout: 0.5, in: window) {
@@ -382,7 +399,9 @@ final class PepperHIDEventSynthesizer {
 
         // Pre-swipe settle (transition-aware, same logic as tap)
         let timeSinceTransition = PepperState.shared.timeSinceLastTransition
-        let settleTime: TimeInterval = timeSinceTransition < PepperDefaults.transitionRecencyWindow ? PepperDefaults.postTransitionSettleTime : 0.016
+        let settleTime: TimeInterval =
+            timeSinceTransition < PepperDefaults.transitionRecencyWindow
+            ? PepperDefaults.postTransitionSettleTime : 0.016
         RunLoop.current.run(until: Date(timeIntervalSinceNow: settleTime))
 
         // === Touch Began ===
@@ -429,10 +448,10 @@ final class PepperHIDEventSynthesizer {
     }
 
     enum TouchPhase {
-        case began      // Finger touched screen
-        case moved      // Finger moved (position changed)
-        case stationary // Finger is still down (same position)
-        case ended      // Finger lifted
+        case began  // Finger touched screen
+        case moved  // Finger moved (position changed)
+        case stationary  // Finger is still down (same position)
+        case ended  // Finger lifted
     }
 
     func sendFingerEvent(

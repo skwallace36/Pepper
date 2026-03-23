@@ -10,8 +10,9 @@ private func rgbComponents(of color: CGColor) -> (r: CGFloat, g: CGFloat, b: CGF
     }
     // Grayscale or other color space — convert to sRGB
     guard let srgb = CGColorSpace(name: CGColorSpace.sRGB),
-          let converted = color.converted(to: srgb, intent: .defaultIntent, options: nil),
-          let comps = converted.components, comps.count >= 3 else { return nil }
+        let converted = color.converted(to: srgb, intent: .defaultIntent, options: nil),
+        let comps = converted.components, comps.count >= 3
+    else { return nil }
     let a = comps.count >= 4 ? comps[3] : 1.0
     return (comps[0], comps[1], comps[2], a)
 }
@@ -105,9 +106,9 @@ extension IntrospectHandler {
                     AnyCodable(Int(elem.frame.origin.x)),
                     AnyCodable(Int(elem.frame.origin.y)),
                     AnyCodable(Int(elem.frame.size.width)),
-                    AnyCodable(Int(elem.frame.size.height))
+                    AnyCodable(Int(elem.frame.size.height)),
                 ]),
-                "hit_reachable": AnyCodable(elem.hitReachable)
+                "hit_reachable": AnyCodable(elem.hitReachable),
             ]
 
             if elem.visible >= 0 {
@@ -151,10 +152,11 @@ extension IntrospectHandler {
             }
 
             if let sc = elem.scrollContext {
-                dict["scroll_context"] = AnyCodable([
-                    "direction": AnyCodable(sc.direction),
-                    "visible_in_viewport": AnyCodable(sc.visibleInViewport)
-                ] as [String: AnyCodable])
+                dict["scroll_context"] = AnyCodable(
+                    [
+                        "direction": AnyCodable(sc.direction),
+                        "visible_in_viewport": AnyCodable(sc.visibleInViewport),
+                    ] as [String: AnyCodable])
             }
 
             if elem.selected == true {
@@ -168,10 +170,11 @@ extension IntrospectHandler {
             return AnyCodable(dict)
         }
 
-        return AnyCodable([
-            "y_range": AnyCodable([AnyCodable(Int(minY)), AnyCodable(Int(maxY))]),
-            "elements": AnyCodable(serialized)
-        ] as [String: AnyCodable])
+        return AnyCodable(
+            [
+                "y_range": AnyCodable([AnyCodable(Int(minY)), AnyCodable(Int(maxY))]),
+                "elements": AnyCodable(serialized),
+            ] as [String: AnyCodable])
     }
 
     // MARK: - Spatial Query Helpers
@@ -179,10 +182,11 @@ extension IntrospectHandler {
     /// Parse a region bounding box from command params.
     func parseRegion(from params: [String: AnyCodable]?) -> CGRect? {
         guard let regionDict = params?["region"]?.dictValue,
-              let rx = regionDict["x"]?.doubleValue,
-              let ry = regionDict["y"]?.doubleValue,
-              let rw = regionDict["w"]?.doubleValue,
-              let rh = regionDict["h"]?.doubleValue else { return nil }
+            let rx = regionDict["x"]?.doubleValue,
+            let ry = regionDict["y"]?.doubleValue,
+            let rw = regionDict["w"]?.doubleValue,
+            let rh = regionDict["h"]?.doubleValue
+        else { return nil }
         return CGRect(x: rx, y: ry, width: rw, height: rh)
     }
 
@@ -193,8 +197,9 @@ extension IntrospectHandler {
         direction: String?,
         count: Int
     ) -> [PepperInteractiveElement] {
-        spatialFilterGeneric(elements, nearestTo: point, direction: direction, count: count,
-                            center: \.center, frame: \.frame)
+        spatialFilterGeneric(
+            elements, nearestTo: point, direction: direction, count: count,
+            center: \.center, frame: \.frame)
     }
 
     /// Filter map elements by proximity to a point (used in map mode).
@@ -204,8 +209,9 @@ extension IntrospectHandler {
         direction: String?,
         count: Int
     ) -> [MapElement] {
-        spatialFilterGeneric(elements, nearestTo: point, direction: direction, count: count,
-                            center: \.center, frame: \.frame)
+        spatialFilterGeneric(
+            elements, nearestTo: point, direction: direction, count: count,
+            center: \.center, frame: \.frame)
     }
 
     /// Generic spatial filter: filters and sorts elements by proximity to a point.
@@ -362,7 +368,8 @@ extension IntrospectHandler {
             // Exclude very small text (height < 16pt) — chart axis labels (14.7pt).
             // Keeps segment-sized text (17pt) like "All Dogs", "Sleep", "Naps".
             guard label.count <= 12, elem.frame.width < 210,
-                  elem.frame.height >= 16, elem.frame.height < 50 else { continue }
+                elem.frame.height >= 16, elem.frame.height < 50
+            else { continue }
             // Exclude labels with digits (stat values: "501", "7min", "0.1mi")
             // and ALL-CAPS labels ≥3 chars (stat units: "STEPS", "DURATION").
             // Real options are mixed-case: "Off", "Push", "Sleep", "Naps".
@@ -406,17 +413,18 @@ extension IntrospectHandler {
 
             for idx in group {
                 let elem = nonInteractive[idx]
-                interactive.append(MapElement(
-                    label: elem.label, type: "option",
-                    center: elem.center, frame: elem.frame,
-                    hitReachable: true, visible: elem.visible,
-                    heuristic: "radio_option",
-                    iconName: nil,
-                    isInteractive: true, value: elem.value,
-                    traits: elem.traits,
-                    scrollContext: elem.scrollContext,
-                    labelSource: "text"
-                ))
+                interactive.append(
+                    MapElement(
+                        label: elem.label, type: "option",
+                        center: elem.center, frame: elem.frame,
+                        hitReachable: true, visible: elem.visible,
+                        heuristic: "radio_option",
+                        iconName: nil,
+                        isInteractive: true, value: elem.value,
+                        traits: elem.traits,
+                        scrollContext: elem.scrollContext,
+                        labelSource: "text"
+                    ))
                 indicesToRemove.insert(idx)
             }
         }
@@ -447,9 +455,9 @@ extension IntrospectHandler {
         let totalW = widths.reduce(0, +)
         let xs = group.map { elements[$0].center.x }
         let span = (xs.max() ?? 0) - (xs.min() ?? 0)
-        guard span > 0 else { return true } // Same center = valid
+        guard span > 0 else { return true }  // Same center = valid
         let fillRatio = totalW / span
-        return fillRatio > 0.6 // Members fill > 60% of the span
+        return fillRatio > 0.6  // Members fill > 60% of the span
     }
 
     // MARK: - Segment Control Detection
@@ -508,7 +516,7 @@ extension IntrospectHandler {
             // Fill ratio: combined widths / span. Real segments are compact (fill > 0.5).
             // Nav bar buttons: Cancel(72pt)+Save(36pt) span 327pt → fill=0.33 → rejected.
             let totalW = group.map { interactive[$0].frame.width }.reduce(0, +)
-            guard span > 0 else { continue } // Same center = skip
+            guard span > 0 else { continue }  // Same center = skip
             let fillRatio = totalW / span
             guard fillRatio > 0.5 else { continue }
 
@@ -582,8 +590,8 @@ extension IntrospectHandler {
                     AnyCodable(Int(elem.frame.origin.x)),
                     AnyCodable(Int(elem.frame.origin.y)),
                     AnyCodable(Int(elem.frame.size.width)),
-                    AnyCodable(Int(elem.frame.size.height))
-                ])
+                    AnyCodable(Int(elem.frame.size.height)),
+                ]),
             ]
             if let label = elem.label { dict["label"] = AnyCodable(label) }
             if let value = elem.value, !value.isEmpty { dict["value"] = AnyCodable(value) }
@@ -611,7 +619,9 @@ extension IntrospectHandler {
         for i in elements.indices {
             if elements[i].heuristic == "toggle" {
                 toggleIndices.append(i)
-            } else if groupTypes.contains(elements[i].type) || elements[i].heuristic == "radio_option" || elements[i].heuristic == "segment" {
+            } else if groupTypes.contains(elements[i].type) || elements[i].heuristic == "radio_option"
+                || elements[i].heuristic == "segment"
+            {
                 groupCandidates.append((i, elements[i].center.y, elements[i].type))
             }
         }
@@ -693,7 +703,9 @@ extension IntrospectHandler {
             guard let bgColor = probeBackgroundColor(at: center, in: window) else { continue }
             guard let c = rgbComponents(of: bgColor) else { continue }
 
-            let r = c.r, g = c.g, b = c.b
+            let r = c.r
+            let g = c.g
+            let b = c.b
             // Green-ish = on (iOS system green ~0.2, 0.78, 0.35)
             // Gray-ish = off (iOS system gray ~0.9, 0.9, 0.9 or ~0.47, 0.47, 0.47)
             if g > 0.5 && g > r * 1.3 && g > b * 1.3 {
@@ -718,7 +730,10 @@ extension IntrospectHandler {
 
             // Check view's backgroundColor first
             if let uiColor = v.backgroundColor {
-                var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+                var r: CGFloat = 0
+                var g: CGFloat = 0
+                var b: CGFloat = 0
+                var a: CGFloat = 0
                 uiColor.getRed(&r, green: &g, blue: &b, alpha: &a)
                 if a > 0.1 { return uiColor.cgColor }
             }
@@ -726,7 +741,10 @@ extension IntrospectHandler {
             // Check the layer's backgroundColor
             if let layerBg = v.layer.backgroundColor {
                 let color = UIColor(cgColor: layerBg)
-                var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+                var r: CGFloat = 0
+                var g: CGFloat = 0
+                var b: CGFloat = 0
+                var a: CGFloat = 0
                 color.getRed(&r, green: &g, blue: &b, alpha: &a)
                 if a > 0.1 { return layerBg }
             }
@@ -736,7 +754,10 @@ extension IntrospectHandler {
                 for sublayer in sublayers {
                     if let bg = sublayer.backgroundColor {
                         let color = UIColor(cgColor: bg)
-                        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+                        var r: CGFloat = 0
+                        var g: CGFloat = 0
+                        var b: CGFloat = 0
+                        var a: CGFloat = 0
                         color.getRed(&r, green: &g, blue: &b, alpha: &a)
                         if a > 0.1 { return bg }
                     }
@@ -752,9 +773,11 @@ extension IntrospectHandler {
     private func isDistinctBackground(_ color: CGColor) -> Bool {
         guard let c = rgbComponents(of: color) else { return false }
 
-        if c.a < 0.15 { return false } // Nearly transparent
+        if c.a < 0.15 { return false }  // Nearly transparent
 
-        let r = c.r, g = c.g, b = c.b
+        let r = c.r
+        let g = c.g
+        let b = c.b
         // White or very light gray is not "distinct" (background)
         if r > 0.95 && g > 0.95 && b > 0.95 { return false }
 

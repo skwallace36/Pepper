@@ -18,7 +18,8 @@ extension PepperSwiftUIBridge {
         // AND the cache hasn't expired (TTL prevents stale results from async UI updates).
         // Only cache when using the default root (key window) — sub-view calls bypass.
         if rootView == nil, let cached = cachedAccessibility, cached.gen == cacheGeneration,
-           CFAbsoluteTimeGetCurrent() - cached.time < cacheTTL {
+            CFAbsoluteTimeGetCurrent() - cached.time < cacheTTL
+        {
             lastAccessibilityTruncated = cached.truncated
             return cached.elements
         }
@@ -52,7 +53,8 @@ extension PepperSwiftUIBridge {
         var originLabels: [String: [String]] = [:]
         for elem in results {
             if elem.frame.width > 0 && elem.frame.height > 0,
-               let label = elem.label, !label.isEmpty {
+                let label = elem.label, !label.isEmpty
+            {
                 let key = "\(Int(elem.frame.minX)),\(Int(elem.frame.minY))"
                 originLabels[key, default: []].append(label)
             }
@@ -71,11 +73,12 @@ extension PepperSwiftUIBridge {
 
             // Ghost check: if this element's origin has a collision, only keep the winner.
             if let label = element.label, !label.isEmpty,
-               element.frame.width > 0 && element.frame.height > 0,
-               screenBounds.contains(CGPoint(x: element.frame.midX, y: element.frame.midY)) {
+                element.frame.width > 0 && element.frame.height > 0,
+                screenBounds.contains(CGPoint(x: element.frame.midX, y: element.frame.midY))
+            {
                 let key = "\(Int(element.frame.minX)),\(Int(element.frame.minY))"
                 if let winner = ghostOrigins[key], winner != label {
-                    return false // Ghost — another element won this position
+                    return false  // Ghost — another element won this position
                 }
             }
             return true
@@ -84,7 +87,9 @@ extension PepperSwiftUIBridge {
         // Cache for default-root calls
         if rootView == nil {
             lastAccessibilityTruncated = wasTruncated
-            cachedAccessibility = (gen: cacheGeneration, elements: filtered, truncated: wasTruncated, time: CFAbsoluteTimeGetCurrent())
+            cachedAccessibility = (
+                gen: cacheGeneration, elements: filtered, truncated: wasTruncated, time: CFAbsoluteTimeGetCurrent()
+            )
         }
 
         return filtered
@@ -167,8 +172,9 @@ extension PepperSwiftUIBridge {
 
             // Enrich with VC context for on-screen elements
             if onScreen,
-               let hitView = UIWindow.pepper_keyWindow?.hitTest(center, with: nil),
-               let vc = findOwningViewController(for: hitView) {
+                let hitView = UIWindow.pepper_keyWindow?.hitTest(center, with: nil),
+                let vc = findOwningViewController(for: hitView)
+            {
                 elem.viewController = String(describing: type(of: vc))
                 elem.presentationContext = presentationContext(of: vc)
             }
@@ -201,7 +207,7 @@ extension PepperSwiftUIBridge {
         guard elements.count >= 3 else { return }
         // Skip if root view is being torn down or has zero size
         // Note: root itself may be a UIWindow (window property returns nil for UIWindow)
-        guard (root is UIWindow || root.window != nil), root.bounds.width > 0, root.bounds.height > 0 else { return }
+        guard root is UIWindow || root.window != nil, root.bounds.width > 0, root.bounds.height > 0 else { return }
 
         // Phase 1: UISegmentedControl check
         var segmentedControls: [UISegmentedControl] = []
@@ -238,7 +244,10 @@ extension PepperSwiftUIBridge {
     /// 2. accessibilityElementCount + accessibilityElement(at:) (indexed access)
     /// 3. Subviews that are themselves accessibility elements
     // swiftlint:disable:next cyclomatic_complexity
-    func walkAccessibilityTree(element: Any, depth: Int, maxDepth: Int, includeUnlabeled: Bool = false, into results: inout [PepperAccessibilityElement]) {
+    func walkAccessibilityTree(
+        element: Any, depth: Int, maxDepth: Int, includeUnlabeled: Bool = false,
+        into results: inout [PepperAccessibilityElement]
+    ) {
         guard depth < maxDepth else { return }
         guard results.count < Self.maxElementCount else { return }
 
@@ -258,13 +267,16 @@ extension PepperSwiftUIBridge {
 
         // Path 1: accessibilityElements array (SwiftUI often uses this)
         if let container = element as? NSObject,
-           let accessElements = container.accessibilityElements,
-           !accessElements.isEmpty {
+            let accessElements = container.accessibilityElements,
+            !accessElements.isEmpty
+        {
             for child in accessElements {
                 guard results.count < Self.maxElementCount else { return }
-                walkAccessibilityTree(element: child, depth: depth + 1, maxDepth: maxDepth, includeUnlabeled: includeUnlabeled, into: &results)
+                walkAccessibilityTree(
+                    element: child, depth: depth + 1, maxDepth: maxDepth, includeUnlabeled: includeUnlabeled,
+                    into: &results)
             }
-            return // If accessibilityElements is set AND non-empty, UIKit ignores subviews
+            return  // If accessibilityElements is set AND non-empty, UIKit ignores subviews
         }
 
         // Path 2: indexed accessibility children
@@ -274,7 +286,9 @@ extension PepperSwiftUIBridge {
                 for i in 0..<count {
                     guard results.count < Self.maxElementCount else { return }
                     if let child = container.accessibilityElement(at: i) {
-                        walkAccessibilityTree(element: child, depth: depth + 1, maxDepth: maxDepth, includeUnlabeled: includeUnlabeled, into: &results)
+                        walkAccessibilityTree(
+                            element: child, depth: depth + 1, maxDepth: maxDepth, includeUnlabeled: includeUnlabeled,
+                            into: &results)
                     }
                 }
                 return
@@ -285,7 +299,9 @@ extension PepperSwiftUIBridge {
         if let view = element as? UIView {
             for subview in view.subviews {
                 guard results.count < Self.maxElementCount else { return }
-                walkAccessibilityTree(element: subview, depth: depth + 1, maxDepth: maxDepth, includeUnlabeled: includeUnlabeled, into: &results)
+                walkAccessibilityTree(
+                    element: subview, depth: depth + 1, maxDepth: maxDepth, includeUnlabeled: includeUnlabeled,
+                    into: &results)
             }
         }
     }
@@ -307,7 +323,8 @@ extension PepperSwiftUIBridge {
             }
             // Check 2: accessibilityContainer is UISegmentedControl
             if let segControl = element.value(forKey: "accessibilityContainer") as? UISegmentedControl,
-               let lbl = label {
+                let lbl = label
+            {
                 for i in 0..<segControl.numberOfSegments {
                     if segControl.titleForSegment(at: i) == lbl && i == segControl.selectedSegmentIndex {
                         traits.insert(.selected)
@@ -318,11 +335,9 @@ extension PepperSwiftUIBridge {
         }
 
         let elementType = classifyAccessibilityTraits(traits)
-        let isInteractive = traits.contains(.button) ||
-                           traits.contains(.link) ||
-                           traits.contains(.searchField) ||
-                           traits.contains(.adjustable) ||
-                           traits.contains(.keyboardKey)
+        let isInteractive =
+            traits.contains(.button) || traits.contains(.link) || traits.contains(.searchField)
+            || traits.contains(.adjustable) || traits.contains(.keyboardKey)
 
         return PepperAccessibilityElement(
             label: label,
@@ -339,33 +354,33 @@ extension PepperSwiftUIBridge {
 
     /// Map UIAccessibilityTraits to a human-readable element type.
     func classifyAccessibilityTraits(_ traits: UIAccessibilityTraits) -> String {
-        if traits.contains(.button)       { return "button" }
-        if traits.contains(.link)         { return "link" }
-        if traits.contains(.searchField)  { return "searchField" }
-        if traits.contains(.image)        { return "image" }
-        if traits.contains(.header)       { return "header" }
-        if traits.contains(.adjustable)   { return "adjustable" } // slider, stepper
-        if traits.contains(.staticText)   { return "staticText" }
-        if traits.contains(.tabBar)       { return "tabBar" }
-        if traits.contains(.keyboardKey)  { return "keyboardKey" }
+        if traits.contains(.button) { return "button" }
+        if traits.contains(.link) { return "link" }
+        if traits.contains(.searchField) { return "searchField" }
+        if traits.contains(.image) { return "image" }
+        if traits.contains(.header) { return "header" }
+        if traits.contains(.adjustable) { return "adjustable" }  // slider, stepper
+        if traits.contains(.staticText) { return "staticText" }
+        if traits.contains(.tabBar) { return "tabBar" }
+        if traits.contains(.keyboardKey) { return "keyboardKey" }
         return "element"
     }
 
     /// Convert UIAccessibilityTraits to a readable array of trait names.
     func describeTraits(_ traits: UIAccessibilityTraits) -> [String] {
         var names: [String] = []
-        if traits.contains(.button)            { names.append("button") }
-        if traits.contains(.link)              { names.append("link") }
-        if traits.contains(.image)             { names.append("image") }
-        if traits.contains(.selected)          { names.append("selected") }
-        if traits.contains(.staticText)        { names.append("staticText") }
-        if traits.contains(.header)            { names.append("header") }
-        if traits.contains(.searchField)       { names.append("searchField") }
-        if traits.contains(.adjustable)        { names.append("adjustable") }
-        if traits.contains(.notEnabled)        { names.append("notEnabled") }
+        if traits.contains(.button) { names.append("button") }
+        if traits.contains(.link) { names.append("link") }
+        if traits.contains(.image) { names.append("image") }
+        if traits.contains(.selected) { names.append("selected") }
+        if traits.contains(.staticText) { names.append("staticText") }
+        if traits.contains(.header) { names.append("header") }
+        if traits.contains(.searchField) { names.append("searchField") }
+        if traits.contains(.adjustable) { names.append("adjustable") }
+        if traits.contains(.notEnabled) { names.append("notEnabled") }
         if traits.contains(.updatesFrequently) { names.append("updatesFrequently") }
-        if traits.contains(.tabBar)            { names.append("tabBar") }
-        if traits.contains(.keyboardKey)       { names.append("keyboardKey") }
+        if traits.contains(.tabBar) { names.append("tabBar") }
+        if traits.contains(.keyboardKey) { names.append("keyboardKey") }
         return names
     }
 }

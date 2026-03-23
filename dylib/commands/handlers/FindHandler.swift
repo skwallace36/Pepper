@@ -63,10 +63,12 @@ struct FindHandler: PepperHandler {
 
         switch action {
         case "count":
-            return .ok(id: command.id, data: [
-                "count": AnyCodable(matches.count),
-                "predicate": AnyCodable(predFormat)
-            ])
+            return .ok(
+                id: command.id,
+                data: [
+                    "count": AnyCodable(matches.count),
+                    "predicate": AnyCodable(predFormat),
+                ])
 
         case "first":
             guard let first = matches.first else {
@@ -79,11 +81,13 @@ struct FindHandler: PepperHandler {
 
         case "list":
             let serialized = matches.map { AnyCodable(PepperPredicateQuery.serializeMatch($0)) }
-            return .ok(id: command.id, data: [
-                "matches": AnyCodable(serialized),
-                "count": AnyCodable(matches.count),
-                "predicate": AnyCodable(predFormat)
-            ])
+            return .ok(
+                id: command.id,
+                data: [
+                    "matches": AnyCodable(serialized),
+                    "count": AnyCodable(matches.count),
+                    "predicate": AnyCodable(predFormat),
+                ])
 
         default:
             return .error(id: command.id, message: "Unknown action: \(action). Use: list, first, count")

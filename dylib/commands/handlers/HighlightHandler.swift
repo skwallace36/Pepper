@@ -15,11 +15,11 @@ struct HighlightHandler: PepperHandler {
 
     // Named color presets
     private static let colors: [String: UIColor] = [
-        "blue":   UIColor(red: 0.231, green: 0.510, blue: 0.965, alpha: 1), // #3b82f6
-        "green":  UIColor(red: 0.133, green: 0.773, blue: 0.369, alpha: 1), // #22c55e
-        "red":    UIColor(red: 0.937, green: 0.267, blue: 0.267, alpha: 1), // #ef4444
-        "yellow": UIColor(red: 0.980, green: 0.749, blue: 0.141, alpha: 1), // #fabe24
-        "purple": UIColor(red: 0.737, green: 0.549, blue: 1.000, alpha: 1), // #bc8cff
+        "blue": UIColor(red: 0.231, green: 0.510, blue: 0.965, alpha: 1),  // #3b82f6
+        "green": UIColor(red: 0.133, green: 0.773, blue: 0.369, alpha: 1),  // #22c55e
+        "red": UIColor(red: 0.937, green: 0.267, blue: 0.267, alpha: 1),  // #ef4444
+        "yellow": UIColor(red: 0.980, green: 0.749, blue: 0.141, alpha: 1),  // #fabe24
+        "purple": UIColor(red: 0.737, green: 0.549, blue: 1.000, alpha: 1),  // #bc8cff
     ]
 
     /// Parse a hex color string like "#3fb950" or "#ff0000" into a UIColor.
@@ -27,9 +27,9 @@ struct HighlightHandler: PepperHandler {
         let h = hex.hasPrefix("#") ? String(hex.dropFirst()) : hex
         guard h.count == 6, let rgb = UInt32(h, radix: 16) else { return nil }
         return UIColor(
-            red:   CGFloat((rgb >> 16) & 0xFF) / 255,
-            green: CGFloat((rgb >> 8)  & 0xFF) / 255,
-            blue:  CGFloat( rgb        & 0xFF) / 255,
+            red: CGFloat((rgb >> 16) & 0xFF) / 255,
+            green: CGFloat((rgb >> 8) & 0xFF) / 255,
+            blue: CGFloat(rgb & 0xFF) / 255,
             alpha: 1
         )
     }
@@ -58,10 +58,11 @@ struct HighlightHandler: PepperHandler {
                 for item in items {
                     let dict = item.dictValue ?? [:]
                     guard let frameDict = dict["frame"]?.dictValue,
-                          let x = frameDict["x"]?.doubleValue,
-                          let y = frameDict["y"]?.doubleValue,
-                          let w = frameDict["width"]?.doubleValue,
-                          let h = frameDict["height"]?.doubleValue else { continue }
+                        let x = frameDict["x"]?.doubleValue,
+                        let y = frameDict["y"]?.doubleValue,
+                        let w = frameDict["width"]?.doubleValue,
+                        let h = frameDict["height"]?.doubleValue
+                    else { continue }
                     let colorStr = dict["color"]?.stringValue ?? "blue"
                     // swiftlint:disable:next force_unwrapping
                     let color = Self.colorFromHex(colorStr) ?? Self.colors[colorStr] ?? Self.colors["blue"]!
@@ -83,12 +84,13 @@ struct HighlightHandler: PepperHandler {
                 for item in items {
                     let dict = item.dictValue ?? [:]
                     guard let idx = dict["element_index"]?.intValue,
-                          let cat = dict["category"]?.stringValue,
-                          let frameDict = dict["frame"]?.dictValue,
-                          let x = frameDict["x"]?.doubleValue,
-                          let y = frameDict["y"]?.doubleValue,
-                          let w = frameDict["width"]?.doubleValue,
-                          let h = frameDict["height"]?.doubleValue else { continue }
+                        let cat = dict["category"]?.stringValue,
+                        let frameDict = dict["frame"]?.dictValue,
+                        let x = frameDict["x"]?.doubleValue,
+                        let y = frameDict["y"]?.doubleValue,
+                        let w = frameDict["width"]?.doubleValue,
+                        let h = frameDict["height"]?.doubleValue
+                    else { continue }
                     let elemLabel = dict["element_label"]?.stringValue
                     let step = dict["suggested_step"]?.jsonObject
                     zones.append((CGRect(x: x, y: y, width: w, height: h), idx, cat, elemLabel, step))
@@ -99,11 +101,13 @@ struct HighlightHandler: PepperHandler {
             }
 
             CATransaction.flush()
-            return .ok(id: command.id, data: [
-                "highlighted": AnyCodable(true),
-                "count": AnyCodable(results.count),
-                "items": AnyCodable(results),
-            ])
+            return .ok(
+                id: command.id,
+                data: [
+                    "highlighted": AnyCodable(true),
+                    "count": AnyCodable(results.count),
+                    "items": AnyCodable(results),
+                ])
         }
 
         // Single highlight mode
@@ -130,13 +134,16 @@ struct HighlightHandler: PepperHandler {
 
         // Option 1: explicit frame
         if let frameDict = params["frame"]?.dictValue,
-           let x = frameDict["x"]?.doubleValue,
-           let y = frameDict["y"]?.doubleValue,
-           let w = frameDict["width"]?.doubleValue,
-           let h = frameDict["height"]?.doubleValue {
+            let x = frameDict["x"]?.doubleValue,
+            let y = frameDict["y"]?.doubleValue,
+            let w = frameDict["width"]?.doubleValue,
+            let h = frameDict["height"]?.doubleValue
+        {
             let frame = CGRect(x: x, y: y, width: w, height: h)
             let displayColor = opacity < 1.0 ? color.withAlphaComponent(CGFloat(opacity)) : color
-            PepperOverlayView.shared.show(frame: frame, color: displayColor, label: label, labelInside: labelInside, labelColor: labelColor, fillBackground: fillBackground, duration: duration)
+            PepperOverlayView.shared.show(
+                frame: frame, color: displayColor, label: label, labelInside: labelInside, labelColor: labelColor,
+                fillBackground: fillBackground, duration: duration)
             return [
                 "highlighted": AnyCodable(true),
                 "strategy": AnyCodable("frame"),
@@ -173,7 +180,9 @@ struct HighlightHandler: PepperHandler {
                     let view = result.view
                     frame = view.convert(view.bounds, to: window)
                 }
-                PepperOverlayView.shared.show(frame: frame, color: color, label: label, labelInside: labelInside, labelColor: labelColor, fillBackground: fillBackground, duration: duration)
+                PepperOverlayView.shared.show(
+                    frame: frame, color: color, label: label, labelInside: labelInside, labelColor: labelColor,
+                    fillBackground: fillBackground, duration: duration)
                 return [
                     "highlighted": AnyCodable(true),
                     "strategy": AnyCodable(result.strategy.rawValue),

@@ -1,6 +1,6 @@
+import Photos
 import UIKit
 import UserNotifications
-import Photos
 
 /// Intercepts system dialog presentations (UIAlertController) by swizzling
 /// UIViewController.present(_:animated:completion:).
@@ -134,7 +134,8 @@ final class PepperDialogInterceptor {
         let swizzledSel = #selector(PHPhotoLibrary.pepper_requestAuthorization(for:handler:))
 
         if let originalMethod = class_getClassMethod(cls, originalSel),
-           let swizzledMethod = class_getClassMethod(cls, swizzledSel) {
+            let swizzledMethod = class_getClassMethod(cls, swizzledSel)
+        {
             method_setImplementation(originalMethod, method_getImplementation(swizzledMethod))
             pepperLog.info("Photo library authorization auto-grant installed", category: .lifecycle)
         } else {
@@ -146,7 +147,8 @@ final class PepperDialogInterceptor {
         let legacySwizzledSel = #selector(PHPhotoLibrary.pepper_requestAuthorizationLegacy(handler:))
 
         if let originalMethod = class_getClassMethod(cls, legacySel),
-           let swizzledMethod = class_getClassMethod(cls, legacySwizzledSel) {
+            let swizzledMethod = class_getClassMethod(cls, legacySwizzledSel)
+        {
             method_setImplementation(originalMethod, method_getImplementation(swizzledMethod))
             pepperLog.info("Photo library legacy authorization auto-grant installed", category: .lifecycle)
         }
@@ -171,7 +173,8 @@ final class PepperDialogInterceptor {
             return
         }
         method_setImplementation(baseMethod, replacementIMP)
-        pepperLog.info("Notification authorization auto-grant installed on UNUserNotificationCenter", category: .lifecycle)
+        pepperLog.info(
+            "Notification authorization auto-grant installed on UNUserNotificationCenter", category: .lifecycle)
 
         // 2. Also install on the runtime subclass (class cluster pattern).
         //    UNUserNotificationCenter.current() may return a private subclass
@@ -188,7 +191,8 @@ final class PepperDialogInterceptor {
             if let runtimeMethod = class_getInstanceMethod(runtimeCls, originalSel) {
                 method_setImplementation(runtimeMethod, replacementIMP)
             }
-            pepperLog.info("Notification authorization auto-grant installed on runtime class \(runtimeCls)", category: .lifecycle)
+            pepperLog.info(
+                "Notification authorization auto-grant installed on runtime class \(runtimeCls)", category: .lifecycle)
         }
     }
 
@@ -202,7 +206,8 @@ final class PepperDialogInterceptor {
         let swizzledSelector = #selector(UIViewController.pepper_present(_:animated:completion:))
 
         guard let originalMethod = class_getInstanceMethod(UIViewController.self, originalSelector),
-              let swizzledMethod = class_getInstanceMethod(UIViewController.self, swizzledSelector) else {
+            let swizzledMethod = class_getInstanceMethod(UIViewController.self, swizzledSelector)
+        else {
             pepperLog.error("Failed to swizzle UIViewController.present", category: .lifecycle)
             return
         }
@@ -241,22 +246,28 @@ final class PepperDialogInterceptor {
         lock.unlock()
 
         // Broadcast event
-        let event = PepperEvent(event: "dialog_appeared", data: [
-            "dialog_id": AnyCodable(dialog.id),
-            "title": AnyCodable(dialog.title ?? ""),
-            "message": AnyCodable(dialog.message ?? ""),
-            "actions": AnyCodable(actions.map { action in
-                AnyCodable([
-                    "title": AnyCodable(action.title ?? ""),
-                    "style": AnyCodable(styleString(action.style)),
-                    "index": AnyCodable(action.index)
-                ] as [String: AnyCodable])
-            }),
-            "timestamp": AnyCodable(ISO8601DateFormatter().string(from: dialog.timestamp))
-        ])
+        let event = PepperEvent(
+            event: "dialog_appeared",
+            data: [
+                "dialog_id": AnyCodable(dialog.id),
+                "title": AnyCodable(dialog.title ?? ""),
+                "message": AnyCodable(dialog.message ?? ""),
+                "actions": AnyCodable(
+                    actions.map { action in
+                        AnyCodable(
+                            [
+                                "title": AnyCodable(action.title ?? ""),
+                                "style": AnyCodable(styleString(action.style)),
+                                "index": AnyCodable(action.index),
+                            ] as [String: AnyCodable])
+                    }),
+                "timestamp": AnyCodable(ISO8601DateFormatter().string(from: dialog.timestamp)),
+            ])
         PepperPlane.shared.broadcast(event)
 
-        pepperLog.info("Dialog intercepted: \(dialog.title ?? "untitled") — \(actions.map { $0.title ?? "?" }.joined(separator: ", "))", category: .commands)
+        pepperLog.info(
+            "Dialog intercepted: \(dialog.title ?? "untitled") — \(actions.map { $0.title ?? "?" }.joined(separator: ", "))",
+            category: .commands)
 
         // Auto-dismiss if enabled
         if autoDismissEnabled, !autoDismissButtons.isEmpty {
@@ -311,14 +322,17 @@ final class PepperDialogInterceptor {
         lock.unlock()
 
         // Broadcast event
-        let event = PepperEvent(event: "share_sheet_appeared", data: [
-            "sheet_id": AnyCodable(sheet.id),
-            "items": AnyCodable(sheet.items.map { AnyCodable($0) }),
-            "timestamp": AnyCodable(ISO8601DateFormatter().string(from: sheet.timestamp))
-        ])
+        let event = PepperEvent(
+            event: "share_sheet_appeared",
+            data: [
+                "sheet_id": AnyCodable(sheet.id),
+                "items": AnyCodable(sheet.items.map { AnyCodable($0) }),
+                "timestamp": AnyCodable(ISO8601DateFormatter().string(from: sheet.timestamp)),
+            ])
         PepperPlane.shared.broadcast(event)
 
-        pepperLog.info("Share sheet intercepted: \(items.count) items — \(items.joined(separator: ", "))", category: .commands)
+        pepperLog.info(
+            "Share sheet intercepted: \(items.count) items — \(items.joined(separator: ", "))", category: .commands)
     }
 
     /// Get all pending (undismissed) share sheets.
@@ -354,10 +368,12 @@ final class PepperDialogInterceptor {
         pendingShareSheets.removeAll { $0.id == sheet.id }
         lock.unlock()
 
-        let event = PepperEvent(event: "share_sheet_dismissed", data: [
-            "sheet_id": AnyCodable(sheet.id),
-            "timestamp": AnyCodable(ISO8601DateFormatter().string(from: Date()))
-        ])
+        let event = PepperEvent(
+            event: "share_sheet_dismissed",
+            data: [
+                "sheet_id": AnyCodable(sheet.id),
+                "timestamp": AnyCodable(ISO8601DateFormatter().string(from: Date())),
+            ])
         PepperPlane.shared.broadcast(event)
 
         pepperLog.info("Share sheet dismissed: \(sheet.id)", category: .commands)
@@ -387,7 +403,8 @@ final class PepperDialogInterceptor {
             targetAction = dialog.alert.actions[buttonIndex]
         } else {
             // Default: tap the preferred action, or first non-cancel action
-            targetAction = dialog.alert.preferredAction
+            targetAction =
+                dialog.alert.preferredAction
                 ?? dialog.alert.actions.first { $0.style != .cancel }
                 ?? dialog.alert.actions.first
         }
@@ -415,11 +432,13 @@ final class PepperDialogInterceptor {
         lock.unlock()
 
         // Broadcast dismissal
-        let event = PepperEvent(event: "dialog_dismissed", data: [
-            "dialog_id": AnyCodable(dialog.id),
-            "button": AnyCodable(action.title ?? ""),
-            "timestamp": AnyCodable(ISO8601DateFormatter().string(from: Date()))
-        ])
+        let event = PepperEvent(
+            event: "dialog_dismissed",
+            data: [
+                "dialog_id": AnyCodable(dialog.id),
+                "button": AnyCodable(action.title ?? ""),
+                "timestamp": AnyCodable(ISO8601DateFormatter().string(from: Date())),
+            ])
         PepperPlane.shared.broadcast(event)
 
         pepperLog.info("Dialog dismissed: \(dialog.title ?? "untitled") → \(action.title ?? "?")", category: .commands)

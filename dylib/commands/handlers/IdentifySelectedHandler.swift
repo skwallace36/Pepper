@@ -55,10 +55,12 @@ struct IdentifySelectedHandler: PepperHandler {
 
         guard labelMatches.count >= 2 else {
             let found = labelMatches.map(\.label)
-            return .ok(id: command.id, data: [
-                "selected": AnyCodable(NSNull()),
-                "reason": AnyCodable("only found \(found.count) of \(labels.count) labels: \(found)")
-            ])
+            return .ok(
+                id: command.id,
+                data: [
+                    "selected": AnyCodable(NSNull()),
+                    "reason": AnyCodable("only found \(found.count) of \(labels.count) labels: \(found)"),
+                ])
         }
 
         // Phase 2: Render the window to a snapshot image
@@ -91,9 +93,11 @@ struct IdentifySelectedHandler: PepperHandler {
         let isDarkMode = UITraitCollection.current.userInterfaceStyle == .dark
 
         for r in regions {
-            debugLines.append(String(format: "%@: bg=%.3f brightness=%.3f ink=%.3f edgeInk=%.3f sat=%.3f chromaDist=%.3f",
-                                     r.label, r.bgBrightness, r.avgBrightness, r.inkCoverage,
-                                     r.bottomEdgeInk, r.avgSaturation, r.chromaDistance))
+            debugLines.append(
+                String(
+                    format: "%@: bg=%.3f brightness=%.3f ink=%.3f edgeInk=%.3f sat=%.3f chromaDist=%.3f",
+                    r.label, r.bgBrightness, r.avgBrightness, r.inkCoverage,
+                    r.bottomEdgeInk, r.avgSaturation, r.chromaDistance))
         }
         debugLines.append(isDarkMode ? "scheme=dark" : "scheme=light")
 
@@ -104,29 +108,34 @@ struct IdentifySelectedHandler: PepperHandler {
         // in light mode, selected text is darker (black vs gray) or more contrasty.
         // Either way the outlier metric works, but threshold differs.
         let brightnessThreshold: CGFloat = isDarkMode ? 0.02 : 0.025
-        scoreOutlier(regions.map { ($0.label, $0.avgBrightness) }, into: &scores,
-                     threshold: brightnessThreshold, weight: 1.0)
+        scoreOutlier(
+            regions.map { ($0.label, $0.avgBrightness) }, into: &scores,
+            threshold: brightnessThreshold, weight: 1.0)
 
         // Ink coverage outlier — bolder/heavier text has more ink pixels.
         // In dark mode, ink detection is harder (lower contrast), so use a smaller threshold.
         let inkThreshold: CGFloat = isDarkMode ? 0.01 : 0.015
-        scoreOutlier(regions.map { ($0.label, $0.inkCoverage) }, into: &scores,
-                     threshold: inkThreshold, weight: 1.2)
+        scoreOutlier(
+            regions.map { ($0.label, $0.inkCoverage) }, into: &scores,
+            threshold: inkThreshold, weight: 1.2)
 
         // Bottom edge ink — detects underline indicators below text.
         // Weight higher because an underline is a strong selection signal.
-        scoreOutlier(regions.map { ($0.label, $0.bottomEdgeInk) }, into: &scores,
-                     threshold: 0.02, weight: 1.5)
+        scoreOutlier(
+            regions.map { ($0.label, $0.bottomEdgeInk) }, into: &scores,
+            threshold: 0.02, weight: 1.5)
 
         // Saturation outlier — colored text vs gray/white text.
         // Weight moderately — some apps use color for all text.
-        scoreOutlier(regions.map { ($0.label, $0.avgSaturation) }, into: &scores,
-                     threshold: 0.015, weight: 1.0)
+        scoreOutlier(
+            regions.map { ($0.label, $0.avgSaturation) }, into: &scores,
+            threshold: 0.015, weight: 1.0)
 
         // Chroma distance — how far the average foreground color is from gray.
         // Detects blue/accent-colored selected text vs neutral unselected text.
-        scoreOutlier(regions.map { ($0.label, $0.chromaDistance) }, into: &scores,
-                     threshold: 0.015, weight: 1.3)
+        scoreOutlier(
+            regions.map { ($0.label, $0.chromaDistance) }, into: &scores,
+            threshold: 0.015, weight: 1.3)
 
         // Find winner — highest score with clear margin over runner-up
         var selected: String? = nil
@@ -142,7 +151,8 @@ struct IdentifySelectedHandler: PepperHandler {
         if showOverlays {
             for m in labelMatches {
                 let isWinner = m.label == selected
-                let color: UIColor = isWinner
+                let color: UIColor =
+                    isWinner
                     ? UIColor(red: 0.133, green: 0.773, blue: 0.369, alpha: 1)
                     : UIColor(red: 0.5, green: 0.5, blue: 0.5, alpha: 0.5)
                 let overlayLabel = isWinner ? "Selected: \(m.label)" : m.label
@@ -158,12 +168,14 @@ struct IdentifySelectedHandler: PepperHandler {
         // Convert scores to serializable format (round to 2 decimal places for readability)
         let scoreDict = scores.mapValues { AnyCodable(Double(round($0 * 100) / 100)) }
 
-        return .ok(id: command.id, data: [
-            "selected": AnyCodable(selected as Any),
-            "scores": AnyCodable(scoreDict),
-            "scheme": AnyCodable(isDarkMode ? "dark" : "light"),
-            "debug": AnyCodable(debugLines)
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "selected": AnyCodable(selected as Any),
+                "scores": AnyCodable(scoreDict),
+                "scheme": AnyCodable(isDarkMode ? "dark" : "light"),
+                "debug": AnyCodable(debugLines),
+            ])
     }
 
     // MARK: - Sibling Discovery
@@ -171,9 +183,11 @@ struct IdentifySelectedHandler: PepperHandler {
     /// Given a single label, find other accessibility elements in the same
     /// horizontal band — these are siblings in a tab bar / segmented control.
     private func discoverSiblings(for targetLabel: String) -> [String]? {
-        guard let targetFrame = PepperSwiftUIBridge.shared.findAccessibilityElementFrame(
-            label: targetLabel, exact: true
-        ) else { return nil }
+        guard
+            let targetFrame = PepperSwiftUIBridge.shared.findAccessibilityElementFrame(
+                label: targetLabel, exact: true
+            )
+        else { return nil }
 
         let screenBounds = UIScreen.main.bounds
         let allElements = PepperSwiftUIBridge.shared.collectAccessibilityElements()
@@ -212,12 +226,12 @@ struct IdentifySelectedHandler: PepperHandler {
     /// Complete analysis result for a single label's pixel region.
     private struct RegionAnalysis {
         let label: String
-        let bgBrightness: CGFloat       // Estimated background brightness (median of edge samples)
-        let avgBrightness: CGFloat       // Average pixel brightness
-        let inkCoverage: CGFloat         // Fraction of non-background pixels (adaptive threshold)
-        let bottomEdgeInk: CGFloat       // Ink in bottom 15% — detects underlines
-        let avgSaturation: CGFloat       // Average color saturation
-        let chromaDistance: CGFloat       // Distance of average foreground color from neutral gray
+        let bgBrightness: CGFloat  // Estimated background brightness (median of edge samples)
+        let avgBrightness: CGFloat  // Average pixel brightness
+        let inkCoverage: CGFloat  // Fraction of non-background pixels (adaptive threshold)
+        let bottomEdgeInk: CGFloat  // Ink in bottom 15% — detects underlines
+        let avgSaturation: CGFloat  // Average color saturation
+        let chromaDistance: CGFloat  // Distance of average foreground color from neutral gray
     }
 
     /// Analyze a screen region's pixels with adaptive background detection.
@@ -242,15 +256,17 @@ struct IdentifySelectedHandler: PepperHandler {
         let y1 = min(y0 + ph, imgH)
 
         guard x1 > x0, y1 > y0 else {
-            return RegionAnalysis(label: label, bgBrightness: 0.5, avgBrightness: 0,
-                                  inkCoverage: 0, bottomEdgeInk: 0, avgSaturation: 0, chromaDistance: 0)
+            return RegionAnalysis(
+                label: label, bgBrightness: 0.5, avgBrightness: 0,
+                inkCoverage: 0, bottomEdgeInk: 0, avgSaturation: 0, chromaDistance: 0)
         }
 
         // Crop and rasterize
         let cropRect = CGRect(x: x0, y: y0, width: x1 - x0, height: y1 - y0)
         guard let cropped = image.cropping(to: cropRect) else {
-            return RegionAnalysis(label: label, bgBrightness: 0.5, avgBrightness: 0,
-                                  inkCoverage: 0, bottomEdgeInk: 0, avgSaturation: 0, chromaDistance: 0)
+            return RegionAnalysis(
+                label: label, bgBrightness: 0.5, avgBrightness: 0,
+                inkCoverage: 0, bottomEdgeInk: 0, avgSaturation: 0, chromaDistance: 0)
         }
 
         let w = cropped.width
@@ -259,17 +275,20 @@ struct IdentifySelectedHandler: PepperHandler {
         let bytesPerRow = w * bytesPerPixel
         var pixelData = [UInt8](repeating: 0, count: w * h * bytesPerPixel)
 
-        guard let context = CGContext(
-            data: &pixelData,
-            width: w,
-            height: h,
-            bitsPerComponent: 8,
-            bytesPerRow: bytesPerRow,
-            space: CGColorSpaceCreateDeviceRGB(),
-            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-        ) else {
-            return RegionAnalysis(label: label, bgBrightness: 0.5, avgBrightness: 0,
-                                  inkCoverage: 0, bottomEdgeInk: 0, avgSaturation: 0, chromaDistance: 0)
+        guard
+            let context = CGContext(
+                data: &pixelData,
+                width: w,
+                height: h,
+                bitsPerComponent: 8,
+                bytesPerRow: bytesPerRow,
+                space: CGColorSpaceCreateDeviceRGB(),
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+            )
+        else {
+            return RegionAnalysis(
+                label: label, bgBrightness: 0.5, avgBrightness: 0,
+                inkCoverage: 0, bottomEdgeInk: 0, avgSaturation: 0, chromaDistance: 0)
         }
 
         context.draw(cropped, in: CGRect(x: 0, y: 0, width: w, height: h))
@@ -301,7 +320,9 @@ struct IdentifySelectedHandler: PepperHandler {
         var bottomTotalPixels: CGFloat = 0
 
         // Track foreground color for chroma analysis
-        var fgR: CGFloat = 0, fgG: CGFloat = 0, fgB: CGFloat = 0
+        var fgR: CGFloat = 0
+        var fgG: CGFloat = 0
+        var fgB: CGFloat = 0
         var fgCount: CGFloat = 0
 
         for row in 0..<h {
@@ -323,7 +344,9 @@ struct IdentifySelectedHandler: PepperHandler {
                 let isInk = abs(brightness - bgBrightness) > inkThreshold
                 if isInk {
                     inkPixels += 1
-                    fgR += r; fgG += g; fgB += b
+                    fgR += r
+                    fgG += g
+                    fgB += b
                     fgCount += 1
                 }
 
@@ -377,7 +400,7 @@ struct IdentifySelectedHandler: PepperHandler {
     /// - Drop shadows (shadows are on one edge; other 3 edges dominate the median)
     private func estimateBackground(_ data: [UInt8], w: Int, h: Int) -> CGFloat {
         var samples: [CGFloat] = []
-        samples.reserveCapacity(2 * (w + h) * 2) // rough upper bound
+        samples.reserveCapacity(2 * (w + h) * 2)  // rough upper bound
 
         let stripWidth = min(2, min(w, h))
 

@@ -26,7 +26,8 @@ struct SwipeHandler: PepperHandler {
             return .error(id: command.id, message: "No key window available")
         }
 
-        let duration = command.params?["duration"]?.doubleValue
+        let duration =
+            command.params?["duration"]?.doubleValue
             ?? Self.defaultDuration
 
         let from: CGPoint
@@ -34,17 +35,19 @@ struct SwipeHandler: PepperHandler {
 
         // Mode 1: Explicit from + to points
         if let fromDict = command.params?["from"]?.dictValue,
-           let toDict = command.params?["to"]?.dictValue,
-           let fromX = fromDict["x"]?.doubleValue,
-           let fromY = fromDict["y"]?.doubleValue,
-           let toX = toDict["x"]?.doubleValue,
-           let toY = toDict["y"]?.doubleValue {
+            let toDict = command.params?["to"]?.dictValue,
+            let fromX = fromDict["x"]?.doubleValue,
+            let fromY = fromDict["y"]?.doubleValue,
+            let toX = toDict["x"]?.doubleValue,
+            let toY = toDict["y"]?.doubleValue
+        {
             from = CGPoint(x: fromX, y: fromY)
             to = CGPoint(x: toX, y: toY)
         }
         // Mode 2: Direction-based
         else if let direction = command.params?["direction"]?.stringValue {
-            let amount = command.params?["amount"]?.doubleValue.map { CGFloat($0) }
+            let amount =
+                command.params?["amount"]?.doubleValue.map { CGFloat($0) }
                 ?? command.params?["distance"]?.doubleValue.map { CGFloat($0) }
                 ?? Self.defaultAmount
 
@@ -74,8 +77,7 @@ struct SwipeHandler: PepperHandler {
             default:
                 return .error(id: command.id, message: "Invalid direction: \(direction). Use up/down/left/right")
             }
-        }
-        else {
+        } else {
             return .error(id: command.id, message: "Missing required params: from+to, or direction")
         }
 
@@ -89,11 +91,13 @@ struct SwipeHandler: PepperHandler {
         )
 
         if success {
-            return .ok(id: command.id, data: [
-                "from": AnyCodable(["x": AnyCodable(Double(from.x)), "y": AnyCodable(Double(from.y))]),
-                "to": AnyCodable(["x": AnyCodable(Double(to.x)), "y": AnyCodable(Double(to.y))]),
-                "duration": AnyCodable(duration)
-            ])
+            return .ok(
+                id: command.id,
+                data: [
+                    "from": AnyCodable(["x": AnyCodable(Double(from.x)), "y": AnyCodable(Double(from.y))]),
+                    "to": AnyCodable(["x": AnyCodable(Double(to.x)), "y": AnyCodable(Double(to.y))]),
+                    "duration": AnyCodable(duration),
+                ])
         } else {
             return .error(id: command.id, message: "Swipe failed — touch synthesis unavailable. Check device logs.")
         }

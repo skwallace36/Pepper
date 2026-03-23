@@ -18,8 +18,9 @@ struct LayersHandler: PepperHandler {
 
         let parts = pointStr.split(separator: ",")
         guard parts.count == 2,
-              let x = Double(parts[0].trimmingCharacters(in: .whitespaces)),
-              let y = Double(parts[1].trimmingCharacters(in: .whitespaces)) else {
+            let x = Double(parts[0].trimmingCharacters(in: .whitespaces)),
+            let y = Double(parts[1].trimmingCharacters(in: .whitespaces))
+        else {
             return .error(id: command.id, message: "Invalid point format. Use 'x,y' (e.g. '200,400').")
         }
 
@@ -27,10 +28,12 @@ struct LayersHandler: PepperHandler {
         let maxDepth = command.params?["depth"]?.intValue ?? 20
 
         // Find the key window
-        guard let window = UIApplication.shared.connectedScenes
-            .compactMap({ $0 as? UIWindowScene })
-            .flatMap({ $0.windows })
-            .first(where: { $0.isKeyWindow }) else {
+        guard
+            let window = UIApplication.shared.connectedScenes
+                .compactMap({ $0 as? UIWindowScene })
+                .flatMap({ $0.windows })
+                .first(where: { $0.isKeyWindow })
+        else {
             return .error(id: command.id, message: "No key window found.")
         }
 
@@ -45,12 +48,14 @@ struct LayersHandler: PepperHandler {
         // Walk the layer tree
         let layerTree = walkLayer(hitView.layer, windowRef: window, depth: 0, maxDepth: maxDepth)
 
-        return .ok(id: command.id, data: [
-            "view_class": AnyCodable(viewClass),
-            "view_frame": AnyCodable(frameDict(viewFrame)),
-            "point": AnyCodable([x, y]),
-            "layer_tree": AnyCodable(layerTree),
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "view_class": AnyCodable(viewClass),
+                "view_frame": AnyCodable(frameDict(viewFrame)),
+                "point": AnyCodable([x, y]),
+                "layer_tree": AnyCodable(layerTree),
+            ])
     }
 
     // MARK: - Layer Tree Walk
@@ -89,8 +94,10 @@ struct LayersHandler: PepperHandler {
         if layer.shadowOpacity > 0 {
             props["shadowColor"] = AnyCodable(cgColorToHex(layer.shadowColor ?? UIColor.black.cgColor))
             props["shadowOpacity"] = AnyCodable(Double(layer.shadowOpacity))
-            props["shadowOffset"] = AnyCodable(["width": Double(layer.shadowOffset.width),
-                                                 "height": Double(layer.shadowOffset.height)])
+            props["shadowOffset"] = AnyCodable([
+                "width": Double(layer.shadowOffset.width),
+                "height": Double(layer.shadowOffset.height),
+            ])
             props["shadowRadius"] = AnyCodable(Double(layer.shadowRadius))
         }
 
@@ -148,7 +155,8 @@ struct LayersHandler: PepperHandler {
 
     private func cgColorToHex(_ color: CGColor) -> String {
         guard let rgb = color.converted(to: CGColorSpaceCreateDeviceRGB(), intent: .defaultIntent, options: nil),
-              let components = rgb.components, components.count >= 3 else {
+            let components = rgb.components, components.count >= 3
+        else {
             return "#000000FF"
         }
 

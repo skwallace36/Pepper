@@ -7,10 +7,10 @@ extension String {
     var pepperNormalized: String {
         var s = self
         for (from, to) in [
-            ("\u{2018}", "'"), ("\u{2019}", "'"),   // curly single quotes
-            ("\u{201C}", "\""), ("\u{201D}", "\""), // curly double quotes
-            ("\u{2013}", "-"), ("\u{2014}", "-"),   // en/em dash
-            ("\u{00A0}", " "),                       // NBSP
+            ("\u{2018}", "'"), ("\u{2019}", "'"),  // curly single quotes
+            ("\u{201C}", "\""), ("\u{201D}", "\""),  // curly double quotes
+            ("\u{2013}", "-"), ("\u{2014}", "-"),  // en/em dash
+            ("\u{00A0}", " "),  // NBSP
         ] {
             s = s.replacingOccurrences(of: from, with: to)
         }
@@ -59,8 +59,8 @@ struct PepperElementInfo: Codable {
 
 /// Scroll context for elements inside UIScrollView containers.
 struct PepperScrollContext {
-    let direction: String          // "horizontal", "vertical", "both"
-    let visibleInViewport: Bool    // center is within the scroll view's visible rect
+    let direction: String  // "horizontal", "vertical", "both"
+    let visibleInViewport: Bool  // center is within the scroll view's visible rect
 }
 
 /// Represents an element discovered via the accessibility tree.
@@ -93,11 +93,11 @@ struct PepperAccessibilityElement {
     /// Whether this element has any meaningful content to report.
     var hasContent: Bool {
         // swiftlint:disable:next force_unwrapping
-        return (label != nil && !label!.isEmpty) ||
-               // swiftlint:disable:next force_unwrapping
-               (value != nil && !value!.isEmpty) ||
-               // swiftlint:disable:next force_unwrapping
-               (identifier != nil && !identifier!.isEmpty)
+        return (label != nil && !label!.isEmpty)
+            // swiftlint:disable:next force_unwrapping
+            || (value != nil && !value!.isEmpty)
+            // swiftlint:disable:next force_unwrapping
+            || (identifier != nil && !identifier!.isEmpty)
     }
 
     /// Serialize to a dictionary for JSON transmission.
@@ -105,7 +105,7 @@ struct PepperAccessibilityElement {
         var dict: [String: AnyCodable] = [
             "type": AnyCodable(type),
             "interactive": AnyCodable(isInteractive),
-            "class": AnyCodable(className)
+            "class": AnyCodable(className),
         ]
 
         if let label = label, !label.isEmpty {
@@ -128,7 +128,7 @@ struct PepperAccessibilityElement {
                 "x": AnyCodable(Double(frame.origin.x)),
                 "y": AnyCodable(Double(frame.origin.y)),
                 "width": AnyCodable(Double(frame.size.width)),
-                "height": AnyCodable(Double(frame.size.height))
+                "height": AnyCodable(Double(frame.size.height)),
             ])
         }
         // Only include when element is occluded — keeps response compact
@@ -138,7 +138,7 @@ struct PepperAccessibilityElement {
         if let sc = scrollContext {
             dict["scroll_context"] = AnyCodable([
                 "direction": AnyCodable(sc.direction),
-                "visible_in_viewport": AnyCodable(sc.visibleInViewport)
+                "visible_in_viewport": AnyCodable(sc.visibleInViewport),
             ])
         }
         if let vc = viewController {
@@ -193,18 +193,18 @@ struct PepperInteractiveElement {
             "class": AnyCodable(className),
             "center": AnyCodable([
                 "x": AnyCodable(Double(center.x)),
-                "y": AnyCodable(Double(center.y))
+                "y": AnyCodable(Double(center.y)),
             ]),
             "frame": AnyCodable([
                 "x": AnyCodable(Double(frame.origin.x)),
                 "y": AnyCodable(Double(frame.origin.y)),
                 "width": AnyCodable(Double(frame.size.width)),
-                "height": AnyCodable(Double(frame.size.height))
+                "height": AnyCodable(Double(frame.size.height)),
             ]),
             "labeled": AnyCodable(labeled),
             "source": AnyCodable(source),
             "hit_reachable": AnyCodable(hitReachable),
-            "is_control": AnyCodable(isControl)
+            "is_control": AnyCodable(isControl),
         ]
 
         if let label = label {
@@ -231,7 +231,7 @@ struct PepperInteractiveElement {
         if let sc = scrollContext {
             dict["scroll_context"] = AnyCodable([
                 "direction": AnyCodable(sc.direction),
-                "visible_in_viewport": AnyCodable(sc.visibleInViewport)
+                "visible_in_viewport": AnyCodable(sc.visibleInViewport),
             ])
         }
         if let vc = viewController {
@@ -259,18 +259,20 @@ struct PepperIntrospectionResult {
         return [
             "accessibility": AnyCodable(accessibilityElements.map { AnyCodable($0.toDictionary()) }),
             "accessibilityCount": AnyCodable(accessibilityElements.count),
-            "viewHierarchy": AnyCodable(viewHierarchyElements.map { element in
-                AnyCodable([
-                    "id": AnyCodable(element.id),
-                    "type": AnyCodable(element.type),
-                    "label": AnyCodable(element.label ?? ""),
-                    "value": AnyCodable(element.value ?? ""),
-                    "enabled": AnyCodable(element.enabled),
-                    "visible": AnyCodable(element.visible)
-                ] as [String: AnyCodable])
-            }),
+            "viewHierarchy": AnyCodable(
+                viewHierarchyElements.map { element in
+                    AnyCodable(
+                        [
+                            "id": AnyCodable(element.id),
+                            "type": AnyCodable(element.type),
+                            "label": AnyCodable(element.label ?? ""),
+                            "value": AnyCodable(element.value ?? ""),
+                            "enabled": AnyCodable(element.enabled),
+                            "visible": AnyCodable(element.visible),
+                        ] as [String: AnyCodable])
+                }),
             "viewHierarchyCount": AnyCodable(viewHierarchyElements.count),
-            "hostingControllerCount": AnyCodable(hostingControllerCount)
+            "hostingControllerCount": AnyCodable(hostingControllerCount),
         ]
     }
 }

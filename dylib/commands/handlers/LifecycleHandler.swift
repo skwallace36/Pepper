@@ -22,7 +22,9 @@ struct LifecycleHandler: PepperHandler {
 
     func handle(_ command: PepperCommand) -> PepperResponse {
         guard let action = command.params?["action"]?.stringValue else {
-            return .error(id: command.id, message: "Missing 'action' param. Available: background, foreground, memory_warning, cycle")
+            return .error(
+                id: command.id,
+                message: "Missing 'action' param. Available: background, foreground, memory_warning, cycle")
         }
 
         switch action {
@@ -45,29 +47,36 @@ struct LifecycleHandler: PepperHandler {
             DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [self] in
                 self.postForeground()
             }
-            return .ok(id: command.id, data: [
-                "state": AnyCodable("backgrounding"),
-                "foreground_delay": AnyCodable(delay),
-            ])
+            return .ok(
+                id: command.id,
+                data: [
+                    "state": AnyCodable("backgrounding"),
+                    "foreground_delay": AnyCodable(delay),
+                ])
 
         default:
-            return .error(id: command.id, message: "Unknown action '\(action)'. Available: background, foreground, memory_warning, cycle")
+            return .error(
+                id: command.id,
+                message: "Unknown action '\(action)'. Available: background, foreground, memory_warning, cycle")
         }
     }
 
     private func postBackground() {
         NotificationCenter.default.post(name: UIApplication.willResignActiveNotification, object: UIApplication.shared)
-        NotificationCenter.default.post(name: UIApplication.didEnterBackgroundNotification, object: UIApplication.shared)
+        NotificationCenter.default.post(
+            name: UIApplication.didEnterBackgroundNotification, object: UIApplication.shared)
     }
 
     private func postForeground() {
-        NotificationCenter.default.post(name: UIApplication.willEnterForegroundNotification, object: UIApplication.shared)
+        NotificationCenter.default.post(
+            name: UIApplication.willEnterForegroundNotification, object: UIApplication.shared)
         NotificationCenter.default.post(name: UIApplication.didBecomeActiveNotification, object: UIApplication.shared)
     }
 
     private func triggerMemoryWarning() {
         // Trigger the standard memory warning flow
-        NotificationCenter.default.post(name: UIApplication.didReceiveMemoryWarningNotification, object: UIApplication.shared)
+        NotificationCenter.default.post(
+            name: UIApplication.didReceiveMemoryWarningNotification, object: UIApplication.shared)
         // Also call the private API that triggers didReceiveMemoryWarning on all VCs
         UIApplication.shared.perform(NSSelectorFromString("_performMemoryWarning"))
     }

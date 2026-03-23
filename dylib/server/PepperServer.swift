@@ -47,11 +47,13 @@ final class PepperServer {
             guard let self = self else {
                 return .error(id: cmd.id, message: "Server not available")
             }
-            return .ok(id: cmd.id, data: [
-                "connections": AnyCodable(self.connectionManager.connectionCount),
-                "connectionDetails": AnyCodable(self.connectionManager.statusReport()),
-                "port": AnyCodable(Int(self.port))
-            ])
+            return .ok(
+                id: cmd.id,
+                data: [
+                    "connections": AnyCodable(self.connectionManager.connectionCount),
+                    "connectionDetails": AnyCodable(self.connectionManager.statusReport()),
+                    "port": AnyCodable(Int(self.port)),
+                ])
         }
     }
 
@@ -90,16 +92,22 @@ final class PepperServer {
         }
 
         // Rate limiting
-        if !connectionManager.checkRateLimit(for: connectionID, maxMessages: Self.rateLimitMaxMessages, window: Self.rateLimitWindow) {
+        if !connectionManager.checkRateLimit(
+            for: connectionID, maxMessages: Self.rateLimitMaxMessages, window: Self.rateLimitWindow)
+        {
             pepperLog.warning("Rate limit exceeded for \(connectionID)", category: .server)
-            let errorResponse = PepperResponse.error(id: "unknown", message: "Rate limit exceeded. Max \(Self.rateLimitMaxMessages) messages per \(Int(Self.rateLimitWindow))s.")
+            let errorResponse = PepperResponse.error(
+                id: "unknown",
+                message:
+                    "Rate limit exceeded. Max \(Self.rateLimitMaxMessages) messages per \(Int(Self.rateLimitWindow))s.")
             sendResponse(errorResponse, to: connectionID)
             return
         }
 
         do {
             var command = try decoder.decode(PepperCommand.self, from: data)
-            pepperLog.debug("Received command '\(command.cmd)' id=\(command.id)", category: .commands, commandID: command.id)
+            pepperLog.debug(
+                "Received command '\(command.cmd)' id=\(command.id)", category: .commands, commandID: command.id)
 
             // Inject connection ID so handlers can access it (e.g. subscribe/unsubscribe)
             var params = command.params ?? [:]
@@ -110,7 +118,8 @@ final class PepperServer {
         } catch {
             pepperLog.warning("Invalid JSON from \(connectionID): \(error)", category: .commands)
             // Send error response with a synthetic ID
-            let errorResponse = PepperResponse.error(id: "unknown", message: "Invalid JSON: \(error.localizedDescription)")
+            let errorResponse = PepperResponse.error(
+                id: "unknown", message: "Invalid JSON: \(error.localizedDescription)")
             sendResponse(errorResponse, to: connectionID)
         }
     }
@@ -127,19 +136,26 @@ final class PepperServer {
         // Schedule a timeout on the server queue
         serverQueue.asyncAfter(deadline: .now() + timeoutInterval) { [weak self] in
             guard !responded.setIfUnset() else { return }
-            pepperLog.warning("Command '\(command.cmd)' id=\(command.id) timed out after \(timeoutInterval)s", category: .commands, commandID: command.id)
-            let timeoutResponse = PepperResponse.error(id: command.id, message: "Command timed out after \(timeoutInterval) seconds")
+            pepperLog.warning(
+                "Command '\(command.cmd)' id=\(command.id) timed out after \(timeoutInterval)s", category: .commands,
+                commandID: command.id)
+            let timeoutResponse = PepperResponse.error(
+                id: command.id, message: "Command timed out after \(timeoutInterval) seconds")
             self?.sendResponse(timeoutResponse, to: connectionID)
         }
 
         // Dispatch the command — handler runs on main thread
         dispatcher.dispatch(command) { [weak self] response in
             guard !responded.setIfUnset() else {
-                pepperLog.debug("Dropping late response for '\(command.cmd)' id=\(command.id) (already timed out)", category: .commands, commandID: command.id)
+                pepperLog.debug(
+                    "Dropping late response for '\(command.cmd)' id=\(command.id) (already timed out)",
+                    category: .commands, commandID: command.id)
                 return
             }
             self?.sendResponse(response, to: connectionID)
-            pepperLog.debug("Responded to '\(command.cmd)' with \(response.status.rawValue)", category: .commands, commandID: command.id)
+            pepperLog.debug(
+                "Responded to '\(command.cmd)' with \(response.status.rawValue)", category: .commands,
+                commandID: command.id)
         }
     }
 

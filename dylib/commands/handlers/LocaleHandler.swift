@@ -39,7 +39,9 @@ struct LocaleHandler: PepperHandler {
         case "languages":
             return handleLanguages(command)
         default:
-            return .error(id: command.id, message: "Unknown action '\(action)'. Available: current, set, reset, lookup, languages")
+            return .error(
+                id: command.id, message: "Unknown action '\(action)'. Available: current, set, reset, lookup, languages"
+            )
         }
     }
 
@@ -83,22 +85,27 @@ struct LocaleHandler: PepperHandler {
 
         PepperLocaleOverride.shared.setOverride(language: language, region: region)
 
-        return .ok(id: command.id, data: [
-            "language": AnyCodable(language),
-            "region": AnyCodable(region ?? ""),
-            "override_active": AnyCodable(true),
-            "note": AnyCodable("Locale override active. New views will use this locale. Existing views may need refresh."),
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "language": AnyCodable(language),
+                "region": AnyCodable(region ?? ""),
+                "override_active": AnyCodable(true),
+                "note": AnyCodable(
+                    "Locale override active. New views will use this locale. Existing views may need refresh."),
+            ])
     }
 
     // MARK: - Reset
 
     private func handleReset(_ command: PepperCommand) -> PepperResponse {
         PepperLocaleOverride.shared.clearOverride()
-        return .ok(id: command.id, data: [
-            "override_active": AnyCodable(false),
-            "restored": AnyCodable(true),
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "override_active": AnyCodable(false),
+                "restored": AnyCodable(true),
+            ])
     }
 
     // MARK: - Lookup (find localized string by key)
@@ -114,8 +121,9 @@ struct LocaleHandler: PepperHandler {
         // Resolve the bundle for the requested language
         let bundle: Bundle
         if let lang = language,
-           let path = Bundle.main.path(forResource: lang, ofType: "lproj"),
-           let langBundle = Bundle(path: path) {
+            let path = Bundle.main.path(forResource: lang, ofType: "lproj"),
+            let langBundle = Bundle(path: path)
+        {
             bundle = langBundle
         } else {
             bundle = Bundle.main
@@ -145,10 +153,12 @@ struct LocaleHandler: PepperHandler {
     private func handleLanguages(_ command: PepperCommand) -> PepperResponse {
         let localizations = Bundle.main.localizations.sorted()
 
-        return .ok(id: command.id, data: [
-            "count": AnyCodable(localizations.count),
-            "languages": AnyCodable(localizations.map { AnyCodable($0) }),
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "count": AnyCodable(localizations.count),
+                "languages": AnyCodable(localizations.map { AnyCodable($0) }),
+            ])
     }
 }
 

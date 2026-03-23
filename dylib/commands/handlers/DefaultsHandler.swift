@@ -53,17 +53,19 @@ struct DefaultsHandler: PepperHandler {
             entries.append([
                 "key": AnyCodable(key),
                 "type": AnyCodable(typeLabel(value)),
-                "value": AnyCodable(summarize(value))
+                "value": AnyCodable(summarize(value)),
             ])
 
             if entries.count >= limit { break }
         }
 
-        return .ok(id: command.id, data: [
-            "count": AnyCodable(entries.count),
-            "total": AnyCodable(dict.count),
-            "entries": AnyCodable(entries)
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "count": AnyCodable(entries.count),
+                "total": AnyCodable(dict.count),
+                "entries": AnyCodable(entries),
+            ])
     }
 
     private func handleGet(_ command: PepperCommand) -> PepperResponse {
@@ -76,11 +78,13 @@ struct DefaultsHandler: PepperHandler {
             return .error(id: command.id, message: "Key '\(key)' not found.")
         }
 
-        return .ok(id: command.id, data: [
-            "key": AnyCodable(key),
-            "type": AnyCodable(typeLabel(value)),
-            "value": AnyCodable(summarize(value))
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "key": AnyCodable(key),
+                "type": AnyCodable(typeLabel(value)),
+                "value": AnyCodable(summarize(value)),
+            ])
     }
 
     private func handleSet(_ command: PepperCommand) -> PepperResponse {
@@ -95,11 +99,13 @@ struct DefaultsHandler: PepperHandler {
         let native = toNative(jsonValue)
         ud.set(native, forKey: key)
 
-        return .ok(id: command.id, data: [
-            "key": AnyCodable(key),
-            "value": AnyCodable(summarize(native ?? NSNull())),
-            "ok": AnyCodable(true)
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "key": AnyCodable(key),
+                "value": AnyCodable(summarize(native ?? NSNull())),
+                "ok": AnyCodable(true),
+            ])
     }
 
     private func handleDelete(_ command: PepperCommand) -> PepperResponse {
@@ -111,10 +117,12 @@ struct DefaultsHandler: PepperHandler {
         let existed = ud.object(forKey: key) != nil
         ud.removeObject(forKey: key)
 
-        return .ok(id: command.id, data: [
-            "key": AnyCodable(key),
-            "removed": AnyCodable(existed)
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "key": AnyCodable(key),
+                "removed": AnyCodable(existed),
+            ])
     }
 
     // MARK: - Value helpers
