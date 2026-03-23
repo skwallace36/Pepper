@@ -26,7 +26,8 @@ LOGS_DIR    := $(PROJECT_DIR)/build/logs
         logs clean test-client pepper-ctl test-app coverage coverage-check \
         docs setup ci smoke smoke-ice-cubes \
         agent agent-monitor agent-status agent-trigger agents-install agents-uninstall agent-cleanup agents-start agents-stop agent-analyze groom \
-        fmt fmt-check
+        fmt fmt-check \
+        wikipedia-setup wikipedia-deploy wikipedia-smoke
 
 # ============================================================
 # Help
@@ -221,6 +222,26 @@ smoke-ice-cubes:
 		--bundle-id "com.thomasricouard.IceCubesApp" \
 		--suite "$(PROJECT_DIR)/scripts/smoke-ice-cubes.json" \
 		$(SMOKE_ARGS)
+
+# ============================================================
+# External App Testing (Wikipedia)
+# ============================================================
+
+WIKI_BUNDLE_ID := org.wikimedia.wikipedia
+
+## wikipedia-setup: Clone, build, and install Wikipedia iOS on the simulator
+wikipedia-setup:
+	@bash "$(PROJECT_DIR)/scripts/setup-wikipedia.sh"
+
+## wikipedia-deploy: Build dylib + launch Wikipedia with Pepper injected
+wikipedia-deploy: build
+	@$(MAKE) launch BUNDLE_ID=$(WIKI_BUNDLE_ID)
+
+## wikipedia-smoke: Run smoke tests against Wikipedia with Pepper
+wikipedia-smoke:
+	@python3 "$(TOOLS_DIR)/pepper-ctl" --port $(PORT) \
+		test-report --file "$(PROJECT_DIR)/scripts/wikipedia-smoke.json" \
+		--continue-on-error
 
 # ============================================================
 # Housekeeping
