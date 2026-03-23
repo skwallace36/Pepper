@@ -25,7 +25,7 @@ LOGS_DIR    := $(PROJECT_DIR)/build/logs
 .PHONY: help build deploy launch kill relaunch ping check lint smoke typecheck \
         logs clean test-client pepper-ctl test-app coverage coverage-check \
         docs setup ci smoke smoke-ice-cubes \
-        agent agent-monitor agent-status agent-trigger agents-install agents-uninstall agent-cleanup agents-start agents-stop agent-analyze groom \
+        agent agent-monitor agent-status agent-trigger agents-install agents-uninstall agent-cleanup agents-start agents-stop agent-analyze groom pr-digest \
         fmt fmt-check \
         wikipedia-setup wikipedia-deploy wikipedia-smoke
 
@@ -333,6 +333,10 @@ agent-analyze:
 ## groom: Groom the issue backlog (triage, prioritize, decompose)
 groom:
 	@./scripts/agent-runner.sh groomer
+
+## pr-digest: Show prioritized PR review digest
+pr-digest:
+	@./scripts/pr-digest.sh
 
 ## clean: Clean build artifacts
 clean:

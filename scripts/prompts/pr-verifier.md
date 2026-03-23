@@ -53,6 +53,11 @@ THEN:
    - `scripts/prompts/` (agent behavior)
    - `.env*`
 
+   **Auto-merge encouraged (if build passes and you verified it works):**
+   - `test-app/` only changes (test-only PRs)
+   - `dylib/` only changes with ≤100 lines added/removed
+   - Bug fixes that only touch a single file
+
    **Use your judgment for everything else.** Merge if: the change is straightforward, isolated, builds clean, and you verified it works. Flag for review if: it has broad blast radius, changes core architecture, or you're not confident.
 
    To merge: `gh pr merge <number> --repo skwallace36/Pepper --squash --delete-branch`
