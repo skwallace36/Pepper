@@ -137,9 +137,11 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
         point: str | None = Field(default=None, description="Tap at coordinates 'x,y' (e.g. '200,400')"),
         double: bool = Field(default=False, description="Double-tap (two rapid taps for zoom, like, etc.)"),
         duration: float | None = Field(default=None, description="Hold duration in seconds. Use >0.5 for long press."),
+        debug: bool = Field(default=False, description="Include tap diagnostics: hit-test result, gesture recognizers, responder chain, and overlapping views. Use when a tap doesn't produce the expected result."),
     ) -> str:
         """Tap an element on screen. Specify exactly one of: text, icon, heuristic, or point.
         Add double=true for double-tap, or duration=1.0 for long press.
+        Add debug=true to diagnose why a tap isn't working — shows what view was hit, gesture recognizers, and the responder chain.
         Automatically shows screen state after the tap so you can verify it worked."""
         params = {}
         if text:
@@ -160,6 +162,8 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
             params["double"] = True
         if duration is not None:
             params["duration"] = duration
+        if debug:
+            params["debug"] = True
         return await act_and_look(simulator, "tap", params)
 
     @mcp.tool()
