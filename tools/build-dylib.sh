@@ -1,13 +1,15 @@
 #!/bin/bash
 set -euo pipefail
 
-# Build Pepper as a dynamic framework for iOS Simulator injection.
+# Build Pepper as a dynamic framework for iOS Simulator or device.
 #
 # Output: build/Pepper.framework/Pepper (Mach-O dylib)
 #
 # Usage:
 #   ./tools/build-dylib.sh              # build for current sim arch
 #   ./tools/build-dylib.sh --clean      # clean + build
+#   ./tools/build-dylib.sh --device     # build for physical iOS device (arm64)
+#   ./tools/build-dylib.sh --output DIR # override framework output directory
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
@@ -31,7 +33,24 @@ success() { echo -e "${GREEN}dylib:${NC} $*"; }
 error()   { echo -e "${RED}dylib:${NC} $*" >&2; }
 
 # --- Options ---
-if [ "${1:-}" = "--clean" ]; then
+CLEAN=""
+PLATFORM="simulator"
+CUSTOM_OUTPUT=""
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --clean)  CLEAN=1; shift ;;
+        --device) PLATFORM="device"; shift ;;
+        --output) CUSTOM_OUTPUT="$2"; shift 2 ;;
+        *) shift ;;
+    esac
+done
+
+if [ -n "$CUSTOM_OUTPUT" ]; then
+    BUILD_DIR="$CUSTOM_OUTPUT/dylib"
+    FRAMEWORK_DIR="$CUSTOM_OUTPUT/Pepper.framework"
+fi
+
+if [ -n "$CLEAN" ]; then
     info "Cleaning build directory..."
     rm -rf "$BUILD_DIR" "$FRAMEWORK_DIR"
 fi
@@ -40,14 +59,21 @@ fi
 # Apple Silicon Macs run arm64 simulators; Intel runs x86_64
 ARCH=$(uname -m)
 IOS_TARGET_VERSION="${IOS_TARGET_VERSION:-17.0}"
-if [ "$ARCH" = "arm64" ]; then
-    TARGET="arm64-apple-ios${IOS_TARGET_VERSION}-simulator"
+if [ "$PLATFORM" = "device" ]; then
+    TARGET="arm64-apple-ios${IOS_TARGET_VERSION}"
+    SDK_NAME="iphoneos"
+    ARCH="arm64"
 else
-    TARGET="x86_64-apple-ios${IOS_TARGET_VERSION}-simulator"
+    if [ "$ARCH" = "arm64" ]; then
+        TARGET="arm64-apple-ios${IOS_TARGET_VERSION}-simulator"
+    else
+        TARGET="x86_64-apple-ios${IOS_TARGET_VERSION}-simulator"
+    fi
+    SDK_NAME="iphonesimulator"
 fi
 
 # --- Find SDK ---
-SDK_PATH=$(xcrun --sdk iphonesimulator --show-sdk-path)
+SDK_PATH=$(xcrun --sdk "$SDK_NAME" --show-sdk-path)
 info "SDK: $SDK_PATH"
 info "Target: $TARGET"
 
@@ -130,7 +156,7 @@ COMPILE_PIDS=()
 for c_file in "${C_FILES[@]}"; do
     basename=$(basename "$c_file" .c)
     obj="$BUILD_DIR/${basename}.o"
-    xcrun -sdk iphonesimulator clang \
+    xcrun -sdk "$SDK_NAME" clang \
         -target "$TARGET" \
         -isysroot "$SDK_PATH" \
         -c "$c_file" \
@@ -142,7 +168,7 @@ done
 for m_file in "${OBJC_FILES[@]}"; do
     basename=$(basename "$m_file" .m)
     obj="$BUILD_DIR/${basename}_objc.o"
-    xcrun -sdk iphonesimulator clang \
+    xcrun -sdk "$SDK_NAME" clang \
         -target "$TARGET" \
         -isysroot "$SDK_PATH" \
         -fobjc-arc \
@@ -178,7 +204,7 @@ if [ -n "$BRIDGING_HEADER" ]; then
 fi
 
 # --- Step 2: Compile Swift + link with C objects ---
-xcrun -sdk iphonesimulator swiftc \
+xcrun -sdk "$SDK_NAME" swiftc \
     -target "$TARGET" \
     -sdk "$SDK_PATH" \
     -emit-library \
@@ -231,6 +257,13 @@ cat > "$FRAMEWORK_DIR/Info.plist" <<PLIST
 </dict>
 </plist>
 PLIST
+
+# --- Ad-hoc sign for device builds ---
+# Xcode re-signs with the app's identity during embedding, but the binary
+# must be validly signed to pass xcodebuild -create-xcframework checks.
+if [ "$PLATFORM" = "device" ]; then
+    codesign --sign - "$FRAMEWORK_DIR/Pepper"
+fi
 
 # --- Report ---
 DYLIB_SIZE=$(stat -f%z "$FRAMEWORK_DIR/Pepper" 2>/dev/null || stat --printf='%s' "$FRAMEWORK_DIR/Pepper" 2>/dev/null)

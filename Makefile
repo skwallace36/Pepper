@@ -22,7 +22,7 @@ DYLIB_PATH  := $(PROJECT_DIR)/build/Pepper.framework/Pepper
 
 LOGS_DIR    := $(PROJECT_DIR)/build/logs
 
-.PHONY: help build deploy launch kill relaunch ping check lint lint-py fmt-py smoke typecheck \
+.PHONY: help build build-device xcframework deploy launch kill relaunch ping check lint lint-py fmt-py smoke typecheck \
         logs clean test-client pepper-ctl test-app coverage coverage-check \
         docs setup ci smoke smoke-ice-cubes \
         agent agent-monitor agent-status agent-trigger agents-install agents-uninstall agent-cleanup agents-start agents-stop agent-analyze groom pr-digest \
@@ -91,6 +91,14 @@ launch:
 from pepper_sessions import quick_port_check, claim_simulator_with_port; \
 [time.sleep(0.5) for _ in range(20) if not quick_port_check($(PORT), 0.5)]; \
 claim_simulator_with_port('$(SIMULATOR_ID)', '$(BUNDLE_ID)', $(PORT), label='make-deploy') if not os.environ.get('PEPPER_AGENT_TYPE') else None" 2>/dev/null || true
+
+## build-device: Build Pepper.framework for physical iOS devices (arm64)
+build-device:
+	@bash "$(TOOLS_DIR)/build-dylib.sh" --device
+
+## xcframework: Build Pepper.xcframework (simulator + device slices)
+xcframework:
+	@bash "$(TOOLS_DIR)/build-xcframework.sh"
 
 ## deploy: Build dylib + launch with injection
 deploy: build launch
