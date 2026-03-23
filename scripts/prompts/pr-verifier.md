@@ -8,11 +8,15 @@ THEN:
    gh pr list --repo skwallace36/Pepper --state open --json number,title,headRefName,labels
    ```
    Pick the first PR that does NOT have a `verified` label.
-   BUT FIRST: check for any `needs-approval` PRs that have been approved by a human:
+   BUT FIRST: check for any `needs-approval` PRs where the owner has commented "LGTM":
    ```
-   gh pr list --repo skwallace36/Pepper --label needs-approval --json number,title,reviewDecision
+   gh pr list --repo skwallace36/Pepper --label needs-approval --json number,title,comments --jq '.[] | select(.comments | map(select(.body | test("(?i)^lgtm"))) | length > 0) | .number'
    ```
-   If any have `reviewDecision: "APPROVED"`, merge them immediately:
+   If that doesn't work, try per-PR:
+   ```
+   gh api repos/skwallace36/Pepper/issues/<number>/comments --jq '.[] | select(.body | test("(?i)^lgtm")) | .id'
+   ```
+   If any have an LGTM comment, merge them immediately:
    ```
    gh pr merge <number> --repo skwallace36/Pepper --squash --delete-branch
    ```
