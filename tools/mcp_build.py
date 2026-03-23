@@ -14,6 +14,11 @@ import pepper_sessions
 from pepper_common import PORT_DIR, get_config
 from pepper_format import format_look
 
+try:
+    from pepper_ax import find_and_dismiss_dialog as _ax_dismiss
+except ImportError:
+    _ax_dismiss = None
+
 # Type alias for the send_command callable expected by deploy_app.
 # Signature: async (port, cmd, params=None, timeout=10) -> dict
 SendFn = Callable[..., "asyncio.Future[dict]"]
@@ -315,14 +320,35 @@ async def deploy_app(simulator: str, send_fn: SendFn,
 
     # Wait for Pepper to connect (10s timeout — cold launches need more time)
     port_file = os.path.join(PORT_DIR, f"{simulator}.port")
+    ax_attempted = False
     for _attempt in range(20):
         await asyncio.sleep(0.5)
+
+        # After 3s with no port file, try AX dismiss in case a system dialog
+        # (e.g. notifications) is blocking app startup or Pepper's WebSocket.
+        # simctl privacy can't grant notifications — AX is the only way.
+        if _attempt == 6 and not ax_attempted and _ax_dismiss is not None:
+            ax_attempted = True
+            try:
+                ax_result = await asyncio.get_event_loop().run_in_executor(None, _ax_dismiss)
+                if ax_result.get("dismissed"):
+                    pass  # dialog cleared, keep waiting for Pepper
+            except Exception:
+                pass
+
         if os.path.exists(port_file):
             try:
                 port = int(open(port_file).read().strip())
                 resp = await send_fn(port, "ping", timeout=2)
                 if resp.get("status") == "ok":
                     await asyncio.sleep(1)  # let UI settle
+                    # Dismiss any system dialog that appeared after launch
+                    if _ax_dismiss is not None and not ax_attempted:
+                        ax_attempted = True
+                        try:
+                            await asyncio.get_event_loop().run_in_executor(None, _ax_dismiss)
+                        except Exception:
+                            pass
                     look_resp = await send_fn(port, "look", {}, timeout=5)
                     screen_summary = format_look(look_resp) if look_resp.get("status") == "ok" else "(look not ready yet)"
                     # Claim this simulator for our session
@@ -330,6 +356,13 @@ async def deploy_app(simulator: str, send_fn: SendFn,
                     return f"Deployed to {simulator} (PID {pid}, port {port}). Pepper is connected.\n\n--- Screen ---\n{screen_summary}"
             except (TimeoutError, OSError, ValueError):
                 pass
+
+    # Last resort: try AX dismiss before giving up
+    if _ax_dismiss is not None and not ax_attempted:
+        try:
+            await asyncio.get_event_loop().run_in_executor(None, _ax_dismiss)
+        except Exception:
+            pass
 
     return f"App launched (PID {pid}) but Pepper didn't respond within 10s. Check dylib injection. Port file exists: {os.path.exists(port_file)}"
 
