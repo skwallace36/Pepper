@@ -1,7 +1,7 @@
 """Debug and introspection tool definitions for Pepper MCP.
 
 Tool definitions for: layers, console, network, timeline, crash_log,
-animations, lifecycle, heap.
+animations, lifecycle, heap, responder_chain.
 """
 
 import os
@@ -235,3 +235,24 @@ def register_debug_tools(mcp, resolve_and_send):
         if limit is not None:
             params["limit"] = limit
         return await resolve_and_send(simulator, "heap", params)
+
+    @mcp.tool()
+    async def responder_chain(
+        simulator: Optional[str] = Field(default=None, description="Simulator UDID"),
+        point: Optional[str] = Field(default=None, description="Screen coordinates 'x,y' to inspect"),
+        element: Optional[str] = Field(default=None, description="Accessibility identifier of the element"),
+        text: Optional[str] = Field(default=None, description="Text label of the element"),
+    ) -> str:
+        """Dump gesture recognizers, responder chain, and hit-test path for a point or element.
+        Shows every gesture recognizer on the view and its ancestors, the full UIResponder chain,
+        and the hit-test traversal path. Useful for debugging why taps or gestures aren't being received."""
+        params: dict = {}
+        if point:
+            parts = point.split(",")
+            if len(parts) == 2:
+                params["point"] = {"x": float(parts[0]), "y": float(parts[1])}
+        if element:
+            params["element"] = element
+        if text:
+            params["text"] = text
+        return await resolve_and_send(simulator, "responder_chain", params)
