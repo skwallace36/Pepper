@@ -6,7 +6,9 @@ enum AppSeeding {
     static func seedAll() {
         seedUserDefaults()
         seedKeychain()
-        requestNotificationPermission()
+        if ProcessInfo.processInfo.environment["PEPPER_SKIP_PERMISSIONS"] != "1" {
+            requestNotificationPermission()
+        }
     }
 
     // MARK: - UserDefaults
@@ -30,7 +32,7 @@ enum AppSeeding {
     static func seedKeychain() {
         let service = "com.pepper.testapp"
         let account = "pepper-test-token"
-        let tokenData = "sk-pepper-test-12345".data(using: .utf8)!
+        guard let tokenData = "sk-pepper-test-12345".data(using: .utf8) else { return }
 
         // Check if already seeded
         let checkQuery: [String: Any] = [
