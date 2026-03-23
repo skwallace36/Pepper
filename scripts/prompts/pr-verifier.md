@@ -39,7 +39,7 @@ THEN:
    **Use your judgment for everything else.** Merge if: the change is straightforward, isolated, builds clean, and you verified it works. Flag for review if: it has broad blast radius, changes core architecture, or you're not confident.
 
    To merge: `gh pr merge <number> --repo skwallace36/Pepper --squash --delete-branch`
-   To flag: add `verified` label and comment explaining what you verified. Human will merge.
+   To flag for human: add BOTH `verified` and `needs-approval` labels, and comment explaining what you verified and why you didn't merge.
 
 SCOPE: You may NOT modify any code. Read-only access to all files. Your only outputs are PR comments, labels, and merges (for safe PRs only).
 DO NOT modify: any files. This agent is read-only + GitHub interaction only.
