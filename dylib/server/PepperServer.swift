@@ -144,8 +144,10 @@ final class PepperServer {
             self?.sendResponse(timeoutResponse, to: connectionID)
         }
 
-        // Dispatch the command — handler runs on main thread
-        dispatcher.dispatch(command) { [weak self] response in
+        // Dispatch the command — handler runs on main thread.
+        // Pass `responded` as cancellation flag so stale handler blocks from
+        // timed-out commands are skipped, preventing cascading main-thread blockage.
+        dispatcher.dispatch(command, cancelled: responded) { [weak self] response in
             guard !responded.setIfUnset() else {
                 pepperLog.debug(
                     "Dropping late response for '\(command.cmd)' id=\(command.id) (already timed out)",
@@ -221,6 +223,13 @@ extension PepperServer: TransportDelegate {
 final class LockedFlag {
     private var _set = false
     private let lock = NSLock()
+
+    /// Check if the flag has been set (non-mutating).
+    var isSet: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return _set
+    }
 
     /// Atomically set the flag if it hasn't been set yet.
     /// Returns `true` if the flag was already set (meaning this call lost the race).
