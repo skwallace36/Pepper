@@ -7,6 +7,7 @@ swipe, screen, scroll_to, dismiss_keyboard, snapshot, diff.
 import asyncio
 import base64
 import json
+
 from mcp.types import ImageContent, TextContent
 from mcp_screenshot import capture_screenshot, capture_screenshot_inprocess
 from pepper_common import discover_instance
