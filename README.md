@@ -2,13 +2,13 @@
 
 **MCP server for iOS engineering**
 
-Pepper injects into any iOS Simulator app at runtime and gives your AI full access — see every element on screen, tap buttons, inspect state, intercept network traffic, and more. No SDK. No source changes. Just plug in and go.
+Pepper hooks into any iOS Simulator app at runtime and gives your AI real visibility and control — inspect the UI, tap buttons, read state, intercept network traffic, and more.
 
-<!-- TODO: 30-second demo GIF -->
+No SDK. No code changes. Just run your app and connect.
 
 ## Setup
 
-Add to your MCP client config (Claude Desktop, Claude Code, Cursor, etc.):
+Add Pepper to your MCP client config (Claude Desktop, Cursor, etc.):
 
 ```json
 {
@@ -21,11 +21,11 @@ Add to your MCP client config (Claude Desktop, Claude Code, Cursor, etc.):
 }
 ```
 
-Then ask your agent to `look` at your app.
+Then point your agent at a running simulator app.
 
 ## Tools
 
-50+ tools for observing, interacting with, and debugging iOS apps:
+Pepper exposes 50+ tools for working with iOS apps:
 
 **Observe** — `look`, `screen`, `find`, `tree`, `layers`, `highlight`
 
@@ -39,17 +39,34 @@ Then ask your agent to `look` at your app.
 
 ## How It Works
 
-Pepper is a dynamic library injected into the simulator process via `DYLD_INSERT_LIBRARIES`. It starts a WebSocket server *inside* the app — giving it direct access to the view hierarchy, runtime state, network layer, and input system. Your MCP client connects over that WebSocket and every tool runs in-process.
+Pepper is injected into the simulator using `DYLD_INSERT_LIBRARIES`. It spins up a WebSocket server inside the app process, which gives direct access to:
 
-No swizzling. No private API wrappers. No SDK to integrate. Works with any app you can run in the simulator.
+- View hierarchy
+- Runtime state
+- Network layer
+- Input system
+
+Your MCP client connects to that socket, and all commands run in-process.
+
+No swizzling. No private API wrappers. No integration work.
+
+If it runs in the simulator, Pepper can work with it.
 
 ### Touch Input
 
-All touch interactions — tap, scroll, swipe, gesture — use a single HID event injection pipeline. One code path for UIKit and SwiftUI. No accessibility hacks, no coordinate guessing.
+All interactions (tap, scroll, swipe, etc.) go through a single HID-based pipeline.
+
+That means:
+
+- Works the same for UIKit and SwiftUI
+- No accessibility hacks
+- No guessing screen coordinates
 
 ### Adapters
 
-For app-specific features (deep link routing, icon mappings, custom tools), Pepper supports **adapters** — optional modules compiled alongside the dylib. Without an adapter, Pepper runs in generic mode and works with any app out of the box.
+For app-specific behavior (deep links, custom mappings, etc.), you can add adapters.
+
+They're optional. Without one, Pepper runs in a generic mode that works with any app.
 
 ## Development
 
@@ -59,4 +76,4 @@ make test-deploy   # build test app + inject Pepper
 make ping          # verify connection
 ```
 
-Run `make help` for all targets. See `CLAUDE.md` for conventions.
+Run `make help` for the full list. See `CLAUDE.md` for conventions.
