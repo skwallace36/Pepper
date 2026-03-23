@@ -31,7 +31,7 @@ HEARTBEAT_STALE_SECONDS = 120
 MAX_SESSION_AGE_SECONDS = 1200
 
 # Default cap on concurrent claimed simulators.
-DEFAULT_MAX_SIMS = 3
+DEFAULT_MAX_SIMS = 1
 
 
 # ---------------------------------------------------------------------------
