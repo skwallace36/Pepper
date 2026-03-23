@@ -60,8 +60,13 @@ public func pepperBootstrap() {
             port = PepperSimDetect.portFromUDID(detected)
             udid = detected
         } else {
+            // On-device: no simulator UDID available. Use default port.
+            // Log the device's WiFi IP so the user knows where to connect.
             port = 8765
             udid = nil
+            if let ip = PepperNetworkInfo.wifiIPAddress() {
+                NSLog("[pepper] Device mode — connect via ws://\(ip):\(port)")
+            }
         }
 
         PepperPlane.shared.start(port: port, simulatorUDID: udid)
