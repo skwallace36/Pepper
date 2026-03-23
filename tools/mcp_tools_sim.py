@@ -24,16 +24,19 @@ def register_sim_tools(mcp, resolve_and_send, resolve_simulator):
     async def raw(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
         cmd: str = Field(description="Command name"),
-        params: str | None = Field(default=None, description="JSON params string"),
+        params: str | dict | None = Field(default=None, description="JSON params (string or object)"),
         timeout: float = Field(default=10, description="Timeout in seconds"),
     ) -> str:
         """Send any raw command to Pepper. Use for commands not covered by other tools."""
         p = None
         if params:
-            try:
-                p = require_parse_json(params, "params")
-            except ValueError as e:
-                return f"Error: {e}"
+            if isinstance(params, dict):
+                p = params
+            else:
+                try:
+                    p = require_parse_json(params, "params")
+                except ValueError as e:
+                    return f"Error: {e}"
         return await resolve_and_send(simulator, cmd, p, timeout)
 
     @mcp.tool()
