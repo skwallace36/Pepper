@@ -72,7 +72,11 @@ struct FindHandler: PepperHandler {
 
         case "first":
             guard let first = matches.first else {
-                return .error(id: command.id, message: "No elements match predicate: \(predFormat)")
+                return .elementNotFound(
+                    id: command.id,
+                    message: "No elements match predicate: \(predFormat)",
+                    query: nil
+                )
             }
             var data = PepperPredicateQuery.serializeMatch(first)
             data["predicate"] = AnyCodable(predFormat)
