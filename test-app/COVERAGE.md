@@ -165,14 +165,22 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `timeline` | config | pass | Any state | Accepts buffer_size, recording (bool), enabled_types params. Tested: buffer_size 2000→5000 (verified via subsequent status). recording=false pauses recording. Note: config response returns pre-update values due to async barrier dispatch — subsequent status shows correct values. |
 | `timeline` | clear | pass | Any state | Returns {cleared:true}. Verified buffer_count drops to 0 after clear. total_recorded preserved (historical count). Error case: unknown action returns proper error listing available actions. |
 | `responder_chain` | — | untested | Any interactive element | New command. Dumps gesture recognizer stack, responder chain, and hit-test path for a given point or element. |
+| `notifications` | start | untested |  |  |
+| `notifications` | stop | untested |  |  |
+| `notifications` | status | untested |  |  |
+| `notifications` | list | untested |  |  |
+| `notifications` | counts | untested |  |  |
+| `notifications` | post | untested |  |  |
+| `notifications` | events | untested |  |  |
+| `notifications` | clear | untested |  |  |
 
 ## Summary
 
-**143 test points** across 50 commands.
+**151 test points** across 51 commands.
 
 - pass: 127
 - fail: 11
-- untested: 2
+- untested: 10
 
 ## Test App Gaps
 
