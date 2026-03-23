@@ -4,10 +4,9 @@ import asyncio
 import base64
 import os
 import tempfile
-from typing import Optional
 
 
-async def capture_screenshot(udid: str, quality: str = "standard") -> Optional[str]:
+async def capture_screenshot(udid: str, quality: str = "standard") -> str | None:
     """Capture simulator screenshot. Returns base64-encoded image. Returns None on failure.
 
     quality:
@@ -75,7 +74,7 @@ async def capture_screenshot(udid: str, quality: str = "standard") -> Optional[s
 
         with open(out_path, 'rb') as f:
             return base64.b64encode(f.read()).decode('ascii')
-    except (OSError, asyncio.TimeoutError):
+    except (TimeoutError, OSError):
         return None
     finally:
         for p in [png_path, out_path]:

@@ -3,7 +3,6 @@
 import asyncio
 import json
 import os
-from typing import Optional
 
 from pepper_common import get_config
 
@@ -40,7 +39,7 @@ def parse_crash_report(path: str, content: str) -> str:
             # NSException / ASI (Application Specific Information)
             asi = body.get("asi", body.get("lastExceptionBacktrace"))
             if isinstance(asi, dict):
-                for key, val in asi.items():
+                for _key, val in asi.items():
                     if isinstance(val, list):
                         parts.append(f"NSException: {' '.join(str(v) for v in val[:3])}")
                     elif isinstance(val, str):

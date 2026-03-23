@@ -7,11 +7,9 @@ gesture, hook, find, flags, dialog, toggle, read_element, tree.
 import asyncio
 import json
 import subprocess
-from typing import Optional
-
-from pydantic import Field
 
 from pepper_common import get_config
+from pydantic import Field
 
 
 def try_parse_json(value):
@@ -30,7 +28,7 @@ def require_parse_json(value, field_name="value"):
     try:
         return json.loads(value)
     except json.JSONDecodeError as e:
-        raise ValueError(f"{field_name} must be valid JSON: {e}")
+        raise ValueError(f"{field_name} must be valid JSON: {e}") from e
 
 
 # Permission keywords found in dialog titles/messages → simctl permission names
@@ -179,11 +177,11 @@ def register_system_tools(mcp, resolve_and_send, act_and_look, resolve_simulator
 
     @mcp.tool()
     async def dialog(
-        simulator: Optional[str] = Field(default=None, description="Simulator UDID"),
+        simulator: str | None = Field(default=None, description="Simulator UDID"),
         action: str = Field(description="Action: list, current, dismiss, dismiss_system, detect_system, auto_dismiss, share_sheet, dismiss_sheet"),
-        button: Optional[str] = Field(default=None, description="Button title to tap (for dismiss action)"),
-        enabled: Optional[bool] = Field(default=None, description="Enable/disable auto-dismiss (for auto_dismiss action)"),
-        buttons: Optional[str] = Field(default=None, description="JSON array of button titles for auto-dismiss (e.g. '[\"Allow\",\"OK\"]')"),
+        button: str | None = Field(default=None, description="Button title to tap (for dismiss action)"),
+        enabled: bool | None = Field(default=None, description="Enable/disable auto-dismiss (for auto_dismiss action)"),
+        buttons: str | None = Field(default=None, description="JSON array of button titles for auto-dismiss (e.g. '[\"Allow\",\"OK\"]')"),
     ) -> str:
         """Interact with system dialogs (alerts, permission prompts, share sheets).
         - list: see all pending dialogs
@@ -211,9 +209,9 @@ def register_system_tools(mcp, resolve_and_send, act_and_look, resolve_simulator
 
     @mcp.tool()
     async def toggle(
-        simulator: Optional[str] = Field(default=None, description="Simulator UDID"),
+        simulator: str | None = Field(default=None, description="Simulator UDID"),
         element: str = Field(description="Accessibility ID of the switch/segment to toggle"),
-        value: Optional[int] = Field(default=None, description="Target segment index (for segmented controls)"),
+        value: int | None = Field(default=None, description="Target segment index (for segmented controls)"),
     ) -> str:
         """Toggle a UISwitch or UISegmentedControl by accessibility ID.
         For switches: flips on/off. For segments: advances to next or jumps to specified index.
@@ -225,7 +223,7 @@ def register_system_tools(mcp, resolve_and_send, act_and_look, resolve_simulator
 
     @mcp.tool()
     async def read_element(
-        simulator: Optional[str] = Field(default=None, description="Simulator UDID"),
+        simulator: str | None = Field(default=None, description="Simulator UDID"),
         element: str = Field(description="Accessibility ID of the element to read"),
     ) -> str:
         """Read an element's current value, type, and state by accessibility ID.
@@ -234,9 +232,9 @@ def register_system_tools(mcp, resolve_and_send, act_and_look, resolve_simulator
 
     @mcp.tool()
     async def tree(
-        simulator: Optional[str] = Field(default=None, description="Simulator UDID"),
-        depth: Optional[int] = Field(default=None, description="Max tree depth (default: 50, max: 50)"),
-        element: Optional[str] = Field(default=None, description="Scope to subtree of this accessibility ID"),
+        simulator: str | None = Field(default=None, description="Simulator UDID"),
+        depth: int | None = Field(default=None, description="Max tree depth (default: 50, max: 50)"),
+        element: str | None = Field(default=None, description="Scope to subtree of this accessibility ID"),
     ) -> str:
         """Dump UIView hierarchy for deep debugging. Full view tree with class, frame, accessibility info.
         Warning: view tree can be large — use depth limit or scope to a subtree."""
@@ -249,11 +247,11 @@ def register_system_tools(mcp, resolve_and_send, act_and_look, resolve_simulator
 
     @mcp.tool()
     async def push(
-        simulator: Optional[str] = Field(default=None, description="Simulator UDID"),
-        action: Optional[str] = Field(default=None, description="Action: deliver (default), pending, clear"),
-        title: Optional[str] = Field(default=None, description="Notification title"),
-        body: Optional[str] = Field(default=None, description="Notification body text"),
-        data: Optional[str] = Field(default=None, description="JSON userInfo payload for deeplink routing (e.g. '{\"type\":\"walk_summary\"}')"),
+        simulator: str | None = Field(default=None, description="Simulator UDID"),
+        action: str | None = Field(default=None, description="Action: deliver (default), pending, clear"),
+        title: str | None = Field(default=None, description="Notification title"),
+        body: str | None = Field(default=None, description="Notification body text"),
+        data: str | None = Field(default=None, description="JSON userInfo payload for deeplink routing (e.g. '{\"type\":\"walk_summary\"}')"),
     ) -> str:
         """Simulate push notifications — deliver, list pending, or clear all.
         Delivered notifications appear like real remote pushes. Include data payload to test deeplink routing."""
@@ -273,7 +271,7 @@ def register_system_tools(mcp, resolve_and_send, act_and_look, resolve_simulator
 
     @mcp.tool()
     async def status(
-        simulator: Optional[str] = Field(default=None, description="Simulator UDID"),
+        simulator: str | None = Field(default=None, description="Simulator UDID"),
         memory: bool = Field(default=False, description="Include process memory stats (resident size, virtual size, footprint)"),
         memory_detail: bool = Field(default=False, description="Include detailed VM breakdown (internal, compressed, purgeable)"),
     ) -> str:
@@ -290,12 +288,12 @@ def register_system_tools(mcp, resolve_and_send, act_and_look, resolve_simulator
 
     @mcp.tool()
     async def highlight(
-        simulator: Optional[str] = Field(default=None, description="Simulator UDID"),
-        text: Optional[str] = Field(default=None, description="Highlight element by text label"),
-        frame: Optional[str] = Field(default=None, description="Highlight a frame: 'x,y,width,height'"),
-        color: Optional[str] = Field(default=None, description="Color name (blue/green/red/yellow/purple) or hex (#ff0000)"),
-        label: Optional[str] = Field(default=None, description="Label text to show on the highlight"),
-        duration: Optional[float] = Field(default=None, description="How long to show in seconds (default: 0.8)"),
+        simulator: str | None = Field(default=None, description="Simulator UDID"),
+        text: str | None = Field(default=None, description="Highlight element by text label"),
+        frame: str | None = Field(default=None, description="Highlight a frame: 'x,y,width,height'"),
+        color: str | None = Field(default=None, description="Color name (blue/green/red/yellow/purple) or hex (#ff0000)"),
+        label: str | None = Field(default=None, description="Label text to show on the highlight"),
+        duration: float | None = Field(default=None, description="How long to show in seconds (default: 0.8)"),
         clear: bool = Field(default=False, description="Clear all highlights"),
     ) -> str:
         """Draw a colored border around an element for visual debugging.
@@ -322,8 +320,8 @@ def register_system_tools(mcp, resolve_and_send, act_and_look, resolve_simulator
 
     @mcp.tool()
     async def orientation(
-        simulator: Optional[str] = Field(default=None, description="Simulator UDID"),
-        value: Optional[str] = Field(default=None, description="Target orientation: portrait, landscape_left, landscape_right, portrait_upside_down"),
+        simulator: str | None = Field(default=None, description="Simulator UDID"),
+        value: str | None = Field(default=None, description="Target orientation: portrait, landscape_left, landscape_right, portrait_upside_down"),
     ) -> str:
         """Get or set device orientation. Omit value to query current orientation."""
         params: dict = {}
@@ -333,11 +331,11 @@ def register_system_tools(mcp, resolve_and_send, act_and_look, resolve_simulator
 
     @mcp.tool()
     async def locale(
-        simulator: Optional[str] = Field(default=None, description="Simulator UDID"),
-        action: Optional[str] = Field(default=None, description="Action: current (default), set, reset, lookup, languages"),
-        language: Optional[str] = Field(default=None, description="Language code for set/lookup (e.g. 'es', 'ja')"),
-        region: Optional[str] = Field(default=None, description="Region code for set (e.g. 'JP', 'US')"),
-        key: Optional[str] = Field(default=None, description="Localization key to look up (for lookup action)"),
+        simulator: str | None = Field(default=None, description="Simulator UDID"),
+        action: str | None = Field(default=None, description="Action: current (default), set, reset, lookup, languages"),
+        language: str | None = Field(default=None, description="Language code for set/lookup (e.g. 'es', 'ja')"),
+        region: str | None = Field(default=None, description="Region code for set (e.g. 'JP', 'US')"),
+        key: str | None = Field(default=None, description="Localization key to look up (for lookup action)"),
     ) -> str:
         """Override app locale, look up localized strings, or list available languages.
         Useful for testing localization without changing simulator settings."""
@@ -354,13 +352,13 @@ def register_system_tools(mcp, resolve_and_send, act_and_look, resolve_simulator
 
     @mcp.tool()
     async def gesture(
-        simulator: Optional[str] = Field(default=None, description="Simulator UDID"),
+        simulator: str | None = Field(default=None, description="Simulator UDID"),
         type: str = Field(description="Gesture type: pinch or rotate"),
-        start_distance: Optional[int] = Field(default=None, description="Starting pinch distance in points (for pinch)"),
-        end_distance: Optional[int] = Field(default=None, description="Ending pinch distance in points (for pinch)"),
-        angle: Optional[float] = Field(default=None, description="Rotation angle in degrees (for rotate)"),
-        center_x: Optional[float] = Field(default=None, description="Center X coordinate (defaults to screen center)"),
-        center_y: Optional[float] = Field(default=None, description="Center Y coordinate (defaults to screen center)"),
+        start_distance: int | None = Field(default=None, description="Starting pinch distance in points (for pinch)"),
+        end_distance: int | None = Field(default=None, description="Ending pinch distance in points (for pinch)"),
+        angle: float | None = Field(default=None, description="Rotation angle in degrees (for rotate)"),
+        center_x: float | None = Field(default=None, description="Center X coordinate (defaults to screen center)"),
+        center_y: float | None = Field(default=None, description="Center Y coordinate (defaults to screen center)"),
     ) -> str:
         """Perform multi-touch gestures — pinch to zoom or rotate.
         For pinch: start_distance > end_distance = zoom out, end_distance > start_distance = zoom in.
@@ -390,13 +388,13 @@ def register_system_tools(mcp, resolve_and_send, act_and_look, resolve_simulator
 
     @mcp.tool()
     async def hook(
-        simulator: Optional[str] = Field(default=None, description="Simulator UDID"),
+        simulator: str | None = Field(default=None, description="Simulator UDID"),
         action: str = Field(default="list", description="Action: install, remove, remove_all, list, log, clear"),
-        class_name: Optional[str] = Field(default=None, description="ObjC class name (for install, e.g. 'UIViewController')"),
-        method: Optional[str] = Field(default=None, description="ObjC method name (for install, e.g. 'viewDidAppear:')"),
+        class_name: str | None = Field(default=None, description="ObjC class name (for install, e.g. 'UIViewController')"),
+        method: str | None = Field(default=None, description="ObjC method name (for install, e.g. 'viewDidAppear:')"),
         class_method: bool = Field(default=False, description="Hook class method (+) instead of instance method (-)"),
-        hook_id: Optional[str] = Field(default=None, description="Hook ID (for remove, log, clear)"),
-        limit: Optional[int] = Field(default=None, description="Max log entries to return (default: 50)"),
+        hook_id: str | None = Field(default=None, description="Hook ID (for remove, log, clear)"),
+        limit: int | None = Field(default=None, description="Max log entries to return (default: 50)"),
     ) -> str:
         """Hook ObjC methods at runtime to log invocations. Transparent — original method is called through.
 
@@ -424,10 +422,10 @@ def register_system_tools(mcp, resolve_and_send, act_and_look, resolve_simulator
 
     @mcp.tool()
     async def find(
-        simulator: Optional[str] = Field(default=None, description="Simulator UDID"),
+        simulator: str | None = Field(default=None, description="Simulator UDID"),
         predicate: str = Field(description="NSPredicate format string (e.g. \"label CONTAINS 'Save' AND type == 'button'\")"),
         action: str = Field(default="list", description="Action: list (default), first, count"),
-        limit: Optional[int] = Field(default=None, description="Max results to return (default: 50)"),
+        limit: int | None = Field(default=None, description="Max results to return (default: 50)"),
     ) -> str:
         """Query on-screen elements using NSPredicate expressions. Native iOS predicate syntax.
 
@@ -453,10 +451,10 @@ def register_system_tools(mcp, resolve_and_send, act_and_look, resolve_simulator
 
     @mcp.tool()
     async def flags(
-        simulator: Optional[str] = Field(default=None, description="Simulator UDID"),
+        simulator: str | None = Field(default=None, description="Simulator UDID"),
         action: str = Field(default="list", description="Action: list, get, set, clear"),
-        key: Optional[str] = Field(default=None, description="Feature flag key"),
-        value: Optional[str] = Field(default=None, description="Value to set (true/false for bools, or string/int)"),
+        key: str | None = Field(default=None, description="Feature flag key"),
+        value: str | None = Field(default=None, description="Value to set (true/false for bools, or string/int)"),
     ) -> str:
         """Override feature flags via network response interception. Set a flag, then deploy to apply.
 
