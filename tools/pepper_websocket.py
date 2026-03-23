@@ -43,8 +43,8 @@ def _send_command_sync(host, port, msg, timeout=10, on_event=None):
         while True:
             remaining = deadline - time.monotonic()
             if remaining <= 0:
-                raise asyncio.TimeoutError()
-            raw = ws.recv(timeout=remaining)  # type: ignore[arg-type]
+                raise TimeoutError()
+            raw = ws.recv(timeout=remaining)
             data = json.loads(raw)
             if "event" in data:
                 if on_event:
@@ -53,7 +53,7 @@ def _send_command_sync(host, port, msg, timeout=10, on_event=None):
             if msg_id is None or data.get("id") == msg_id:
                 return data
     except (ConnectionError, ConnectionResetError, BrokenPipeError, OSError) as e:
-        raise CrashError(msg.get("cmd", "unknown"), detail=str(e))
+        raise CrashError(msg.get("cmd", "unknown"), detail=str(e)) from e
     finally:
         ws.close()
 

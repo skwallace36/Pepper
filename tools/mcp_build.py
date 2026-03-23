@@ -8,7 +8,7 @@ import asyncio
 import json
 import os
 import subprocess
-from typing import Callable, Optional
+from collections.abc import Callable
 
 import pepper_sessions
 from pepper_common import PORT_DIR, get_config
@@ -25,7 +25,7 @@ _sim_build_state: dict[str, str] = {}
 # Session-sticky simulator: once this MCP server process resolves a simulator,
 # it remembers and reuses it for all subsequent calls. Prevents accidentally
 # grabbing another Claude session's sim when auto-resolving.
-_session_simulator: Optional[str] = None
+_session_simulator: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -75,7 +75,7 @@ def boot_simulator(udid: str):
         pass  # Proceed anyway — bootstatus can hang even when sim is ready
 
 
-def find_available_iphone() -> Optional[str]:
+def find_available_iphone() -> str | None:
     """Find the best available iPhone simulator to boot. Returns UDID or None."""
     result = subprocess.run(
         ["xcrun", "simctl", "list", "devices", "available", "-j"],
@@ -103,7 +103,7 @@ def find_available_iphone() -> Optional[str]:
     return None
 
 
-def resolve_simulator(simulator: Optional[str] = None) -> str:
+def resolve_simulator(simulator: str | None = None) -> str:
     """Resolve simulator UDID with session awareness.
 
     Resolution order:
@@ -159,8 +159,8 @@ def resolve_simulator(simulator: Optional[str] = None) -> str:
 # Simulator build & deploy
 # ---------------------------------------------------------------------------
 
-async def build_app(workspace: Optional[str] = None, scheme: Optional[str] = None,
-                    simulator: Optional[str] = None) -> tuple[bool, str]:
+async def build_app(workspace: str | None = None, scheme: str | None = None,
+                    simulator: str | None = None) -> tuple[bool, str]:
     """Build the app. Returns (success, message). Message includes errors on failure."""
     cfg = get_config()
     ws = workspace
@@ -233,10 +233,10 @@ async def build_app(workspace: Optional[str] = None, scheme: Optional[str] = Non
 
 
 async def deploy_app(simulator: str, send_fn: SendFn,
-                     bundle_id: Optional[str] = None,
-                     dylib_path: Optional[str] = None,
-                     install_path: Optional[str] = None,
-                     workspace: Optional[str] = None,
+                     bundle_id: str | None = None,
+                     dylib_path: str | None = None,
+                     install_path: str | None = None,
+                     workspace: str | None = None,
                      skip_privacy: bool = False) -> str:
     """Deploy (terminate + install + launch with Pepper). Returns status message + screen."""
     cfg = get_config()
@@ -315,7 +315,7 @@ async def deploy_app(simulator: str, send_fn: SendFn,
 
     # Wait for Pepper to connect (10s timeout — cold launches need more time)
     port_file = os.path.join(PORT_DIR, f"{simulator}.port")
-    for attempt in range(20):
+    for _attempt in range(20):
         await asyncio.sleep(0.5)
         if os.path.exists(port_file):
             try:
@@ -328,13 +328,13 @@ async def deploy_app(simulator: str, send_fn: SendFn,
                     # Claim this simulator for our session
                     pepper_sessions.claim_simulator(simulator, bundle_id=bid, port=port)
                     return f"Deployed to {simulator} (PID {pid}, port {port}). Pepper is connected.\n\n--- Screen ---\n{screen_summary}"
-            except (OSError, ValueError, asyncio.TimeoutError):
+            except (TimeoutError, OSError, ValueError):
                 pass
 
     return f"App launched (PID {pid}) but Pepper didn't respond within 10s. Check dylib injection. Port file exists: {os.path.exists(port_file)}"
 
 
-def find_built_app(workspace: Optional[str] = None, platform: str = "iphonesimulator") -> Optional[str]:
+def find_built_app(workspace: str | None = None, platform: str = "iphonesimulator") -> str | None:
     """Find the most recently built .app in DerivedData based on workspace path.
     platform: 'iphonesimulator' or 'iphoneos'"""
     ws = workspace
@@ -388,8 +388,8 @@ async def verify_device_connected(devicectl_uuid: str) -> tuple[bool, str]:
         return False, f"Failed to parse devicectl output: {e}"
 
 
-async def build_app_device(workspace: Optional[str] = None, scheme: Optional[str] = None,
-                           xcodebuild_id: Optional[str] = None) -> tuple[bool, str]:
+async def build_app_device(workspace: str | None = None, scheme: str | None = None,
+                           xcodebuild_id: str | None = None) -> tuple[bool, str]:
     """Build the app for a physical device. Returns (success, message)."""
     cfg = get_config()
     ws = workspace

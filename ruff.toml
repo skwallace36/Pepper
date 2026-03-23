@@ -1,0 +1,28 @@
+# Ruff configuration for Pepper Python code
+# Replaces flake8, isort, black, pyupgrade in a single tool.
+
+line-length = 120
+target-version = "py311"
+
+[lint]
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "I",   # isort
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "SIM", # flake8-simplify
+]
+ignore = [
+    "SIM105", # contextlib.suppress — try/except/pass is often clearer
+    "SIM115", # open-file-with-context-handler — noisy for one-liner reads
+]
+
+[lint.per-file-ignores]
+# Entry-point scripts without .py extension use sys.path hacks
+"tools/pepper-mcp" = ["E402"]
+"tools/pepper-ctl" = ["E402"]
+"tools/pepper-stream" = ["E402"]
+# MCP tool files have long Field() descriptions and docstrings
+"tools/mcp_tools_*.py" = ["E501"]
+"tools/mcp_build.py" = ["E501"]

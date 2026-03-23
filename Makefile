@@ -22,7 +22,7 @@ DYLIB_PATH  := $(PROJECT_DIR)/build/Pepper.framework/Pepper
 
 LOGS_DIR    := $(PROJECT_DIR)/build/logs
 
-.PHONY: help build deploy launch kill relaunch ping check lint smoke typecheck \
+.PHONY: help build deploy launch kill relaunch ping check lint lint-py fmt-py smoke typecheck \
         logs clean test-client pepper-ctl test-app coverage coverage-check \
         docs setup ci smoke smoke-ice-cubes \
         agent agent-monitor agent-status agent-trigger agents-install agents-uninstall agent-cleanup agents-start agents-stop agent-analyze groom pr-digest \
@@ -116,6 +116,15 @@ lint:
 		echo "SwiftLint not installed. Run: brew install swiftlint" >&2; \
 		exit 1; \
 	fi
+
+## lint-py: Run ruff linter on Python code
+lint-py:
+	@ruff check tools/ scripts/gen-coverage.py
+
+## fmt-py: Format Python code with ruff
+fmt-py:
+	@ruff format tools/ scripts/gen-coverage.py
+	@ruff check --fix tools/ scripts/gen-coverage.py
 
 ## check: Run all pre-commit checks (build, syntax, MCP, paths)
 check:

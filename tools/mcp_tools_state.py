@@ -4,7 +4,6 @@ Tool definitions for: vars_inspect, defaults, clipboard, keychain, cookies.
 """
 
 import json
-from typing import Optional
 
 from pydantic import Field
 
@@ -30,11 +29,11 @@ def register_state_tools(mcp, resolve_and_send):
 
     @mcp.tool()
     async def vars_inspect(
-        simulator: Optional[str] = Field(default=None, description="Simulator UDID"),
+        simulator: str | None = Field(default=None, description="Simulator UDID"),
         action: str = Field(description="Action: list, dump, mirror, set, discover"),
-        class_name: Optional[str] = Field(default=None, description="ViewModel class name (for dump/mirror/set)"),
-        path: Optional[str] = Field(default=None, description="Property path (for set, e.g. 'MyVM.flag')"),
-        value: Optional[str] = Field(default=None, description="Value to set (for set action)"),
+        class_name: str | None = Field(default=None, description="ViewModel class name (for dump/mirror/set)"),
+        path: str | None = Field(default=None, description="Property path (for set, e.g. 'MyVM.flag')"),
+        value: str | None = Field(default=None, description="Value to set (for set action)"),
     ) -> str:
         """Check or change property values at runtime WITHOUT adding print statements or rebuilding.
         - list: show all tracked ViewModels
@@ -53,12 +52,12 @@ def register_state_tools(mcp, resolve_and_send):
 
     @mcp.tool()
     async def defaults(
-        simulator: Optional[str] = Field(default=None, description="Simulator UDID"),
+        simulator: str | None = Field(default=None, description="Simulator UDID"),
         action: str = Field(default="list", description="Action: list, get, set, delete"),
-        key: Optional[str] = Field(default=None, description="UserDefaults key (for get/set/delete)"),
-        value: Optional[str] = Field(default=None, description="Value to set (JSON: string, number, bool, array, dict)"),
-        prefix: Optional[str] = Field(default=None, description="Filter keys by prefix (for list)"),
-        suite: Optional[str] = Field(default=None, description="UserDefaults suite name (default: standard)"),
+        key: str | None = Field(default=None, description="UserDefaults key (for get/set/delete)"),
+        value: str | None = Field(default=None, description="Value to set (JSON: string, number, bool, array, dict)"),
+        prefix: str | None = Field(default=None, description="Filter keys by prefix (for list)"),
+        suite: str | None = Field(default=None, description="UserDefaults suite name (default: standard)"),
     ) -> str:
         """Read and write NSUserDefaults — the app's persistent key-value storage.
         Use this to control app behavior without UI: set debug flags, enable test modes,
@@ -86,9 +85,9 @@ def register_state_tools(mcp, resolve_and_send):
 
     @mcp.tool()
     async def clipboard(
-        simulator: Optional[str] = Field(default=None, description="Simulator UDID"),
+        simulator: str | None = Field(default=None, description="Simulator UDID"),
         action: str = Field(default="get", description="Action: get, set, clear"),
-        value: Optional[str] = Field(default=None, description="String to copy to clipboard (for set)"),
+        value: str | None = Field(default=None, description="String to copy to clipboard (for set)"),
     ) -> str:
         """Read or write the device clipboard (UIPasteboard).
         - get: read current clipboard contents (string, URL, types)
@@ -101,11 +100,11 @@ def register_state_tools(mcp, resolve_and_send):
 
     @mcp.tool()
     async def keychain(
-        simulator: Optional[str] = Field(default=None, description="Simulator UDID"),
+        simulator: str | None = Field(default=None, description="Simulator UDID"),
         action: str = Field(default="list", description="Action: list, get, set, delete, clear"),
-        service: Optional[str] = Field(default=None, description="Keychain service name (for get/set/delete, or filter for list)"),
-        account: Optional[str] = Field(default=None, description="Keychain account (for get/set/delete)"),
-        value: Optional[str] = Field(default=None, description="Value to store (for set)"),
+        service: str | None = Field(default=None, description="Keychain service name (for get/set/delete, or filter for list)"),
+        account: str | None = Field(default=None, description="Keychain account (for get/set/delete)"),
+        value: str | None = Field(default=None, description="Value to store (for set)"),
     ) -> str:
         """Inspect and modify Keychain items — stored credentials, tokens, secrets.
         - list: show all keychain items (service, account, access group)
@@ -124,10 +123,10 @@ def register_state_tools(mcp, resolve_and_send):
 
     @mcp.tool()
     async def cookies(
-        simulator: Optional[str] = Field(default=None, description="Simulator UDID"),
+        simulator: str | None = Field(default=None, description="Simulator UDID"),
         action: str = Field(default="list", description="Action: list, get, delete, clear"),
-        domain: Optional[str] = Field(default=None, description="Cookie domain filter"),
-        name: Optional[str] = Field(default=None, description="Cookie name (for delete)"),
+        domain: str | None = Field(default=None, description="Cookie domain filter"),
+        name: str | None = Field(default=None, description="Cookie name (for delete)"),
     ) -> str:
         """Inspect HTTP cookies from HTTPCookieStorage.
         - list: show all cookies (optionally filtered by domain)

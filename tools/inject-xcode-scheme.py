@@ -134,7 +134,6 @@ def inject_build_preaction(content, pepper_root):
         content = content[:insert_pos] + preaction_xml + content[insert_pos:]
     else:
         # No PreActions — create one. Insert after the opening <LaunchAction ...> line
-        la_line_end = content.find("\n", la_start) + 1
         # Walk forward to find the end of the opening tag attributes
         # The LaunchAction might span multiple lines
         tag_close = content.find(">", la_start)
@@ -266,8 +265,8 @@ def setup_filter(scheme_path, pepper_root, adapter):
             f.write(injected)
 
     print(f"Configured smudge/clean filter for {rel_path}")
-    print(f"  Working copy: Pepper injected")
-    print(f"  Git index: clean (no Pepper)")
+    print("  Working copy: Pepper injected")
+    print("  Git index: clean (no Pepper)")
 
 
 def main():
