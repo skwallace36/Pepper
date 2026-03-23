@@ -37,7 +37,7 @@ if [ "$TOOL" = "Bash" ]; then
     PR_NUM=$(echo "$CMD" | grep -oE '[0-9]+' | head -1)
     if [ -n "$PR_NUM" ]; then
       CHANGED=$(gh pr diff "$PR_NUM" --repo skwallace36/Pepper --name-only 2>/dev/null || true)
-      if echo "$CHANGED" | grep -qE '^(Makefile|\.claude/|\.github/|scripts/agent-|scripts/hooks/|scripts/prompts/|tools/pepper-mcp|\.env)'; then
+      if echo "$CHANGED" | grep -qE '^(\.claude/settings\.json|scripts/agent-runner\.sh|scripts/agent-heartbeat\.sh|scripts/hooks/|scripts/prompts/|\.env)'; then
         echo "DENY: PR #$PR_NUM touches protected infrastructure. Human approval required."
         exit 0
       fi

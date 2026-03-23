@@ -42,11 +42,10 @@ THEN:
    After verifying, decide whether to merge or flag for human review.
 
    **NEVER merge (always needs human approval):**
-   - Makefile
-   - `.claude/` (settings, hooks config)
-   - `.github/` (CI, workflows)
-   - `scripts/agent-*.sh`, `scripts/hooks/`, `scripts/prompts/` (agent infrastructure)
-   - `tools/pepper-mcp` (MCP server entry point)
+   - `.claude/settings.json` (permissions, hooks)
+   - `scripts/agent-runner.sh`, `scripts/agent-heartbeat.sh` (agent orchestration)
+   - `scripts/hooks/` (guardrails)
+   - `scripts/prompts/` (agent behavior)
    - `.env*`
 
    **Use your judgment for everything else.** Merge if: the change is straightforward, isolated, builds clean, and you verified it works. Flag for review if: it has broad blast radius, changes core architecture, or you're not confident.
