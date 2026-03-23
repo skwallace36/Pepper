@@ -81,6 +81,10 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `network` | fail_error | untested |  |  |
 | `network` | throttle | untested |  |  |
 | `network` | offline | untested |  |  |
+| `network` | mock | untested |  |  |
+| `network` | mocks | untested |  |  |
+| `network` | remove_mock | untested |  |  |
+| `network` | clear_mocks | untested |  |  |
 | `test` | start | pass | Any state | Starts test session with test_id. Returns {test_id, status:'started'}. Missing test_id returns proper error. |
 | `test` | result | pass | After start | Records test result. Tested: result with test_id='task024', status='pass', notes='All good'. Returns {test_id, timestamp, status:'pass'}. |
 | `test` | reset | pass | After result | Resets test state. Returns {reset:true}. Works both with and without active test session. |
@@ -226,11 +230,11 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 
 ## Summary
 
-**201 test points** across 60 commands.
+**205 test points** across 60 commands.
 
 - pass: 128
 - fail: 11
-- untested: 60
+- untested: 64
 
 ## Test App Gaps
 

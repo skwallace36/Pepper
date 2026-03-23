@@ -23,6 +23,9 @@ final class PepperNetworkProtocol: URLProtocol {
     /// Captured request body (read at startLoading before the stream is consumed).
     private var capturedRequestBody: Data?
 
+    /// If non-nil, this request matched a mock — return synthetic response without forwarding.
+    private var matchedMock: PepperNetworkMock?
+
     /// If non-nil, this request matched an override — buffer response and apply transform.
     private var matchedOverride: PepperNetworkOverride?
 
@@ -90,10 +93,20 @@ final class PepperNetworkProtocol: URLProtocol {
         // httpBody is nil when the request uses httpBodyStream (Alamofire, etc.)
         capturedRequestBody = request.httpBody ?? Self.readBodyStream(request.httpBodyStream)
 
-        // Check if this request matches a response override
+        // Check if this request matches a mock, override, or condition
         let url = request.url?.absoluteString ?? ""
         let method = request.httpMethod ?? "GET"
         let bodyString: String? = capturedRequestBody.flatMap { String(data: $0, encoding: .utf8) }
+
+        // Priority: mocks first (full synthetic response, no network)
+        matchedMock = PepperNetworkInterceptor.shared.matchingMock(
+            url: url, method: method, body: bodyString
+        )
+        if let mock = matchedMock {
+            applyMock(mock, url: url, method: method)
+            return
+        }
+
         matchedOverride = PepperNetworkInterceptor.shared.matchingOverride(
             url: url, method: method, body: bodyString
         )
@@ -238,6 +251,64 @@ final class PepperNetworkProtocol: URLProtocol {
         default:
             break
         }
+    }
+
+    /// Apply a mock — return a synthetic response without forwarding the request.
+    private func applyMock(_ mock: PepperNetworkMock, url: String, method: String) {
+        let endMs = PepperNetworkInterceptor.nowMs()
+
+        // Build request info for recording
+        let contentType = request.allHTTPHeaderFields?["Content-Type"]
+        let bodyResult = PepperNetworkInterceptor.processBody(capturedRequestBody, contentType: contentType)
+        let requestInfo = NetworkRequestInfo(
+            url: url,
+            method: method,
+            headers: PepperNetworkInterceptor.extractRequestHeaders(request),
+            body: bodyResult.body,
+            bodyEncoding: bodyResult.encoding,
+            bodyTruncated: bodyResult.truncated,
+            originalBodySize: bodyResult.originalSize,
+            timestampMs: startMs
+        )
+
+        // Build synthetic response
+        var responseHeaders = mock.headers
+        responseHeaders["X-Pepper-Mocked"] = "true"
+        // swiftlint:disable:next force_unwrapping — "about:blank" is a valid URL literal
+        let responseUrl = request.url ?? URL(string: "about:blank")!
+        guard let syntheticResponse = HTTPURLResponse(
+            url: responseUrl,
+            statusCode: mock.statusCode,
+            httpVersion: "HTTP/1.1",
+            headerFields: responseHeaders
+        ) else { return }
+
+        let respContentType = mock.headers["Content-Type"] ?? "application/json"
+        let respBody = PepperNetworkInterceptor.processBody(mock.body, contentType: respContentType)
+        let responseInfo = NetworkResponseInfo(
+            statusCode: mock.statusCode,
+            headers: responseHeaders,
+            body: respBody.body,
+            bodyEncoding: respBody.encoding,
+            bodyTruncated: respBody.truncated,
+            originalBodySize: respBody.originalSize,
+            contentLength: Int64(mock.body.count)
+        )
+
+        let transaction = NetworkTransaction(
+            id: transactionId,
+            request: requestInfo,
+            response: responseInfo,
+            timing: NetworkTiming(startMs: startMs, endMs: endMs, durationMs: endMs - startMs),
+            error: nil
+        )
+        PepperNetworkInterceptor.shared.record(transaction)
+        PepperNetworkInterceptor.shared.decrementActiveRequests()
+
+        // Deliver the mocked response
+        client?.urlProtocol(self, didReceive: syntheticResponse, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: mock.body)
+        client?.urlProtocolDidFinishLoading(self)
     }
 
     override func stopLoading() {
