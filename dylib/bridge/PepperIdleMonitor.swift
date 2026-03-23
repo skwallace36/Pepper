@@ -163,11 +163,19 @@ final class PepperIdleMonitor {
         let minimumDeadline = start.addingTimeInterval(Double(minimumMs) / 1000.0)
         var consecutiveIdle = 0
 
+        // Detect active video players once at the start of the wait.
+        // AVPlayer continuously dispatches to main queue for frame timing,
+        // which prevents pendingBlockCount from ever settling to 0.
+        // When video is playing, skip the dispatch check — those dispatches
+        // are rendering noise, not meaningful UI state changes.
+        let skipDispatchCheck = hasActiveVideoPlayer()
+
         while Date() < deadline {
             let idle =
                 checkAnimations
-                ? isIdle(includeNetwork: includeNetwork)
-                : (pendingVCTransitions == 0 && PepperDispatchTracker.shared.pendingBlockCount == 0
+                ? isIdle(includeNetwork: includeNetwork, skipDispatchCheck: skipDispatchCheck)
+                : (pendingVCTransitions == 0
+                    && (skipDispatchCheck || PepperDispatchTracker.shared.pendingBlockCount == 0)
                     && (!includeNetwork || PepperNetworkInterceptor.shared.activeRequestCount == 0))
 
             if idle && Date() >= minimumDeadline {
@@ -192,11 +200,13 @@ final class PepperIdleMonitor {
     /// Debug snapshot for the idle_wait debug command.
     func debugState() -> [String: AnyCodable] {
         expireStaleTransitions()
+        let videoActive = hasActiveVideoPlayer()
         var state: [String: AnyCodable] = [
             "pending_vc_transitions": AnyCodable(pendingAppearances.count),
             "pending_dispatches": AnyCodable(PepperDispatchTracker.shared.pendingBlockCount),
             "has_transient_animations": AnyCodable(hasTransientAnimations()),
-            "is_idle": AnyCodable(isIdle(includeNetwork: false)),
+            "has_active_video_player": AnyCodable(videoActive),
+            "is_idle": AnyCodable(isIdle(includeNetwork: false, skipDispatchCheck: videoActive)),
         ]
         // Include details of the first blocking animation (fast — short-circuits)
         // ALL values must be String to avoid AnyCodable serialization issues with Double/Float
@@ -258,7 +268,7 @@ final class PepperIdleMonitor {
 
     // MARK: - Combined Idle Check
 
-    private func isIdle(includeNetwork: Bool) -> Bool {
+    private func isIdle(includeNetwork: Bool, skipDispatchCheck: Bool = false) -> Bool {
         // Layer 1: Any VC transitions in progress?
         if pendingVCTransitions > 0 { return false }
 
@@ -266,7 +276,9 @@ final class PepperIdleMonitor {
         if hasTransientAnimations() { return false }
 
         // Layer 3: Any pending main-queue dispatch blocks?
-        if PepperDispatchTracker.shared.pendingBlockCount > 0 { return false }
+        // Skipped when an active video player is detected — AVPlayer continuously
+        // dispatches frame-timing blocks that prevent convergence.
+        if !skipDispatchCheck && PepperDispatchTracker.shared.pendingBlockCount > 0 { return false }
 
         // Optional: network
         if includeNetwork && PepperNetworkInterceptor.shared.activeRequestCount > 0 {
@@ -274,6 +286,31 @@ final class PepperIdleMonitor {
         }
 
         return true
+    }
+
+    // MARK: - Video Player Detection
+
+    /// Returns true if the current window contains an AVPlayerLayer.
+    /// Used to relax dispatch tracking — AVPlayer continuously dispatches
+    /// frame-timing blocks to the main queue, preventing idle convergence.
+    private func hasActiveVideoPlayer() -> Bool {
+        guard let window = UIWindow.pepper_keyWindow else { return false }
+        return layerTreeContainsVideoPlayer(window.layer)
+    }
+
+    private func layerTreeContainsVideoPlayer(_ layer: CALayer) -> Bool {
+        let className = String(describing: type(of: layer))
+        if className == "AVPlayerLayer" || className == "AVSampleBufferDisplayLayer" {
+            return true
+        }
+        if let sublayers = layer.sublayers {
+            for sublayer in sublayers {
+                if layerTreeContainsVideoPlayer(sublayer) {
+                    return true
+                }
+            }
+        }
+        return false
     }
 
     // MARK: - Layer 2: Animation Detection
