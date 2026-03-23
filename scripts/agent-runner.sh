@@ -77,8 +77,11 @@ cleanup() {
     git worktree remove --force "$OUR_WORKTREE" 2>/dev/null || true
   fi
 
-  # Release claimed simulator
+  # Release claimed simulator — terminate app first so the port-based
+  # liveness check doesn't keep the session alive after we release it.
   if [ -n "$CLAIMED_SIM" ]; then
+    BID="${APP_BUNDLE_ID:-com.pepper.testapp}"
+    xcrun simctl terminate "$CLAIMED_SIM" "$BID" 2>/dev/null || true
     python3 -c "
 import sys; sys.path.insert(0, '$REPO_ROOT/tools')
 from pepper_sessions import release_simulator
