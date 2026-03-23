@@ -272,9 +272,9 @@ final class PepperNetworkInterceptor {
         recentRequestTimestamps[key] = timestamps
 
         // Check if we hit the threshold
-        if timestamps.count >= duplicateThreshold {
-            // swiftlint:disable:next force_unwrapping
-            let windowActual = timestamps.last! - timestamps.first!
+        if timestamps.count >= duplicateThreshold,
+           let first = timestamps.first, let last = timestamps.last {
+            let windowActual = last - first
 
             // Only warn once per burst — check if we already warned for this key recently
             let alreadyWarned = duplicateWarnings.contains {

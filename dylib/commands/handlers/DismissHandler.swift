@@ -41,8 +41,9 @@ struct DismissHandler: PepperHandler {
         }
 
         // Dismiss the topmost (last in chain)
-        // swiftlint:disable:next force_unwrapping
-        let topmostPresented = chain.last!
+        guard let topmostPresented = chain.last else {
+            return .error(id: command.id, message: "Nothing to dismiss — no presented view controller found")
+        }
         let screenId = topmostPresented.pepper_topMostViewController.pepperScreenID
         topmostPresented.dismiss(animated: true)
 

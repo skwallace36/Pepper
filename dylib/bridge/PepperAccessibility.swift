@@ -161,8 +161,7 @@ final class PepperAccessibility {
             return true
         }
         // Tag labels (useful for text-based discovery confirmation)
-        // swiftlint:disable:next force_unwrapping
-        if view is UILabel, let label = view as? UILabel, label.text != nil, !label.text!.isEmpty {
+        if view is UILabel, let label = view as? UILabel, let text = label.text, !text.isEmpty {
             return true
         }
         return false
@@ -310,10 +309,7 @@ final class PepperAccessibility {
     /// Try to find an untagged interactive UIView and assign the ID.
     private func tagViewIfFound(id: String, in view: UIView) {
         for subview in view.subviews {
-            // swiftlint:disable:next force_unwrapping
-            if shouldTag(subview)
-                && (subview.accessibilityIdentifier == nil || subview.accessibilityIdentifier!.isEmpty)
-            {
+            if shouldTag(subview) && (subview.accessibilityIdentifier?.isEmpty ?? true) {
                 assignIfNeeded(subview, id: id)
                 return
             }
@@ -342,9 +338,7 @@ final class PepperAccessibility {
 
     private func collectUntaggedWithLabels(view: UIView, into results: inout [(view: UIView, label: String)]) {
         if let label = view.accessibilityLabel, !label.isEmpty,
-            // swiftlint:disable:next force_unwrapping
-            view.accessibilityIdentifier == nil || view.accessibilityIdentifier!.isEmpty
-        {
+           (view.accessibilityIdentifier?.isEmpty ?? true) {
             results.append((view: view, label: label))
         }
         for subview in view.subviews {
