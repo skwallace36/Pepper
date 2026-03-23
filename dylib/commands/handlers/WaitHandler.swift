@@ -77,13 +77,15 @@ struct WaitHandler: PepperHandler {
         }
 
         // Cooperatively yield the main thread while the background thread polls.
-        // Short RunLoop spins service the DispatchQueue.main.sync calls from above
+        // RunLoop spins service the DispatchQueue.main.sync calls from above
         // and allow SwiftUI, CADisplayLink, and Core Animation to process normally.
+        // The RunLoop wakes early when dispatch blocks arrive, so using pollInterval
+        // as the max sleep avoids a tight busy-wait while staying responsive.
         while group.wait(timeout: .now()) == .timedOut {
-            RunLoop.current.run(mode: .default, before: Date(timeIntervalSinceNow: 0.01))
+            RunLoop.current.run(mode: .default, before: Date(timeIntervalSinceNow: Self.pollInterval))
         }
 
-        return pollResult!
+        return pollResult ?? .error(id: command.id, message: "Internal error: poll result unavailable")
     }
 
     // MARK: - Condition Parsing
