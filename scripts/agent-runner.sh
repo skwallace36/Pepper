@@ -293,6 +293,13 @@ case "$TYPE" in
   *)        BUDGET=2.00 ;;
 esac
 
+# Model routing — reserve Opus for complex reasoning, use Sonnet for scripted work
+case "$TYPE" in
+  bugfix|builder)                          MODEL="opus" ;;
+  tester|researcher|pr-responder|pr-verifier|verifier) MODEL="sonnet" ;;
+  *)                                       MODEL="sonnet" ;;
+esac
+
 # Snapshot worktrees before launch so we can identify ours
 WORKTREES_BEFORE=$(git worktree list --porcelain 2>/dev/null | grep "^worktree .*/\.claude/worktrees/" | sed 's/^worktree //' | sort || true)
 
@@ -304,6 +311,7 @@ sleep $(( RANDOM % 4 ))
 claude -p \
   "You are the ${TYPE} agent. Follow your instructions." \
   --append-system-prompt "$PROMPT" \
+  --model "$MODEL" \
   --max-budget-usd "$BUDGET" \
   --output-format json \
   --worktree \
