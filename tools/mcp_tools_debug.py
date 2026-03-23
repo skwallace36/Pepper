@@ -337,3 +337,30 @@ def register_debug_tools(mcp, resolve_and_send):
         if limit is not None:
             params["limit"] = limit
         return await resolve_and_send(simulator, "notifications", params)
+
+    @mcp.tool()
+    async def accessibility_audit(
+        simulator: Optional[str] = Field(default=None, description="Simulator UDID"),
+        checks: Optional[str] = Field(
+            default=None,
+            description="Comma-separated checks to run (default: all). "
+            "Options: missing_label, missing_trait, contrast, dynamic_type, touch_target, redundant_trait",
+        ),
+        severity: Optional[str] = Field(
+            default=None,
+            description="Minimum severity to include: error, warning (default), info",
+        ),
+    ) -> str:
+        """Scan the current screen for accessibility issues.
+
+        Checks for: missing labels on interactive elements, invalid/missing traits,
+        insufficient color contrast (WCAG 2.1 AA), fixed fonts without Dynamic Type,
+        tap targets smaller than 44x44pt, and conflicting trait combinations.
+
+        Returns a list of issues sorted by severity with element details and frames."""
+        params: dict = {}
+        if checks is not None:
+            params["checks"] = checks
+        if severity is not None:
+            params["severity"] = severity
+        return await resolve_and_send(simulator, "accessibility_audit", params, timeout=15)
