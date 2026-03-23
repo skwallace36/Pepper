@@ -253,6 +253,7 @@ final class PepperDispatcher {
         register(ResponderChainHandler())
         register(NotificationsHandler())
         register(SnapshotHandler())
+        register(DiffHandler())
         register(UndoHandler())
         register(AccessibilityAuditHandler())
         register(RendersHandler())
