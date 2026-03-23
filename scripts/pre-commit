@@ -34,9 +34,12 @@ else
     echo "$BUILD_OUTPUT" | grep "error:" | head -10
 fi
 
-# 2. SwiftLint
-if command -v swiftlint &>/dev/null; then
-    LINT_OUTPUT=$(swiftlint lint --strict 2>&1)
+# 2. SwiftLint (only staged Swift files — avoids blocking on pre-existing violations)
+STAGED_SWIFT=$(echo "$STAGED_FILES" | grep '\.swift$' || true)
+if [ -z "$STAGED_SWIFT" ]; then
+    pass "SwiftLint (no Swift files staged)"
+elif command -v swiftlint &>/dev/null; then
+    LINT_OUTPUT=$(echo "$STAGED_SWIFT" | xargs swiftlint lint --strict 2>&1)
     if [ $? -eq 0 ]; then
         pass "SwiftLint"
     else

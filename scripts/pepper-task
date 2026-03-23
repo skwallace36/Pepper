@@ -63,7 +63,7 @@ case "$CMD" in
 
       # Found unclaimed task — claim it
       gh issue edit "$NUM" --repo "$REPO" --add-label "in-progress" 2>/dev/null || true
-      echo "$issue" | jq -c '{number: .number, title: .title, body: .body}'
+      echo "$issue" | jq -c '{number: .number, title: .title, body: .body, labels: [.labels[].name]}'
       FOUND=1
       break
     done < <(echo "$ISSUES" | jq -c '.')
