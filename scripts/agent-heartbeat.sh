@@ -176,6 +176,29 @@ while true; do
     fi
   fi
 
+  # Close stale conflicting PRs (>24h with no new commits)
+  CUTOFF=$(date -v-24H +%s 2>/dev/null || date -d '24 hours ago' +%s)
+  for pr_json in $(gh pr list --repo skwallace36/Pepper --state open \
+    --json number,mergeable,commits,body \
+    --jq '.[] | select(.mergeable == "CONFLICTING") | @base64' 2>/dev/null); do
+    PR_NUM=$(echo "$pr_json" | base64 -d | jq -r '.number')
+    LAST_COMMIT=$(echo "$pr_json" | base64 -d | jq -r '.commits[-1].committedDate // empty')
+    [ -z "$LAST_COMMIT" ] && continue
+    COMMIT_EPOCH=$(date -jf "%Y-%m-%dT%H:%M:%SZ" "$LAST_COMMIT" +%s 2>/dev/null \
+      || date -d "$LAST_COMMIT" +%s 2>/dev/null || continue)
+    if [ "$COMMIT_EPOCH" -lt "$CUTOFF" ]; then
+      echo "$(date +%H:%M) Closing stale conflicting PR #$PR_NUM (last commit: $LAST_COMMIT)"
+      gh pr close "$PR_NUM" --repo skwallace36/Pepper \
+        --comment "Closing: this PR has had merge conflicts for >24 hours with no new commits. The underlying task has been unclaimed so a fresh agent can retry from current main. — pepper-agent/heartbeat" \
+        2>/dev/null || true
+      # Unclaim the linked issue
+      ISSUE_NUM=$(echo "$pr_json" | base64 -d | jq -r '.body' | grep -oE 'Fixes #[0-9]+' | head -1 | tr -dc '0-9')
+      if [ -n "$ISSUE_NUM" ]; then
+        gh issue edit "$ISSUE_NUM" --repo skwallace36/Pepper --remove-label "in-progress" 2>/dev/null || true
+      fi
+    fi
+  done
+
   # Check for PRs with comments → pr-responder
   for pr in $(gh pr list --repo skwallace36/Pepper --state open --json number --jq '.[].number' 2>/dev/null); do
     COMMENTS=$(gh api "repos/skwallace36/Pepper/pulls/$pr/comments" --jq 'length' 2>/dev/null || echo 0)
