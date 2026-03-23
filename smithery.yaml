@@ -1,0 +1,27 @@
+# Pepper — MCP server for iOS Simulator runtime control
+# https://smithery.ai/server/@skwallace36/pepper
+#
+# Pepper is macOS-only and requires a running iOS Simulator.
+# Run `make setup && make test-deploy` before adding to your MCP client.
+
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    properties:
+      pythonPath:
+        type: string
+        description: >
+          Path to the Python 3.11+ interpreter inside the Pepper venv.
+          Defaults to .venv/bin/python3 (created by `make setup`).
+        default: ""
+    required: []
+  commandFunction: |-
+    (config) => {
+      const python = config.pythonPath || "./.venv/bin/python3";
+      return {
+        command: python,
+        args: ["./tools/pepper-mcp"],
+        env: { PYTHONUNBUFFERED: "1" }
+      };
+    }

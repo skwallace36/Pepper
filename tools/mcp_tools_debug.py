@@ -410,30 +410,6 @@ def register_debug_tools(mcp, resolve_and_send):
         return await resolve_and_send(simulator, "timers", params)
 
     @mcp.tool()
-    async def perf(
-        simulator: str | None = Field(default=None, description="Simulator UDID"),
-        action: str = Field(description="Action: start, stop, mark, status"),
-        label: str | None = Field(default=None, description="Marker label (for mark action)"),
-    ) -> str:
-        """Measure UI frame performance — frame drops, hitch rate, and FPS.
-
-        Uses CADisplayLink inside the app process for accurate frame timing.
-        Start profiling, interact with the app, then stop to get stats.
-
-        Actions:
-        - start: begin monitoring frame timing via CADisplayLink
-        - stop: stop and return stats (avg/p95/p99 frame time, dropped frames, hitch count, FPS)
-        - mark: insert a named marker for correlation (requires label)
-        - status: check if profiling is active, with live stats if running
-
-        A hitch is a frame that exceeds the 60fps vsync deadline (16.67ms).
-        Hitch ratio = total hitch time / total duration — lower is better (Apple targets < 5ms/s)."""
-        params: dict = {"action": action}
-        if label:
-            params["label"] = label
-        return await resolve_and_send(simulator, "perf", params)
-
-    @mcp.tool()
     async def accessibility_audit(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
         checks: str | None = Field(
