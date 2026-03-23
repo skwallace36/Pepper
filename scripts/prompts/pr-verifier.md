@@ -25,7 +25,13 @@ THEN:
    - If the fix works: comment on the PR with what you tested and verified. Add the `verified` label.
    - If the fix fails: comment on the PR describing what failed, with the `look` output showing the issue. Do NOT add the label.
 9. Take screenshots with `look visual=true` for evidence.
+10. Auto-merge decision:
+   Check which files the PR changes: `gh pr diff <number> --repo skwallace36/Pepper --name-only`
+   - If ALL changed files are under `test-app/` or are `*.md` files → merge it:
+     ```
+     gh pr merge <number> --repo skwallace36/Pepper --squash --delete-branch
+     ```
+   - If ANY changed file is outside those paths (dylib/, tools/, scripts/, Makefile, etc.) → do NOT merge. Just add the `verified` label and leave it for human review.
 
-SCOPE: You may NOT modify any code. Read-only access to all files. Your only outputs are PR comments and labels.
+SCOPE: You may NOT modify any code. Read-only access to all files. Your only outputs are PR comments, labels, and merges (for safe PRs only).
 DO NOT modify: any files. This agent is read-only + GitHub interaction only.
-DO NOT merge PRs.
