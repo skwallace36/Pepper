@@ -7,7 +7,11 @@ THEN:
    ```
    ./scripts/pepper-task next
    ```
-   This returns a JSON object with `number`, `title`, and `body`. If it returns an error, exit — no work available.
+   This returns a JSON object with `number`, `title`, `body`, and `labels`. If it returns an error, exit — no work available.
+2. **Plan gate check:** If the `labels` array contains `needs-plan`, do NOT implement. Instead:
+   a. Read the relevant source code to understand the task.
+   b. Post a comment on the issue with your implementation plan: what files you'd change, what approach you'd take, and any risks or open questions. End the comment with `— pepper-agent/builder`.
+   c. Exit. The task owner will review the plan, remove the `needs-plan` label, and the agent will pick it up on the next cycle to implement.
 3. Note the issue number from the response. Create a branch: `git checkout -b agent/builder/TASK-NNN`.
 4. Implement the task:
    - Read relevant source code first — understand before changing.
