@@ -73,9 +73,10 @@ cleanup() {
     local exit_code=$?
     step "Teardown"
 
-    # Terminate the app
+    # Terminate the app and clean up sentinel
     if [ -n "$SIM_UDID" ]; then
         xcrun simctl terminate "$SIM_UDID" "$TEST_APP_BUNDLE" 2>/dev/null || true
+        rm -f "/tmp/pepper-ready/${SIM_UDID}.ready" 2>/dev/null || true
         info "App terminated"
     fi
 
@@ -168,13 +169,31 @@ SIMCTL_CHILD_PEPPER_PORT="$CI_PORT" \
 SIMCTL_CHILD_PEPPER_SIM_UDID="$SIM_UDID" \
 SIMCTL_CHILD_PEPPER_ADAPTER="generic" \
 SIMCTL_CHILD_PEPPER_SKIP_PERMISSIONS="1" \
+SIMCTL_CHILD_PEPPER_SAFE_MODE="1" \
     xcrun simctl launch "$SIM_UDID" "$TEST_APP_BUNDLE"
 pass "App launched on port $CI_PORT"
 
 # --- Step 6: Wait for Pepper server ---
 step "Waiting for Pepper server (timeout: ${CI_TIMEOUT}s)"
-python3 "$PROJECT_DIR/tools/pepper-ctl" --host 127.0.0.1 --port "$CI_PORT" -v \
-    wait-for-server --wait-timeout "$CI_TIMEOUT"
+if ! python3 "$PROJECT_DIR/tools/pepper-ctl" --host 127.0.0.1 --port "$CI_PORT" -v \
+    wait-for-server --wait-timeout "$CI_TIMEOUT"; then
+    # Check readiness sentinel for diagnostics
+    SENTINEL="/tmp/pepper-ready/${SIM_UDID}.ready"
+    if [ -f "$SENTINEL" ]; then
+        info "Readiness sentinel exists — server started but WebSocket unreachable:"
+        cat "$SENTINEL" | while IFS= read -r line; do info "  $line"; done
+        fail "Server started but not reachable via WebSocket (port/networking issue)"
+    else
+        fail "Server never started — check crash logs (DYLD injection or init crash)"
+        # Check if the app is still running
+        if xcrun simctl spawn "$SIM_UDID" launchctl list 2>/dev/null | grep -q "$TEST_APP_BUNDLE"; then
+            info "App process is still alive — Pepper may have failed to initialize"
+        else
+            info "App process is not running — likely crashed during startup"
+        fi
+    fi
+    exit 1
+fi
 pass "Server ready"
 
 # --- Step 7: Smoke tests ---
