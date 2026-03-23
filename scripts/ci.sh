@@ -234,3 +234,43 @@ else
     fail "$FAIL_COUNT smoke test(s) failed"
     exit 1
 fi
+
+# --- Step 8: Assert no crash logs ---
+step "Checking for crash logs"
+CRASH_DIR="$HOME/Library/Logs/DiagnosticReports"
+CRASH_FOUND=0
+if [ -d "$CRASH_DIR" ]; then
+    # Look for crash reports created in the last 60 seconds matching our test app
+    CRASH_FILES=$(find "$CRASH_DIR" -name "*.ips" -newer "$RESULTS_DIR/smoke-results.json" 2>/dev/null || true)
+    for crash_file in $CRASH_FILES; do
+        # Check if this crash is from our test app process
+        if python3 -c "
+import json, sys
+try:
+    with open('$crash_file') as f:
+        lines = f.readlines()
+    # .ips files: line 1 is metadata header, line 2+ is crash data
+    header = json.loads(lines[0])
+    proc = header.get('name', '') or header.get('procName', '')
+    bundle = header.get('bundleID', '')
+    if 'PepperTestApp' in proc or '$TEST_APP_BUNDLE' in bundle:
+        print(proc)
+        sys.exit(0)
+    sys.exit(1)
+except Exception:
+    sys.exit(1)
+" 2>/dev/null; then
+            CRASH_FOUND=1
+            fail "Crash report found: $(basename "$crash_file")"
+            # Copy crash log to results
+            cp "$crash_file" "$RESULTS_DIR/" 2>/dev/null || true
+        fi
+    done
+fi
+
+if [ "$CRASH_FOUND" -eq 0 ]; then
+    pass "No crash logs detected"
+else
+    fail "Crash logs found — see $RESULTS_DIR/"
+    exit 1
+fi

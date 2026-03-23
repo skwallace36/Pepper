@@ -2,13 +2,28 @@
   "suite": "pepper-smoke",
   "tests": [
     {"name": "server responds to ping", "cmd": "ping"},
+    {"name": "help lists commands", "cmd": "help"},
     {"name": "look returns screen map", "cmd": "introspect", "params": {"mode": "map"}},
+    {"name": "look alias works", "cmd": "look"},
     {"name": "tree returns hierarchy", "cmd": "tree"},
     {"name": "screen returns info", "cmd": "screen"},
-    {"name": "help lists commands", "cmd": "help"},
+    {"name": "status returns state", "cmd": "status"},
     {"name": "console returns logs", "cmd": "console"},
     {"name": "network returns requests", "cmd": "network"},
-    {"name": "status returns state", "cmd": "status"},
-    {"name": "lifecycle returns events", "cmd": "lifecycle"}
+    {"name": "lifecycle returns events", "cmd": "lifecycle"},
+    {"name": "defaults lists entries", "cmd": "defaults"},
+    {"name": "vars lists observable state", "cmd": "vars"},
+    {"name": "clipboard reads pasteboard", "cmd": "clipboard"},
+    {"name": "cookies lists cookies", "cmd": "cookies"},
+    {"name": "keychain lists items", "cmd": "keychain"},
+    {"name": "orientation reads current", "cmd": "orientation"},
+    {"name": "memory returns snapshot", "cmd": "memory"},
+    {"name": "animations scans active", "cmd": "animations"},
+    {"name": "timeline queries events", "cmd": "timeline"},
+    {"name": "locale reads current", "cmd": "locale"},
+    {"name": "deeplinks lists routes", "cmd": "deeplinks"},
+    {"name": "heap lists controllers", "cmd": "heap", "params": {"action": "controllers"}},
+    {"name": "dismiss_keyboard is safe no-op", "cmd": "dismiss_keyboard"},
+    {"name": "wait_idle completes", "cmd": "wait_idle", "params": {"timeout_ms": 5000}}
   ]
 }
