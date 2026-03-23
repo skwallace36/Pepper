@@ -2,6 +2,38 @@
 
 External tooling that connects to Pepper's WebSocket server from outside the app process.
 
+## MCP Integration
+
+Pepper exposes its runtime capabilities as [MCP (Model Context Protocol)](https://modelcontextprotocol.io) tools. This is the primary integration point — AI agents like Claude call MCP tools directly, and the MCP server translates them into WebSocket commands sent to the dylib running inside the app.
+
+### End-to-end flow
+
+```
+Claude / AI agent
+  ↓  MCP tool call (e.g. "tap", "look", "scroll")
+pepper-mcp (Python, stdio transport)
+  ↓  WebSocket JSON command
+Pepper dylib (inside simulator app process)
+  ↓  UIKit / accessibility / HID APIs
+iOS simulator app
+```
+
+Each MCP tool maps to a Pepper command. The MCP server handles connection management, port discovery, crash detection, and response formatting. Tool definitions are split across focused modules (`mcp_tools_nav.py`, `mcp_tools_state.py`, etc.) so each file stays small and single-purpose.
+
+### What this enables
+
+With Pepper injected, an AI agent can:
+
+- **See the screen** — `look` returns a structured map of every visible element (labels, types, frames, interactability) without screenshots.
+- **Interact like a user** — `tap`, `scroll`, `swipe`, `input_text`, and `gesture` synthesize real HID touch events. Both UIKit and SwiftUI respond identically because Pepper uses the same IOHIDEvent pipeline the system uses.
+- **Navigate** — `navigate` triggers deep links, `back` and `dismiss` manage the navigation stack, `dialog` handles alerts and action sheets.
+- **Inspect state** — `vars_inspect` reads arbitrary properties, `heap` queries live objects, `defaults` / `keychain` / `cookies` / `clipboard` access storage layers.
+- **Debug** — `console` shows logs, `network` shows HTTP traffic, `crash_log` fetches crash reports, `layers` visualizes the view hierarchy, `timeline` replays events.
+- **Control the simulator** — `orientation`, `locale`, `push` (simulated push notifications), `status` (status bar overrides), `simulator` (simctl operations).
+- **Build and deploy** — `build` compiles the app, `deploy` installs with Pepper injected, `iterate` does build+deploy+verify in one step.
+
+No source access required. The agent operates on any iOS simulator app as-is.
+
 ## Top-level tools
 
 ### `pepper-mcp` (Python)
