@@ -178,6 +178,7 @@ class PepperClient:
         raw = json.dumps(msg)
         msg_id = msg.get("id")
         try:
+            assert self.ws is not None
             await self.ws.send(raw)
             deadline = asyncio.get_event_loop().time() + 10.0
             while True:

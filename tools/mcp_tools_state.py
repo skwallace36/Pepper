@@ -42,7 +42,7 @@ def register_state_tools(mcp, resolve_and_send):
         - mirror: full property dump including private state
         - set: mutate a property live (triggers SwiftUI re-render, great for testing theories)
         - discover: re-scan for ViewModels"""
-        params = {"action": action}
+        params: dict = {"action": action}
         if class_name:
             params["class"] = class_name
         if path:

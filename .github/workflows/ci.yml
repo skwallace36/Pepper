@@ -34,6 +34,9 @@ jobs:
           python3 -m py_compile tools/pepper_websocket.py
           python3 -m py_compile tools/pepper_ws_raw.py
 
+      - name: Type check Python (pyright)
+        run: npx --yes pyright
+
       - name: Verify no hardcoded paths
         run: |
           if grep -rn '/Users/' dylib/ tools/ scripts/ --include='*.swift' --include='*.py' --include='*.sh' 2>/dev/null | grep -v '.env.example' | grep -v 'test-client' | grep -v 'pepper_sessions' | head -5 | grep -q .; then
