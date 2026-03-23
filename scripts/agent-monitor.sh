@@ -29,6 +29,7 @@ icon_for() {
     pr-verifier|verifier) echo "V" ;;
     researcher)   echo "?" ;;
     groomer)      echo "G" ;;
+    conflict-resolver) echo "C" ;;
     *)            echo " " ;;
   esac
 }
@@ -43,6 +44,7 @@ color_for() {
     pr-verifier|verifier) echo "32" ;;  # green
     researcher)   echo "34" ;;  # blue
     groomer)      echo "37" ;;  # white
+    conflict-resolver) echo "36" ;; # cyan
     *)            echo "37" ;;  # white
   esac
 }
