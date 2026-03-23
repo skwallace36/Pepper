@@ -4,7 +4,7 @@ Pepper common utilities — shared constants, config helpers, and port discovery
 Used by pepper-mcp, pepper-ctl, pepper-stream, and test-client.py.
 """
 
-import json as _json
+import json
 import os
 import shutil
 import socket
@@ -18,6 +18,25 @@ PEPPER_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PORT_DIR = "/tmp/pepper-ports"
 DEVICE_DIR = "/tmp/pepper-devices"
 DEFAULT_HOST = "localhost"
+
+
+def try_parse_json(value):
+    """Try to parse a string as JSON for proper typing (bool, int, dict, list).
+    Returns the parsed value on success, or the original string on failure."""
+    if value is None:
+        return None
+    try:
+        return json.loads(value)
+    except (json.JSONDecodeError, TypeError):
+        return value
+
+
+def require_parse_json(value, field_name="value"):
+    """Parse a string as JSON, raising ValueError with a descriptive message on failure."""
+    try:
+        return json.loads(value)
+    except json.JSONDecodeError as e:
+        raise ValueError(f"{field_name} must be valid JSON: {e}") from e
 
 
 def require_tool(name: str, install_hint: str = "") -> str:
@@ -197,10 +216,10 @@ def _read_device_file(udid: str) -> dict | None:
     path = os.path.join(DEVICE_DIR, f"{udid}.device")
     try:
         with open(path) as f:
-            data = _json.load(f)
+            data = json.load(f)
         if "host" in data and "port" in data:
             return data
-    except (FileNotFoundError, _json.JSONDecodeError, OSError, KeyError):
+    except (FileNotFoundError, json.JSONDecodeError, OSError, KeyError):
         pass
     return None
 
@@ -220,7 +239,7 @@ def register_device(udid: str, host: str, port: int, name: str = "",
         data["via"] = via
     path = os.path.join(DEVICE_DIR, f"{udid}.device")
     with open(path, "w") as f:
-        _json.dump(data, f)
+        json.dump(data, f)
 
 
 def unregister_device(udid: str) -> bool:
