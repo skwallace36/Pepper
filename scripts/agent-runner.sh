@@ -480,16 +480,17 @@ SUMMARY_EOF
 TURNS=$(jq -r '.num_turns // 0' "$TRANSCRIPT" 2>/dev/null || echo 0)
 EXIT_REASON=$(jq -r '.result // ""' "$TRANSCRIPT" 2>/dev/null | head -c 200 | tr '\n' ' ' | jq -Rs '.' 2>/dev/null || echo '""')
 
-# Detect unproductive runs: short duration + guardrail blocks + no commits/pushes
-# These should count as "failed" so the heartbeat backoff kicks in
+# Detect unproductive runs: short duration + no commits/pushes
+# These should count as "failed" so the heartbeat backoff kicks in.
+# Catches: guardrail blocks, "no work available", claimed tasks, etc.
 UNPRODUCTIVE=false
+UNPRODUCTIVE_REASON=""
 if [ "$DURATION" -lt 120 ] && [ $EXIT_CODE -eq 0 ]; then
-  # Count guardrail blocks and productive actions during this session
-  GUARDRAIL_BLOCKS=$(python3 -c "
+  PROD_STATS=$(python3 -c "
 import json, sys
 from datetime import datetime, timezone
 start_ts = datetime.fromtimestamp($START, tz=timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
-blocks = commits = pushes = 0
+blocks = commits = pushes = edits = builds = 0
 with open('$EVENTS') as f:
     for line in f:
         line = line.strip()
@@ -501,13 +502,23 @@ with open('$EVENTS') as f:
         if ev == 'guardrail-block': blocks += 1
         elif ev == 'commit': commits += 1
         elif ev == 'push': pushes += 1
-print(f'{blocks} {commits} {pushes}')
-" 2>/dev/null || echo "0 0 0")
-  GB_COUNT=$(echo "$GUARDRAIL_BLOCKS" | cut -d' ' -f1)
-  COMMIT_COUNT=$(echo "$GUARDRAIL_BLOCKS" | cut -d' ' -f2)
-  PUSH_COUNT=$(echo "$GUARDRAIL_BLOCKS" | cut -d' ' -f3)
-  if [ "$GB_COUNT" -gt 0 ] && [ "$COMMIT_COUNT" -eq 0 ] && [ "$PUSH_COUNT" -eq 0 ]; then
+        elif ev == 'edit': edits += 1
+        elif ev == 'build': builds += 1
+print(f'{blocks} {commits} {pushes} {edits} {builds}')
+" 2>/dev/null || echo "0 0 0 0 0")
+  GB_COUNT=$(echo "$PROD_STATS" | cut -d' ' -f1)
+  COMMIT_COUNT=$(echo "$PROD_STATS" | cut -d' ' -f2)
+  PUSH_COUNT=$(echo "$PROD_STATS" | cut -d' ' -f3)
+  EDIT_COUNT=$(echo "$PROD_STATS" | cut -d' ' -f4)
+  BUILD_COUNT=$(echo "$PROD_STATS" | cut -d' ' -f5)
+  # Unproductive if no commits, no pushes, no edits, and no builds
+  if [ "$COMMIT_COUNT" -eq 0 ] && [ "$PUSH_COUNT" -eq 0 ] && [ "$EDIT_COUNT" -eq 0 ] && [ "$BUILD_COUNT" -eq 0 ]; then
     UNPRODUCTIVE=true
+    if [ "$GB_COUNT" -gt 0 ]; then
+      UNPRODUCTIVE_REASON="${GB_COUNT} guardrail blocks, no productive actions, ${DURATION}s"
+    else
+      UNPRODUCTIVE_REASON="no productive actions (no edits/commits/builds), ${DURATION}s"
+    fi
   fi
 fi
 
@@ -519,7 +530,7 @@ elif [ -f .pepper-kill ]; then
 elif [ $EXIT_CODE -ne 0 ]; then
   emit_final "failed" ",\"detail\":${EXIT_REASON},\"cost_usd\":${COST},\"duration_s\":${DURATION},\"turns\":${TURNS}"
 elif [ "$UNPRODUCTIVE" = true ]; then
-  emit_final "failed" ",\"detail\":\"unproductive run (${GB_COUNT} guardrail blocks, no commits, ${DURATION}s)\",\"cost_usd\":${COST},\"duration_s\":${DURATION},\"turns\":${TURNS}"
+  emit_final "failed" ",\"detail\":\"unproductive run (${UNPRODUCTIVE_REASON})\",\"cost_usd\":${COST},\"duration_s\":${DURATION},\"turns\":${TURNS}"
 else
   emit_final "done" ",\"cost_usd\":${COST},\"duration_s\":${DURATION},\"turns\":${TURNS},\"exit_reason\":${EXIT_REASON}"
 fi
