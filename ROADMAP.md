@@ -45,8 +45,13 @@ After the test app is green, inject into Wikipedia, Ice Cubes, etc. to pressure-
 ### P9: New capabilities
 Accessibility audit, touch failure debugging, layout inspector, performance profiling, in-process view capture. Tracked as GitHub Issues.
 
-### P10: Agent token optimization
-Current agents use Opus for everything and re-read the full codebase each run. Opportunities: model selection per agent type (Haiku for pr-responder/researcher), pre-warmed context summaries, smaller focused prompts, skip redundant CLAUDE.md reads, caching-friendly prompt ordering. Track token usage per agent run.
+### P10: Agent context optimization
+Measured 2026-03-22: 30% of file reads are duplicates (~85KB wasted across 10 sessions). Builder reads COVERAGE.md (33KB) and coverage-status.json (17KB) every run. Tester sessions with 300+ `look` calls accumulate stale screen state that never leaves context — unmeasured but likely the biggest rot source. Specific opportunities:
+- **Read-dedup hook**: PreToolUse hook that blocks re-reads of files already in the session. Cheap, high impact.
+- **Tighter prompts**: Tell agents exactly what to read instead of letting them explore. Builder doesn't need full COVERAGE.md.
+- **MCP response trimming**: Slim `look` output for agents (omit coordinates, collapse unchanged regions). Needs measurement from tester runs first.
+- **Model selection**: Haiku for pr-responder/researcher, Sonnet for builder/tester, Opus for bugfix only.
+- **Pre-assembled context**: Runner injects task-specific context (PR diff, issue body, relevant files) so agents don't explore.
 
 ### P11: Android port (deferred)
 Not pursuing yet. A premature platform abstraction layer (~1,500 lines of unused protocols/wrappers) was built and deleted — zero handler migration completed. When Android is actually on the table, design the abstraction with real Android constraints in hand. Research plan in `docs/plans/ANDROID-PORT.md`. Related GitHub Issues closed as not-planned.
