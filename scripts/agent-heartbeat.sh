@@ -50,15 +50,23 @@ exec >> build/logs/heartbeat.log 2>&1
 
 echo "$(date +%H:%M) Heartbeat started (PID $$, interval ${INTERVAL}s)"
 
-# Check if an agent type is currently running
-is_running() {
-  [ -f "build/logs/.lock-$1" ] && kill -0 "$(cat "build/logs/.lock-$1" 2>/dev/null)" 2>/dev/null
+# Count running instances of an agent type
+count_running() {
+  local count=0
+  for lf in build/logs/.lock-$1-*; do
+    [ -f "$lf" ] || continue
+    kill -0 "$(cat "$lf" 2>/dev/null)" 2>/dev/null && count=$((count + 1))
+  done
+  echo "$count"
 }
 
-# Launch an agent type if not already running
-launch_if_idle() {
+# Launch an agent type if under its instance cap
+# Runner enforces the actual cap per-type — heartbeat launches one per cycle
+launch_if_slots() {
   local type="$1"
-  if ! is_running "$type"; then
+  local running
+  running=$(count_running "$type")
+  if [ "$running" -eq 0 ]; then
     echo "$(date +%H:%M) Launching $type"
     "$REPO_ROOT/scripts/agent-runner.sh" "$type" >> build/logs/heartbeat.log 2>&1 &
   fi
@@ -72,47 +80,48 @@ while true; do
   # Check for open bugs → bugfix
   BUG_COUNT=$(gh issue list --repo skwallace36/Pepper --label bug --state open --json number --jq 'length' 2>/dev/null || echo 0)
   if [ "$BUG_COUNT" -gt 0 ]; then
-    launch_if_idle bugfix
+    launch_if_slots bugfix
   fi
 
   # Check for open tasks → builder
   TASK_COUNT=$(gh issue list --repo skwallace36/Pepper --state open --json number,labels --jq '[.[] | select(.labels | map(.name) | any(startswith("area:")))] | length' 2>/dev/null || echo 0)
   if [ "$TASK_COUNT" -gt 0 ]; then
-    launch_if_idle builder
+    launch_if_slots builder
   fi
 
   # Check for unverified PRs → pr-verifier
   UNVERIFIED=$(gh pr list --repo skwallace36/Pepper --state open --json number,labels --jq '[.[] | select(.labels | map(.name) | index("verified") | not)] | length' 2>/dev/null || echo 0)
   if [ "$UNVERIFIED" -gt 0 ]; then
-    launch_if_idle pr-verifier
+    launch_if_slots pr-verifier
   fi
 
   # Check for PRs with comments → pr-responder
   for pr in $(gh pr list --repo skwallace36/Pepper --state open --json number --jq '.[].number' 2>/dev/null); do
     COMMENTS=$(gh api "repos/skwallace36/Pepper/pulls/$pr/comments" --jq 'length' 2>/dev/null || echo 0)
     if [ "$COMMENTS" -gt 0 ]; then
-      launch_if_idle pr-responder
+      launch_if_slots pr-responder
       break
     fi
   done
 
-  # Groom backlog — once per day max
-  GROOMER_RAN_TODAY=$(python3 -c "
+  # Groom backlog — twice per day max
+  GROOMER_RUNS_TODAY=$(python3 -c "
 import json
 today = '$(date -u +%Y-%m-%d)'
+count = 0
 try:
     with open('$REPO_ROOT/build/logs/events.jsonl') as f:
         for line in f:
             try:
                 e = json.loads(line.strip())
                 if e.get('agent') == 'groomer' and e.get('event') == 'started' and e.get('ts','').startswith(today):
-                    print('yes'); exit()
+                    count += 1
             except: pass
 except FileNotFoundError: pass
-print('no')
-" 2>/dev/null || echo "no")
-  if [ "$GROOMER_RAN_TODAY" != "yes" ]; then
-    launch_if_idle groomer
+print(count)
+" 2>/dev/null || echo "0")
+  if [ "$GROOMER_RUNS_TODAY" -lt 2 ] 2>/dev/null; then
+    launch_if_slots groomer
   fi
 
   sleep "$INTERVAL"

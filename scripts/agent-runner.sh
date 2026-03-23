@@ -129,7 +129,7 @@ print(' '.join(d['udid'] for r in devs.values() for d in r if d['state'] == 'Boo
   fi
 
   # Release lockfile
-  rm -f "build/logs/.lock-${TYPE}" 2>/dev/null || true
+  rm -f "$LOCKFILE" 2>/dev/null || true
 
   # Transcript retention: keep last 20 per type
   local transcripts
@@ -155,19 +155,32 @@ if [ -n "$MISSING" ]; then
   echo "Run: make setup"
   exit 1
 fi
-# Prevent concurrent runs of the same agent type (lockfile)
-LOCKFILE="build/logs/.lock-${TYPE}"
-if [ -f "$LOCKFILE" ]; then
-  LOCK_PID=$(cat "$LOCKFILE" 2>/dev/null)
-  if kill -0 "$LOCK_PID" 2>/dev/null; then
-    emit "failed" ",\"detail\":\"${TYPE} agent already running (PID $LOCK_PID)\""
-    echo "Error: ${TYPE} agent already running (PID $LOCK_PID). Use 'make agent-cleanup' to force."
-    exit 1
+# Max concurrent instances per agent type
+case "$TYPE" in
+  pr-verifier|verifier) MAX_INSTANCES=2 ;;
+  builder)              MAX_INSTANCES=2 ;;
+  *)                    MAX_INSTANCES=1 ;;
+esac
+
+# Count running instances of this type (PID-scoped lockfiles)
+RUNNING=0
+for lf in build/logs/.lock-${TYPE}-*; do
+  [ -f "$lf" ] || continue
+  lpid=$(cat "$lf" 2>/dev/null)
+  if kill -0 "$lpid" 2>/dev/null; then
+    RUNNING=$((RUNNING + 1))
   else
-    # Stale lockfile — previous run crashed without cleanup
-    rm -f "$LOCKFILE"
+    rm -f "$lf"  # stale
   fi
+done
+
+if [ "$RUNNING" -ge "$MAX_INSTANCES" ]; then
+  emit "failed" ",\"detail\":\"${TYPE} at capacity (${RUNNING}/${MAX_INSTANCES})\""
+  echo "Error: ${TYPE} at capacity (${RUNNING}/${MAX_INSTANCES}). Use 'make agent-cleanup' to force."
+  exit 1
 fi
+
+LOCKFILE="build/logs/.lock-${TYPE}-$$"
 echo $$ > "$LOCKFILE"
 
 if ! gh auth status &>/dev/null; then
@@ -275,6 +288,7 @@ case "$TYPE" in
   tester)   BUDGET=5.00 ;;
   bugfix)   BUDGET=3.00 ;;
   builder)  BUDGET=3.00 ;;
+  groomer)  BUDGET=3.00 ;;
   *)        BUDGET=2.00 ;;
 esac
 
