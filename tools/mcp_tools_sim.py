@@ -3,21 +3,12 @@
 Tool definitions for: raw (send any command), simulator (simctl operations).
 """
 
-import json
 import os
 import subprocess
 
 import pepper_sessions
-from pepper_common import get_config, list_simulators
+from pepper_common import get_config, list_simulators, require_parse_json
 from pydantic import Field
-
-
-def require_parse_json(value, field_name="value"):
-    """Parse a string as JSON, raising ValueError with a descriptive message on failure."""
-    try:
-        return json.loads(value)
-    except json.JSONDecodeError as e:
-        raise ValueError(f"{field_name} must be valid JSON: {e}") from e
 
 
 def register_sim_tools(mcp, resolve_and_send, resolve_simulator):

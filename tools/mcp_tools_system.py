@@ -8,28 +8,8 @@ import asyncio
 import json
 import subprocess
 
-from pepper_common import get_config
+from pepper_common import get_config, require_parse_json, try_parse_json
 from pydantic import Field
-
-
-def try_parse_json(value):
-    """Try to parse a string as JSON for proper typing (bool, int, dict, list).
-    Returns the parsed value on success, or the original string on failure."""
-    if value is None:
-        return None
-    try:
-        return json.loads(value)
-    except (json.JSONDecodeError, TypeError):
-        return value
-
-
-def require_parse_json(value, field_name="value"):
-    """Parse a string as JSON, raising ValueError with a descriptive message on failure."""
-    try:
-        return json.loads(value)
-    except json.JSONDecodeError as e:
-        raise ValueError(f"{field_name} must be valid JSON: {e}") from e
-
 
 # Permission keywords found in dialog titles/messages → simctl permission names
 _PERMISSION_KEYWORDS = {
