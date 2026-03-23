@@ -306,6 +306,7 @@ struct TapHandler: PepperHandler {
         let doubleTap = command.params?["double"]?.boolValue ?? false
         // Optional hold duration (seconds) — default 100ms, use longer for long press (>0.5s recommended)
         let duration = command.params?["duration"]?.doubleValue ?? 0.1
+        let debug = command.params?["debug"]?.boolValue ?? false
 
         // Single mechanism: HID event synthesis
         let success: Bool
@@ -317,19 +318,159 @@ struct TapHandler: PepperHandler {
 
         if success {
             logger.info("Tapped \(description) via HID at (\(point.x), \(point.y))")
-            return .ok(
-                id: command.id,
-                data: [
-                    "strategy": AnyCodable(strategy),
-                    "description": AnyCodable(description),
-                    "type": AnyCodable("hid_touch"),
-                    "tap_point": AnyCodable([
-                        "x": AnyCodable(Double(point.x)),
-                        "y": AnyCodable(Double(point.y)),
-                    ]),
-                ])
+            var data: [String: AnyCodable] = [
+                "strategy": AnyCodable(strategy),
+                "description": AnyCodable(description),
+                "type": AnyCodable("hid_touch"),
+                "tap_point": AnyCodable([
+                    "x": AnyCodable(Double(point.x)),
+                    "y": AnyCodable(Double(point.y)),
+                ]),
+            ]
+            if debug {
+                let windows = UIWindow.pepper_allVisibleWindows
+                data["tap_diagnostics"] = AnyCodable(buildTapDiagnostics(at: point, in: windows))
+            }
+            return .ok(id: command.id, data: data)
         } else {
             return .error(id: command.id, message: "HID tap synthesis failed at (\(point.x), \(point.y))")
+        }
+    }
+
+    // MARK: - Tap Diagnostics
+
+    /// Build hit-test, gesture recognizer, responder chain, and overlap diagnostics for a tap point.
+    /// Used when debug=true to help diagnose why a tap may not produce the expected result.
+    private func buildTapDiagnostics(at point: CGPoint, in windows: [UIWindow]) -> [String: AnyCodable] {
+        // Find the hit view
+        var hitView: UIView?
+        for window in windows.reversed() {
+            if let view = window.hitTest(point, with: nil) {
+                hitView = view
+                break
+            }
+        }
+
+        var result: [String: AnyCodable] = [
+            "point": AnyCodable(["x": AnyCodable(Double(point.x)), "y": AnyCodable(Double(point.y))]),
+        ]
+
+        if let hit = hitView {
+            // Describe the hit view
+            result["hit_view"] = AnyCodable(describeViewForDiag(hit))
+
+            // Gesture recognizers on hit view and ancestors
+            result["gesture_recognizers"] = AnyCodable(buildGestureStack(for: hit))
+
+            // Responder chain from hit view
+            result["responder_chain"] = AnyCodable(buildResponderChain(from: hit))
+        } else {
+            result["hit_view"] = AnyCodable(["note": AnyCodable("No view hit-tested at this point")])
+        }
+
+        // Overlapping views: all views whose frame contains the point, sorted front-to-back
+        result["overlapping_views"] = AnyCodable(findOverlappingViews(at: point, in: windows))
+
+        return result
+    }
+
+    private func describeViewForDiag(_ view: UIView) -> [String: AnyCodable] {
+        var info: [String: AnyCodable] = [
+            "class": AnyCodable(String(describing: type(of: view))),
+        ]
+        let frame = view.convert(view.bounds, to: nil)
+        info["frame"] = AnyCodable([
+            "x": AnyCodable(Double(frame.origin.x)),
+            "y": AnyCodable(Double(frame.origin.y)),
+            "w": AnyCodable(Double(frame.size.width)),
+            "h": AnyCodable(Double(frame.size.height)),
+        ])
+        if let id = view.accessibilityIdentifier, !id.isEmpty { info["id"] = AnyCodable(id) }
+        if let label = view.accessibilityLabel, !label.isEmpty { info["label"] = AnyCodable(label) }
+        if !view.isUserInteractionEnabled { info["interaction_disabled"] = AnyCodable(true) }
+        if view.isHidden { info["hidden"] = AnyCodable(true) }
+        if view.alpha <= 0.01 { info["transparent"] = AnyCodable(true) }
+        return info
+    }
+
+    private func buildGestureStack(for view: UIView) -> [AnyCodable] {
+        var stack: [AnyCodable] = []
+        var current: UIView? = view
+        while let v = current {
+            guard let recognizers = v.gestureRecognizers, !recognizers.isEmpty else {
+                current = v.superview
+                continue
+            }
+            let entry: [String: AnyCodable] = [
+                "view": AnyCodable(String(describing: type(of: v))),
+                "recognizers": AnyCodable(recognizers.map { describeGestureRecognizer($0) }),
+            ]
+            stack.append(AnyCodable(entry))
+            current = v.superview
+        }
+        return stack
+    }
+
+    private func describeGestureRecognizer(_ gr: UIGestureRecognizer) -> AnyCodable {
+        var info: [String: AnyCodable] = [
+            "class": AnyCodable(String(describing: type(of: gr))),
+            "state": AnyCodable(gestureStateName(gr.state)),
+            "enabled": AnyCodable(gr.isEnabled),
+        ]
+        if gr.cancelsTouchesInView { info["cancels_touches"] = AnyCodable(true) }
+        if gr.delaysTouchesBegan { info["delays_began"] = AnyCodable(true) }
+        return AnyCodable(info)
+    }
+
+    private func gestureStateName(_ state: UIGestureRecognizer.State) -> String {
+        switch state {
+        case .possible: return "possible"
+        case .began: return "began"
+        case .changed: return "changed"
+        case .ended: return "ended"
+        case .cancelled: return "cancelled"
+        case .failed: return "failed"
+        @unknown default: return "unknown"
+        }
+    }
+
+    private func buildResponderChain(from view: UIView) -> [AnyCodable] {
+        var chain: [AnyCodable] = []
+        var responder: UIResponder? = view
+        while let r = responder {
+            var entry: [String: AnyCodable] = ["class": AnyCodable(String(describing: type(of: r)))]
+            if let v = r as? UIView {
+                if let id = v.accessibilityIdentifier, !id.isEmpty { entry["id"] = AnyCodable(id) }
+                if let label = v.accessibilityLabel, !label.isEmpty { entry["label"] = AnyCodable(label) }
+                if !v.isUserInteractionEnabled { entry["interaction_disabled"] = AnyCodable(true) }
+            } else if r is UIViewController {
+                entry["type"] = AnyCodable("viewController")
+            } else if r is UIApplication {
+                entry["type"] = AnyCodable("application")
+                chain.append(AnyCodable(entry))
+                break
+            }
+            chain.append(AnyCodable(entry))
+            responder = r.next
+        }
+        return chain
+    }
+
+    private func findOverlappingViews(at point: CGPoint, in windows: [UIWindow]) -> [AnyCodable] {
+        var overlapping: [AnyCodable] = []
+        for window in windows.reversed() {
+            collectOverlapping(view: window, point: point, result: &overlapping)
+        }
+        return overlapping
+    }
+
+    private func collectOverlapping(view: UIView, point: CGPoint, result: inout [AnyCodable]) {
+        let localPoint = view.convert(point, from: nil)
+        guard !view.isHidden, view.alpha > 0.01,
+              view.bounds.contains(localPoint) else { return }
+        result.append(AnyCodable(describeViewForDiag(view)))
+        for subview in view.subviews.reversed() {
+            collectOverlapping(view: subview, point: point, result: &result)
         }
     }
 
