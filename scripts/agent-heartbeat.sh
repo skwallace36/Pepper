@@ -77,6 +77,14 @@ while true; do
   # Pull latest
   git pull --quiet origin main 2>/dev/null || true
 
+  # Clean stale in-progress claims (tasks with no open PR and no active branch)
+  for num in $(gh issue list --repo skwallace36/Pepper --label in-progress --state open --json number --jq '.[].number' 2>/dev/null); do
+    OPEN_PR=$(gh pr list --repo skwallace36/Pepper --state open --search "Fixes #$num" --json number --jq 'length' 2>/dev/null || echo 0)
+    if [ "$OPEN_PR" = "0" ]; then
+      gh issue edit "$num" --repo skwallace36/Pepper --remove-label "in-progress" 2>/dev/null || true
+    fi
+  done
+
   # Check for open bugs → bugfix
   BUG_COUNT=$(gh issue list --repo skwallace36/Pepper --label bug --state open --json number --jq 'length' 2>/dev/null || echo 0)
   if [ "$BUG_COUNT" -gt 0 ]; then
