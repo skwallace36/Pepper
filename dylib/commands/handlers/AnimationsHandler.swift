@@ -79,8 +79,8 @@ struct AnimationsHandler: PepperHandler {
                 // Animation class and common properties
                 let animClass = String(describing: type(of: anim))
                 info["anim_class"] = AnyCodable(animClass)
-                info["duration"] = AnyCodable(anim.duration)
-                info["repeat_count"] = AnyCodable(Double(anim.repeatCount))
+                info["duration"] = AnyCodable(anim.duration.isFinite ? anim.duration : 0.0)
+                info["repeat_count"] = AnyCodable(anim.repeatCount.isFinite ? Double(anim.repeatCount) : -1.0)
                 info["autoreverses"] = AnyCodable(anim.autoreverses)
                 info["is_removed_on_completion"] = AnyCodable(anim.isRemovedOnCompletion)
                 info["is_infinite"] = AnyCodable(anim.repeatCount == .infinity || anim.repeatDuration == .infinity)
