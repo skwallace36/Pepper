@@ -710,6 +710,43 @@ async def deploy(
     return await _deploy_app(sim, send_fn=send_command, bundle_id=bundle_id, dylib_path=dylib_path, skip_privacy=skip_privacy)
 
 
+@mcp.tool()
+async def webview(
+    simulator: Optional[str] = Field(default=None, description="Simulator UDID"),
+    action: str = Field(default="url", description="Action: url, evaluate, dom"),
+    script: Optional[str] = Field(default=None, description="JavaScript to execute (for evaluate)"),
+    selector: Optional[str] = Field(default=None, description="CSS selector for DOM query (default: '*', for dom)"),
+    index: Optional[int] = Field(default=None, description="WKWebView index when multiple are present (default: 0)"),
+    limit: Optional[int] = Field(default=None, description="Max DOM elements to return (default: 50, for dom)"),
+) -> str:
+    """Inspect and interact with WKWebView instances embedded in the app (hybrid apps).
+
+    Use this when the app contains web content (login flows, content pages, settings)
+    that Pepper's native view hierarchy tools cannot reach.
+
+    Actions:
+    - url:      List all WKWebViews found, with current URL, title, and navigation state.
+    - evaluate: Execute arbitrary JavaScript and return the result. Pass script='...'
+    - dom:      Return a simplified DOM element listing. Use selector to filter (e.g. 'a', 'input', '#id').
+
+    Examples:
+      webview(action='url')
+      webview(action='evaluate', script='document.title')
+      webview(action='dom', selector='input')
+      webview(action='evaluate', script='document.querySelector("#email").value')
+    """
+    params: dict = {"action": action}
+    if script is not None:
+        params["script"] = script
+    if selector is not None:
+        params["selector"] = selector
+    if index is not None:
+        params["index"] = index
+    if limit is not None:
+        params["limit"] = limit
+    return await resolve_and_send(simulator, "webview", params, timeout=15)
+
+
 if __name__ == "__main__":
     import atexit
 
