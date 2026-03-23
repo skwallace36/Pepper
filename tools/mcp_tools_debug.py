@@ -385,3 +385,48 @@ def register_debug_tools(mcp, resolve_and_send):
         if severity is not None:
             params["severity"] = severity
         return await resolve_and_send(simulator, "accessibility_audit", params, timeout=15)
+
+    @mcp.tool()
+    async def accessibility_action(
+        simulator: str | None = Field(default=None, description="Simulator UDID"),
+        action: str = Field(
+            description="Action to perform: list, invoke, escape, magic_tap, increment, decrement"
+        ),
+        element: str | None = Field(
+            default=None,
+            description="Accessibility ID of the target element",
+        ),
+        text: str | None = Field(
+            default=None,
+            description="Text/label of the target element (alternative to element)",
+        ),
+        name: str | None = Field(
+            default=None,
+            description="Name of the custom action to invoke (for invoke action)",
+        ),
+        index: int | None = Field(
+            default=None,
+            description="Index of the custom action to invoke (for invoke action, alternative to name)",
+        ),
+    ) -> str:
+        """Invoke accessibility actions on elements — test VoiceOver flows without VoiceOver.
+
+        Actions:
+        - list: List custom accessibility actions on an element.
+        - invoke: Invoke a custom action by name or index.
+        - escape: Trigger accessibilityPerformEscape() (two-finger Z gesture equivalent).
+        - magic_tap: Trigger accessibilityPerformMagicTap() (two-finger double-tap equivalent).
+        - increment: Call accessibilityIncrement() on adjustable elements (sliders, steppers).
+        - decrement: Call accessibilityDecrement() on adjustable elements.
+
+        For escape/magic_tap, element is optional — walks the responder chain from the current context."""
+        params: dict = {"action": action}
+        if element is not None:
+            params["element"] = element
+        if text is not None:
+            params["text"] = text
+        if name is not None:
+            params["name"] = name
+        if index is not None:
+            params["index"] = index
+        return await resolve_and_send(simulator, "accessibility_action", params)
