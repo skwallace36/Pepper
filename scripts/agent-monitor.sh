@@ -241,7 +241,13 @@ format_line() {
           fi
           [ "$sr" -gt 0 ] && ctx_info="${ctx_info} (${sr} reads)"
         fi
-        printf "%s  \033[${acol}m[%s]\033[0m %-12s \033[1;32m%-9s\033[0m \$%s · %s%s\n" "$ts_local" "$icon" "$agent" "DONE" "$cost" "$dur_fmt" "$ctx_info"
+        turns=$(echo "$line" | jq -r '.turns // empty' 2>/dev/null)
+        exit_reason=$(echo "$line" | jq -r '.exit_reason // empty' 2>/dev/null)
+        turns_info=""
+        [ -n "$turns" ] && [ "$turns" != "null" ] && turns_info=" · ${turns}t"
+        reason_info=""
+        [ -n "$exit_reason" ] && [ "$exit_reason" != "null" ] && [ ${#exit_reason} -lt 80 ] && reason_info=" · ${exit_reason}"
+        printf "%s  \033[${acol}m[%s]\033[0m %-12s \033[1;32m%-9s\033[0m \$%s · %s%s%s%s\n" "$ts_local" "$icon" "$agent" "DONE" "$cost" "$dur_fmt" "$turns_info" "$ctx_info" "$reason_info"
         session_bytes[$agent]=0 2>/dev/null || true
         session_reads[$agent]=0 2>/dev/null || true
         ;;
@@ -268,6 +274,16 @@ format_line() {
         ;;
       build-fail)
         printf "%s  \033[${acol}m[%s]\033[0m %-12s \033[1;31m%-9s\033[0m %s\n" "$ts_local" "$icon" "$agent" "BUILD X" "$detail"
+        ;;
+      guardrail-block)
+        tool_blocked=$(echo "$line" | jq -r '.tool // empty' 2>/dev/null)
+        printf "%s  \033[${acol}m[%s]\033[0m %-12s \033[1;31m%-9s\033[0m [%s] %s\n" "$ts_local" "$icon" "$agent" "BLOCKED" "$tool_blocked" "$detail"
+        ;;
+      task-claimed)
+        printf "%s  \033[${acol}m[%s]\033[0m %-12s \033[1;36m%-9s\033[0m %s\n" "$ts_local" "$icon" "$agent" "CLAIMED" "$detail"
+        ;;
+      session-summary)
+        if [ "$REPLAY" = true ]; then continue; fi
         ;;
       *)
         printf "%s  \033[${acol}m[%s]\033[0m %-12s %-9s %s\n" "$ts_local" "$icon" "$agent" "$event" "$detail"

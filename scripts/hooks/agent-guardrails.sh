@@ -7,8 +7,18 @@
 AGENT_TYPE="${PEPPER_AGENT_TYPE:-}"
 [ -z "$AGENT_TYPE" ] && exit 0
 
+EVENTS_LOG="${PEPPER_EVENTS_LOG:-}"
+
 INPUT=$(cat)
 TOOL=$(echo "$INPUT" | jq -r '.tool_name // empty' 2>/dev/null)
+
+# Helper: log guardrail blocks to events.jsonl and output DENY
+deny() {
+  local msg="$1"
+  [ -n "$EVENTS_LOG" ] && echo "{\"ts\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"agent\":\"${AGENT_TYPE}\",\"event\":\"guardrail-block\",\"tool\":\"${TOOL}\",\"detail\":$(printf '%s' "$msg" | jq -Rs '.')}" >> "$EVENTS_LOG"
+  echo "DENY: $msg"
+  exit 0
+}
 
 # --- Bash tool guardrails ---
 if [ "$TOOL" = "Bash" ]; then
@@ -16,20 +26,17 @@ if [ "$TOOL" = "Bash" ]; then
 
   # Block push to main/master
   if echo "$CMD" | grep -qE 'git push' && echo "$CMD" | grep -qE '(main|master)'; then
-    echo "DENY: agents cannot push to main/master. Push to your agent/* branch instead."
-    exit 0
+    deny "agents cannot push to main/master. Push to your agent/* branch instead."
   fi
 
   # Block push to non-agent branches (except HEAD which resolves at runtime)
   if echo "$CMD" | grep -qE 'git push.*origin ' && ! echo "$CMD" | grep -qE 'origin (agent/|HEAD)'; then
-    echo "DENY: agents must push to agent/{type}/* branches. Got: $(echo "$CMD" | grep -oE 'origin [^ ]+')"
-    exit 0
+    deny "agents must push to agent/{type}/* branches. Got: $(echo "$CMD" | grep -oE 'origin [^ ]+')"
   fi
 
   # Block branch creation with non-agent names
   if echo "$CMD" | grep -qE 'git (checkout -b|switch -c)' && ! echo "$CMD" | grep -qE 'agent/'; then
-    echo "DENY: agents must use agent/{type}/* branch names. Got: $(echo "$CMD" | grep -oE '(-b|-c) [^ ]+' | tail -1)"
-    exit 0
+    deny "agents must use agent/{type}/* branch names. Got: $(echo "$CMD" | grep -oE '(-b|-c) [^ ]+' | tail -1)"
   fi
 
   # Block PR merge when diff touches protected paths
@@ -38,8 +45,7 @@ if [ "$TOOL" = "Bash" ]; then
     if [ -n "$PR_NUM" ]; then
       CHANGED=$(gh pr diff "$PR_NUM" --repo skwallace36/Pepper --name-only 2>/dev/null || true)
       if echo "$CHANGED" | grep -qE '^(\.claude/settings\.json|scripts/agent-runner\.sh|scripts/agent-heartbeat\.sh|scripts/hooks/|scripts/prompts/|\.env)'; then
-        echo "DENY: PR #$PR_NUM touches protected infrastructure. Human approval required."
-        exit 0
+        deny "PR #$PR_NUM touches protected infrastructure. Human approval required."
       fi
     fi
   fi
@@ -53,32 +59,31 @@ if [ "$TOOL" = "Write" ] || [ "$TOOL" = "Edit" ]; then
   # Common no-touch files for all agent types
   case "$FILE" in
     */.claude/*|*/.mcp.json|*/.env|*/.env.*|*/AGENTIC-PLAN.md)
-      echo "DENY: agents cannot modify $FILE (protected config)."
-      exit 0
+      deny "agents cannot modify $FILE (protected config)."
       ;;
   esac
 
   # Type-specific file scope
   case "$AGENT_TYPE" in
     groomer)
-      echo "DENY: groomer agent cannot modify files. Use gh CLI for issue management only."; exit 0
+      deny "groomer agent cannot modify files. Use gh CLI for issue management only."
       ;;
     bugfix)
       case "$FILE" in
         */dylib/*|*/tools/*|*/scripts/*) ;; # allowed
-        *) echo "DENY: bugfix agent cannot modify $FILE. Allowed: dylib/, tools/, scripts/"; exit 0 ;;
+        *) deny "bugfix agent cannot modify $FILE. Allowed: dylib/, tools/, scripts/" ;;
       esac
       ;;
     researcher)
       case "$FILE" in
         */docs/RESEARCH.md) ;; # allowed
-        *) echo "DENY: researcher agent can only modify docs/RESEARCH.md. Got: $FILE"; exit 0 ;;
+        *) deny "researcher agent can only modify docs/RESEARCH.md. Got: $FILE" ;;
       esac
       ;;
     tester)
       case "$FILE" in
         */test-app/coverage-status.json) ;; # allowed
-        *) echo "DENY: tester agent cannot modify $FILE. Allowed: test-app/coverage-status.json"; exit 0 ;;
+        *) deny "tester agent cannot modify $FILE. Allowed: test-app/coverage-status.json" ;;
       esac
       ;;
     pr-responder)
@@ -86,14 +91,13 @@ if [ "$TOOL" = "Write" ] || [ "$TOOL" = "Edit" ]; then
       # Get the list of files changed on this branch vs main.
       PR_FILES=$(git diff origin/main...HEAD --name-only 2>/dev/null || true)
       if [ -z "$PR_FILES" ]; then
-        echo "DENY: pr-responder cannot determine PR diff (no commits ahead of main). Cannot modify $FILE"; exit 0
+        deny "pr-responder cannot determine PR diff (no commits ahead of main). Cannot modify $FILE"
       fi
       # Resolve to repo-relative path for comparison
       REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
       REL_FILE="${FILE#$REPO_ROOT/}"
       if ! echo "$PR_FILES" | grep -qxF "$REL_FILE"; then
-        echo "DENY: pr-responder can only modify files in the PR diff. $REL_FILE is not in the diff."
-        exit 0
+        deny "pr-responder can only modify files in the PR diff. $REL_FILE is not in the diff."
       fi
       ;;
   esac

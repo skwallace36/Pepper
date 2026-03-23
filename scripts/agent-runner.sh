@@ -476,16 +476,19 @@ with open(events_file, 'a') as f:
     f.write(json.dumps(summary, separators=(',', ':')) + '\n')
 SUMMARY_EOF
 
+# Extract turn count and exit reason from transcript for richer events
+TURNS=$(jq -r '.num_turns // 0' "$TRANSCRIPT" 2>/dev/null || echo 0)
+EXIT_REASON=$(jq -r '.result // ""' "$TRANSCRIPT" 2>/dev/null | head -c 200 | tr '\n' ' ' | jq -Rs '.' 2>/dev/null || echo '""')
+
 # Emit final event based on outcome
 if [ "$TIMED_OUT" = true ]; then
-  emit_final "timeout" ",\"detail\":\"killed after ${TIMEOUT_S}s\",\"cost_usd\":${COST},\"duration_s\":${DURATION}"
+  emit_final "timeout" ",\"detail\":\"killed after ${TIMEOUT_S}s\",\"cost_usd\":${COST},\"duration_s\":${DURATION},\"turns\":${TURNS}"
 elif [ -f .pepper-kill ]; then
-  emit_final "killed" ",\"detail\":\"kill switch activated mid-run\",\"cost_usd\":${COST},\"duration_s\":${DURATION}"
+  emit_final "killed" ",\"detail\":\"kill switch activated mid-run\",\"cost_usd\":${COST},\"duration_s\":${DURATION},\"turns\":${TURNS}"
 elif [ $EXIT_CODE -ne 0 ]; then
-  DETAIL=$(jq -r '.error // "exit code '${EXIT_CODE}'"' "$TRANSCRIPT" 2>/dev/null || echo "exit code ${EXIT_CODE}")
-  emit_final "failed" ",\"detail\":$(echo "$DETAIL" | jq -Rs '.'),\"cost_usd\":${COST},\"duration_s\":${DURATION}"
+  emit_final "failed" ",\"detail\":${EXIT_REASON},\"cost_usd\":${COST},\"duration_s\":${DURATION},\"turns\":${TURNS}"
 else
-  emit_final "done" ",\"cost_usd\":${COST},\"duration_s\":${DURATION},\"transcript\":\"${TRANSCRIPT}\""
+  emit_final "done" ",\"cost_usd\":${COST},\"duration_s\":${DURATION},\"turns\":${TURNS},\"exit_reason\":${EXIT_REASON}"
 fi
 
 # Auto-chain: if this agent opened a PR, launch the verifier next.
