@@ -430,3 +430,41 @@ def register_debug_tools(mcp, resolve_and_send):
         if index is not None:
             params["index"] = index
         return await resolve_and_send(simulator, "accessibility_action", params)
+
+    @mcp.tool()
+    async def concurrency(
+        simulator: str | None = Field(default=None, description="Simulator UDID"),
+        action: str = Field(
+            default="summary",
+            description="Action: summary, actors, tasks, cancel",
+        ),
+        pattern: str | None = Field(
+            default=None,
+            description="Filter actor classes by name pattern (for 'actors' action)",
+        ),
+        address: str | None = Field(
+            default=None,
+            description="Task address to cancel, hex string e.g. '0x1234abcd' (for 'cancel' action)",
+        ),
+        limit: int | None = Field(
+            default=None, description="Max results to return"
+        ),
+    ) -> str:
+        """Inspect the Swift Concurrency runtime: active Tasks, actor classes, and executor state.
+
+        Actions:
+        - summary: overview of concurrency state — active task count, actor classes, MainActor status
+        - actors: list all actor classes found in the runtime, with singleton instance discovery
+        - tasks: active task count and current task context details (priority, flags, cancellation)
+        - cancel: cancel a task by address (cooperative — task must check for cancellation)
+
+        Useful for debugging: deadlocked actors, priority inversions, runaway tasks,
+        and understanding the concurrency topology of a running app."""
+        params: dict = {"action": action}
+        if pattern:
+            params["pattern"] = pattern
+        if address:
+            params["address"] = address
+        if limit is not None:
+            params["limit"] = limit
+        return await resolve_and_send(simulator, "concurrency", params)
