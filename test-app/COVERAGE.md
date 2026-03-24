@@ -182,13 +182,13 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `timeline` | config | pass | Any state | Accepts buffer_size, recording (bool), enabled_types params. Tested: buffer_size 2000→5000 (verified via subsequent status). recording=false pauses recording. Note: config response returns pre-update values due to async barrier dispatch — subsequent status shows correct values. |
 | `timeline` | clear | pass | Any state | Returns {cleared:true}. Verified buffer_count drops to 0 after clear. total_recorded preserved (historical count). Error case: unknown action returns proper error listing available actions. |
 | `responder_chain` | — | untested | Any interactive element | New command. Dumps gesture recognizer stack, responder chain, and hit-test path for a given point or element. |
-| `notifications` | start | untested |  |  |
+| `notifications` | start | ready | Misc tab — NSNotificationCenter Observers section | Surface added (TASK-316). register_observer_button registers an observer for PepperTestNotification. notifications start then list/counts shows the observer. |
 | `notifications` | stop | untested |  |  |
 | `notifications` | status | untested |  |  |
 | `notifications` | list | untested |  |  |
-| `notifications` | counts | untested |  |  |
-| `notifications` | post | untested |  |  |
-| `notifications` | events | untested |  |  |
+| `notifications` | counts | ready | Misc tab — NSNotificationCenter Observers section | Surface added (TASK-316). After registering observer, counts shows PepperTestNotification observer entry. |
+| `notifications` | post | ready | Misc tab — NSNotificationCenter Observers section | Surface added (TASK-316). post_notification_button triggers PepperTestNotification. notification_received_count label increments on receive. Also testable via notifications post name=PepperTestNotification. |
+| `notifications` | events | ready | Misc tab — NSNotificationCenter Observers section | Surface added (TASK-316). Events logged after post. Shows add/remove/post timeline. |
 | `notifications` | clear | untested |  |  |
 | `snapshot` | save | untested | Any state | New command. Captures current look/introspect map output as a named baseline for later diffing. |
 | `snapshot` | diff | untested | After snapshot save | New command. Compares current screen state against saved snapshot. Returns added/removed/changed elements and text. Supports ignore_transient and assert_no_diff. |
@@ -234,11 +234,11 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `concurrency` | actors | untested |  |  |
 | `concurrency` | tasks | untested |  |  |
 | `concurrency` | cancel | untested |  |  |
-| `timers` | start | untested |  |  |
-| `timers` | stop | untested |  |  |
-| `timers` | status | untested |  |  |
-| `timers` | list | untested |  |  |
-| `timers` | invalidate | untested |  |  |
+| `timers` | start | ready | Misc tab — NSTimer & CADisplayLink section | Surface added (TASK-316). Use start_repeating_timer_button and start_display_link_button to create active NSTimer and CADisplayLink instances for timers tracking. |
+| `timers` | stop | ready | Misc tab — NSTimer & CADisplayLink section | Surface added (TASK-316). Uninstalls tracker; combine with stop buttons in test app. |
+| `timers` | status | ready | Misc tab — NSTimer & CADisplayLink section | Surface added (TASK-316). Shows timer_count and display_link_count after starting timers. |
+| `timers` | list | ready | Misc tab — NSTimer & CADisplayLink section | Surface added (TASK-316). Active timers visible after tapping Start Timer/Start Display Link. repeating_timer_count and display_link_frame_count labels confirm activity. |
+| `timers` | invalidate | ready | Misc tab — NSTimer & CADisplayLink section | Surface added (TASK-316). timers invalidate can stop the NSTimer created via start_repeating_timer_button; stop_repeating_timer_button and stop_display_link_button also available for manual control. |
 | `timers` | clear | untested |  |  |
 | `perf` | start | untested |  |  |
 | `perf` | stop | untested |  |  |
@@ -260,5 +260,5 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 
 - pass: 138
 - fail: 3
-- untested: 89
+- untested: 80
 
