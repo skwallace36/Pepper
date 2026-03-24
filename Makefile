@@ -272,14 +272,6 @@ wikipedia-smoke:
 # Housekeeping
 # ============================================================
 
-## sync-public: Review and push clean snapshot to public repo (gated)
-sync-public:
-	@"$(PROJECT_DIR)/scripts/sync-public.sh"
-
-## sync-public-dry: Preview what would be synced (no push)
-sync-public-dry:
-	@"$(PROJECT_DIR)/scripts/sync-public.sh" --dry-run
-
 ## coverage: Regenerate test-app/COVERAGE.md from source
 coverage:
 	@python3 "$(PROJECT_DIR)/scripts/gen-coverage.py"
