@@ -2,7 +2,7 @@ import UIKit
 
 // MARK: - Helper methods for interactive element discovery
 
-extension PepperSwiftUIBridge {
+extension ElementDiscoveryBridge {
 
     /// Extract gesture recognizer types from a view as string labels.
     func extractGestureTypes(from view: UIView) -> [String] {

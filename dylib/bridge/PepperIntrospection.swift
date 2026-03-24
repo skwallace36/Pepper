@@ -183,7 +183,7 @@ extension PepperSwiftUIBridge {
 
             let traits = view.accessibilityTraits
             if !traits.isEmpty {
-                info["traits"] = describeTraits(traits)
+                info["traits"] = ElementDiscoveryBridge.shared.describeTraits(traits)
             }
 
             info["interactive"] = view.isUserInteractionEnabled
