@@ -168,28 +168,56 @@ struct ScrollHandler: PepperHandler {
     // MARK: - Scroll to element
 
     private func scrollToElement(_ elementID: String, in window: UIWindow, command: PepperCommand) -> PepperResponse {
-        guard let element = window.pepper_findElement(id: elementID) else {
-            return .error(id: command.id, message: "Element not found: \(elementID)")
+        // UIKit fast path
+        if let element = window.pepper_findElement(id: elementID) {
+            guard let scrollView = findAncestorScrollView(of: element) else {
+                return .error(id: command.id, message: "No scroll view ancestor found for: \(elementID)")
+            }
+
+            logger.info("Scrolling to element: \(elementID)")
+            let frame = element.convert(element.bounds, to: scrollView)
+            scrollView.scrollRectToVisible(frame, animated: false)
+
+            return .ok(
+                id: command.id,
+                data: [
+                    "element": AnyCodable(elementID),
+                    "scrollOffset": AnyCodable([
+                        "x": AnyCodable(scrollView.contentOffset.x),
+                        "y": AnyCodable(scrollView.contentOffset.y),
+                    ]),
+                ])
         }
 
-        // Find the nearest ancestor scroll view
-        guard let scrollView = findAncestorScrollView(of: element) else {
-            return .error(id: command.id, message: "No scroll view ancestor found for: \(elementID)")
+        // SwiftUI fallback: resolve via accessibility tree, scroll to tapPoint area
+        if let resolved = PepperElementResolver.resolveByID(elementID, in: window),
+            let tapPoint = resolved.tapPoint
+        {
+            // Use scrollToText's approach: find a scroll view and scroll the element's area into view
+            guard let scrollView = findFirstScrollView(in: window) else {
+                return .error(id: command.id, message: "No scroll view found for SwiftUI element: \(elementID)")
+            }
+
+            let pointInScroll = window.convert(tapPoint, to: scrollView)
+            let targetRect = CGRect(
+                x: pointInScroll.x - 50, y: pointInScroll.y - 50,
+                width: 100, height: 100)
+            scrollView.scrollRectToVisible(targetRect, animated: false)
+
+            logger.info("Scrolling to SwiftUI element: \(elementID)")
+            return .ok(
+                id: command.id,
+                data: [
+                    "element": AnyCodable(elementID),
+                    "swiftui": AnyCodable(true),
+                    "scrollOffset": AnyCodable([
+                        "x": AnyCodable(scrollView.contentOffset.x),
+                        "y": AnyCodable(scrollView.contentOffset.y),
+                    ]),
+                ])
         }
 
-        logger.info("Scrolling to element: \(elementID)")
-        let frame = element.convert(element.bounds, to: scrollView)
-        scrollView.scrollRectToVisible(frame, animated: false)
-
-        return .ok(
-            id: command.id,
-            data: [
-                "element": AnyCodable(elementID),
-                "scrollOffset": AnyCodable([
-                    "x": AnyCodable(scrollView.contentOffset.x),
-                    "y": AnyCodable(scrollView.contentOffset.y),
-                ]),
-            ])
+        return .error(id: command.id, message: "Element not found: \(elementID)")
     }
 
     // MARK: - Scroll by direction (touch synthesis)

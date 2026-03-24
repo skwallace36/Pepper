@@ -17,13 +17,54 @@ struct ReadHandler: PepperHandler {
             return .error(id: command.id, message: "No key window available")
         }
 
-        guard let view = window.pepper_findElement(id: elementID) else {
-            return .elementNotFound(id: command.id, message: "Element not found: \(elementID)", query: elementID)
+        // UIKit fast path
+        if let view = window.pepper_findElement(id: elementID) {
+            logger.info("Reading element: \(elementID)")
+            let data = readElement(view, id: elementID)
+            return .ok(id: command.id, data: data)
         }
 
-        logger.info("Reading element: \(elementID)")
-        let data = readElement(view, id: elementID)
-        return .ok(id: command.id, data: data)
+        // SwiftUI fallback: read from accessibility element
+        if let accElement = PepperElementResolver.findAccessibilityElementByID(elementID) {
+            logger.info("Reading SwiftUI element: \(elementID)")
+            let data = readAccessibilityElement(accElement, id: elementID)
+            return .ok(id: command.id, data: data)
+        }
+
+        return .elementNotFound(id: command.id, message: "Element not found: \(elementID)", query: elementID)
+    }
+
+    // MARK: - SwiftUI Accessibility Element Reading
+
+    private func readAccessibilityElement(_ element: PepperAccessibilityElement, id: String) -> [String: AnyCodable] {
+        var data: [String: AnyCodable] = [
+            "id": AnyCodable(id),
+            "type": AnyCodable(element.type),
+            "visible": AnyCodable(true),
+            "swiftui": AnyCodable(true),
+            "frame": AnyCodable([
+                "x": AnyCodable(Double(element.frame.origin.x)),
+                "y": AnyCodable(Double(element.frame.origin.y)),
+                "width": AnyCodable(Double(element.frame.size.width)),
+                "height": AnyCodable(Double(element.frame.size.height)),
+            ]),
+        ]
+
+        if let label = element.label, !label.isEmpty {
+            data["label"] = AnyCodable(label)
+        }
+        if let value = element.value, !value.isEmpty {
+            data["value"] = AnyCodable(value)
+        }
+        if let hint = element.hint, !hint.isEmpty {
+            data["hint"] = AnyCodable(hint)
+        }
+        if !element.traits.isEmpty {
+            data["traits"] = AnyCodable(element.traits.map { AnyCodable($0) })
+        }
+        data["interactive"] = AnyCodable(element.isInteractive)
+
+        return data
     }
 
     // MARK: - Element Reading

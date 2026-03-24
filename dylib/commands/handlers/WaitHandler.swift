@@ -166,17 +166,13 @@ struct WaitHandler: PepperHandler {
 
         switch condition {
         case .elementVisible(let id):
-            if let view = window.pepper_findElement(id: id) {
-                return !view.isHidden && view.alpha > 0 && view.window != nil
-            }
-            return false
+            return isElementVisible(id: id, in: window)
 
         case .elementExists(let id):
-            return window.pepper_findElement(id: id) != nil
+            return doesElementExist(id: id, in: window)
 
         case .elementHasValue(let id, let expected):
-            guard let view = window.pepper_findElement(id: id) else { return false }
-            return currentValue(of: view) == expected
+            return elementHasValue(id: id, expected: expected, in: window)
 
         case .screenIs(let screenID):
             guard let topVC = Self.topViewController else { return false }
@@ -199,6 +195,34 @@ struct WaitHandler: PepperHandler {
             }
             return false
         }
+    }
+
+    // MARK: - Element Evaluation (UIKit fast path + SwiftUI fallback)
+
+    private func isElementVisible(id: String, in window: UIView) -> Bool {
+        if let view = window.pepper_findElement(id: id) {
+            return !view.isHidden && view.alpha > 0 && view.window != nil
+        }
+        if let accElement = PepperElementResolver.findAccessibilityElementByID(id) {
+            let center = CGPoint(x: accElement.frame.midX, y: accElement.frame.midY)
+            return UIScreen.main.bounds.contains(center)
+        }
+        return false
+    }
+
+    private func doesElementExist(id: String, in window: UIView) -> Bool {
+        if window.pepper_findElement(id: id) != nil { return true }
+        return PepperElementResolver.findAccessibilityElementByID(id) != nil
+    }
+
+    private func elementHasValue(id: String, expected: String, in window: UIView) -> Bool {
+        if let view = window.pepper_findElement(id: id) {
+            return currentValue(of: view) == expected
+        }
+        if let accElement = PepperElementResolver.findAccessibilityElementByID(id) {
+            return accElement.value == expected
+        }
+        return false
     }
 
     // MARK: - Helpers

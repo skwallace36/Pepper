@@ -33,6 +33,32 @@ enum PepperElementResolver {
         }
     }
 
+    /// Resolve an element by accessibility ID only.
+    /// Convenience wrapper for handlers that already extracted the ID string.
+    static func resolveByID(_ id: String, in window: UIView) -> Result? {
+        let (result, _) = resolve(params: ["element": AnyCodable(id)], in: window)
+        return result
+    }
+
+    /// Find a SwiftUI accessibility element by identifier.
+    /// Returns the raw accessibility element when a handler needs its properties (value, label, traits).
+    static func findAccessibilityElementByID(_ id: String) -> PepperAccessibilityElement? {
+        let accElements = PepperSwiftUIBridge.shared.collectAccessibilityElements()
+        let screenBounds = UIScreen.main.bounds
+        var bestMatch: PepperAccessibilityElement?
+        for element in accElements {
+            guard element.identifier == id, element.frame != .zero else { continue }
+            let center = CGPoint(x: element.frame.midX, y: element.frame.midY)
+            if screenBounds.contains(center) {
+                return element
+            }
+            if bestMatch == nil {
+                bestMatch = element
+            }
+        }
+        return bestMatch
+    }
+
     /// Resolve an element from command params, trying strategies in priority order.
     /// Returns nil with an error message if no element is found.
     // swiftlint:disable:next cyclomatic_complexity
