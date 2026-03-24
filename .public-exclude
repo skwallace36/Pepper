@@ -36,9 +36,11 @@ tools/__pycache__/
 # Audit logs
 events.jsonl
 
-# Sync infrastructure (meta)
+# Internal scripts (auth, submissions, sync)
 .public-exclude
 scripts/sync-public.sh
+scripts/gh-app-token.sh
+scripts/submit-mcp-directories.sh
 
 # Private project docs (issue numbers, agent references, internal planning)
 CLAUDE.md
