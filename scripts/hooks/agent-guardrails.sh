@@ -29,6 +29,21 @@ if [ "$TOOL" = "Bash" ]; then
     deny "agents cannot push to main/master. Push to your agent/* branch instead."
   fi
 
+  # Block any interaction with the public remote
+  if echo "$CMD" | grep -qE 'git (push|fetch|pull).*public'; then
+    deny "agents cannot interact with the public remote. Only humans sync to public."
+  fi
+
+  # Block running the sync script
+  if echo "$CMD" | grep -qE 'sync-public|/sync'; then
+    deny "agents cannot run the public sync. Only humans can push to the public repo."
+  fi
+
+  # Block adding/modifying git remotes
+  if echo "$CMD" | grep -qE 'git remote (add|set-url|rename|remove)'; then
+    deny "agents cannot modify git remotes."
+  fi
+
   # Block push to non-agent branches (except HEAD which resolves at runtime)
   if echo "$CMD" | grep -qE 'git push.*origin ' && ! echo "$CMD" | grep -qE 'origin (agent/|HEAD)'; then
     deny "agents must push to agent/{type}/* branches. Got: $(echo "$CMD" | grep -oE 'origin [^ ]+')"
@@ -44,7 +59,7 @@ if [ "$TOOL" = "Bash" ]; then
     PR_NUM=$(echo "$CMD" | grep -oE '[0-9]+' | head -1)
     if [ -n "$PR_NUM" ]; then
       CHANGED=$(gh pr diff "$PR_NUM" --repo skwallace36/Pepper --name-only 2>/dev/null || true)
-      if echo "$CHANGED" | grep -qE '^(\.claude/settings\.json|scripts/agent-runner\.sh|scripts/agent-heartbeat\.sh|scripts/hooks/|scripts/prompts/|\.env)'; then
+      if echo "$CHANGED" | grep -qE '^(\.claude/settings\.json|scripts/agent-runner\.sh|scripts/agent-heartbeat\.sh|scripts/hooks/|scripts/prompts/|\.env|\.public-exclude|scripts/sync-public\.sh|README\.md)'; then
         deny "PR #$PR_NUM touches protected infrastructure. Human approval required."
       fi
     fi
@@ -62,6 +77,9 @@ if [ "$TOOL" = "Write" ] || [ "$TOOL" = "Edit" ]; then
       ;;  # allow — these are agent worktree files, not config
     */.claude/*|*/.mcp.json|*/.env|*/.env.*|*/AGENTIC-PLAN.md)
       deny "agents cannot modify $FILE (protected config)."
+      ;;
+    */.public-exclude|*/scripts/sync-public.sh|*/scripts/gh-app-token.sh)
+      deny "agents cannot modify $FILE (sync/auth infrastructure)."
       ;;
   esac
 
