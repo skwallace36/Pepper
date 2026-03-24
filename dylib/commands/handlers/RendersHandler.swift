@@ -6,10 +6,13 @@ import UIKit
 /// Actions:
 ///   - "start":    Install spike swizzles (updateRootView, didRender, setNeedsUpdate) with console logging.
 ///   - "stop":     Remove spike swizzles and return method call statistics.
+///   - "status":   Report active/inactive state and event count.
+///   - "log":      Return structured render events from the ring buffer with summary.
+///   - "clear":    Clear the ring buffer.
 ///   - "counts":   Return current spike method call counts without stopping.
 ///   - "snapshot": Capture the current SwiftUI view tree for all hosting views.
 ///   - "diff":     Compare current view tree against previous snapshot, showing changes.
-///   - "reset":    Clear all render tracking data.
+///   - "reset":    Clear all render tracking data (counts + ring buffer + snapshots).
 ///   - "ag_probe": Probe AttributeGraph private APIs — reports which are available.
 ///   - "ag_server": Start the AG debug server (if available).
 ///   - "ag_dump":  Dump the attribute graph to JSON via AGGraphArchiveJSON.
@@ -19,6 +22,11 @@ import UIKit
 /// Usage:
 ///   {"cmd":"renders","params":{"action":"start"}}
 ///   {"cmd":"renders","params":{"action":"stop"}}
+///   {"cmd":"renders","params":{"action":"status"}}
+///   {"cmd":"renders","params":{"action":"log"}}
+///   {"cmd":"renders","params":{"action":"log","limit":50,"since_ms":1711152000000}}
+///   {"cmd":"renders","params":{"action":"log","filter":"HomeViewController"}}
+///   {"cmd":"renders","params":{"action":"clear"}}
 ///   {"cmd":"renders","params":{"action":"counts"}}
 ///   {"cmd":"renders","params":{"action":"snapshot"}}
 ///   {"cmd":"renders","params":{"action":"diff"}}
@@ -32,13 +40,19 @@ struct RendersHandler: PepperHandler {
     let commandName = "renders"
 
     func handle(_ command: PepperCommand) -> PepperResponse {
-        let action = command.params?["action"]?.stringValue ?? "snapshot"
+        let action = command.params?["action"]?.stringValue ?? "status"
 
         switch action {
         case "start":
             return handleStart(command)
         case "stop":
             return handleStop(command)
+        case "status":
+            return handleStatus(command)
+        case "log":
+            return handleLog(command)
+        case "clear":
+            return handleClear(command)
         case "counts":
             return handleCounts(command)
         case "snapshot":
@@ -60,12 +74,12 @@ struct RendersHandler: PepperHandler {
         default:
             return .error(
                 id: command.id,
-                message: "Unknown action '\(action)'. Use start, stop, counts, snapshot, diff, reset, ag_probe, ag_server, ag_dump, signpost, or why."
+                message: "Unknown action '\(action)'. Use start, stop, status, log, clear, counts, snapshot, diff, reset, ag_probe, ag_server, ag_dump, signpost, or why."
             )
         }
     }
 
-    // MARK: - Start / Stop / Counts (Spike)
+    // MARK: - Start / Stop / Status / Log / Clear
 
     private func handleStart(_ command: PepperCommand) -> PepperResponse {
         let report = PepperRenderTracker.shared.start()
@@ -116,6 +130,79 @@ struct RendersHandler: PepperHandler {
         }
 
         return .ok(id: command.id, data: data)
+    }
+
+    private func handleStatus(_ command: PepperCommand) -> PepperResponse {
+        let tracker = PepperRenderTracker.shared
+        return .ok(id: command.id, data: [
+            "active": AnyCodable(tracker.spikeActive),
+            "event_count": AnyCodable(tracker.totalEventCount),
+            "render_counts": AnyCodable(tracker.currentCounts.mapValues { AnyCodable($0) }),
+        ])
+    }
+
+    private func handleLog(_ command: PepperCommand) -> PepperResponse {
+        let tracker = PepperRenderTracker.shared
+        let limit = command.params?["limit"]?.intValue ?? 100
+        let sinceMs: Int64 =
+            (command.params?["since_ms"]?.value as? Int).map { Int64($0) }
+            ?? (command.params?["since_ms"]?.value as? Int64)
+            ?? 0
+        let filter = command.params?["filter"]?.stringValue
+
+        var events = tracker.recentEvents(limit: limit, sinceMs: sinceMs)
+        if let filter = filter, !filter.isEmpty {
+            events = events.filter {
+                $0.viewControllerType.contains(filter) || $0.hostingViewAddress.contains(filter)
+            }
+        }
+
+        let eventDicts = events.map { AnyCodable($0.toDict()) }
+
+        // Build summary
+        var perViewCounts: [String: (count: Int, vc: String)] = [:]
+        for event in events {
+            let key = event.hostingViewAddress
+            let prev = perViewCounts[key]
+            let newCount = (prev?.count ?? 0) + 1
+            perViewCounts[key] = (count: newCount, vc: event.viewControllerType)
+        }
+
+        let totalRenders = events.count
+        let hostingViewCount = perViewCounts.count
+
+        var hottestAddress = ""
+        var hottestCount = 0
+        var hottestVC = ""
+        for (addr, info) in perViewCounts {
+            if info.count > hottestCount {
+                hottestCount = info.count
+                hottestAddress = addr
+                hottestVC = info.vc
+            }
+        }
+
+        var summaryDict: [String: AnyCodable] = [
+            "total_renders": AnyCodable(totalRenders),
+            "hosting_views": AnyCodable(hostingViewCount),
+        ]
+        if !hottestAddress.isEmpty {
+            summaryDict["hottest_view"] = AnyCodable([
+                "address": AnyCodable(hottestAddress),
+                "count": AnyCodable(hottestCount),
+                "view_controller": AnyCodable(hottestVC),
+            ] as [String: AnyCodable])
+        }
+
+        return .ok(id: command.id, data: [
+            "events": AnyCodable(eventDicts),
+            "summary": AnyCodable(summaryDict),
+        ])
+    }
+
+    private func handleClear(_ command: PepperCommand) -> PepperResponse {
+        PepperRenderTracker.shared.clearEvents()
+        return .ok(id: command.id, data: ["cleared": AnyCodable(true)])
     }
 
     private func handleCounts(_ command: PepperCommand) -> PepperResponse {
