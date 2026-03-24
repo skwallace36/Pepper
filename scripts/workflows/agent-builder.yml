@@ -40,12 +40,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Check for kill switch
-        run: |
-          if [ -f .pepper-kill ]; then
-            echo "Kill switch active. Exiting."
-            exit 1
-          fi
 
       - name: Claim next task
         id: claim
