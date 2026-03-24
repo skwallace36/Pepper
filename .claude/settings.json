@@ -11,10 +11,6 @@
       "WebSearch(*)"
     ],
     "deny": [
-      "Bash(git push*main*)",
-      "Bash(git push*master*)",
-      "Bash(git push origin main*)",
-      "Bash(git push origin master*)",
       "Bash(rm -rf /*)",
       "Bash(rm -rf ~*)",
       "Bash(rm -rf .*)",
@@ -51,7 +47,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "input=$(cat); cmd=$(echo \"$input\" | jq -r '.tool_input.command // empty'); if echo \"$cmd\" | grep -qE 'git push' && echo \"$cmd\" | grep -qE '(main|master)'; then echo 'DENY: push to main blocked — use a branch + PR'; exit 0; fi"
+            "command": "input=$(cat); cmd=$(echo \"$input\" | jq -r '.tool_input.command // empty'); if echo \"$cmd\" | grep -qE 'git push' && echo \"$cmd\" | grep -qE '(main|master)'; then echo 'Direct push to main is blocked. Create a branch, open a PR with gh pr create, and merge it with gh pr merge --squash --delete-branch.' >&2; exit 2; fi"
           },
           {
             "type": "command",
