@@ -258,9 +258,17 @@ extension ElementDiscoveryBridge {
             return
         }
 
+        // Extract info from the element itself
+        var selfIsUnlabeledContainer = false
         if let nsObj = element as? NSObject {
             let info = extractAccessibilityInfo(from: nsObj)
-            if info.hasContent || info.isInteractive {
+            let isContainer = nsObj is UICollectionViewCell || nsObj is UITableViewCell
+                || String(describing: type(of: nsObj)).contains("ListCollectionViewCell")
+            // Unlabeled interactive container (e.g. SwiftUI List cells) — don't add as leaf,
+            // force-descend to find the text content inside.
+            if isContainer && info.isInteractive && (info.label ?? "").isEmpty {
+                selfIsUnlabeledContainer = true
+            } else if info.hasContent || info.isInteractive {
                 results.append(info)
             }
         }
@@ -276,7 +284,10 @@ extension ElementDiscoveryBridge {
                     element: child, depth: depth + 1, maxDepth: maxDepth, includeUnlabeled: includeUnlabeled,
                     into: &results)
             }
-            return  // If accessibilityElements is set AND non-empty, UIKit ignores subviews
+            if !selfIsUnlabeledContainer {
+                return  // If accessibilityElements is set AND non-empty, UIKit ignores subviews
+            }
+            // For unlabeled containers, fall through to subview walk to find text
         }
 
         // Path 2: indexed accessibility children
@@ -306,9 +317,20 @@ extension ElementDiscoveryBridge {
         }
     }
 
+    /// Strip SF Symbol private-use-area characters (U+100000–U+100FFF) from labels.
+    /// These appear in combined accessibility labels from SwiftUI and are unreadable.
+    private func stripSFSymbols(_ text: String?) -> String? {
+        guard let text = text, !text.isEmpty else { return text }
+        let stripped = text.unicodeScalars.filter { $0.value < 0x100000 || $0.value > 0x100FFF }
+        let result = String(String.UnicodeScalarView(stripped))
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "  +", with: " ", options: .regularExpression)
+        return result.isEmpty ? nil : result
+    }
+
     /// Extract accessibility info from an NSObject.
     func extractAccessibilityInfo(from element: NSObject) -> PepperAccessibilityElement {
-        let label = element.accessibilityLabel
+        let label = stripSFSymbols(element.accessibilityLabel)
         let value = element.accessibilityValue
         let hint = element.accessibilityHint
         let identifier = (element as? UIAccessibilityIdentification)?.accessibilityIdentifier

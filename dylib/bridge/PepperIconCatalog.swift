@@ -58,11 +58,18 @@ final class PepperIconCatalog {
         var failedLoad: [String] = []
         var failedHash: [String] = []
         for name in allNames {
-            // Try bundle first, then main, then nil (searches all)
-            let image =
-                UIImage(named: name, in: bundle, with: nil)
-                ?? UIImage(named: name, in: Bundle.main, with: nil)
-                ?? UIImage(named: name)
+            // Try bundle first, then main, then nil (searches all).
+            // Wrap in ObjC exception catcher — some assets (vector PDFs, corrupted entries)
+            // crash UIKit internally with "Need an imageRef" assertion.
+            var image: UIImage?
+            PepperObjCExceptionCatcher.try({
+                image =
+                    UIImage(named: name, in: bundle, with: nil)
+                    ?? UIImage(named: name, in: Bundle.main, with: nil)
+                    ?? UIImage(named: name)
+            }, catch: { _ in
+                image = nil
+            })
             guard let image = image, image.cgImage != nil else {
                 failedLoad.append(name)
                 continue
