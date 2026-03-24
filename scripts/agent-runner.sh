@@ -324,14 +324,15 @@ case "$TYPE" in
   bugfix)   BUDGET=3.00 ;;
   builder)  BUDGET=3.00 ;;
   groomer)  BUDGET=3.00 ;;
+  researcher) BUDGET=5.00 ;;
   conflict-resolver) BUDGET=1.00 ;;
   *)        BUDGET=2.00 ;;
 esac
 
 # Model routing — reserve Opus for complex reasoning, use Sonnet for scripted work
 case "$TYPE" in
-  bugfix)                                  MODEL="opus" ;;
-  tester|researcher|pr-responder|pr-verifier|verifier) MODEL="sonnet" ;;
+  bugfix|researcher)                        MODEL="opus" ;;
+  tester|pr-responder|pr-verifier|verifier) MODEL="sonnet" ;;
   *)                                       MODEL="sonnet" ;;
 esac
 
