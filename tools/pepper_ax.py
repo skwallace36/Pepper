@@ -218,7 +218,11 @@ def _find_buttons_recursive(
 
     role = _get_str_attr(element, "AXRole")
     if role in _BUTTON_ROLES:
+        # Check both AXTitle and AXDescription — iOS simulator dialogs
+        # expose button labels as AXDescription, not AXTitle.
         title = _get_str_attr(element, "AXTitle")
+        if not title or title not in target_titles:
+            title = _get_str_attr(element, "AXDescription")
         if title and title in target_titles:
             _cf.CFRetain(element)
             found.append((title, element))
@@ -234,10 +238,21 @@ def _find_dialog_indicators(
     depth: int = 0,
     max_depth: int = 10,
 ) -> bool:
-    """Check if the tree contains a sheet or dialog (AXSheet, AXDialog role)."""
+    """Check if the tree contains a dialog.
+
+    iOS simulator renders permission dialogs inside AXGroup (not AXSheet/AXDialog).
+    We detect them by looking for AXButton elements with permission-related
+    AXDescription values (Allow, Don't Allow, etc.) inside the iOSContentGroup.
+    """
     role = _get_str_attr(element, "AXRole")
     if role in ("AXSheet", "AXDialog"):
         return True
+    # iOS sim dialogs: buttons with permission text in AXDescription
+    if role == "AXButton":
+        desc = _get_str_attr(element, "AXDescription")
+        if desc and desc in ("Allow", "Allow Once", "Allow While Using App",
+                             "Don\u2019t Allow", "Don't Allow", "OK"):
+            return True
     if depth >= max_depth:
         return False
     children = _get_children(element)
