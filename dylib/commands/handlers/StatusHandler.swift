@@ -11,6 +11,10 @@ struct StatusHandler: PepperHandler {
         let bundle = Bundle.main
         let processInfo = ProcessInfo.processInfo
 
+        let health = PepperPlane.shared.swizzleHealth
+        let swizzleCount = health.count
+        let swizzleOk = health.filter { $0.installed }.count
+
         var data: [String: AnyCodable] = [
             "device": AnyCodable([
                 "name": AnyCodable(device.name),
@@ -29,6 +33,13 @@ struct StatusHandler: PepperHandler {
                 "connectionDetails": AnyCodable(PepperPlane.shared.connectionDetails),
                 "commands": AnyCodable(PepperPlane.shared.commandDispatcher.registeredCommands.count),
                 "hid_available": AnyCodable(HIDEventAPI.isAvailable),
+                "swizzles": AnyCodable("\(swizzleOk)/\(swizzleCount)"),
+                "swizzle_health": AnyCodable(
+                    health.map { [
+                        "name": AnyCodable($0.name),
+                        "installed": AnyCodable($0.installed),
+                    ] }
+                ),
             ]),
         ]
 
