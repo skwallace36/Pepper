@@ -73,18 +73,23 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `network` | log | pass | After start + Fetch HTTP button | Returns {count:N, transactions:[...]}. Each transaction has request (method, url, headers), response (status_code, headers, body, content_length), timing, and id. Captured GET https://httpbin.org/json → 200 with full JSON body. Limit param works correctly. |
 | `network` | clear | pass | After log capture | Returns {cleared:true}. Verified buffer_count drops to 0 after clear, total_recorded preserved. |
 | `network` | simulate | untested |  |  |
-| `network` | conditions | untested |  |  |
-| `network` | remove_condition | untested |  |  |
-| `network` | clear_conditions | untested |  |  |
+| `network` | conditions | untested | After network.simulate | List active conditions. Verify condition appears after simulate latency/offline/etc. |
+| `network` | remove_condition | untested | After network.simulate | Remove specific condition, confirm behavior reverts to normal. |
+| `network` | clear_conditions | untested | After network.simulate | Clear all conditions, confirm all simulate variants deactivated. |
 | `network` | latency | untested |  |  |
 | `network` | fail_status | untested |  |  |
 | `network` | fail_error | untested |  |  |
 | `network` | throttle | untested |  |  |
 | `network` | offline | untested |  |  |
-| `network` | mock | untested |  |  |
-| `network` | mocks | untested |  |  |
-| `network` | remove_mock | untested |  |  |
-| `network` | clear_mocks | untested |  |  |
+| `network` | mock | untested | Mock Test button (MiscTab Network → https://pepper.test/mock) | Set mock via network mock, tap 'Mock Test'. Status label shows injected status + body preview. |
+| `network` | mocks | untested | After network.mock | List active mocks. Verify entry for https://pepper.test/mock. |
+| `network` | remove_mock | untested | After network.mock | Remove mock by URL, confirm 'Mock Test' button returns error or real response. |
+| `network` | clear_mocks | untested | After network.mock | Clear all mocks, confirm subsequent 'Mock Test' is unaffected. |
+| `network` | simulate.latency | untested | Slow Request button (MiscTab Network) | Tap 'Slow Request', then use network simulate latency <ms>. Status label shows elapsed time. |
+| `network` | simulate.throttle | untested | Slow Request button (MiscTab Network) | Tap 'Slow Request' with network simulate throttle active. Observe increased elapsed time. |
+| `network` | simulate.fail_status | untested | Error Request button (MiscTab Network) | Tap 'Error Request' with network simulate fail_status 500. Status label shows injected status code. |
+| `network` | simulate.fail_error | untested | Error Request button (MiscTab Network) | Tap 'Error Request' with network simulate fail_error active. Status label shows NSError domain/code. |
+| `network` | simulate.offline | untested | Offline Test button (MiscTab Network) | Tap 'Offline Test' with network simulate offline true. Status label shows NSError (network offline). |
 | `test` | start | pass | Any state | Starts test session with test_id. Returns {test_id, status:'started'}. Missing test_id returns proper error. |
 | `test` | result | pass | After start | Records test result. Tested: result with test_id='task024', status='pass', notes='All good'. Returns {test_id, timestamp, status:'pass'}. |
 | `test` | reset | pass | After result | Resets test state. Returns {reset:true}. Works both with and without active test session. |
@@ -256,9 +261,9 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 
 ## Summary
 
-**231 test points** across 66 commands.
+**236 test points** across 66 commands.
 
 - pass: 138
 - fail: 3
-- untested: 80
+- untested: 85
 
