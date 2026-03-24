@@ -35,8 +35,13 @@ from mcp_build import (
     launch_on_device as _launch_on_device,
 )
 from mcp_crash import fetch_crash_info
+from mcp_tools_accessibility import register_accessibility_tools
 from mcp_tools_debug import register_debug_tools
+from mcp_tools_dialog import register_dialog_tools
+from mcp_tools_element import register_element_tools
 from mcp_tools_nav import register_nav_tools
+from mcp_tools_network import register_network_tools
+from mcp_tools_perf import register_perf_tools
 from mcp_tools_record import register_record_tools
 from mcp_tools_renders import register_renders_tools
 from mcp_tools_sim import register_sim_tools
@@ -541,8 +546,13 @@ _register_adapter_tools()
 register_nav_tools(mcp, send_command, resolve_and_send, act_and_look)
 register_state_tools(mcp, resolve_and_send)
 register_debug_tools(mcp, resolve_and_send)
+register_network_tools(mcp, resolve_and_send)
+register_perf_tools(mcp, resolve_and_send)
+register_accessibility_tools(mcp, resolve_and_send)
 register_renders_tools(mcp, resolve_and_send)
-register_system_tools(mcp, resolve_and_send, act_and_look, _resolve_simulator)
+register_system_tools(mcp, resolve_and_send, act_and_look)
+register_dialog_tools(mcp, resolve_and_send, _resolve_simulator)
+register_element_tools(mcp, resolve_and_send, act_and_look)
 register_record_tools(mcp)
 register_sim_tools(mcp, resolve_and_send, _resolve_simulator)
 

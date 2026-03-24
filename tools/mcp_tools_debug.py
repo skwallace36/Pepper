@@ -1,7 +1,7 @@
 """Debug and introspection tool definitions for Pepper MCP.
 
-Tool definitions for: layers, console, network, timeline, crash_log,
-animations, lifecycle, heap, responder_chain, notifications, timers, perf.
+Tool definitions for: layers, console, crash_log, lifecycle, responder_chain,
+notifications, constraints, timers, concurrency.
 """
 from __future__ import annotations
 
@@ -48,110 +48,6 @@ def register_debug_tools(mcp, resolve_and_send):
         if limit is not None:
             params["limit"] = limit
         return await resolve_and_send(simulator, "console", params)
-
-    @mcp.tool()
-    async def network(
-        simulator: str | None = Field(default=None, description="Simulator UDID"),
-        action: str = Field(description="Action: start, stop, log, status, clear, simulate, conditions, remove_condition, clear_conditions, mock, mocks, remove_mock, clear_mocks"),
-        filter_text: str | None = Field(default=None, description="Filter by URL pattern (for log action)"),
-        limit: int | None = Field(default=None, description="Max entries to return (for log action)"),
-        max_body: int | None = Field(default=None, description="Max chars per request/response body (default: 4096). Use 0 for unlimited."),
-        effect: str | None = Field(default=None, description="Condition effect for simulate: latency, fail_status, fail_error, throttle, offline"),
-        latency_ms: int | None = Field(default=None, description="Latency in ms (for effect=latency)"),
-        status_code: int | None = Field(default=None, description="HTTP status code (for effect=fail_status)"),
-        error_domain: str | None = Field(default=None, description="NSError domain (for effect=fail_error, default: NSURLErrorDomain)"),
-        error_code: int | None = Field(default=None, description="NSError code (for effect=fail_error)"),
-        bytes_per_second: int | None = Field(default=None, description="Bandwidth limit in bytes/sec (for effect=throttle)"),
-        url: str | None = Field(default=None, description="URL pattern to match (for simulate/mock — substring, case-insensitive)"),
-        method: str | None = Field(default=None, description="HTTP method to match (for simulate/mock — e.g., GET, POST)"),
-        condition_id: str | None = Field(default=None, description="Condition ID (for remove_condition, or custom ID for simulate)"),
-        mock_status: int | None = Field(default=None, description="HTTP status code for mock response (default: 200)"),
-        mock_body: str | None = Field(default=None, description="Response body for mock (JSON string)"),
-        mock_id: str | None = Field(default=None, description="Mock ID (for remove_mock, or custom ID for mock)"),
-    ) -> str:
-        """Monitor HTTP network traffic, simulate network conditions, and mock API responses.
-
-        Monitoring: start/stop/log/status/clear — see every API call, status code, and response body.
-
-        Simulation: simulate adverse conditions without external tools:
-        - latency: add delay (ms) to matching requests
-        - fail_status: return synthetic HTTP error (e.g., 500, 503)
-        - fail_error: return NSError (e.g., NSURLErrorNotConnectedToInternet)
-        - throttle: limit bandwidth (bytes/sec) for matching requests
-        - offline: fail all matching requests as if no network
-
-        Mocking: intercept requests and return stubbed responses without hitting the network:
-        - mock: stub a URL pattern with a custom status code and body
-        - mocks: list active mock rules
-        - remove_mock/clear_mocks: manage active mocks
-        Mocks take priority over overrides and conditions.
-
-        Per-domain rules: use 'url' to target specific endpoints (e.g., slow images but not API calls).
-        Multiple conditions stack — latency adds up, first fail wins, lowest throttle wins.
-        Use conditions/remove_condition/clear_conditions to manage active rules."""
-        params: dict = {"action": action}
-        if filter_text:
-            params["filter"] = filter_text
-        if limit is not None:
-            params["limit"] = limit
-        if max_body is not None:
-            params["max_body"] = max_body
-        if effect:
-            params["effect"] = effect
-        if latency_ms is not None:
-            params["latency_ms"] = latency_ms
-        if status_code is not None:
-            params["status_code"] = status_code
-        if error_domain:
-            params["error_domain"] = error_domain
-        if error_code is not None:
-            params["error_code"] = error_code
-        if bytes_per_second is not None:
-            params["bytes_per_second"] = bytes_per_second
-        if url:
-            params["url"] = url
-        if method:
-            params["method"] = method
-        if condition_id:
-            params["id"] = condition_id
-        if mock_status is not None:
-            params["status"] = mock_status
-        if mock_body is not None:
-            params["body"] = mock_body
-        if mock_id:
-            params["id"] = mock_id
-        return await resolve_and_send(simulator, "network", params)
-
-    @mcp.tool()
-    async def timeline(
-        simulator: str | None = Field(default=None, description="Simulator UDID"),
-        action: str = Field(default="query", description="Action: query, status, config, clear"),
-        limit: int | None = Field(default=None, description="Max events to return (default 100)"),
-        types: str | None = Field(default=None, description="Comma-separated event types: network, console, screen, command"),
-        last_seconds: int | None = Field(default=None, description="Events from the last N seconds (convenience for since_ms)"),
-        since_ms: int | None = Field(default=None, description="Only events after this epoch ms timestamp"),
-        filter_text: str | None = Field(default=None, description="Filter events by summary substring"),
-        buffer_size: int | None = Field(default=None, description="Set buffer size (for config action)"),
-        recording: bool | None = Field(default=None, description="Enable/disable recording (for config action)"),
-    ) -> str:
-        """Always-on flight recorder timeline. Captures network requests, console logs, screen transitions,
-        and command dispatch into a ring buffer — no setup needed. Query to correlate events when debugging."""
-        params: dict = {"action": action}
-        if limit is not None:
-            params["limit"] = limit
-        if types:
-            params["types"] = types.split(",")
-        if last_seconds is not None:
-            params["since_ms"] = int(time.time() * 1000) - last_seconds * 1000
-        elif since_ms is not None:
-            params["since_ms"] = since_ms
-        if filter_text:
-            params["filter"] = filter_text
-        if buffer_size is not None:
-            params["buffer_size"] = buffer_size
-        if recording is not None:
-            params["recording"] = recording
-        return await resolve_and_send(simulator, "timeline", params)
 
     @mcp.tool()
     async def crash_log(
@@ -212,93 +108,12 @@ def register_debug_tools(mcp, resolve_and_send):
         return "\n".join(results)
 
     @mcp.tool()
-    async def animations(
-        simulator: str | None = Field(default=None, description="Simulator UDID"),
-        action: str | None = Field(default=None, description="Action: scan (default), trace, or speed"),
-        point: str | None = Field(default=None, description="Coordinates 'x,y' to trace (for trace action)"),
-        speed: float | None = Field(default=None, description="Animation speed multiplier for action=speed: 0=disabled, 0.1=slow-mo, 1=normal, 10=turbo"),
-    ) -> str:
-        """Scan active animations, trace view movement, or control animation speed.
-        action=scan: find all active CAAnimations. action=trace: sample a view's position over time.
-        action=speed: set global animation speed (0=off, 1=normal, 10=turbo). Omit speed to query current."""
-        if action == "speed":
-            params: dict = {"action": "speed"}
-            if speed is not None:
-                params["speed"] = speed
-            return await resolve_and_send(simulator, "animations", params)
-        params = {}
-        if action:
-            params["action"] = action
-        if point:
-            params["point"] = point
-        return await resolve_and_send(simulator, "animations", params)
-
-    @mcp.tool()
     async def lifecycle(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
         action: str = Field(description="Action: background, foreground, memory_warning"),
     ) -> str:
         """Trigger app lifecycle events (background/foreground/memory warning)."""
         return await resolve_and_send(simulator, "lifecycle", {"action": action})
-
-    @mcp.tool()
-    async def heap(
-        simulator: str | None = Field(default=None, description="Simulator UDID"),
-        action: str = Field(description="Action: classes, controllers, find, inspect, read, snapshot, diff, baseline, check, snapshot_clear, snapshot_status"),
-        class_name: str | None = Field(default=None, description="Class name or pattern to search for"),
-        pattern: str | None = Field(default=None, description="Pattern for classes search"),
-        key_path: str | None = Field(default=None, description="KVC key path to read (for 'read' action, e.g. 'camera.zoom')"),
-        limit: int | None = Field(default=None, description="Max results to return"),
-        min_growth: int | None = Field(default=None, description="Min instance growth to report in diff (default: 1)"),
-        threshold: int | None = Field(default=None, description="Min instance growth to flag in check (default: 1)"),
-    ) -> str:
-        """Find live objects, inspect state, and detect memory leaks.
-
-        Discovery actions:
-        - classes: search loaded ObjC classes by pattern (e.g. 'Manager', 'Service', 'MapView')
-        - controllers: list all live UIViewControllers (with hierarchy)
-        - find: locate a singleton instance (tries .shared, .default, .current, etc.)
-
-        Inspection actions:
-        - inspect: full property dump of a found instance (all ObjC properties)
-        - read: read a specific property via KVC key path. Supports nested paths
-          (e.g. class_name='GMSMapView', key_path='camera.zoom'). Read-only — cannot set values.
-
-        Leak detection actions:
-        - baseline: capture current instance counts as a reference baseline
-        - check: compare current counts to baseline, flag growing classes with severity levels
-          (high/medium/low). Returns structured { leaks: [{class, baseline, current, delta, severity}] }
-          suitable for automated test assertions.
-        - snapshot: alias for baseline (save current counts)
-        - diff: compare current counts to baseline — growing counts indicate retain cycles
-        - snapshot_clear / snapshot_status: manage the saved baseline
-
-        Leak detection workflow: baseline → navigate to a screen and back 3x → check.
-        Automated test workflow: baseline → exercise feature → check (assert leak_count == 0).
-
-        Related tools: vars_inspect (ViewModel @Published properties — read AND write),
-        defaults (UserDefaults — persistent config), layers (CALayer visual properties)."""
-        # Route snapshot/diff/baseline/check actions to the heap_snapshot handler
-        snapshot_actions = {"snapshot": "snapshot", "diff": "diff",
-                            "snapshot_clear": "clear", "snapshot_status": "status",
-                            "baseline": "baseline", "check": "check"}
-        if action in snapshot_actions:
-            params: dict = {"action": snapshot_actions[action]}
-            if min_growth is not None:
-                params["min_growth"] = min_growth
-            if threshold is not None:
-                params["threshold"] = threshold
-            return await resolve_and_send(simulator, "heap_snapshot", params)
-        params = {"action": action}
-        if class_name:
-            params["class"] = class_name
-        if pattern:
-            params["pattern"] = pattern
-        if key_path:
-            params["key_path"] = key_path
-        if limit is not None:
-            params["limit"] = limit
-        return await resolve_and_send(simulator, "heap", params)
 
     @mcp.tool()
     async def responder_chain(
@@ -420,78 +235,6 @@ def register_debug_tools(mcp, resolve_and_send):
         return await resolve_and_send(simulator, "timers", params)
 
     @mcp.tool()
-    async def accessibility_audit(
-        simulator: str | None = Field(default=None, description="Simulator UDID"),
-        checks: str | None = Field(
-            default=None,
-            description="Comma-separated checks to run (default: all). "
-            "Options: missing_label, missing_trait, contrast, dynamic_type, touch_target, redundant_trait",
-        ),
-        severity: str | None = Field(
-            default=None,
-            description="Minimum severity to include: error, warning (default), info",
-        ),
-    ) -> str:
-        """Scan the current screen for accessibility issues.
-
-        Checks for: missing labels on interactive elements, invalid/missing traits,
-        insufficient color contrast (WCAG 2.1 AA), fixed fonts without Dynamic Type,
-        tap targets smaller than 44x44pt, and conflicting trait combinations.
-
-        Returns a list of issues sorted by severity with element details and frames."""
-        params: dict = {}
-        if checks is not None:
-            params["checks"] = checks
-        if severity is not None:
-            params["severity"] = severity
-        return await resolve_and_send(simulator, "accessibility_audit", params, timeout=15)
-
-    @mcp.tool()
-    async def accessibility_action(
-        simulator: str | None = Field(default=None, description="Simulator UDID"),
-        action: str = Field(
-            description="Action to perform: list, invoke, escape, magic_tap, increment, decrement"
-        ),
-        element: str | None = Field(
-            default=None,
-            description="Accessibility ID of the target element",
-        ),
-        text: str | None = Field(
-            default=None,
-            description="Text/label of the target element (alternative to element)",
-        ),
-        name: str | None = Field(
-            default=None,
-            description="Name of the custom action to invoke (for invoke action)",
-        ),
-        index: int | None = Field(
-            default=None,
-            description="Index of the custom action to invoke (for invoke action, alternative to name)",
-        ),
-    ) -> str:
-        """Invoke accessibility actions on elements — test VoiceOver flows without VoiceOver.
-
-        Actions:
-        - list: List custom accessibility actions on an element.
-        - invoke: Invoke a custom action by name or index.
-        - escape: Trigger accessibilityPerformEscape() (two-finger Z gesture equivalent).
-        - magic_tap: Trigger accessibilityPerformMagicTap() (two-finger double-tap equivalent).
-        - increment: Call accessibilityIncrement() on adjustable elements (sliders, steppers).
-        - decrement: Call accessibilityDecrement() on adjustable elements.
-
-        For escape/magic_tap, element is optional — walks the responder chain from the current context."""
-        params: dict = {"action": action}
-        if element is not None:
-            params["element"] = element
-        if text is not None:
-            params["text"] = text
-        if name is not None:
-            params["name"] = name
-        if index is not None:
-            params["index"] = index
-        return await resolve_and_send(simulator, "accessibility_action", params)
-
-    @mcp.tool()
     async def concurrency(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
         action: str = Field(
@@ -528,57 +271,3 @@ def register_debug_tools(mcp, resolve_and_send):
         if limit is not None:
             params["limit"] = limit
         return await resolve_and_send(simulator, "concurrency", params)
-
-    @mcp.tool()
-    async def perf(
-        simulator: str | None = Field(default=None, description="Simulator UDID"),
-        action: str = Field(default="fps", description="Action: fps, hitches, redraws"),
-        duration_ms: int | None = Field(default=None, description="Sampling duration in ms (for fps/hitches; default: 2000/5000)"),
-        threshold_ms: int | None = Field(default=None, description="Hitch threshold in ms (for hitches action; default: 16)"),
-    ) -> str:
-        """Performance diagnostics: FPS measurement, main-thread hitch detection, expensive redraw identification.
-
-        action=fps: measure frame rate using CADisplayLink. Returns avg/min/max FPS, dropped frames, per-second buckets.
-        action=hitches: detect main-thread blocks via background watchdog. Returns hitch count, durations, and timestamps.
-        action=redraws: scan the layer tree for expensive rendering: shadows without shadowPath, masks, rasterization,
-        oversized images, semi-transparent large layers. Returns issues sorted by severity."""
-        params: dict = {"action": action}
-        if duration_ms is not None:
-            params["duration_ms"] = duration_ms
-        if threshold_ms is not None:
-            params["threshold_ms"] = threshold_ms
-        return await resolve_and_send(simulator, "perf", params, timeout=30)
-
-    @mcp.tool()
-    async def accessibility_events(
-        simulator: str | None = Field(default=None, description="Simulator UDID"),
-        action: str = Field(description="Action: start, stop, status, events, clear"),
-        limit: int | None = Field(default=None, description="Max events to return (for 'events' action, default 100)"),
-        since_ms: int | None = Field(default=None, description="Only events after this epoch-ms timestamp (for 'events' action)"),
-    ) -> str:
-        """Subscribe to UIAccessibility notifications for event-driven screen change detection.
-
-        Unlike polling, accessibility notifications fire immediately when the screen updates.
-        When the observer is active, wait_for uses these signals to wake up early instead of
-        sleeping the full poll interval — making transitions near-instant to detect.
-
-        Event types captured:
-        - screen_changed: major screen transition (view controller push/pop, modal)
-        - layout_changed: partial layout update within current screen
-        - announcement: VoiceOver announcement finished (includes text)
-
-        Actions:
-        - start: begin observing (registers for UIAccessibility notifications)
-        - stop: stop observing
-        - status: check if active and current event counts
-        - events: drain the ring buffer (newest last, up to 500 events retained)
-        - clear: empty the ring buffer without stopping
-
-        Workflow: start → trigger UI actions → events to see what fired → stop.
-        Keep the observer running alongside wait_for for faster condition detection."""
-        params: dict = {"action": action}
-        if limit is not None:
-            params["limit"] = limit
-        if since_ms is not None:
-            params["since_ms"] = since_ms
-        return await resolve_and_send(simulator, "accessibility_events", params)
