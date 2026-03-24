@@ -161,6 +161,14 @@ struct MiscTab: View {
                     .accessibilityIdentifier("uikit_link")
                 }
 
+                // MARK: - File Manager
+                GroupBox("File Manager") {
+                    NavigationLink("File Manager Screen") {
+                        FileManagerView()
+                    }
+                    .accessibilityIdentifier("file_manager_link")
+                }
+
                 // MARK: - Context Menu
                 GroupBox("Context Menu") {
                     Text("Long press me")
