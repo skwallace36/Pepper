@@ -172,6 +172,40 @@ struct MiscTab: View {
                     }
                 }
 
+                // MARK: - Concurrency
+                GroupBox("Concurrency") {
+                    VStack(spacing: 8) {
+                        HStack(spacing: 12) {
+                            Button("Spawn Tasks") {
+                                state.spawnConcurrencyTasks()
+                            }
+                            .accessibilityIdentifier("spawn_tasks_button")
+
+                            Button("Actor Work") {
+                                state.startActorWork()
+                            }
+                            .accessibilityIdentifier("actor_work_button")
+
+                            Button("Cancel") {
+                                state.cancelConcurrencyTasks()
+                            }
+                            .accessibilityIdentifier("cancel_tasks_button")
+                        }
+                        .buttonStyle(.bordered)
+
+                        if state.concurrencyTotal > 0 {
+                            Text("\(state.concurrencyCompleted)/\(state.concurrencyTotal) tasks complete")
+                                .font(.caption)
+                                .accessibilityIdentifier("concurrency_progress")
+                        }
+
+                        Text("Actor: \(state.actorStatus)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .accessibilityIdentifier("actor_status")
+                    }
+                }
+
                 // MARK: - Network
                 GroupBox("Network") {
                     VStack(spacing: 8) {
