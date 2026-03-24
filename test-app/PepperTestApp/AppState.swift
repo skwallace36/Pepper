@@ -162,6 +162,90 @@ final class AppState {
             }
         }.resume()
     }
+
+    // MARK: - Network Simulation Surfaces
+
+    /// Use with: network simulate latency / network simulate throttle
+    func fetchSlowRequest() {
+        let start = Date()
+        print("[PepperTest] Slow request started (pair with: network simulate latency <ms>)")
+        guard let url = URL(string: "https://httpbin.org/delay/1") else { return }
+        networkResponse = "Slow: in flight…"
+        URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
+            let elapsed = Int(Date().timeIntervalSince(start) * 1000)
+            DispatchQueue.main.async {
+                if let http = response as? HTTPURLResponse {
+                    self?.lastHTTPStatus = http.statusCode
+                    self?.networkResponse = "Slow: \(http.statusCode) in \(elapsed)ms"
+                    print("[PepperTest] Slow request: \(http.statusCode) \(elapsed)ms")
+                } else if let error {
+                    self?.networkResponse = "Slow error: \(error.localizedDescription)"
+                    print("[PepperTest] Slow request error: \(error)")
+                }
+            }
+        }.resume()
+    }
+
+    /// Use with: network simulate fail_status 500 / network simulate fail_error
+    func fetchErrorRequest() {
+        print("[PepperTest] Error-surface request started (pair with: network simulate fail_status 500)")
+        guard let url = URL(string: "https://httpbin.org/get") else { return }
+        networkResponse = "Error surface: in flight…"
+        URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
+            DispatchQueue.main.async {
+                if let http = response as? HTTPURLResponse {
+                    self?.lastHTTPStatus = http.statusCode
+                    self?.networkResponse = "Error surface: \(http.statusCode)"
+                    print("[PepperTest] Error surface response: \(http.statusCode)")
+                } else if let error {
+                    let nsError = error as NSError
+                    self?.networkResponse = "Fail error: [\(nsError.domain) \(nsError.code)]"
+                    print("[PepperTest] Error surface error: \(nsError.domain) \(nsError.code)")
+                }
+            }
+        }.resume()
+    }
+
+    /// Use with: network simulate offline
+    func fetchOfflineRequest() {
+        print("[PepperTest] Offline-surface request started (pair with: network simulate offline true)")
+        guard let url = URL(string: "https://httpbin.org/get") else { return }
+        networkResponse = "Offline: in flight…"
+        URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
+            DispatchQueue.main.async {
+                if let http = response as? HTTPURLResponse {
+                    self?.lastHTTPStatus = http.statusCode
+                    self?.networkResponse = "Offline: \(http.statusCode) (no error injected)"
+                    print("[PepperTest] Offline surface response: \(http.statusCode)")
+                } else if let error {
+                    let nsError = error as NSError
+                    self?.networkResponse = "Offline: [\(nsError.domain) \(nsError.code)]"
+                    print("[PepperTest] Offline surface error: \(nsError.domain) \(nsError.code)")
+                }
+            }
+        }.resume()
+    }
+
+    /// Use with: network mock url:https://pepper.test/mock body:'{"mocked":true}'
+    func fetchMockRequest() {
+        print("[PepperTest] Mock-surface request started (pair with: network mock url:https://pepper.test/mock)")
+        guard let url = URL(string: "https://pepper.test/mock") else { return }
+        networkResponse = "Mock: in flight…"
+        URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
+            DispatchQueue.main.async {
+                if let http = response as? HTTPURLResponse {
+                    self?.lastHTTPStatus = http.statusCode
+                    let body = data.flatMap { String(data: $0, encoding: .utf8) } ?? ""
+                    let preview = String(body.prefix(80))
+                    self?.networkResponse = "Mock: \(http.statusCode) — \(preview)"
+                    print("[PepperTest] Mock response: \(http.statusCode) body=\(preview)")
+                } else if let error {
+                    self?.networkResponse = "Mock error: \(error.localizedDescription)"
+                    print("[PepperTest] Mock error: \(error)")
+                }
+            }
+        }.resume()
+    }
 }
 
 @Observable

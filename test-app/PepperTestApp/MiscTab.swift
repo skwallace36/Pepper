@@ -180,7 +180,29 @@ struct MiscTab: View {
                         }
                         .accessibilityIdentifier("fetch_button")
 
+                        Button("Slow Request") {
+                            state.fetchSlowRequest()
+                        }
+                        .accessibilityIdentifier("slow_request_button")
+
+                        Button("Error Request") {
+                            state.fetchErrorRequest()
+                        }
+                        .accessibilityIdentifier("error_request_button")
+
+                        Button("Offline Test") {
+                            state.fetchOfflineRequest()
+                        }
+                        .accessibilityIdentifier("offline_request_button")
+
+                        Button("Mock Test") {
+                            state.fetchMockRequest()
+                        }
+                        .accessibilityIdentifier("mock_request_button")
+
                         Text(state.networkResponse.isEmpty ? "No request yet" : state.networkResponse)
+                            .font(.caption.monospacedDigit())
+                            .foregroundStyle(.secondary)
                             .accessibilityIdentifier("network_status")
                     }
                 }
