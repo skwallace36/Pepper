@@ -16,30 +16,9 @@ A PR must have exactly **one** state label at any time. Never stack labels. When
 | `verified` | Auto-merge or human | Terminal — PR is merged |
 | *(no label)* | Heartbeat | Classify and assign initial label |
 
-## State Diagram
-
-```mermaid
-stateDiagram-v2
-    [*] --> verifier : PR created
-
-    verifier --> verified : auto-merge
-    verifier --> human : needs approval
-    verifier --> responder : failed
-
-    human --> verified : LGTM
-    human --> responder : feedback
-    human --> [*] : rejected
-
-    responder --> verifier : fixes pushed
-
-    verified --> [*] : merged
-```
-
-> **Conflict-resolver** operates orthogonally — rebases any PR with merge conflicts, regardless of `awaiting:` label.
->
-> **Heartbeat** auto-closes PRs with merge conflicts >24h old.
-
 ## Transitions
+
+> **Conflict-resolver** operates orthogonally — rebases any PR with merge conflicts, regardless of `awaiting:` label. **Heartbeat** auto-closes PRs with merge conflicts >24h old.
 
 | From | To | Trigger | Who |
 |---|---|---|---|
