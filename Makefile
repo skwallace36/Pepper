@@ -29,7 +29,7 @@ TEST_APP_BUNDLE := com.pepper.testapp
 WIKI_BUNDLE_ID := org.wikimedia.wikipedia
 
 .PHONY: help build build-device xcframework deploy launch kill relaunch ping check lint lint-py fmt-py smoke typecheck \
-        logs clean test-client pepper-ctl test-app demo coverage coverage-check \
+        logs clean test-client pepper-ctl test-app demo coverage coverage-check unit-test \
         docs setup ci smoke smoke-ice-cubes \
         agent agent-monitor agent-status agent-trigger agents-install agents-uninstall agent-cleanup agents-start agents-stop agent-analyze groom pr-digest \
         fmt fmt-check ci-agents-install ci-agents-check \
@@ -201,6 +201,10 @@ smoke-ice-cubes:
 		--bundle-id "com.thomasricouard.IceCubesApp" \
 		--suite "$(PROJECT_DIR)/scripts/smoke-ice-cubes.json" \
 		$(SMOKE_ARGS)
+
+## unit-test: Run Swift unit tests (Foundation-level, no simulator required)
+unit-test:
+	@swift test --package-path "$(PROJECT_DIR)/tests/unit"
 
 ## test-app: Build and install the test app on the booted simulator
 test-app:
