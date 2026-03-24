@@ -33,7 +33,7 @@ enum AppSeeding {
     static func seedKeychain() {
         let service = "com.pepper.testapp"
         let account = "pepper-test-token"
-        guard let tokenData = "sk-pepper-test-12345".data(using: .utf8) else { return }
+        guard let tokenData = "pepper-test-12345".data(using: .utf8) else { return }
 
         // Check if already seeded
         let checkQuery: [String: Any] = [
