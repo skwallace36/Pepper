@@ -200,12 +200,6 @@ if ! gh auth status &>/dev/null; then
   exit 1
 fi
 
-# Kill switch check
-if [ -f .pepper-kill ]; then
-  emit "killed" ",\"detail\":\"kill switch active at startup\""
-  echo "Kill switch active. Exiting."
-  exit 0
-fi
 
 # Verify prompt file exists
 PROMPT_FILE="scripts/prompts/${TYPE}.md"
@@ -393,17 +387,6 @@ while kill -0 "$AGENT_PID" 2>/dev/null; do
     pkill -P "$AGENT_PID" 2>/dev/null || true
     break
   fi
-  # Kill switch: checked every 5s in addition to SIGTERM from agents-stop.
-  # Belt-and-suspenders — agents-stop sends SIGTERM directly, but if that
-  # doesn't reach the agent (zombie, stuck), this catches it.
-  if [ -f .pepper-kill ]; then
-    echo "Kill switch detected — terminating agent..."
-    kill -TERM "$AGENT_PID" 2>/dev/null || true
-    sleep 3
-    kill -9 "$AGENT_PID" 2>/dev/null || true
-    pkill -P "$AGENT_PID" 2>/dev/null || true
-    break
-  fi
 done
 
 wait "$AGENT_PID" 2>/dev/null
@@ -541,8 +524,6 @@ fi
 # Emit final event based on outcome
 if [ "$TIMED_OUT" = true ]; then
   emit_final "timeout" ",\"detail\":\"killed after ${TIMEOUT_S}s\",\"cost_usd\":${COST},\"duration_s\":${DURATION},\"turns\":${TURNS}"
-elif [ -f .pepper-kill ]; then
-  emit_final "killed" ",\"detail\":\"kill switch activated mid-run\",\"cost_usd\":${COST},\"duration_s\":${DURATION},\"turns\":${TURNS}"
 elif [ $EXIT_CODE -ne 0 ]; then
   emit_final "failed" ",\"detail\":${EXIT_REASON},\"cost_usd\":${COST},\"duration_s\":${DURATION},\"turns\":${TURNS}"
 elif [ "$UNPRODUCTIVE" = true ]; then

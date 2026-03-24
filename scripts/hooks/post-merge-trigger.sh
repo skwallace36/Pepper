@@ -7,8 +7,6 @@
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$REPO_ROOT"
 
-[ -f .pepper-kill ] && exit 0
-
 # What files changed in the merge?
 CHANGED=$(git diff-tree -r --name-only --no-commit-id HEAD@{1} HEAD 2>/dev/null || true)
 [ -z "$CHANGED" ] && exit 0

@@ -327,25 +327,12 @@ agent-cleanup:
 
 ## agents-start: Start the heartbeat supervisor (launches + monitors all agents)
 agents-start:
-	@rm -f .pepper-kill
 	@./scripts/agent-heartbeat.sh &
 	@echo "Heartbeat started. Agents launching. Monitor: make agent-monitor"
 
 ## agents-stop: Stop heartbeat + kill all running agents
 agents-stop:
-	@touch .pepper-kill
-	@if [ -f build/logs/heartbeat.pid ]; then \
-		kill -TERM $$(cat build/logs/heartbeat.pid) 2>/dev/null || true; \
-		rm -f build/logs/heartbeat.pid; \
-	fi
-	@pgrep -f 'pepper-agent-' 2>/dev/null | while read pid; do \
-		kill -TERM "$$pid" 2>/dev/null || true; \
-	done
-	@pgrep -f 'agent-runner.sh' 2>/dev/null | while read pid; do \
-		kill -TERM "$$pid" 2>/dev/null || true; \
-	done
-	@rm -f build/logs/.lock-* 2>/dev/null || true
-	@echo "All agents stopped."
+	@./scripts/agent-kill.sh
 
 ## agent-analyze: Analyze agent session context usage and re-reads
 agent-analyze:
