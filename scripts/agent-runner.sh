@@ -535,7 +535,7 @@ fi
 # Auto-label new PRs with awaiting:verifier (state machine entry point).
 # Only labels PRs that have no awaiting: or verified label yet.
 if [ "$TYPE" != "pr-verifier" ] && [ "$TYPE" != "pr-responder" ]; then
-  for pr_num in $(gh pr list --repo skwallace36/Pepper --state open --author "pepper-${TYPE}-agent" \
+  for pr_num in $(gh pr list --repo skwallace36/Pepper-private --state open --author "pepper-${TYPE}-agent" \
     --json number,labels --jq '.[] | select(.labels | map(.name) | (index("awaiting:verifier") | not) and (index("awaiting:responder") | not) and (index("awaiting:human") | not) and (index("verified") | not)) | .number' 2>/dev/null); do
     "$REPO_ROOT/scripts/classify-pr.sh" "$pr_num" 2>/dev/null || true
   done
@@ -552,7 +552,7 @@ if [ "$TYPE" != "pr-verifier" ] && [ "$TYPE" != "pr-responder" ]; then
       [ -f "$lf" ] && kill -0 "$(cat "$lf" 2>/dev/null)" 2>/dev/null && VERIFIER_RUNNING=true && break
     done
     if [ "$VERIFIER_RUNNING" = false ]; then
-      AWAITING_VERIFY=$(gh pr list --repo skwallace36/Pepper --state open --label "awaiting:verifier" \
+      AWAITING_VERIFY=$(gh pr list --repo skwallace36/Pepper-private --state open --label "awaiting:verifier" \
         --json number --jq 'length' 2>/dev/null || echo 0)
       if [ "$AWAITING_VERIFY" -gt 0 ]; then
         echo "$AWAITING_VERIFY PR(s) awaiting verification — chaining pr-verifier..."

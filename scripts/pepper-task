@@ -11,7 +11,7 @@ set -euo pipefail
 #   pepper-task list [--area LABEL]     # list open tasks
 #   pepper-task blocked ISSUE_NUM MSG   # mark as blocked with comment
 
-REPO="skwallace36/Pepper"
+REPO="skwallace36/Pepper-private"
 EVENTS_LOG="${PEPPER_EVENTS_LOG:-}"
 AGENT="${PEPPER_AGENT_TYPE:-unknown}"
 CMD="${1:?Usage: pepper-task next|claim|list|done|blocked}"

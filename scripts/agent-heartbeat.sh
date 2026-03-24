@@ -15,7 +15,7 @@ cd "$REPO_ROOT"
 
 PIDFILE="build/logs/heartbeat.pid"
 EVENTS="$REPO_ROOT/build/logs/events.jsonl"
-INTERVAL=120
+INTERVAL=420
 BACKOFF_THRESHOLD=3   # consecutive failures before backing off
 BACKOFF_CYCLES=5      # cycles to skip (5 * 120s = 10 min)
 
@@ -128,15 +128,15 @@ while true; do
   git pull --quiet origin main 2>/dev/null || true
 
   # Clean stale in-progress claims (tasks with no open PR and no active branch)
-  for num in $(gh issue list --repo skwallace36/Pepper --label in-progress --state open --json number --jq '.[].number' 2>/dev/null); do
-    OPEN_PR=$(gh pr list --repo skwallace36/Pepper --state open --search "#$num" --json number --jq 'length' 2>/dev/null || echo 0)
+  for num in $(gh issue list --repo skwallace36/Pepper-private --label in-progress --state open --json number --jq '.[].number' 2>/dev/null); do
+    OPEN_PR=$(gh pr list --repo skwallace36/Pepper-private --state open --search "#$num" --json number --jq 'length' 2>/dev/null || echo 0)
     if [ "$OPEN_PR" = "0" ]; then
-      gh issue edit "$num" --repo skwallace36/Pepper --remove-label "in-progress" 2>/dev/null || true
+      gh issue edit "$num" --repo skwallace36/Pepper-private --remove-label "in-progress" 2>/dev/null || true
     fi
   done
 
   # Check for open bugs → bugfix (exclude already-claimed bugs)
-  BUG_COUNT=$(gh issue list --repo skwallace36/Pepper --label bug --state open --json number,labels \
+  BUG_COUNT=$(gh issue list --repo skwallace36/Pepper-private --label bug --state open --json number,labels \
     --jq '[.[] | select(.labels | map(.name) | (index("in-progress") | not) and (index("blocked") | not))] | length' 2>/dev/null || echo 0)
   if [ "$BUG_COUNT" -gt 0 ]; then
     if should_backoff bugfix; then
@@ -147,7 +147,7 @@ while true; do
   fi
 
   # Check for open tasks → builder (exclude already-claimed tasks)
-  TASK_COUNT=$(gh issue list --repo skwallace36/Pepper --state open --json number,labels \
+  TASK_COUNT=$(gh issue list --repo skwallace36/Pepper-private --state open --json number,labels \
     --jq '[.[] | select((.labels | map(.name) | any(startswith("area:"))) and (.labels | map(.name) | (index("in-progress") | not) and (index("blocked") | not)))] | length' 2>/dev/null || echo 0)
   if [ "$TASK_COUNT" -gt 0 ]; then
     if should_backoff builder; then
@@ -161,7 +161,7 @@ while true; do
   # Each PR has exactly one awaiting:X label → the agent that needs to act.
 
   # awaiting:verifier → pr-verifier
-  AWAITING_VERIFIER=$(gh pr list --repo skwallace36/Pepper --state open --label "awaiting:verifier" --json number --jq 'length' 2>/dev/null || echo 0)
+  AWAITING_VERIFIER=$(gh pr list --repo skwallace36/Pepper-private --state open --label "awaiting:verifier" --json number --jq 'length' 2>/dev/null || echo 0)
   if [ "$AWAITING_VERIFIER" -gt 0 ]; then
     if should_backoff pr-verifier; then
       echo "$(date +%H:%M) pr-verifier in backoff (${BACKOFF_THRESHOLD}+ consecutive failures) — skipping"
@@ -171,7 +171,7 @@ while true; do
   fi
 
   # awaiting:responder → pr-responder
-  AWAITING_RESPONDER=$(gh pr list --repo skwallace36/Pepper --state open --label "awaiting:responder" --json number --jq 'length' 2>/dev/null || echo 0)
+  AWAITING_RESPONDER=$(gh pr list --repo skwallace36/Pepper-private --state open --label "awaiting:responder" --json number --jq 'length' 2>/dev/null || echo 0)
   if [ "$AWAITING_RESPONDER" -gt 0 ]; then
     if should_backoff pr-responder; then
       echo "$(date +%H:%M) pr-responder in backoff (${BACKOFF_THRESHOLD}+ consecutive failures) — skipping"
@@ -182,10 +182,10 @@ while true; do
 
   # Detect human comments on open PRs and transition labels accordingly.
   # Only scans PRs that have an awaiting: label (skip verified / unlabeled).
-  for pr in $(gh pr list --repo skwallace36/Pepper --state open --json number,labels \
+  for pr in $(gh pr list --repo skwallace36/Pepper-private --state open --json number,labels \
     --jq '[.[] | select(.labels | map(.name) | any(startswith("awaiting:")))] | .[].number' 2>/dev/null); do
-    LAST_COMMENTER=$(gh api "repos/skwallace36/Pepper/issues/$pr/comments" --jq '.[-1].user.login // ""' 2>/dev/null || echo "")
-    LAST_COMMENT=$(gh api "repos/skwallace36/Pepper/issues/$pr/comments" --jq '.[-1].body // ""' 2>/dev/null || echo "")
+    LAST_COMMENTER=$(gh api "repos/skwallace36/Pepper-private/issues/$pr/comments" --jq '.[-1].user.login // ""' 2>/dev/null || echo "")
+    LAST_COMMENT=$(gh api "repos/skwallace36/Pepper-private/issues/$pr/comments" --jq '.[-1].body // ""' 2>/dev/null || echo "")
     # Skip if no comments, or last commenter is an agent
     [ -z "$LAST_COMMENT" ] && continue
     echo "$LAST_COMMENTER" | grep -q "^pepper-" && continue
@@ -194,23 +194,23 @@ while true; do
       # LGTM → merge the PR
       echo "$(date +%H:%M) Human LGTM on PR #$pr — merging"
       for lbl in awaiting:verifier awaiting:responder awaiting:human; do
-        gh pr edit "$pr" --repo skwallace36/Pepper --remove-label "$lbl" 2>/dev/null || true
+        gh pr edit "$pr" --repo skwallace36/Pepper-private --remove-label "$lbl" 2>/dev/null || true
       done
-      gh pr edit "$pr" --repo skwallace36/Pepper --add-label "verified" 2>/dev/null || true
-      gh pr merge "$pr" --repo skwallace36/Pepper --squash --delete-branch 2>/dev/null || true
+      gh pr edit "$pr" --repo skwallace36/Pepper-private --add-label "verified" 2>/dev/null || true
+      gh pr merge "$pr" --repo skwallace36/Pepper-private --squash --delete-branch 2>/dev/null || true
     else
       # Feedback → send to responder
       echo "$(date +%H:%M) Human commented on PR #$pr — relabeling to awaiting:responder"
       for lbl in awaiting:verifier awaiting:human; do
-        gh pr edit "$pr" --repo skwallace36/Pepper --remove-label "$lbl" 2>/dev/null || true
+        gh pr edit "$pr" --repo skwallace36/Pepper-private --remove-label "$lbl" 2>/dev/null || true
       done
-      gh pr edit "$pr" --repo skwallace36/Pepper --add-label "awaiting:responder" 2>/dev/null || true
+      gh pr edit "$pr" --repo skwallace36/Pepper-private --add-label "awaiting:responder" 2>/dev/null || true
     fi
     break  # one per cycle
   done
 
   # Merge conflicts → conflict-resolver (runs on any conflicting PR)
-  CONFLICTING=$(gh pr list --repo skwallace36/Pepper --state open --json number,mergeable \
+  CONFLICTING=$(gh pr list --repo skwallace36/Pepper-private --state open --json number,mergeable \
     --jq '[.[] | select(.mergeable == "CONFLICTING")] | length' 2>/dev/null || echo 0)
   if [ "$CONFLICTING" -gt 0 ]; then
     if should_backoff conflict-resolver; then
@@ -222,7 +222,7 @@ while true; do
 
   # Close stale conflicting PRs (>24h with no new commits)
   CUTOFF=$(date -v-24H +%s 2>/dev/null || date -d '24 hours ago' +%s)
-  for pr_json in $(gh pr list --repo skwallace36/Pepper --state open \
+  for pr_json in $(gh pr list --repo skwallace36/Pepper-private --state open \
     --json number,mergeable,commits,body \
     --jq '.[] | select(.mergeable == "CONFLICTING") | @base64' 2>/dev/null); do
     PR_NUM=$(echo "$pr_json" | base64 -d | jq -r '.number')
@@ -232,12 +232,12 @@ while true; do
       || date -d "$LAST_COMMIT" +%s 2>/dev/null || continue)
     if [ "$COMMIT_EPOCH" -lt "$CUTOFF" ]; then
       echo "$(date +%H:%M) Closing stale conflicting PR #$PR_NUM (last commit: $LAST_COMMIT)"
-      gh pr close "$PR_NUM" --repo skwallace36/Pepper \
+      gh pr close "$PR_NUM" --repo skwallace36/Pepper-private \
         --comment "Closing: this PR has had merge conflicts for >24 hours with no new commits. — pepper-agent/heartbeat" \
         2>/dev/null || true
       ISSUE_NUM=$(echo "$pr_json" | base64 -d | jq -r '.body' | grep -oE 'Fixes #[0-9]+' | head -1 | tr -dc '0-9')
       if [ -n "$ISSUE_NUM" ]; then
-        gh issue edit "$ISSUE_NUM" --repo skwallace36/Pepper --remove-label "in-progress" 2>/dev/null || true
+        gh issue edit "$ISSUE_NUM" --repo skwallace36/Pepper-private --remove-label "in-progress" 2>/dev/null || true
       fi
     fi
   done
