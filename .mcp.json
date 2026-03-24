@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "pepper": {
+      "command": "./.venv/bin/python3",
+      "args": ["./tools/pepper-mcp"],
+      "env": {
+        "PYTHONUNBUFFERED": "1"
+      }
+    },
+    "playwright": {
+      "command": "npx",
+      "args": [
+        "@playwright/mcp",
+        "--headless",
+        "--user-data-dir", "${HOME}/.pepper/chrome-profile"
+      ]
+    }
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "suite": "pepper-smoke",
+  "tests": [
+    {"name": "server responds to ping", "cmd": "ping", "expect": {"has_keys": ["pong"]}},
+    {"name": "help lists commands", "cmd": "help", "expect": {"has_keys": ["commands"]}},
+    {"name": "look returns screen map", "cmd": "introspect", "params": {"mode": "map"}, "expect": {"has_keys": ["screen", "element_count", "rows"]}},
+    {"name": "look alias works", "cmd": "look", "expect": {"has_keys": ["screen", "element_count"]}},
+    {"name": "tree returns hierarchy", "cmd": "tree", "expect": {"has_keys": ["tree", "nodeCount"]}},
+    {"name": "screen returns info", "cmd": "screen", "expect": {"has_keys": ["screen_id", "can_go_back"]}},
+    {"name": "status returns state", "cmd": "status", "expect": {"has_keys": ["device", "app", "pepper"]}},
+    {"name": "console returns log status", "cmd": "console", "params": {"action": "status"}, "expect": {"has_keys": ["active", "buffer_size"]}},
+    {"name": "network returns log status", "cmd": "network", "params": {"action": "status"}, "expect": {"has_keys": ["active", "buffer_size"]}},
+    {"name": "lifecycle cycle completes", "cmd": "lifecycle", "params": {"action": "cycle"}, "expect": {"has_keys": ["state"]}},
+    {"name": "defaults lists entries", "cmd": "defaults", "expect": {"has_keys": ["count", "entries"]}},
+    {"name": "vars lists observable state", "cmd": "vars", "expect": {"has_keys": ["instances", "count"]}},
+    {"name": "clipboard reads pasteboard", "cmd": "clipboard", "expect": {"has_keys": ["types", "count"]}},
+    {"name": "cookies lists cookies", "cmd": "cookies", "expect": {"has_keys": ["count", "cookies"]}},
+    {"name": "keychain lists items", "cmd": "keychain", "expect": {"has_keys": ["count", "items"]}},
+    {"name": "orientation reads current", "cmd": "orientation", "expect": {"has_keys": ["orientation", "is_landscape", "is_portrait"]}},
+    {"name": "memory returns snapshot", "cmd": "memory", "expect": {"has_keys": ["resident_mb", "timestamp_ms"]}},
+    {"name": "animations scans active", "cmd": "animations", "expect": {"has_keys": ["count", "animations"]}},
+    {"name": "timeline queries events", "cmd": "timeline", "expect": {"has_keys": ["count", "events"]}},
+    {"name": "locale reads current", "cmd": "locale", "expect": {"has_keys": ["language", "region", "identifier"]}},
+    {"name": "deeplinks lists routes", "cmd": "deeplinks", "expect": {"has_keys": ["deeplinks", "count"]}},
+    {"name": "heap lists controllers", "cmd": "heap", "params": {"action": "controllers"}, "expect": {"has_keys": ["count", "controllers"]}},
+    {"name": "dismiss_keyboard is safe no-op", "cmd": "dismiss_keyboard"},
+    {"name": "wait_idle completes", "cmd": "wait_idle", "params": {"timeout_ms": 5000}}
+  ]
+}

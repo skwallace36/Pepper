@@ -1,0 +1,30 @@
+# Build
+build/
+.build/
+DerivedData/
+
+# Xcode
+*.xcuserdata
+*.xcworkspace
+xcuserdata/
+
+# Environment (app-specific config)
+.env
+
+# Python
+__pycache__/
+.venv/
+
+# macOS
+.DS_Store
+*.swp
+*~
+
+# Agent kill switch
+.pepper-kill
+
+# Screenshots (never track)
+*.png
+
+# External
+.playwright-mcp/

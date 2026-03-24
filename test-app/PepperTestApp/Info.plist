@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.pepper.testapp</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>peppertest</string>
+			</array>
+		</dict>
+	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>Pepper test app needs camera access for swizzle testing</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Pepper test app needs microphone access for swizzle testing</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Pepper test app needs location access for swizzle testing</string>
+	<key>NSContactsUsageDescription</key>
+	<string>Pepper test app needs contacts access for swizzle testing</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>Pepper test app needs calendar access for swizzle testing</string>
+	<key>NSUserTrackingUsageDescription</key>
+	<string>Pepper test app needs tracking permission for swizzle testing</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Pepper uses the local network to advertise its debug server for device-to-host discovery.</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_pepper._tcp</string>
+	</array>
+</dict>
+</plist>

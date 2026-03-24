@@ -1,0 +1,762 @@
+#!/usr/bin/env python3
+"""
+Pepper MCP Server — exposes Pepper's runtime control as native MCP tools.
+
+Connects to the Pepper dylib's WebSocket server running inside an iOS simulator app.
+Each tool maps to a Pepper command, with typed parameters and structured responses.
+
+Usage:
+  claude mcp add pepper -e PYTHONUNBUFFERED=1 -- python3.11 /path/to/pepper-mcp
+
+Multiple simulators: tools accept an optional `simulator` parameter (UDID).
+If omitted and exactly one sim is running, auto-discovers. If multiple, returns
+an error listing available sims.
+"""
+from __future__ import annotations
+
+import asyncio
+import json
+import os
+import sys
+from functools import partial
+from typing import Optional
+
+# Shared modules from tools/
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import pepper_sessions
+from mcp_build import (
+    resolve_simulator as _resolve_simulator,
+    build_app as _build_app,
+    deploy_app as _deploy_app,
+    find_built_app as _find_built_app,
+    verify_device_connected as _verify_device_connected,
+    build_app_device as _build_app_device,
+    install_on_device as _install_on_device,
+    launch_on_device as _launch_on_device,
+)
+from mcp_crash import fetch_crash_info
+from mcp_tools_debug import register_debug_tools
+from mcp_tools_nav import register_nav_tools
+from mcp_tools_record import register_record_tools
+from mcp_tools_renders import register_renders_tools
+from mcp_tools_sim import register_sim_tools
+from mcp_tools_state import register_state_tools
+from mcp_tools_system import register_system_tools
+from pepper_websocket import CrashError, make_command
+from pepper_websocket import send_command as ws_send_command
+
+# Suppress all stdout except MCP protocol — critical for stdio transport
+import logging
+logging.basicConfig(stream=sys.stderr, level=logging.WARNING)
+
+try:
+    from mcp.server.fastmcp import FastMCP
+    from pydantic import Field
+except ImportError:
+    print("Error: 'mcp' package required. Install with: pip install mcp", file=sys.stderr)
+    sys.exit(1)
+
+try:
+    import websockets
+except ImportError:
+    print("Error: 'websockets' package required. Install with: pip install websockets", file=sys.stderr)
+    sys.exit(1)
+
+# ---------------------------------------------------------------------------
+# Config from .env (shared via pepper_common)
+# ---------------------------------------------------------------------------
+
+from pepper_common import (
+    PEPPER_DIR, PORT_DIR, load_env, get_config,
+    discover_port, discover_simulator, discover_instance, list_simulators,
+    list_instances, try_parse_json, require_parse_json,
+)
+
+
+def load_adapter_tools() -> list[dict]:
+    """Load adapter-specific tool definitions from ~/.pepper/tools/{adapter_type}.json.
+
+    Local-only, works across all worktrees. Each tool is a dict with:
+      name, description, command (shell string with {app_repo}/{pepper_dir} placeholders)
+    """
+    adapter_type = get_config().get("adapter_type", "generic")
+    if adapter_type == "generic":
+        return []
+    tools_path = os.path.join(os.path.expanduser("~"), ".pepper", "tools", f"{adapter_type}.json")
+    if not os.path.exists(tools_path):
+        return []
+    try:
+        with open(tools_path) as f:
+            tools = json.load(f)
+        if not isinstance(tools, list):
+            return []
+        # Resolve placeholders. APP_REPO can be set in .env or shell env.
+        # Falls back to APP_WORKSPACE dirname if available.
+        config = get_config()
+        env = load_env()
+        workspace = config.get("workspace", "")
+        app_repo = (
+            env.get("APP_REPO")
+            or os.environ.get("APP_REPO")
+            or (os.path.dirname(workspace) if workspace else "")
+        )
+        replacements = {
+            "{app_repo}": app_repo,
+            "{pepper_dir}": PEPPER_DIR,
+            "{workspace}": workspace,
+        }
+        for tool in tools:
+            cmd = tool.get("command", "")
+            for key, val in replacements.items():
+                cmd = cmd.replace(key, val)
+            tool["command"] = cmd
+        return tools
+    except (json.JSONDecodeError, OSError):
+        return []
+
+
+def load_adapter_preamble() -> str:
+    """Load adapter-specific MCP preamble.
+
+    Searches (in order):
+    1. ADAPTER_PATH/mcp-preamble.md (external adapter repo)
+    2. dylib/{adapter_type}/mcp-preamble.md (in-tree fallback)
+    Returns the content or empty string if no preamble found.
+    """
+    env = load_env()
+    adapter_type = env.get("APP_ADAPTER_TYPE", "generic")
+    if adapter_type == "generic":
+        return ""
+
+    # Check external adapter path first
+    adapter_path = env.get("ADAPTER_PATH", "")
+    if adapter_path:
+        preamble = os.path.join(adapter_path, "mcp-preamble.md")
+        if os.path.exists(preamble):
+            try:
+                with open(preamble) as f:
+                    return f.read().strip()
+            except OSError:
+                pass
+
+    # Fallback: in-tree
+    preamble = os.path.join(PEPPER_DIR, "dylib", adapter_type, "mcp-preamble.md")
+    if os.path.exists(preamble):
+        try:
+            with open(preamble) as f:
+                return f.read().strip()
+        except OSError:
+            pass
+    return ""
+
+
+
+# ---------------------------------------------------------------------------
+# WebSocket command sender
+# ---------------------------------------------------------------------------
+
+async def send_command(port: int, cmd: str, params: Optional[dict] = None,
+                       timeout: float = 10, host: str = "localhost") -> dict:
+    """Send a command to Pepper's WebSocket server and return the response.
+
+    Wraps pepper_websocket.send_command with MCP-appropriate error handling
+    (returns error dicts instead of raising).
+    """
+    msg = make_command(cmd, params)
+    addr = f"{host}:{port}"
+    try:
+        return await ws_send_command(host, port, msg, timeout=timeout)
+    except asyncio.TimeoutError:
+        return {"status": "error", "error": f"Command timed out after {timeout}s"}
+    except ConnectionRefusedError:
+        return {"status": "error", "error": f"Connection refused at {addr}. Is Pepper running?"}
+    except CrashError as e:
+        return {
+            "status": "error",
+            "error": f"{e} Crash log will be auto-attached below."
+        }
+    except Exception as e:
+        err_str = str(e)
+        if "close frame" in err_str or "connection" in err_str.lower():
+            return {
+                "status": "error",
+                "error": f"APP CRASHED. The '{cmd}' command likely crashed the app ({err_str}). "
+                         f"Investigate the crash before retrying."
+            }
+        return {"status": "error", "error": err_str}
+
+
+async def resolve_and_send(simulator: Optional[str], cmd: str, params: Optional[dict] = None, timeout: float = 10) -> str:
+    """Resolve instance and send command. Returns JSON string. Auto-appends crash info on APP CRASHED.
+
+    The simulator parameter accepts any Pepper instance identifier — simulator UDID or device UDID.
+    Discovery checks both simulator port files and device registrations.
+    """
+    try:
+        host, port, udid = discover_instance(simulator)
+    except RuntimeError as e:
+        return json.dumps({"status": "error", "error": str(e)}, indent=2)
+    resp = await send_command(port, cmd, params, timeout, host=host)
+    result = json.dumps(resp, indent=2)
+    # Auto-fetch crash info when app crashes
+    error = resp.get("error", "")
+    if "APP CRASHED" in error:
+        crash_info = await fetch_crash_info(udid)
+        if crash_info:
+            result += crash_info
+    return result
+
+
+async def _snapshot_counts(port: int, send_fn) -> dict:
+    """Snapshot network + console counts + memory before an action. Fast — just status queries."""
+    net_resp, console_resp, mem_resp = await asyncio.gather(
+        send_fn(port, "network", {"action": "status"}, timeout=2),
+        send_fn(port, "console", {"action": "status"}, timeout=2),
+        send_fn(port, "memory", timeout=2),
+        return_exceptions=True,
+    )
+    net_total = 0
+    console_total = 0
+    mem_mb = 0.0
+    if isinstance(net_resp, dict) and net_resp.get("status") == "ok":
+        net_total = net_resp.get("data", {}).get("total_recorded", 0)
+    if isinstance(console_resp, dict) and console_resp.get("status") == "ok":
+        console_total = console_resp.get("data", {}).get("total_captured", 0)
+    if isinstance(mem_resp, dict) and mem_resp.get("status") == "ok":
+        mem_mb = mem_resp.get("data", {}).get("resident_mb", 0.0)
+    return {"net_total": net_total, "console_total": console_total, "mem_mb": mem_mb}
+
+
+async def _gather_telemetry(port: int, pre_counts: dict, send_fn) -> str:
+    """Gather ambient telemetry (network, console, idle state) and format as compact summary.
+    Compares current counts against pre-action snapshot to show only new activity."""
+    lines = []
+
+    # Fire all telemetry queries concurrently
+    net_task = asyncio.create_task(
+        send_fn(port, "network", {"action": "log", "limit": 10}, timeout=2)
+    )
+    net_status_task = asyncio.create_task(
+        send_fn(port, "network", {"action": "status"}, timeout=2)
+    )
+    console_task = asyncio.create_task(
+        send_fn(port, "console", {"action": "log", "limit": 10}, timeout=2)
+    )
+    console_status_task = asyncio.create_task(
+        send_fn(port, "console", {"action": "status"}, timeout=2)
+    )
+    idle_task = asyncio.create_task(
+        send_fn(port, "wait_idle", {"debug": True}, timeout=2)
+    )
+    mem_task = asyncio.create_task(
+        send_fn(port, "memory", timeout=2)
+    )
+
+    net_resp, net_status, console_resp, console_status, idle_resp, mem_resp = await asyncio.gather(
+        net_task, net_status_task, console_task, console_status_task, idle_task, mem_task,
+        return_exceptions=True,
+    )
+
+    # Network requests that fired during the action
+    if isinstance(net_status, dict) and net_status.get("status") == "ok":
+        new_count = net_status.get("data", {}).get("total_recorded", 0) - pre_counts.get("net_total", 0)
+        if new_count > 0 and isinstance(net_resp, dict) and net_resp.get("status") == "ok":
+            txns = net_resp.get("data", {}).get("transactions", [])
+            # Take only the newest N that appeared during the action
+            txns = txns[-new_count:] if new_count <= len(txns) else txns
+            if txns:
+                lines.append(f"network: {len(txns)} request(s)")
+                for t in txns[:5]:
+                    req = t.get("request", {})
+                    resp = t.get("response", {})
+                    timing = t.get("timing", {})
+                    method = req.get("method", "?")
+                    url = req.get("url", "")
+                    status_code = resp.get("status_code", "...")
+                    duration = timing.get("duration_ms", "")
+                    # Compact URL: just path
+                    path = url.split("//", 1)[-1].split("/", 1)[-1] if "//" in url else url
+                    if len(path) > 60:
+                        path = path[:57] + "..."
+                    dur_str = f" {duration}ms" if duration else ""
+                    lines.append(f"  {method} /{path} \u2192 {status_code}{dur_str}")
+                if len(txns) > 5:
+                    lines.append(f"  ... +{len(txns) - 5} more")
+
+    # Duplicate request warnings (from network interceptor)
+    if isinstance(net_status, dict) and net_status.get("status") == "ok":
+        dupes = net_status.get("data", {}).get("duplicate_warnings", [])
+        for d in dupes:
+            if d.get("seconds_ago", 999) < 10:  # Only show recent duplicates
+                endpoint = d.get("endpoint", "?")
+                count = d.get("count", 0)
+                window = d.get("window_ms", 0)
+                lines.append(f"\u26a0 overfiring: {endpoint} called {count}x in {window}ms")
+
+    # Console output during the action
+    if isinstance(console_status, dict) and console_status.get("status") == "ok":
+        new_count = console_status.get("data", {}).get("total_captured", 0) - pre_counts.get("console_total", 0)
+        if new_count > 0 and isinstance(console_resp, dict) and console_resp.get("status") == "ok":
+            entries = console_resp.get("data", {}).get("lines", [])
+            entries = entries[-new_count:] if new_count <= len(entries) else entries
+            if entries:
+                lines.append(f"console: {len(entries)} line(s)")
+                for e in entries[:3]:
+                    msg = (e.get("message", "") if isinstance(e, dict) else str(e)).strip()
+                    if msg:
+                        disp = msg if len(msg) <= 80 else msg[:77] + "..."
+                        lines.append(f"  {disp}")
+                if len(entries) > 3:
+                    lines.append(f"  ... +{len(entries) - 3} more")
+
+    # Idle state
+    if isinstance(idle_resp, dict) and idle_resp.get("status") == "ok":
+        data = idle_resp.get("data", {})
+        is_idle = data.get("is_idle", True)
+        if not is_idle:
+            blockers = []
+            if data.get("pending_vc_transitions", 0) > 0:
+                blockers.append(f"{data['pending_vc_transitions']} VC transition(s)")
+            if data.get("has_transient_animations"):
+                anim = data.get("blocking_anim_key", "unknown")
+                blockers.append(f"animation: {anim}")
+            if data.get("pending_dispatches", 0) > 0:
+                blockers.append(f"{data['pending_dispatches']} pending dispatch(es)")
+            if blockers:
+                lines.append(f"settling: {', '.join(blockers)}")
+        else:
+            active_net = data.get("active_requests", 0)
+            if active_net > 0:
+                lines.append(f"idle (ui), {active_net} request(s) in-flight")
+
+    # Memory delta — always show if we have data
+    if isinstance(mem_resp, dict) and mem_resp.get("status") == "ok":
+        current_mb = mem_resp.get("data", {}).get("resident_mb", 0.0)
+        pre_mb = pre_counts.get("mem_mb", 0.0)
+        if current_mb > 0:
+            delta_mb = current_mb - pre_mb if pre_mb > 0 else 0
+            mem_str = f"memory: {current_mb:.0f}MB"
+            if abs(delta_mb) >= 1:
+                sign = "+" if delta_mb > 0 else ""
+                mem_str += f" ({sign}{delta_mb:.0f}MB)"
+                if delta_mb >= 50:
+                    mem_str += " \u26a0"
+            lines.append(mem_str)
+
+    if not lines:
+        return ""
+    return "\n--- telemetry ---\n" + "\n".join(lines)
+
+
+async def act_and_look(simulator: Optional[str], cmd: str, params: Optional[dict] = None, timeout: float = 10) -> str:
+    """Send a command, then automatically run look to show screen state after the action.
+    Returns: action result + screen summary + telemetry. Forces the check-act-verify loop."""
+    from pepper_format import format_look
+
+    try:
+        host, port, udid = discover_instance(simulator)
+    except RuntimeError as e:
+        return json.dumps({"status": "error", "error": str(e)}, indent=2)
+
+    # Bind host so downstream telemetry calls reach the right target
+    bound_fn = partial(send_command, host=host) if host != "localhost" else send_command
+
+    # Snapshot counts before action for telemetry delta
+    pre_counts = await _snapshot_counts(port, bound_fn)
+
+    # Execute the action
+    action_resp = await bound_fn(port, cmd, params, timeout)
+
+    # If the action failed, include screen state + guidance
+    if action_resp.get("status") != "ok":
+        error_msg = action_resp.get("error", "")
+        data_msg = action_resp.get("data", {}).get("message", "")
+        err = error_msg or data_msg
+
+        # Crash — don't try to look (app is dead), but fetch crash info
+        if "APP CRASHED" in err:
+            result = json.dumps(action_resp, indent=2)
+            crash_info = await fetch_crash_info(udid)
+            if crash_info:
+                result += crash_info
+            return result
+
+        # Element not found — show what IS on screen
+        if "not found" in err.lower() or "no hit-reachable" in err.lower():
+            await asyncio.sleep(0.2)
+            look_resp = await bound_fn(port, "look", {}, timeout=5)
+            screen_summary = format_look(look_resp) if look_resp.get("status") == "ok" else "(look failed)"
+            return f"Error: {err}\n\n--- What's actually on screen ---\n{screen_summary}"
+
+        # Connection error
+        if "refused" in err.lower() or "connect" in err.lower():
+            return f"Error: {err}\n\nPepper is not running. Use `deploy` to launch the app with Pepper injected."
+
+        return json.dumps(action_resp, indent=2)
+
+    # Brief pause for UI to settle after interaction
+    await asyncio.sleep(0.3)
+
+    # Auto-look + telemetry in parallel
+    look_task = asyncio.create_task(
+        bound_fn(port, "look", {}, timeout=5)
+    )
+    telemetry_task = asyncio.create_task(
+        _gather_telemetry(port, pre_counts, bound_fn)
+    )
+
+    look_resp, telemetry = await asyncio.gather(look_task, telemetry_task, return_exceptions=True)
+
+    if isinstance(look_resp, dict):
+        screen_summary = format_look(look_resp) if look_resp.get("status") == "ok" else "(look failed)"
+    else:
+        screen_summary = "(look failed)"
+
+    if isinstance(telemetry, Exception):
+        telemetry = ""
+
+    # Format: action result on top, then screen state, then telemetry
+    action_data = action_resp.get("data", {})
+    action_summary = action_data.get("description", action_data.get("strategy", cmd))
+
+    result = f"Action: {action_summary}\n\n--- Screen after {cmd} ---\n{screen_summary}"
+    if telemetry:
+        result += f"\n{telemetry}"
+    return result
+
+
+# ---------------------------------------------------------------------------
+# MCP Server
+# ---------------------------------------------------------------------------
+
+_CORE_INSTRUCTIONS = (
+    "Pepper controls a running iOS app via a dylib injected into the simulator. "
+    "Use `look` to see what's on screen, `tap` to interact, `vars` to inspect/mutate state, "
+    "`layers` to debug rendering, `screen` for the current screen name. "
+    "All tools accept an optional `simulator` UDID parameter for multi-sim setups.\n\n"
+    "RULES:\n"
+    "- NEVER screenshot. Use `look` instead. Always.\n"
+    "- `look` first, always. Before tapping, navigating, or asserting.\n"
+    "- Use `look visual=true` to include a simulator screenshot alongside the structured data for visual validation.\n"
+    "- Action tools (tap, scroll, navigate, back, input) auto-include screen state in their response. Read it.\n"
+    "- To check property values: use `vars_inspect`, NOT print statements. No rebuild needed.\n"
+    "- To check API traffic: use `network` start + log, NOT print statements.\n"
+    "- To capture app logs (print + NSLog): use `console` start + log.\n"
+    "- If a command returns APP CRASHED: investigate the crash, do NOT just redeploy.\n"
+    "- If an element isn't found: the screen state is in the error. Read it before retrying.\n\n"
+    "PR TEST PLAN VALIDATION:\n"
+    "When asked to validate a PR, use this workflow:\n"
+    "1. Read the PR: `gh pr view NNNN --repo owner/repo` for description, `gh pr diff NNNN --repo owner/repo` for changes.\n"
+    "2. Parse the test plan — each checkbox is a validation item.\n"
+    "3. For each item:\n"
+    "   a. Navigate to the relevant screen (deeplink or tap sequence).\n"
+    "   b. Perform the interaction described in the test item.\n"
+    "   c. Verify the expected outcome with `look` (check text, elements, state).\n"
+    "   d. Capture screenshot: `look visual=true screenshot_quality=high save_screenshot=/tmp/pr-NNNN-item.jpg`\n"
+    "4. Upload all screenshots: `python3 <PEPPER_DIR>/tools/upload-screenshot --repo owner/repo --prefix pr-NNNN --markdown /tmp/pr-NNNN-*.jpg`\n"
+    "5. Update PR description: `gh pr edit NNNN --repo owner/repo --body '...'` — check off validated items.\n"
+    "   Add a `### Screenshots` section (not 'Evidence'). Use HTML img tags with width=200 for thumbnails.\n"
+    "   Label each screenshot with a bold caption above it. Example:\n"
+    '   `**Flag off** <img src="URL" width=200> **Flag on** <img src="URL" width=200>`\n\n'
+    "SCREEN RECORDING:\n"
+    "For test items that need interaction sequences (toggle persistence, navigation flows):\n"
+    "- `record action=start` → do interactions → `record action=stop output=/tmp/clip.mp4`\n"
+    "- For tight clips: explore first with `look`, then chain taps with animation delays (0.3-0.7s per action).\n"
+    "- Upload videos via Playwright MCP (browser automation) to get user-attachments URLs that autoplay in PRs.\n"
+    "- Upload screenshots via `upload-screenshot` tool (release assets, always works).\n"
+    "- See /validate-pr skill for the full browser upload workflow.\n\n"
+    "LAUNCHING THE APP:\n"
+    "After building/installing the iOS app, ALWAYS use Pepper's `deploy` tool to launch — NOT raw `simctl launch`.\n"
+    "`deploy` handles: terminate, launch with dylib injection + env vars, wait for WebSocket server, auto-look.\n"
+    "Raw `simctl launch` doesn't wait for Pepper — `look` will fail with connection refused.\n"
+    "Pattern: build → simctl install → deploy (not build → install → launch → look → fail → deploy).\n\n"
+    "TIPS:\n"
+    "- Always `look` before interacting to confirm screen state.\n"
+    "- Action tools (tap, scroll, navigate) auto-include screen state in response — read it.\n"
+    "- For recordings, use `pepper-ctl tap --point x,y` for fast chained actions (no look overhead).\n"
+    "- Screenshots go to the repo where the PR lives, not pepper's repo."
+)
+
+_adapter_preamble = load_adapter_preamble()
+_instructions = _CORE_INSTRUCTIONS + ("\n\n" + _adapter_preamble if _adapter_preamble else "")
+
+mcp = FastMCP("pepper", instructions=_instructions)
+
+
+# ---------------------------------------------------------------------------
+# Dynamic adapter tools (from ~/.pepper/tools/{adapter_type}.json)
+# ---------------------------------------------------------------------------
+
+def _register_adapter_tools():
+    """Register adapter-provided tools as MCP tools that shell out to commands."""
+    tools = load_adapter_tools()
+    for tool_def in tools:
+        name = tool_def.get("name", "")
+        description = tool_def.get("description", "")
+        command = tool_def.get("command", "")
+        timeout = tool_def.get("timeout", 120)
+        if not name or not command:
+            continue
+
+        # Create a closure that captures this tool's command
+        def make_handler(cmd, cmd_timeout):
+            async def handler(
+                args: str = Field(default="", description="Additional arguments to append to the command"),
+            ) -> str:
+                full_cmd = cmd
+                if args:
+                    full_cmd += " " + args
+                try:
+                    proc = await asyncio.create_subprocess_shell(
+                        full_cmd,
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE,
+                    )
+                    stdout, stderr = await asyncio.wait_for(
+                        proc.communicate(), timeout=cmd_timeout
+                    )
+                    output = stdout.decode(errors="replace")
+                    err = stderr.decode(errors="replace")
+                    result = ""
+                    if output:
+                        result += output
+                    if err:
+                        result += ("\n--- stderr ---\n" + err) if result else err
+                    if proc.returncode != 0:
+                        result += f"\n[exit code {proc.returncode}]"
+                    return result or "(no output)"
+                except asyncio.TimeoutError:
+                    return f"Command timed out after {cmd_timeout}s"
+                except Exception as e:
+                    return f"Error: {e}"
+            return handler
+
+        handler = make_handler(command, timeout)
+        mcp.tool(name=name, description=description)(handler)
+
+
+_register_adapter_tools()
+
+
+register_nav_tools(mcp, send_command, resolve_and_send, act_and_look)
+register_state_tools(mcp, resolve_and_send)
+register_debug_tools(mcp, resolve_and_send)
+register_renders_tools(mcp, resolve_and_send)
+register_system_tools(mcp, resolve_and_send, act_and_look, _resolve_simulator)
+register_record_tools(mcp)
+register_sim_tools(mcp, resolve_and_send, _resolve_simulator)
+
+
+@mcp.tool()
+async def wait_for(
+    simulator: Optional[str] = Field(default=None, description="Simulator UDID"),
+    element: Optional[str] = Field(default=None, description="Accessibility ID of element to wait for"),
+    state: Optional[str] = Field(default=None, description="State to wait for: visible (default), exists, has_value"),
+    value: Optional[str] = Field(default=None, description="Expected value (for has_value state)"),
+    text: Optional[str] = Field(default=None, description="Wait for text to appear on screen (alternative to element)"),
+    screen: Optional[str] = Field(default=None, description="Wait for a specific screen ID (alternative to element)"),
+    timeout_ms: Optional[int] = Field(default=None, description="Timeout in milliseconds (default: 5000)"),
+) -> str:
+    """Wait for a condition to be met — element visible, text appears, or screen changes.
+    Polls at 100ms intervals until the condition is satisfied or timeout.
+    Use this after navigation or actions that trigger async UI updates."""
+    until: dict = {}
+    if element:
+        until["element"] = element
+        if state:
+            until["state"] = state
+        if value:
+            until["value"] = value
+    elif text:
+        until["text"] = text
+    elif screen:
+        until["screen"] = screen
+    else:
+        return "Error: specify element, text, or screen to wait for"
+    params: dict = {"until": until}
+    if timeout_ms is not None:
+        params["timeout_ms"] = timeout_ms
+    return await resolve_and_send(simulator, "wait_for", params, timeout=max(15, (timeout_ms or 5000) / 1000 + 2))
+
+
+@mcp.tool()
+async def wait_idle(
+    simulator: Optional[str] = Field(default=None, description="Simulator UDID"),
+    timeout_ms: Optional[int] = Field(default=None, description="Timeout in milliseconds (default: 3000)"),
+    include_network: bool = Field(default=False, description="Also wait for pending network requests"),
+    debug: bool = Field(default=False, description="Return what's blocking idle instead of waiting"),
+) -> str:
+    """Wait for the app to become idle — no animations, no pending view controller transitions.
+    Use after navigation or complex interactions to ensure the UI has settled before inspecting."""
+    params: dict = {}
+    if timeout_ms is not None:
+        params["timeout_ms"] = timeout_ms
+    if include_network:
+        params["include_network"] = True
+    if debug:
+        params["debug"] = True
+    return await resolve_and_send(simulator, "wait_idle", params, timeout=max(10, (timeout_ms or 3000) / 1000 + 2))
+
+
+
+# ---------------------------------------------------------------------------
+# Build / deploy / iterate tools (logic in mcp_build.py)
+# ---------------------------------------------------------------------------
+
+@mcp.tool()
+async def build(
+    workspace: str = Field(description="Absolute path to the .xcworkspace to build"),
+    scheme: Optional[str] = Field(default=None, description="Build scheme (default: from .env APP_SCHEME)"),
+    simulator: Optional[str] = Field(default=None, description="Simulator UDID for -destination"),
+) -> str:
+    """Build the iOS app for simulator. Returns success or structured error messages.
+    Workspace is required — no implicit fallback. Uses worktree-aware DerivedData isolation automatically."""
+    success, message = await _build_app(workspace, scheme, simulator)
+    return message
+
+
+@mcp.tool()
+async def build_device(
+    workspace: str = Field(description="Absolute path to the .xcworkspace to build"),
+    scheme: Optional[str] = Field(default=None, description="Build scheme (default: from .env APP_SCHEME)"),
+    device: Optional[str] = Field(default=None, description="Device xcodebuild ID (default: from .env DEVICE_XCODEBUILD_ID)"),
+    install: bool = Field(default=True, description="Install on device after building"),
+    launch: bool = Field(default=True, description="Launch app after installing"),
+) -> str:
+    """Build the iOS app for a physical device, optionally install and launch.
+    NO dylib injection — plain device build for testing on real hardware.
+    Workspace is required — no implicit fallback. Uses worktree-aware DerivedData isolation."""
+    cfg = get_config()
+    devicectl_uuid = cfg["device_devicectl_uuid"]
+
+    if not devicectl_uuid and (install or launch):
+        return "No device devicectl UUID configured. Set DEVICE_DEVICECTL_UUID in pepper/.env"
+
+    # Verify device is connected before building (fail fast)
+    if install or launch:
+        connected, msg = await _verify_device_connected(devicectl_uuid)
+        if not connected:
+            return msg
+
+    # Build
+    success, build_msg = await _build_app_device(workspace, scheme, device)
+    if not success:
+        return build_msg
+
+    parts = [build_msg]
+
+    if install:
+        app_path = _find_built_app(workspace, platform="iphoneos")
+        if not app_path:
+            return f"{build_msg}\n\nBuild succeeded but could not find .app in DerivedData (Debug-iphoneos/)"
+        ok, msg = await _install_on_device(devicectl_uuid, app_path)
+        parts.append(msg)
+        if not ok:
+            return "\n".join(parts)
+
+    if launch and install:
+        bid = cfg["bundle_id"]
+        if not bid:
+            parts.append("No bundle ID configured — skipping launch")
+        else:
+            ok, msg = await _launch_on_device(devicectl_uuid, bid)
+            parts.append(msg)
+
+    return "\n".join(parts)
+
+
+@mcp.tool()
+async def iterate(
+    workspace: str = Field(description="Absolute path to the .xcworkspace to build"),
+    scheme: Optional[str] = Field(default=None, description="Build scheme (default: from .env APP_SCHEME)"),
+    simulator: Optional[str] = Field(default=None, description="Simulator UDID"),
+    bundle_id: Optional[str] = Field(default=None, description="App bundle ID (default: from .env APP_BUNDLE_ID)"),
+) -> str:
+    """The complete edit→build→deploy→verify loop in ONE call.
+    Builds the app, installs it on the simulator, launches with Pepper injected,
+    and returns the screen state. Use this after editing code to see your changes.
+    Workspace is required — no implicit fallback."""
+    # Resolve sim first
+    try:
+        sim = _resolve_simulator(simulator)
+    except RuntimeError as e:
+        return str(e)
+
+    # Build
+    success, build_msg = await _build_app(workspace, scheme, sim)
+    if not success:
+        return build_msg
+
+    # Find built .app
+    app_path = _find_built_app(workspace)
+
+    # Deploy
+    deploy_msg = await _deploy_app(sim, send_fn=send_command, bundle_id=bundle_id, install_path=app_path)
+    return f"{build_msg}\n\n{deploy_msg}"
+
+
+@mcp.tool()
+async def deploy(
+    simulator: Optional[str] = Field(default=None, description="Simulator UDID"),
+    bundle_id: Optional[str] = Field(default=None, description="App bundle ID (default: from .env)"),
+    dylib_path: Optional[str] = Field(default=None, description="Path to Pepper dylib (default: from .env)"),
+    skip_privacy: bool = Field(default=False, description="Skip auto-granting privacy permissions (photos, camera, microphone, contacts, calendar, location)"),
+) -> str:
+    """Terminate and relaunch the app with Pepper dylib injection.
+    Does NOT rebuild — use `build` or `iterate` for that.
+    Use this when you just need to restart the app (e.g. after a crash).
+    By default, grants common privacy permissions before launch (opt out with skip_privacy=true)."""
+    try:
+        sim = _resolve_simulator(simulator)
+    except RuntimeError as e:
+        return str(e)
+    return await _deploy_app(sim, send_fn=send_command, bundle_id=bundle_id, dylib_path=dylib_path, skip_privacy=skip_privacy)
+
+
+@mcp.tool()
+async def webview(
+    simulator: Optional[str] = Field(default=None, description="Simulator UDID"),
+    action: str = Field(default="url", description="Action: url, evaluate, dom"),
+    script: Optional[str] = Field(default=None, description="JavaScript to execute (for evaluate)"),
+    selector: Optional[str] = Field(default=None, description="CSS selector for DOM query (default: '*', for dom)"),
+    index: Optional[int] = Field(default=None, description="WKWebView index when multiple are present (default: 0)"),
+    limit: Optional[int] = Field(default=None, description="Max DOM elements to return (default: 50, for dom)"),
+) -> str:
+    """Inspect and interact with WKWebView instances embedded in the app (hybrid apps).
+
+    Use this when the app contains web content (login flows, content pages, settings)
+    that Pepper's native view hierarchy tools cannot reach.
+
+    Actions:
+    - url:      List all WKWebViews found, with current URL, title, and navigation state.
+    - evaluate: Execute arbitrary JavaScript and return the result. Pass script='...'
+    - dom:      Return a simplified DOM element listing. Use selector to filter (e.g. 'a', 'input', '#id').
+
+    Examples:
+      webview(action='url')
+      webview(action='evaluate', script='document.title')
+      webview(action='dom', selector='input')
+      webview(action='evaluate', script='document.querySelector("#email").value')
+    """
+    params: dict = {"action": action}
+    if script is not None:
+        params["script"] = script
+    if selector is not None:
+        params["selector"] = selector
+    if index is not None:
+        params["index"] = index
+    if limit is not None:
+        params["limit"] = limit
+    return await resolve_and_send(simulator, "webview", params, timeout=15)
+
+
+if __name__ == "__main__":
+    import atexit
+
+    def _cleanup_session():
+        owned = pepper_sessions.my_session()
+        if owned:
+            pepper_sessions.release_simulator(owned)
+
+    atexit.register(_cleanup_session)
+    mcp.run(transport="stdio")

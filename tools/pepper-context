@@ -1,0 +1,575 @@
+#!/usr/bin/env python3
+"""
+pepper-context -- resolve source code context for the current screen.
+
+Calls pepper-ctl to get the active ViewController, then greps the app codebase
+to find the coordinator, delegate methods, navigation actions, and ViewModel
+@Published state.
+
+Usage:
+  pepper-context                      # auto-detect current screen
+  pepper-context --class MyViewController   # skip pepper-ctl, use this class
+  pepper-context --port 8850          # pass port to pepper-ctl
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import re
+import subprocess
+import sys
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple
+
+# ---------------------------------------------------------------------------
+# Config
+# ---------------------------------------------------------------------------
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from pepper_common import require_tool
+
+APP_SOURCE_ROOT = Path(os.environ.get("APP_SOURCE_ROOT", os.path.expanduser("~/Developer/ios")))
+PEPPER_CTL = Path(__file__).parent / "pepper-ctl"
+
+# Validate ripgrep is available (used for all source lookups)
+require_tool("rg", install_hint="brew install ripgrep")
+
+
+def rg(pattern: str, *extra_args: str, glob: Optional[str] = None) -> List[str]:
+    """Run ripgrep and return matching lines. Returns [] on no match."""
+    cmd = ["rg", "--no-heading", "-n", pattern]
+    if glob:
+        cmd += ["--glob", glob]
+    cmd += list(extra_args)
+    cmd.append(str(APP_SOURCE_ROOT))
+    try:
+        out = subprocess.check_output(cmd, text=True, stderr=subprocess.DEVNULL)
+        return out.strip().splitlines()
+    except subprocess.CalledProcessError:
+        return []
+
+
+def rg_files(pattern: str, **kwargs) -> List[str]:
+    """Return only file paths matching a pattern."""
+    cmd = ["rg", "-l", pattern]
+    if "glob" in kwargs:
+        cmd += ["--glob", kwargs["glob"]]
+    cmd.append(str(APP_SOURCE_ROOT))
+    try:
+        out = subprocess.check_output(cmd, text=True, stderr=subprocess.DEVNULL)
+        return out.strip().splitlines()
+    except subprocess.CalledProcessError:
+        return []
+
+
+def read_file(path: str) -> str:
+    try:
+        return Path(path).read_text()
+    except OSError:
+        return ""
+
+
+def rel(path: str) -> str:
+    """Make a path relative to APP_SOURCE_ROOT for display."""
+    try:
+        return str(Path(path).relative_to(APP_SOURCE_ROOT))
+    except ValueError:
+        return path
+
+
+# ---------------------------------------------------------------------------
+# Step 1: Get current screen ViewController class
+# ---------------------------------------------------------------------------
+
+def get_current_vc(port: Optional[int]) -> Optional[Dict]:
+    """Call pepper-ctl screen and return the response."""
+    cmd = ["python3", str(PEPPER_CTL)]
+    if port:
+        cmd += ["--port", str(port)]
+    cmd += ["raw", '{"cmd":"screen"}']
+    try:
+        out = subprocess.check_output(cmd, text=True, stderr=subprocess.DEVNULL)
+        return json.loads(out)
+    except (subprocess.CalledProcessError, json.JSONDecodeError, OSError):
+        return None
+
+
+# ---------------------------------------------------------------------------
+# Step 2: Find VC source file
+# ---------------------------------------------------------------------------
+
+def find_vc_source(vc_class: str) -> Optional[str]:
+    """Find the source file defining this ViewController class."""
+    # Try class definition
+    files = rg_files(f"class {vc_class}", glob="*.swift")
+    if files:
+        return files[0]
+
+    # For generic HostingController wrappers, the VC is generic -- look for who
+    # creates it with this class name referenced
+    files = rg_files(vc_class, glob="*.swift")
+    return files[0] if files else None
+
+
+# ---------------------------------------------------------------------------
+# Step 3: Find Coordinator
+# ---------------------------------------------------------------------------
+
+def find_coordinator(vc_class: str) -> Tuple[Optional[str], Optional[str]]:
+    """Find the coordinator that creates this VC. Returns (class_name, file_path)."""
+
+    # Strategy 1: grep for who instantiates this VC
+    lines = rg(f"{vc_class}\\(", glob="*Coordinator*.swift")
+    if lines:
+        path = lines[0].split(":")[0]
+        content = read_file(path)
+        m = re.search(r"class\s+(\w+Coordinator)\s*:", content)
+        if m:
+            return m.group(1), path
+
+    # Strategy 2: HostingController pattern -- look for coordinators that
+    # create a View with environmentObject and wrap in a HostingController
+    # The VC class will be a HostingController, so look for the screen_id
+    # or the view namespace
+    # Strip common suffixes to get the feature namespace
+    namespace = vc_class.replace("ViewController", "").replace("Controller", "")
+
+    # Look for coordinator files matching this namespace
+    files = rg_files(f"class {namespace}Coordinator", glob="*.swift")
+    if files:
+        path = files[0]
+        return f"{namespace}Coordinator", path
+
+    # Strategy 3: broader search -- who references this class in a coordinator?
+    lines = rg(vc_class, glob="*Coordinator*.swift")
+    if lines:
+        path = lines[0].split(":")[0]
+        content = read_file(path)
+        m = re.search(r"class\s+(\w+Coordinator)\s*:", content)
+        if m:
+            return m.group(1), path
+
+    return None, None
+
+
+def find_coordinator_for_hosting(screen_type: str) -> Tuple[Optional[str], Optional[str]]:
+    """When the VC is a HostingController, find coordinator by screen type name."""
+    # screen_type is like "user_profile" -- convert to PascalCase for search
+    # But we also have the raw type from pepper-ctl, try that first
+    parts = screen_type.split("_")
+    pascal = "".join(p.capitalize() for p in parts)
+
+    files = rg_files(f"class {pascal}Coordinator", glob="*.swift")
+    if files:
+        path = files[0]
+        return f"{pascal}Coordinator", path
+
+    return None, None
+
+
+def _resolve_variable(body: str, var_name: str) -> str:
+    """Resolve a variable name to its Coordinator class.
+
+    Given a function body and a variable like 'coordinator', find the assignment:
+      let coordinator = SettingsCoordinator(...)
+    and return 'SettingsCoordinator'.
+    """
+    if var_name[0].isupper():
+        return var_name
+
+    # let/var <name> = SomeCoordinator(
+    m = re.search(
+        rf"(?:let|var)\s+{re.escape(var_name)}\s*(?::\s*\w+)?\s*=\s*(\w+Coordinator)\s*\(",
+        body,
+    )
+    if m:
+        return m.group(1)
+
+    # let/var <name> = SomeClass(  where class name contains Coordinator
+    m = re.search(
+        rf"(?:let|var)\s+{re.escape(var_name)}\s*=\s*(\w+)\s*\(",
+        body,
+    )
+    if m and "Coordinator" in m.group(1):
+        return m.group(1)
+
+    # Conditional assignment: <name> = SomeCoordinator(  (without let/var)
+    matches = re.findall(
+        rf"{re.escape(var_name)}\s*=\s*(\w+Coordinator)\s*\(",
+        body,
+    )
+    if matches:
+        # Return all unique coordinator types found
+        unique = list(dict.fromkeys(matches))
+        return " | ".join(unique) if len(unique) > 1 else unique[0]
+
+    return var_name
+
+
+def _extract_func_body(content: str, start: int) -> str:
+    """Extract a function body by matching braces, starting after the opening {."""
+    depth = 1
+    i = start
+    limit = min(start + 3000, len(content))
+    while i < limit and depth > 0:
+        if content[i] == '{':
+            depth += 1
+        elif content[i] == '}':
+            depth -= 1
+        i += 1
+    return content[start:i]
+
+
+# ---------------------------------------------------------------------------
+# Step 4: Parse Coordinator for delegate conformances & navigation
+# ---------------------------------------------------------------------------
+
+def parse_coordinator(coord_class: str, coord_file: str) -> Dict:
+    """Parse coordinator file(s) for delegate methods and navigation."""
+    result = {"delegates": [], "navigation": {}}
+
+    # Find all files that extend this coordinator (could be split across files)
+    coord_files = rg_files(f"extension {coord_class}", glob="*.swift")
+    if coord_file not in coord_files:
+        coord_files.insert(0, coord_file)
+
+    for fpath in coord_files:
+        content = read_file(fpath)
+
+        # Find delegate conformances: extension CoordClass: SomeDelegate {
+        for m in re.finditer(
+            r"extension\s+" + re.escape(coord_class) + r"\s*:\s*([^{]+)\{",
+            content,
+        ):
+            protocols = [p.strip() for p in m.group(1).split(",")]
+            for proto in protocols:
+                if "Delegate" in proto:
+                    result["delegates"].append(proto)
+
+        # Find navigation actions: func methodName(...)  { ... pushCoordinator/presentCoordinator
+        # Skip lifecycle/framework methods
+        skip_funcs = {
+            "start", "stop", "init", "deinit", "viewWillAppear", "viewDidAppear",
+            "viewWillDisappear", "viewDidDisappear", "onScreenshotTaken",
+            "stopWithoutHaptics", "coordinatorDidComplete", "handle",
+        }
+
+        # Parse function blocks
+        for m in re.finditer(
+            r"func\s+(\w+)\s*\([^)]*\)[^{]*\{",
+            content,
+        ):
+            func_name = m.group(1)
+            if func_name in skip_funcs:
+                continue
+            start = m.end()
+            body = _extract_func_body(content, start)
+
+            nav_action = None
+            if "pushCoordinator" in body:
+                cm = re.search(r"pushCoordinator\(\s*(\w+)", body)
+                target = cm.group(1) if cm else "?"
+                target = _resolve_variable(body, target)
+                nav_action = f"push → {target}"
+            elif "presentCoordinator" in body:
+                cm = re.search(r"presentCoordinator\(\s*(\w+)", body)
+                target = cm.group(1) if cm else "?"
+                target = _resolve_variable(body, target)
+                nav_action = f"present → {target}"
+            elif "presentOverlayCoordinator" in body:
+                cm = re.search(r"presentOverlayCoordinator\(\s*(\w+)", body)
+                target = cm.group(1) if cm else "?"
+                target = _resolve_variable(body, target)
+                nav_action = f"overlay → {target}"
+            elif "setState" in body:
+                cm = re.search(r"setState\(\s*\.(\w+)", body)
+                target = cm.group(1) if cm else "?"
+                nav_action = f"setState → .{target}"
+            elif "popViewController" in body or "pop(" in body:
+                nav_action = "pop (go back)"
+            elif "dismiss(" in body:
+                nav_action = "dismiss"
+            elif "delegate?" in body:
+                cm = re.search(r"delegate\?\.(\w+)", body)
+                if cm:
+                    nav_action = f"delegates → {cm.group(1)}()"
+
+            if nav_action:
+                result["navigation"][func_name] = nav_action
+
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Step 5: Find ViewModel
+# ---------------------------------------------------------------------------
+
+def find_viewmodel(coord_file: str, coord_class: str) -> Tuple[Optional[str], Optional[str]]:
+    """Find the ViewModel class from the coordinator."""
+    content = read_file(coord_file)
+
+    # Pattern: SomeNamespace.ViewModel( or ViewModel(
+    m = re.search(r"(\w+(?:\.\w+)*\.ViewModel)\s*\(", content)
+    if m:
+        vm_full = m.group(1)
+        namespace = vm_full.split(".")[0]
+
+        # Strategy 1: Look for class named NamespaceViewModel (e.g. MenuViewModel)
+        direct_files = rg_files(f"class {namespace}ViewModel", glob="*.swift")
+        if direct_files:
+            # Prefer file in the namespace's own package
+            pkg = [f for f in direct_files if namespace.lower() in f.lower()]
+            return vm_full, (pkg[0] if pkg else direct_files[0])
+
+        # Strategy 2: Look for "class ViewModel" within the namespace's package
+        files = rg_files("class ViewModel.*ObservableObject", glob="*.swift")
+        if not files:
+            files = rg_files("class ViewModel", glob="*.swift")
+
+        ns_matches = [f for f in files if namespace.lower() in f.lower()]
+        if ns_matches:
+            # Prefer top-level ViewModel, not nested sub-features
+            top_level = [f for f in ns_matches
+                         if "/Page/" not in f and "/Sub/" not in f
+                         and "/Account/" not in f and "/Integration/" not in f
+                         and "/Updates/" not in f]
+            named = [f for f in (top_level or ns_matches)
+                     if f.lower().endswith("/viewmodel.swift")
+                     or f.lower().endswith(f"/{namespace.lower()}+viewmodel.swift")]
+            best = named or top_level or ns_matches
+            return vm_full, best[0]
+
+        return vm_full, files[0] if files else None
+
+    # Pattern: let viewModel: SomeViewModel or var viewModel = SomeViewModel(
+    m = re.search(r"(?:let|var)\s+viewModel\s*(?::\s*(\w+[\w.]*)|=\s*(\w+[\w.]*)\s*\()", content)
+    if m:
+        vm_class = m.group(1) or m.group(2)
+        files = rg_files(f"class {vm_class.split('.')[-1]}", glob="*.swift")
+        if files:
+            return vm_class, files[0]
+        return vm_class, None
+
+    return None, None
+
+
+def parse_viewmodel(vm_file: str) -> List[str]:
+    """Extract @Published properties from the ViewModel file."""
+    content = read_file(vm_file)
+    props = []
+    for m in re.finditer(r"@Published\s+(?:private\s+)?var\s+(\w+)\s*(?::\s*([^=\n]+?))?(?:\s*=\s*([^\n]+))?$",
+                         content, re.MULTILINE):
+        name = m.group(1)
+        type_ann = (m.group(2) or "").strip().rstrip()
+        default = (m.group(3) or "").strip()
+        if type_ann and default:
+            props.append(f"{name}: {type_ann} = {default}")
+        elif type_ann:
+            props.append(f"{name}: {type_ann}")
+        elif default:
+            props.append(f"{name} = {default}")
+        else:
+            props.append(name)
+    return props
+
+
+# ---------------------------------------------------------------------------
+# Step 6: Find delegate protocol methods
+# ---------------------------------------------------------------------------
+
+def parse_delegate_protocol(delegate_name: str) -> Tuple[Optional[str], list[str]]:
+    """Find the delegate protocol definition and extract method signatures."""
+    # delegate_name could be "ActivityDetails.Delegate" or "WifiAddManuallyViewDelegate"
+    parts = delegate_name.split(".")
+    short_name = parts[-1]
+    namespace = parts[0] if len(parts) > 1 else None
+
+    files = rg_files(f"protocol {short_name}", glob="*.swift")
+    if not files:
+        return None, []
+
+    # If namespaced (e.g. ActivityDetails.Delegate), prefer files in that package
+    if namespace and len(files) > 1:
+        ns_lower = namespace.lower()
+        pkg_files = [f for f in files if ns_lower in f.lower()]
+        if pkg_files:
+            files = pkg_files
+
+    path = files[0]
+    content = read_file(path)
+
+    # Find the protocol block
+    pattern = rf"protocol\s+{re.escape(short_name)}\s*[^{{]*\{{(.*?)\n\s*\}}"
+    m = re.search(pattern, content, re.DOTALL)
+    if not m:
+        return path, []
+
+    block = m.group(1)
+    methods = []
+    for mm in re.finditer(r"func\s+(\w+)\s*\(([^)]*)\)", block):
+        name = mm.group(1)
+        params = mm.group(2).strip()
+        if params:
+            # Simplify params to just external names
+            param_names = []
+            for p in params.split(","):
+                p = p.strip()
+                parts = p.split(":")
+                if parts:
+                    param_names.append(parts[0].strip().split()[-1])
+            methods.append(f"{name}({', '.join(param_names)})")
+        else:
+            methods.append(f"{name}()")
+    return path, methods
+
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+
+def main():
+    parser = argparse.ArgumentParser(description="Resolve source context for current screen")
+    parser.add_argument("--class", dest="vc_class", help="ViewController class name (skip pepper-ctl)")
+    parser.add_argument("--port", type=int, help="pepper-ctl port")
+    parser.add_argument("--json", action="store_true", help="Output as JSON")
+    args = parser.parse_args()
+
+    # Step 1: Get current screen
+    vc_class = args.vc_class
+    screen_data = None
+
+    if not vc_class:
+        screen_data = get_current_vc(args.port)
+        if not screen_data:
+            print("ERROR: Could not get current screen from pepper-ctl", file=sys.stderr)
+            sys.exit(1)
+
+        data = screen_data.get("data", screen_data)
+        vc_class = data.get("type", "")
+        screen_id = data.get("screen_id", "")
+        nav_stack = data.get("navigation_stack", [])
+        tab = data.get("tab", "")
+
+        if not vc_class:
+            print("ERROR: No ViewController type in screen response", file=sys.stderr)
+            sys.exit(1)
+    else:
+        screen_id = ""
+        nav_stack = []
+        tab = ""
+
+    # Step 2: Find VC source
+    vc_source = find_vc_source(vc_class)
+
+    # Step 3: Find coordinator
+    coord_class, coord_file = None, None
+    if "HostingController" in vc_class:
+        # Generic hosting controller -- find by screen_id
+        if screen_id:
+            coord_class, coord_file = find_coordinator_for_hosting(screen_id)
+    else:
+        coord_class, coord_file = find_coordinator(vc_class)
+
+    # If still no coordinator, try screen_id as fallback
+    if not coord_file and screen_id:
+        coord_class, coord_file = find_coordinator_for_hosting(screen_id)
+
+    # Step 4: Parse coordinator
+    coord_info = {}
+    if coord_class and coord_file:
+        coord_info = parse_coordinator(coord_class, coord_file)
+
+    # Step 5: Find and parse ViewModel
+    vm_class, vm_file, vm_published = None, None, []
+    if coord_file:
+        vm_class, vm_file = find_viewmodel(coord_file, coord_class or "")
+        if vm_file:
+            vm_published = parse_viewmodel(vm_file)
+
+    # Step 6: Parse delegate protocols
+    delegate_details = {}
+    for d in coord_info.get("delegates", []):
+        proto_file, methods = parse_delegate_protocol(d)
+        if methods:
+            delegate_details[d] = {
+                "source": rel(proto_file) if proto_file else None,
+                "methods": methods,
+            }
+
+    # Build output
+    output = {
+        "screen_id": screen_id,
+        "tab": tab,
+        "navigation_stack": nav_stack,
+        "viewController": {
+            "class": vc_class,
+            "source": rel(vc_source) if vc_source else None,
+        },
+        "coordinator": {
+            "class": coord_class,
+            "source": rel(coord_file) if coord_file else None,
+            "delegates": coord_info.get("delegates", []),
+            "navigation": coord_info.get("navigation", {}),
+        } if coord_class else None,
+        "viewModel": {
+            "class": vm_class,
+            "source": rel(vm_file) if vm_file else None,
+            "published": vm_published,
+        } if vm_class else None,
+        "delegateProtocols": delegate_details if delegate_details else None,
+    }
+
+    # Remove None values for cleaner output
+    output = {k: v for k, v in output.items() if v is not None}
+    if "coordinator" in output:
+        output["coordinator"] = {k: v for k, v in output["coordinator"].items() if v}
+    if "viewModel" in output:
+        output["viewModel"] = {k: v for k, v in output["viewModel"].items() if v}
+
+    if args.json:
+        print(json.dumps(output, indent=2))
+    else:
+        # Human-readable output
+        print(f"Screen: {screen_id or vc_class}")
+        if tab:
+            print(f"Tab: {tab}")
+        if nav_stack:
+            print(f"Nav stack: {' → '.join(nav_stack)}")
+
+        print(f"\nViewController: {vc_class}")
+        if vc_source:
+            print(f"  source: {rel(vc_source)}")
+
+        if coord_class:
+            print(f"\nCoordinator: {coord_class}")
+            if coord_file:
+                print(f"  source: {rel(coord_file)}")
+            if coord_info.get("delegates"):
+                print(f"  delegates: {', '.join(coord_info['delegates'])}")
+            if coord_info.get("navigation"):
+                print(f"\n  Navigation:")
+                for method, action in coord_info["navigation"].items():
+                    print(f"    {method}() → {action}")
+
+        if vm_class:
+            print(f"\nViewModel: {vm_class}")
+            if vm_file:
+                print(f"  source: {rel(vm_file)}")
+            if vm_published:
+                print(f"  @Published:")
+                for p in vm_published:
+                    print(f"    {p}")
+
+        if delegate_details:
+            print(f"\nDelegate Protocols:")
+            for name, info in delegate_details.items():
+                print(f"  {name}")
+                if info.get("source"):
+                    print(f"    source: {info['source']}")
+                for m in info.get("methods", []):
+                    print(f"    - {m}")
+
+
+if __name__ == "__main__":
+    main()

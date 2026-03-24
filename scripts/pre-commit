@@ -1,0 +1,198 @@
+#!/bin/bash
+# Pre-commit hook for pepper repo.
+# Install: ln -sf ../../scripts/pre-commit .git/hooks/pre-commit
+# Or run: make setup
+set -e
+
+REPO_DIR="$(git rev-parse --show-toplevel)"
+FAILED=0
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+DIM='\033[2m'
+NC='\033[0m'
+
+pass() { echo -e "${GREEN}✓${NC} $1"; }
+fail() { echo -e "${RED}✗${NC} $1"; FAILED=1; }
+warn() { echo -e "${YELLOW}⚠${NC} $1"; }
+
+echo "pepper pre-commit checks"
+echo "========================"
+
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM)
+
+# 1. Swift compilation
+echo ""
+echo -e "${DIM}Building dylib...${NC}"
+BUILD_OUTPUT=$(make -C "$REPO_DIR" build 2>&1)
+if echo "$BUILD_OUTPUT" | sed 's/\x1b\[[0-9;]*m//g' | grep -q "Built Pepper"; then
+    pass "Swift build"
+else
+    fail "Swift build failed"
+    echo "$BUILD_OUTPUT" | grep "error:" | head -10
+fi
+
+# 2. SwiftLint (only staged Swift files — avoids blocking on pre-existing violations)
+STAGED_SWIFT=$(echo "$STAGED_FILES" | grep '\.swift$' || true)
+if [ -z "$STAGED_SWIFT" ]; then
+    pass "SwiftLint (no Swift files staged)"
+elif command -v swiftlint &>/dev/null; then
+    LINT_OUTPUT=$(echo "$STAGED_SWIFT" | xargs swiftlint lint --strict 2>&1)
+    if [ $? -eq 0 ]; then
+        pass "SwiftLint"
+    else
+        fail "SwiftLint violations found"
+        echo "$LINT_OUTPUT" | grep "error\|warning" | head -10
+    fi
+elif ! command -v swiftlint &>/dev/null; then
+    warn "SwiftLint not installed — skipping (brew install swiftlint)"
+fi
+
+# 3. Python syntax check (pepper-mcp, pepper-ctl)
+for py_file in tools/pepper-mcp tools/pepper-ctl tools/pepper-stream tools/pepper-context; do
+    if [ -f "$REPO_DIR/$py_file" ]; then
+        if python3 -m py_compile "$REPO_DIR/$py_file" 2>/dev/null; then
+            pass "Python syntax: $py_file"
+        else
+            fail "Python syntax error: $py_file"
+        fi
+    fi
+done
+
+# 3. Ruff lint (if available)
+if command -v ruff &>/dev/null; then
+    if ruff check "$REPO_DIR/tools/" "$REPO_DIR/scripts/gen-coverage.py" --quiet 2>/dev/null; then
+        pass "Ruff lint"
+    else
+        fail "Ruff lint errors found — run 'make lint-py' to see details"
+    fi
+else
+    warn "ruff not installed — skipping Python lint"
+fi
+
+# 4. MCP server imports (validates all tool definitions parse)
+if [ -f "$REPO_DIR/tools/pepper-mcp" ]; then
+    PYTHON=""
+    for candidate in python3.11 python3.12 python3.13; do
+        if command -v "$candidate" &>/dev/null && "$candidate" -c "import mcp" 2>/dev/null; then
+            PYTHON="$candidate"
+            break
+        fi
+    done
+    if [ -n "$PYTHON" ]; then
+        if "$PYTHON" -c "
+import sys, os
+os.chdir('$REPO_DIR')
+__file__ = '$REPO_DIR/tools/pepper-mcp'
+code = open(__file__).read()
+exec(code.split('if __name__')[0])
+" 2>/dev/null; then
+            pass "MCP server imports"
+        else
+            fail "MCP server import error"
+        fi
+    fi
+fi
+
+# 4. Coverage sync — regenerate and check if COVERAGE.md matches
+if echo "$STAGED_FILES" | grep -qE "(PepperDispatcher|Handler\.swift|coverage-status\.json)"; then
+    if python3 "$REPO_DIR/scripts/gen-coverage.py" --check 2>/dev/null; then
+        pass "COVERAGE.md in sync"
+    else
+        fail "COVERAGE.md is stale — run 'make coverage' and stage the result"
+    fi
+else
+    pass "COVERAGE.md (no relevant changes)"
+fi
+
+# 5. Block direct edits to @generated files (bypass with PEPPER_REGEN=1)
+if [ -z "${PEPPER_REGEN:-}" ]; then
+    GEN_EDITED=""
+    for f in $STAGED_FILES; do
+        [ -f "$f" ] || continue
+        if head -1 "$f" 2>/dev/null | grep -q '@generated'; then
+            GEN_EDITED="$GEN_EDITED $f"
+        fi
+    done
+    if [ -n "$GEN_EDITED" ]; then
+        fail "direct edit to @generated file(s):$GEN_EDITED — regenerate with the source script, or set PEPPER_REGEN=1 to bypass"
+    else
+        pass "No @generated files edited directly"
+    fi
+else
+    pass "No @generated files edited directly (PEPPER_REGEN=1 bypass)"
+fi
+
+# 5b. New handler must have MCP tool + coverage entry
+if echo "$STAGED_FILES" | grep -q "dylib/commands/handlers/.*Handler\.swift"; then
+    NEW_HANDLERS=$(echo "$STAGED_FILES" | grep "dylib/commands/handlers/.*Handler\.swift")
+    MISSING=""
+    for handler_file in $NEW_HANDLERS; do
+        CMD_NAME=$(grep -oE 'commandName.*"(\w+)"' "$REPO_DIR/$handler_file" 2>/dev/null | grep -oE '"[^"]+"' | tr -d '"' | head -1)
+        if [ -n "$CMD_NAME" ]; then
+            if ! grep -q "\"$CMD_NAME" "$REPO_DIR/test-app/coverage-status.json" 2>/dev/null; then
+                MISSING="$MISSING $CMD_NAME"
+            fi
+        fi
+    done
+    if [ -n "$MISSING" ]; then
+        fail "New handlers missing from coverage-status.json:$MISSING"
+    else
+        pass "Handler→coverage sync"
+    fi
+fi
+
+# 6. No hardcoded personal paths in committed files
+if echo "$STAGED_FILES" | xargs grep -l "/Users/[a-z]" 2>/dev/null | grep -v ".env" | grep -v ".mcp.json" | head -5 | grep -q .; then
+    fail "Hardcoded personal paths found in staged files:"
+    echo "$STAGED_FILES" | xargs grep -n "/Users/[a-z]" 2>/dev/null | grep -v ".env" | grep -v ".mcp.json" | head -5
+else
+    pass "No hardcoded personal paths"
+fi
+
+# 7. No secrets/credentials staged
+SECRETS_PATTERN='(api[_-]?key|secret[_-]?key|password|token|credential|private[_-]?key)\s*[:=]'
+if echo "$STAGED_FILES" | grep -v ".env.example" | grep -v "gh-app-token" | xargs grep -ilE "$SECRETS_PATTERN" 2>/dev/null | head -5 | grep -q .; then
+    fail "Possible secrets in staged files:"
+    echo "$STAGED_FILES" | grep -v ".env.example" | grep -v "gh-app-token" | xargs grep -inE "$SECRETS_PATTERN" 2>/dev/null | head -5
+else
+    pass "No secrets detected"
+fi
+
+# 8. No screenshots being committed
+if echo "$STAGED_FILES" | grep -q "\.png$\|\.jpg$\|\.jpeg$"; then
+    fail "Image files staged — screenshots should not be committed"
+    echo "$STAGED_FILES" | grep "\.png$\|\.jpg$\|\.jpeg$"
+else
+    pass "No image files staged"
+fi
+
+# 9. Swift file length check (flag > 500 lines)
+LONG_FILES=""
+for f in $(echo "$STAGED_FILES" | grep "\.swift$"); do
+    if [ -f "$REPO_DIR/$f" ]; then
+        LINES=$(wc -l < "$REPO_DIR/$f")
+        if [ "$LINES" -gt 500 ]; then
+            LONG_FILES="$LONG_FILES\n  $f ($LINES lines)"
+        fi
+    fi
+done
+if [ -n "$LONG_FILES" ]; then
+    warn "Long Swift files (>500 lines):$LONG_FILES"
+else
+    pass "No oversized Swift files"
+fi
+
+# 10. .env exists
+if [ ! -f "$REPO_DIR/.env" ]; then
+    warn "No .env file — copy from .env.example"
+fi
+
+echo ""
+if [ $FAILED -ne 0 ]; then
+    echo -e "${RED}Pre-commit checks failed.${NC}"
+    exit 1
+fi
+echo -e "${GREEN}All checks passed.${NC}"

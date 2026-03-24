@@ -1,0 +1,143 @@
+#!/usr/bin/env python3
+"""Upload screenshots to GitHub for embedding in PR descriptions and comments.
+
+Uses a dedicated GitHub release (pr-screenshots) as image hosting.
+Images are uploaded as release assets with stable, auth-aware URLs
+that render correctly in PR markdown for anyone with repo access.
+
+Usage:
+  upload-screenshot --repo owner/repo /tmp/flag-off.jpg /tmp/flag-on.jpg
+  upload-screenshot --repo owner/repo --prefix pr-5602 /tmp/screenshot.jpg
+  upload-screenshot --repo owner/repo --markdown /tmp/a.jpg /tmp/b.jpg
+
+Auto-detects repo from git remote if --repo is omitted and cwd is a git repo.
+Requires: gh CLI authenticated with repo access.
+"""
+
+import argparse
+import json
+import os
+import subprocess
+import sys
+from urllib.parse import quote
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from pepper_common import require_tool
+
+RELEASE_TAG = "pr-screenshots"
+
+# Validate gh CLI is available (used for all GitHub operations)
+require_tool("gh", install_hint="brew install gh")
+
+
+def detect_repo() -> str:
+    """Detect owner/repo from the git remote of the current directory."""
+    result = subprocess.run(
+        ["gh", "repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"],
+        capture_output=True, text=True,
+    )
+    if result.returncode == 0 and result.stdout.strip():
+        return result.stdout.strip()
+    return ""
+
+
+def ensure_release(repo: str):
+    """Ensure the pr-screenshots release exists. Create if missing."""
+    result = subprocess.run(
+        ["gh", "release", "view", RELEASE_TAG, "--repo", repo, "--json", "tagName"],
+        capture_output=True, text=True,
+    )
+    if result.returncode == 0:
+        return
+
+    print(f"Creating {RELEASE_TAG} release on {repo}...", file=sys.stderr)
+    result = subprocess.run(
+        ["gh", "release", "create", RELEASE_TAG, "--repo", repo,
+         "--title", "PR Screenshots",
+         "--notes", "Auto-uploaded screenshots for PR validation. Managed by Pepper tooling.",
+         "--latest=false"],
+        capture_output=True, text=True,
+    )
+    if result.returncode != 0:
+        print(f"Failed to create release: {result.stderr.strip()}", file=sys.stderr)
+        sys.exit(1)
+
+
+def upload_file(repo: str, path: str, name: str) -> str:
+    """Upload a file to the release. Returns the download URL. Raises on failure."""
+    result = subprocess.run(
+        ["gh", "release", "upload", RELEASE_TAG, path,
+         "--repo", repo, "--clobber"],
+        capture_output=True, text=True,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"Upload failed for {name}: {result.stderr.strip()}")
+
+    return f"https://github.com/{repo}/releases/download/{RELEASE_TAG}/{quote(name, safe='')}"
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Upload screenshots to GitHub")
+    parser.add_argument("files", nargs="+", help="Image file(s) to upload")
+    parser.add_argument("--repo", default="", help="GitHub repo (owner/name). Auto-detected if omitted.")
+    parser.add_argument("--prefix", default="", help="Prefix for uploaded filenames (e.g. 'pr-5602')")
+    parser.add_argument("--markdown", action="store_true", help="Output as markdown image tags")
+    parser.add_argument("--json", action="store_true", dest="json_output", help="Output as JSON")
+    args = parser.parse_args()
+
+    repo = args.repo or detect_repo()
+    if not repo:
+        print("Could not detect repo. Pass --repo owner/name.", file=sys.stderr)
+        sys.exit(1)
+
+    ensure_release(repo)
+
+    results = []
+    for path in args.files:
+        if not os.path.exists(path):
+            print(f"File not found: {path}", file=sys.stderr)
+            continue
+
+        basename = os.path.basename(path)
+        if args.prefix:
+            name = f"{args.prefix}-{basename}"
+        else:
+            name = basename
+
+        # Rename the file for upload if needed
+        if name != basename:
+            upload_path = os.path.join(os.path.dirname(path), name)
+            try:
+                os.link(path, upload_path)
+            except OSError:
+                import shutil
+                shutil.copy2(path, upload_path)
+        else:
+            upload_path = path
+
+        try:
+            url = upload_file(repo, upload_path, name)
+            results.append({"file": basename, "name": name, "url": url})
+            print(f"Uploaded: {name}", file=sys.stderr)
+        except RuntimeError as e:
+            print(str(e), file=sys.stderr)
+        finally:
+            if upload_path != path and os.path.exists(upload_path):
+                os.unlink(upload_path)
+
+    if not results:
+        sys.exit(1)
+
+    if args.json_output:
+        print(json.dumps(results, indent=2))
+    elif args.markdown:
+        for r in results:
+            label = os.path.splitext(r["name"])[0].replace("-", " ").replace("_", " ")
+            print(f'![{label}]({r["url"]})')
+    else:
+        for r in results:
+            print(r["url"])
+
+
+if __name__ == "__main__":
+    main()
