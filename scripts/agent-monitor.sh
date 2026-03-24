@@ -326,31 +326,17 @@ else
     touch "$EVENTS"
   fi
 
-  # Sticky header: use ANSI scroll region to pin banner at top.
-  # Print banner, then set scrollable region below it.
-  HEADER_LINES=8  # approximate lines in banner
-  TERM_ROWS=$(tput lines 2>/dev/null || echo 40)
+  # Print banner once at start, then stream events inline.
+  # No scroll regions, no cursor tricks — just clean scrolling output.
+  trap 'exit 0' INT TERM
 
-  # Clear screen and print banner at top
-  clear
   print_banner
 
-  # Set scroll region: rows HEADER_LINES+1 to bottom
-  printf "\033[%d;%dr" "$((HEADER_LINES + 1))" "$TERM_ROWS"
-  # Move cursor to scroll region
-  printf "\033[$((HEADER_LINES + 1));1H"
-
-  # Restore full scroll region on exit
-  trap 'printf "\033[r\033[?25h"; exit 0' INT TERM EXIT
-
-  # Refresh banner every 30s in background
+  # Inline banner refresh: print a summary line every 60s mixed into the event stream
   (
     while true; do
-      sleep 30
-      # Save cursor, move to top, redraw banner, restore cursor
-      printf "\033[s\033[1;1H"
+      sleep 60
       print_banner
-      printf "\033[u"
     done
   ) &
   BANNER_PID=$!
