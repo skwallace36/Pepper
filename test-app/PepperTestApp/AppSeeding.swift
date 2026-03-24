@@ -1,12 +1,15 @@
 import Foundation
 import Security
 import UserNotifications
+import SQLite3
 
 enum AppSeeding {
     static func seedAll() {
         seedUserDefaults()
         seedKeychain()
         seedSandboxFiles()
+        seedSQLiteDatabase()
+        CoreDataStack.seedIfNeeded()
         if ProcessInfo.processInfo.environment["PEPPER_SKIP_PERMISSIONS"] != "1" {
             requestNotificationPermission()
         }
@@ -114,6 +117,101 @@ enum AppSeeding {
             try? content.write(to: tmpURL, atomically: true, encoding: .utf8)
             print("[PepperTest] Seeded tmp/temp-data.txt")
         }
+    }
+
+    // MARK: - SQLite Database
+
+    /// Seeds a pre-populated SQLite database at Library/Application Support/pepper_test.db.
+    /// Tables: users (TEXT/INTEGER/REAL), posts (TEXT/INTEGER/BLOB), settings (TEXT/INTEGER).
+    /// ~10 rows per table. Used by the `db` command test surface.
+    static func seedSQLiteDatabase() {
+        guard let appSupport = FileManager.default
+            .urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+        else { return }
+
+        try? FileManager.default.createDirectory(at: appSupport, withIntermediateDirectories: true)
+        let dbURL = appSupport.appendingPathComponent("pepper_test.db")
+        guard !FileManager.default.fileExists(atPath: dbURL.path) else { return }
+
+        var db: OpaquePointer?
+        guard sqlite3_open(dbURL.path, &db) == SQLITE_OK else {
+            print("[PepperTest] SQLite open failed")
+            return
+        }
+        defer { sqlite3_close(db) }
+
+        let schema = """
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY,
+                username TEXT NOT NULL,
+                email TEXT,
+                score REAL,
+                active INTEGER,
+                avatar_data BLOB
+            );
+            CREATE TABLE IF NOT EXISTS posts (
+                id INTEGER PRIMARY KEY,
+                user_id INTEGER,
+                title TEXT NOT NULL,
+                body TEXT,
+                likes INTEGER,
+                created_at TEXT
+            );
+            CREATE TABLE IF NOT EXISTS settings (
+                key TEXT PRIMARY KEY,
+                value TEXT,
+                type TEXT,
+                updated_at INTEGER
+            );
+        """
+        sqlite3_exec(db, schema, nil, nil, nil)
+
+        let users = """
+            INSERT INTO users (id, username, email, score, active, avatar_data) VALUES
+            (1, 'alice', 'alice@example.com', 98.5, 1, X'89504E47'),
+            (2, 'bob', 'bob@example.com', 72.0, 1, NULL),
+            (3, 'carol', 'carol@example.com', 55.3, 0, NULL),
+            (4, 'dave', 'dave@example.com', 88.1, 1, X'FFD8FFE0'),
+            (5, 'eve', 'eve@example.com', 44.9, 1, NULL),
+            (6, 'frank', 'frank@example.com', 61.7, 0, NULL),
+            (7, 'grace', 'grace@example.com', 93.2, 1, NULL),
+            (8, 'henry', 'henry@example.com', 37.5, 1, NULL),
+            (9, 'iris', 'iris@example.com', 79.8, 0, NULL),
+            (10, 'jack', 'jack@example.com', 50.0, 1, NULL);
+        """
+        sqlite3_exec(db, users, nil, nil, nil)
+
+        let posts = """
+            INSERT INTO posts (id, user_id, title, body, likes, created_at) VALUES
+            (1, 1, 'Hello World', 'My first post', 42, '2026-01-01T10:00:00Z'),
+            (2, 1, 'SQLite is fast', 'Benchmarks inside', 18, '2026-01-05T12:00:00Z'),
+            (3, 2, 'Testing tips', 'Use real data', 7, '2026-01-08T09:00:00Z'),
+            (4, 3, 'Pepper rocks', 'Best iOS tool', 33, '2026-01-10T14:00:00Z'),
+            (5, 2, 'Core Data vs SQLite', 'Comparison post', 55, '2026-01-12T16:00:00Z'),
+            (6, 4, 'SwiftUI tricks', NULL, 11, '2026-01-15T08:00:00Z'),
+            (7, 5, 'Debugging in 2026', 'AI-first approach', 29, '2026-01-20T11:00:00Z'),
+            (8, 1, 'Draft post', NULL, 0, '2026-02-01T09:00:00Z'),
+            (9, 7, 'Accessibility guide', 'For iOS devs', 47, '2026-02-10T13:00:00Z'),
+            (10, 10, 'Short post', 'Just a test', 3, '2026-03-01T10:00:00Z');
+        """
+        sqlite3_exec(db, posts, nil, nil, nil)
+
+        let settings = """
+            INSERT INTO settings (key, value, type, updated_at) VALUES
+            ('theme', 'dark', 'string', 1740000000),
+            ('font_size', '14', 'integer', 1740000100),
+            ('auto_save', '1', 'boolean', 1740000200),
+            ('sync_enabled', '0', 'boolean', 1740000300),
+            ('last_sync', '2026-03-20T12:00:00Z', 'string', 1740000400),
+            ('max_retries', '3', 'integer', 1740000500),
+            ('timeout_ms', '5000', 'integer', 1740000600),
+            ('api_version', 'v2', 'string', 1740000700),
+            ('debug_mode', '0', 'boolean', 1740000800),
+            ('cache_ttl', '3600', 'integer', 1740000900);
+        """
+        sqlite3_exec(db, settings, nil, nil, nil)
+
+        print("[PepperTest] Seeded SQLite database at \(dbURL.lastPathComponent): users(10), posts(10), settings(10)")
     }
 
     // MARK: - Notifications
