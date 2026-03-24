@@ -58,7 +58,7 @@ if [ "$TOOL" = "Bash" ]; then
   if echo "$CMD" | grep -qE 'gh pr merge'; then
     PR_NUM=$(echo "$CMD" | grep -oE '[0-9]+' | head -1)
     if [ -n "$PR_NUM" ]; then
-      CHANGED=$(gh pr diff "$PR_NUM" --repo skwallace36/Pepper --name-only 2>/dev/null || true)
+      CHANGED=$(gh pr diff "$PR_NUM" --repo skwallace36/Pepper-private --name-only 2>/dev/null || true)
       if echo "$CHANGED" | grep -qE '^(\.claude/settings\.json|scripts/agent-runner\.sh|scripts/agent-heartbeat\.sh|scripts/hooks/|scripts/prompts/|\.env|\.public-exclude|scripts/sync-public\.sh|README\.md)'; then
         deny "PR #$PR_NUM touches protected infrastructure. Human approval required."
       fi

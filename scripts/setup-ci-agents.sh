@@ -38,7 +38,7 @@ if ! gh auth status &>/dev/null; then
 fi
 
 # Check for ANTHROPIC_API_KEY secret
-REPO="skwallace36/Pepper"
+REPO="skwallace36/Pepper-private"
 HAS_SECRET=false
 if gh secret list --repo "$REPO" 2>/dev/null | grep -q "ANTHROPIC_API_KEY"; then
   HAS_SECRET=true
