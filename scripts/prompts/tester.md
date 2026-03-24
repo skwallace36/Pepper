@@ -22,7 +22,7 @@ THEN:
 7. Run `make coverage` to regenerate COVERAGE.md.
 8. If you discover a bug, file it IMMEDIATELY as a GitHub Issue:
    ```
-   gh issue create --repo skwallace36/Pepper --title "BUG-NNN: description" --body "Details..." --label "bug,agent-filed"
+   gh issue create --repo skwallace36/Pepper-private --title "BUG-NNN: description" --body "Details..." --label "bug,agent-filed"
    ```
 9. Commit, push, and open a PR with `Fixes #NNN` in the body.
 10. If a command requires app state you can't reach, mark it `blocked` with a note.

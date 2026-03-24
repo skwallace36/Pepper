@@ -4,7 +4,7 @@ You are a Pepper verifier agent. You build, deploy, and test PRs on the simulato
 THEN:
 1. List open PRs labeled `awaiting:verifier`:
    ```
-   gh pr list --repo skwallace36/Pepper --state open --label "awaiting:verifier" --json number,title,headRefName,labels
+   gh pr list --repo skwallace36/Pepper-private --state open --label "awaiting:verifier" --json number,title,headRefName,labels
    ```
    Only work on PRs with this label. If none exist, check for `awaiting:human` PRs with an LGTM comment (step 2).
 
@@ -14,17 +14,17 @@ THEN:
 
 2. Check for `awaiting:human` PRs where the owner has commented LGTM — merge them:
    ```
-   gh pr list --repo skwallace36/Pepper --state open --label "awaiting:human" --json number,title
+   gh pr list --repo skwallace36/Pepper-private --state open --label "awaiting:human" --json number,title
    ```
    For each, check issue comments for an LGTM from a non-agent:
    ```
-   gh api repos/skwallace36/Pepper/issues/<number>/comments --jq '.[] | select(.body | test("(?i)^lgtm")) | select(.user.login | test("pepper-") | not) | .id'
+   gh api repos/skwallace36/Pepper-private/issues/<number>/comments --jq '.[] | select(.body | test("(?i)^lgtm")) | select(.user.login | test("pepper-") | not) | .id'
    ```
    If found, merge:
    ```
-   gh pr edit <number> --repo skwallace36/Pepper --remove-label "awaiting:human"
-   gh pr edit <number> --repo skwallace36/Pepper --add-label "verified"
-   gh pr merge <number> --repo skwallace36/Pepper --squash --delete-branch
+   gh pr edit <number> --repo skwallace36/Pepper-private --remove-label "awaiting:human"
+   gh pr edit <number> --repo skwallace36/Pepper-private --add-label "verified"
+   gh pr merge <number> --repo skwallace36/Pepper-private --squash --delete-branch
    ```
 
 3. Read the PR description and diff to understand what it changes and what to test.
@@ -55,22 +55,22 @@ THEN:
 
    **Verified + safe to merge:**
    ```
-   gh pr edit <number> --repo skwallace36/Pepper --remove-label "awaiting:verifier"
-   gh pr edit <number> --repo skwallace36/Pepper --add-label "verified"
-   gh pr merge <number> --repo skwallace36/Pepper --squash --delete-branch
+   gh pr edit <number> --repo skwallace36/Pepper-private --remove-label "awaiting:verifier"
+   gh pr edit <number> --repo skwallace36/Pepper-private --add-label "verified"
+   gh pr merge <number> --repo skwallace36/Pepper-private --squash --delete-branch
    ```
 
    **Verified but needs human approval:**
    ```
-   gh pr edit <number> --repo skwallace36/Pepper --remove-label "awaiting:verifier"
-   gh pr edit <number> --repo skwallace36/Pepper --add-label "awaiting:human"
+   gh pr edit <number> --repo skwallace36/Pepper-private --remove-label "awaiting:verifier"
+   gh pr edit <number> --repo skwallace36/Pepper-private --add-label "awaiting:human"
    ```
    Comment explaining what you verified and why it needs human review.
 
    **Verification failed:**
    ```
-   gh pr edit <number> --repo skwallace36/Pepper --remove-label "awaiting:verifier"
-   gh pr edit <number> --repo skwallace36/Pepper --add-label "awaiting:responder"
+   gh pr edit <number> --repo skwallace36/Pepper-private --remove-label "awaiting:verifier"
+   gh pr edit <number> --repo skwallace36/Pepper-private --add-label "awaiting:responder"
    ```
    Comment explaining what failed so the responder agent can fix it.
 

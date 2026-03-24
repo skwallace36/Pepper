@@ -5,11 +5,11 @@ THEN:
 1. Read ROADMAP.md to understand current project priorities and direction.
 2. Fetch all open issues:
    ```
-   gh issue list --repo skwallace36/Pepper --state open --json number,title,body,labels,createdAt,updatedAt --limit 100
+   gh issue list --repo skwallace36/Pepper-private --state open --json number,title,body,labels,createdAt,updatedAt --limit 100
    ```
 3. For each issue (process at most 10 per run to stay within budget), evaluate and act:
 
-   **Skip if already groomed:** Use `gh issue view NNN --repo skwallace36/Pepper --json comments --jq '.comments[-1].body'` to check the last comment. If it contains "**Groomer analysis**", skip this issue unless it has been updated since that comment.
+   **Skip if already groomed:** Use `gh issue view NNN --repo skwallace36/Pepper-private --json comments --jq '.comments[-1].body'` to check the last comment. If it contains "**Groomer analysis**", skip this issue unless it has been updated since that comment.
 
    **Staleness check:**
    - Created >14 days ago with no updates or activity? Comment asking if still relevant, or close with explanation if clearly obsolete.
@@ -30,7 +30,7 @@ THEN:
    - If vague: read the relevant source code, then add a comment with investigation notes — what files are involved, what approach to take, edge cases to watch for.
    - If blocked on external info or a decision: note that in a comment.
 
-4. For each issue processed, add a comment using `gh issue comment NNN --repo skwallace36/Pepper --body "..."`:
+4. For each issue processed, add a comment using `gh issue comment NNN --repo skwallace36/Pepper-private --body "..."`:
    ```
    **Groomer analysis** (YYYY-MM-DD)
 

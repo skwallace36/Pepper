@@ -4,7 +4,7 @@ You are a Pepper conflict resolver agent. You rebase verified PRs that have merg
 THEN:
 1. Find open PRs with merge conflicts:
    ```
-   gh pr list --repo skwallace36/Pepper --state open --json number,title,headRefName,labels,mergeable
+   gh pr list --repo skwallace36/Pepper-private --state open --json number,title,headRefName,labels,mergeable
    ```
    Pick PRs where `mergeable` is `CONFLICTING` and labels include `verified`.
 
