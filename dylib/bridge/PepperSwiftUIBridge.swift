@@ -1,63 +1,62 @@
 import SwiftUI
 import UIKit
 
-/// Bridge for discovering SwiftUI views via the accessibility tree.
+/// Coordinator bridge for SwiftUI interaction.
 ///
-/// Activates the accessibility engine so SwiftUI generates AccessibilityNode elements,
-/// then walks the tree to find elements by label, type, or frame. Element coordinates
-/// are used by TapHandler for IOHIDEvent tap synthesis.
-///
-/// Also provides text input, toggle, and scroll helpers for SwiftUI-backed UIKit views.
+/// Delegates element discovery (accessibility tree traversal, interactive element finding,
+/// text collection) to `ElementDiscoveryBridge`. Owns text input, toggle, scroll, and
+/// hosting controller utilities.
 final class PepperSwiftUIBridge {
 
     static let shared = PepperSwiftUIBridge()
 
-    private var accessibilityActivated = false
-
-    // MARK: - Introspect Cache
-    // Caches accessibility/interactive element results between introspect calls.
-    // Invalidated when any UI-mutating event fires (HID tap, swipe, input, navigate).
-
-    /// Monotonic counter — bumped by `invalidateCache()` after every HID/UI event.
-    private(set) var cacheGeneration: UInt64 = 0
-
-    /// True when the last `collectAccessibilityElements()` hit the element cap.
-    var lastAccessibilityTruncated = false
-
-    /// True when the last `discoverInteractiveElements()` hit any element cap.
-    var lastInteractiveTruncated = false
-
-    var cachedAccessibility:
-        (gen: UInt64, elements: [PepperAccessibilityElement], truncated: Bool, time: CFAbsoluteTime)?
-    var cachedInteractive: (gen: UInt64, elements: [PepperInteractiveElement], truncated: Bool, time: CFAbsoluteTime)?
-
-    /// Maximum cache age in seconds. Prevents stale results when the UI
-    /// changes without a UI-mutating command (e.g. sheet content loading,
-    /// async SwiftUI renders, network-driven updates).
-    let cacheTTL: CFTimeInterval = 0.3
-
-    /// Call after any UI-mutating event (tap, swipe, input, navigate, toggle).
-    func invalidateCache() {
-        cacheGeneration &+= 1
-        cachedAccessibility = nil
-        cachedInteractive = nil
-        cachedScrollViews = nil
-    }
+    private let discovery = ElementDiscoveryBridge.shared
 
     private init() {}
 
-    // MARK: - Accessibility Engine Activation
+    // MARK: - Discovery delegation
 
-    /// Activate the accessibility engine so SwiftUI generates its accessibility tree.
-    /// Without this, SwiftUI views don't expose accessibility elements in the simulator.
-    /// Same technique used by Lyft's Hammer framework.
-    func ensureAccessibilityActive() {
-        UIApplication.shared.accessibilityActivate()
-        guard !accessibilityActivated else { return }
+    /// True when the last `collectAccessibilityElements()` hit the element cap.
+    var lastAccessibilityTruncated: Bool { discovery.lastAccessibilityTruncated }
 
-        // First activation needs extra time for the engine to warm up
-        RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.1))
-        accessibilityActivated = true
+    /// True when the last `discoverInteractiveElements()` hit any element cap.
+    var lastInteractiveTruncated: Bool { discovery.lastInteractiveTruncated }
+
+    /// Call after any UI-mutating event (tap, swipe, input, navigate, toggle).
+    func invalidateCache() { discovery.invalidateCache() }
+
+    func collectAccessibilityElements(from rootView: UIView? = nil) -> [PepperAccessibilityElement] {
+        discovery.collectAccessibilityElements(from: rootView)
+    }
+
+    func annotateDepth(_ elements: [PepperAccessibilityElement]) -> [PepperAccessibilityElement] {
+        discovery.annotateDepth(elements)
+    }
+
+    func discoverInteractiveElements(
+        rootView: UIView? = nil, hitTestFilter: Bool = true, maxElements: Int = 500
+    ) -> [PepperInteractiveElement] {
+        discovery.discoverInteractiveElements(rootView: rootView, hitTestFilter: hitTestFilter, maxElements: maxElements)
+    }
+
+    func checkFrameVisibility(frame: CGRect, in window: UIWindow) -> Float {
+        discovery.checkFrameVisibility(frame: frame, in: window)
+    }
+
+    func findElement(label: String, exact: Bool = false, in rootView: UIView? = nil) -> UIView? {
+        discovery.findElement(label: label, exact: exact, in: rootView)
+    }
+
+    func findAccessibilityElementCenter(label: String, exact: Bool = false) -> CGPoint? {
+        discovery.findAccessibilityElementCenter(label: label, exact: exact)
+    }
+
+    func findAccessibilityElementFrame(label: String, exact: Bool = false) -> CGRect? {
+        discovery.findAccessibilityElementFrame(label: label, exact: exact)
+    }
+
+    func findOwningViewController(for view: UIView) -> UIViewController? {
+        discovery.findOwningViewController(for: view)
     }
 
     // MARK: - Hosting controller detection
@@ -255,143 +254,6 @@ final class PepperSwiftUIBridge {
         }
     }
 
-    // MARK: - Scroll Context Detection
-
-    /// Cached scroll view metadata for the current generation.
-    /// Built lazily on first scroll context query per cache generation.
-    var cachedScrollViews: (gen: UInt64, views: [(scrollView: UIScrollView, frameInWindow: CGRect, direction: String)])?
-
-    /// Build a list of all visible UIScrollViews with their window-space frames and direction.
-    func collectScrollViews() -> [(scrollView: UIScrollView, frameInWindow: CGRect, direction: String)] {
-        if let cached = cachedScrollViews, cached.gen == cacheGeneration {
-            return cached.views
-        }
-        guard let window = UIWindow.pepper_keyWindow else { return [] }
-        var scrollViews: [(scrollView: UIScrollView, frameInWindow: CGRect, direction: String)] = []
-        collectScrollViewsRecursive(view: window, into: &scrollViews)
-        cachedScrollViews = (gen: cacheGeneration, views: scrollViews)
-        return scrollViews
-    }
-
-    private func collectScrollViewsRecursive(
-        view: UIView, into results: inout [(scrollView: UIScrollView, frameInWindow: CGRect, direction: String)]
-    ) {
-        if let sv = view as? UIScrollView, !sv.isHidden, sv.alpha > 0.01,
-            sv.bounds.width > 0, sv.bounds.height > 0
-        {
-            let frameInWindow = sv.convert(sv.bounds, to: nil)
-            let contentW = sv.contentSize.width
-            let contentH = sv.contentSize.height
-            let boundsW = sv.bounds.width
-            let boundsH = sv.bounds.height
-            // A scroll view scrolls in a direction if content exceeds bounds.
-            let scrollsH = contentW > boundsW + 1
-            let scrollsV = contentH > boundsH + 1
-            let direction: String
-            if scrollsH && scrollsV {
-                direction = "both"
-            } else if scrollsH {
-                direction = "horizontal"
-            } else if scrollsV {
-                direction = "vertical"
-            } else {
-                direction = "none"
-            }
-            if direction != "none" {
-                results.append((scrollView: sv, frameInWindow: frameInWindow, direction: direction))
-            }
-        }
-        for subview in view.subviews {
-            collectScrollViewsRecursive(view: subview, into: &results)
-        }
-    }
-
-    /// Determine scroll context for an element at a given frame in window coordinates.
-    /// Returns nil if the element is not inside any scroll view.
-    /// If inside a scroll view, returns the direction and whether the element center
-    /// is currently within the scroll view's visible viewport.
-    func scrollContext(forElementFrame elementFrame: CGRect) -> PepperScrollContext? {
-        let scrollViews = collectScrollViews()
-        let elementCenter = CGPoint(x: elementFrame.midX, y: elementFrame.midY)
-
-        // Find the innermost (smallest area) scroll view whose content region contains
-        // the element. We check against the scroll view's content rect in window coords.
-        var bestMatch: (direction: String, visibleInViewport: Bool)?
-        var bestArea: CGFloat = .greatestFiniteMagnitude
-
-        for info in scrollViews {
-            let sv = info.scrollView
-            // The scroll view's visible rect in its own coordinate space
-            let visibleRect = CGRect(origin: sv.contentOffset, size: sv.bounds.size)
-            // Convert element center from window coords to scroll view content coords
-            let centerInSV = sv.convert(elementCenter, from: nil)
-            // The content rect is (0, 0, contentSize.width, contentSize.height)
-            let contentRect = CGRect(origin: .zero, size: sv.contentSize)
-
-            if contentRect.contains(centerInSV) {
-                let area = info.frameInWindow.width * info.frameInWindow.height
-                if area < bestArea {
-                    bestArea = area
-                    bestMatch = (
-                        direction: info.direction,
-                        visibleInViewport: visibleRect.contains(centerInSV)
-                    )
-                }
-            }
-        }
-
-        guard let match = bestMatch else { return nil }
-        // Override for fixed-position UI at screen edges (tab bar, header buttons)
-        // that are technically inside a scroll container but always visible.
-        // Only apply for elements in the top 60pt or bottom 60pt of the screen —
-        // elements in the middle should trust the scroll offset calculation.
-        let screenBounds = UIScreen.main.bounds
-        let isFixedEdge =
-            screenBounds.contains(elementCenter)
-            && (elementCenter.y < 60 || elementCenter.y > screenBounds.height - 60)
-        let visible = match.visibleInViewport || isFixedEdge
-        return PepperScrollContext(direction: match.direction, visibleInViewport: visible)
-    }
-
-    // MARK: - View Controller Context
-
-    /// Walk the UIResponder chain from a view to find its owning UIViewController.
-    func findOwningViewController(for view: UIView) -> UIViewController? {
-        var responder: UIResponder? = view.next
-        while let r = responder {
-            if let vc = r as? UIViewController {
-                return vc
-            }
-            responder = r.next
-        }
-        return nil
-    }
-
-    /// Determine the presentation context of a UIViewController.
-    func presentationContext(of vc: UIViewController) -> String {
-        // Walk up the parent chain checking for presentation
-        var current: UIViewController? = vc
-        while let c = current {
-            if c.presentingViewController != nil {
-                switch c.modalPresentationStyle {
-                case .pageSheet, .formSheet:
-                    return "sheet"
-                case .popover:
-                    return "popover"
-                default:
-                    return "modal"
-                }
-            }
-            current = c.parent
-        }
-        if vc.navigationController != nil {
-            return "navigation"
-        }
-        if vc.tabBarController != nil {
-            return "tab"
-        }
-        return "root"
-    }
 }
 
 // MARK: - SwiftUI Environment Key for control plane state
