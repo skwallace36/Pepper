@@ -13,8 +13,6 @@ cd "$REPO_ROOT"
 
 EVENT="${1:?Usage: agent-trigger.sh <event-type>}"
 
-[ -f .pepper-kill ] && exit 0
-
 # Don't stack — if same agent type is running, skip
 agent_running() {
   local lock="build/logs/.lock-$1"
