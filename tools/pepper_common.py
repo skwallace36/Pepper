@@ -7,8 +7,10 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import socket
+import subprocess
 import sys
 
 # ---------------------------------------------------------------------------
@@ -107,6 +109,75 @@ def port_alive(port: int, host: str = "localhost", timeout: float = 1.0) -> bool
         return True
     except (TimeoutError, ConnectionRefusedError, OSError):
         return False
+
+
+# ---------------------------------------------------------------------------
+# Bonjour browse (fallback for on-device discovery)
+# ---------------------------------------------------------------------------
+
+def _bonjour_browse(timeout: float = 2.0) -> list[dict]:
+    """Browse for _pepper._tcp. Bonjour services using dns-sd (macOS).
+
+    Returns list of dicts with 'host', 'port', 'name' keys.
+    Falls back to empty list on non-macOS or if dns-sd is unavailable.
+    """
+    if not shutil.which("dns-sd"):
+        return []
+
+    # Step 1: browse for service instances
+    try:
+        proc = subprocess.Popen(
+            ["dns-sd", "-B", "_pepper._tcp.", "local."],
+            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True,
+        )
+        try:
+            browse_out, _ = proc.communicate(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            browse_out, _ = proc.communicate()
+    except OSError:
+        return []
+
+    # Parse: "  Add        2   1 local.  _pepper._tcp.  Pepper-com.example.app"
+    names = []
+    for line in browse_out.splitlines():
+        m = re.search(r'\bAdd\b.+?_pepper\._tcp\.\s+(.+)$', line)
+        if m:
+            names.append(m.group(1).strip())
+
+    if not names:
+        return []
+
+    # Step 2: resolve each service name to host:port
+    results = []
+    for name in names:
+        try:
+            proc = subprocess.Popen(
+                ["dns-sd", "-L", name, "_pepper._tcp.", "local."],
+                stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True,
+            )
+            try:
+                resolve_out, _ = proc.communicate(timeout=1.5)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                resolve_out, _ = proc.communicate()
+        except OSError:
+            continue
+
+        for line in resolve_out.splitlines():
+            m = re.search(r'can be reached at (.+?):(\d+)', line)
+            if m:
+                raw_host = m.group(1).strip()
+                port = int(m.group(2))
+                # Resolve .local. hostname to IP (socket handles mDNS on macOS)
+                try:
+                    host = socket.gethostbyname(raw_host)
+                except OSError:
+                    host = raw_host
+                results.append({"name": name, "host": host, "port": port})
+                break
+
+    return results
 
 
 # ---------------------------------------------------------------------------
@@ -326,9 +397,27 @@ def discover_instance(identifier: str | None = None) -> tuple[str, int, str]:
     """Discover a Pepper instance — simulator or device. Returns (host, port, udid).
 
     Resolution order:
-    1. If identifier given: check simulator port files, then device files.
-    2. If not given: collect all live sims and devices; require exactly one.
+    1. PEPPER_CONNECT env var (explicit host:port — always wins).
+    2. If identifier given: check simulator port files, then device files.
+    3. If not given: collect all live sims and devices; require exactly one.
+    4. Bonjour browse fallback (when no port/device files are present).
     """
+    # Fast path: explicit env var override
+    connect = os.environ.get("PEPPER_CONNECT", "").strip()
+    if connect:
+        if ":" in connect:
+            host, _, portstr = connect.rpartition(":")
+        else:
+            host, portstr = "localhost", connect
+        try:
+            port = int(portstr)
+        except ValueError as e:
+            raise RuntimeError(
+                f"PEPPER_CONNECT={connect!r} is not valid. "
+                f"Expected host:port or port (e.g. 192.168.1.100:8765 or 8765)."
+            ) from e
+        return host or "localhost", port, ""
+
     if identifier:
         # Try simulator first
         sim_path = os.path.join(PORT_DIR, f"{identifier}.port")
@@ -394,9 +483,22 @@ def discover_instance(identifier: str | None = None) -> tuple[str, int, str]:
             f"Specify simulator=UDID or device=UDID:\n" + "\n".join(lines)
         )
 
+    # Bonjour browse fallback — useful for on-device discovery without iproxy/WiFi setup
+    bonjour = _bonjour_browse()
+    live_bonjour = [s for s in bonjour if port_alive(s["port"], host=s["host"])]
+    if len(live_bonjour) == 1:
+        s = live_bonjour[0]
+        return s["host"], s["port"], ""
+    elif len(live_bonjour) > 1:
+        lines = [f"  {s['name']} → {s['host']}:{s['port']}" for s in live_bonjour]
+        raise RuntimeError(
+            f"Multiple Pepper services found via Bonjour ({len(live_bonjour)}). "
+            f"Set PEPPER_CONNECT=host:port or pass identifier:\n" + "\n".join(lines)
+        )
+
     raise RuntimeError(
         "No Pepper instances found. Is the app running with dylib injection, "
-        "or is a device registered?"
+        "or is a device registered? Set PEPPER_CONNECT=host:port to connect directly."
     )
 
 
