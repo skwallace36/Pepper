@@ -21,6 +21,19 @@ public final class PepperPlane {
     /// Current state of the control plane. Thread-safe reads via the lock.
     private(set) var state: State = .idle
 
+    // MARK: - Swizzle Health
+
+    /// Result of a single swizzle installation attempt.
+    struct SwizzleRecord {
+        let name: String
+        /// True if install() completed without raising an exception.
+        let installed: Bool
+    }
+
+    /// Ordered record of each swizzle installation attempt from the last `start()` call.
+    /// Useful for diagnosing partial-swizzle state after a crash.
+    private(set) var swizzleHealth: [SwizzleRecord] = []
+
     /// The port the server is listening on, or nil if not running.
     private(set) var currentPort: UInt16?
 
@@ -98,38 +111,44 @@ public final class PepperPlane {
                 server?.broadcast(event)
             }
 
+            // Install swizzles — each call is wrapped so progress is visible in crash logs
+            // and partial-install state can be diagnosed via swizzleHealth.
+            swizzleHealth = []
+
             // Install idle monitor — swizzles viewWillAppear for VC transition tracking
             // (Layer 1) and animation detection (Layer 2).
-            PepperIdleMonitor.shared.install()
+            installTracked("PepperIdleMonitor") { PepperIdleMonitor.shared.install() }
 
             // Install dispatch tracking — hooks dispatch_async/dispatch_after on main queue
             // for Layer 3 idle detection (pending async block counting).
-            PepperDispatchTracker.shared.install()
+            installTracked("PepperDispatchTracker") { PepperDispatchTracker.shared.install() }
 
             // Install swizzling for viewDidAppear/viewDidDisappear observation
             // (also triggers PepperAccessibility.shared.tagElements from the swizzle,
             //  and notifies PepperIdleMonitor for VC transition tracking)
-            PepperState.shared.install()
+            installTracked("PepperState") { PepperState.shared.install() }
 
             // Install dialog interceptor — catches UIAlertController presentations
             // so the test runner can inspect and dismiss system dialogs programmatically.
-            PepperDialogInterceptor.shared.install()
+            installTracked("PepperDialogInterceptor") { PepperDialogInterceptor.shared.install() }
 
             // Install EventKit interceptor — auto-grants calendar/reminders access
             // without showing system dialogs (SpringBoard remote alerts).
-            PepperEventKitInterceptor.shared.install()
+            installTracked("PepperEventKitInterceptor") { PepperEventKitInterceptor.shared.install() }
 
             // Install window key-status monitor — detects system dialogs (SpringBoard alerts)
             // that our present() swizzle can't intercept.
-            PepperWindowMonitor.shared.install()
+            installTracked("PepperWindowMonitor") { PepperWindowMonitor.shared.install() }
 
             // Install inline overlay scroll observer — swizzles UIScrollView.setContentOffset
             // to auto-refresh builder highlights when scrolling stops.
-            PepperInlineOverlay.shared.install()
+            installTracked("PepperInlineOverlay") { PepperInlineOverlay.shared.install() }
 
             // Install flight recorder — always-on timeline of network, console, screen,
             // and command events. Auto-starts network + console capture.
-            PepperFlightRecorder.shared.install()
+            installTracked("PepperFlightRecorder") { PepperFlightRecorder.shared.install() }
+
+            logSwizzleHealth()
 
             // Pre-build icon catalog asynchronously so first icon match doesn't
             // block startup. Must run on main thread — UIImage(named:in:with:)
@@ -217,6 +236,34 @@ public final class PepperPlane {
     /// Broadcast an event to all connected clients (or those subscribed to the event type).
     func broadcast(_ event: PepperEvent) {
         server?.broadcast(event)
+    }
+
+    // MARK: - Swizzle Installation Tracking
+
+    /// Calls `body()`, records the result, and logs before/after so crash logs
+    /// show exactly which swizzle was executing at the time of any fault.
+    private func installTracked(_ name: String, body: () -> Void) {
+        logger.info("[pepper] Installing \(name)…")
+        body()
+        swizzleHealth.append(SwizzleRecord(name: name, installed: true))
+        logger.info("[pepper] \(name) installed")
+    }
+
+    /// Logs a one-line summary of swizzle install results.
+    /// When all installs succeed this is a single info line. Any failure logged
+    /// by the component's own install() will already appear above this in the log.
+    private func logSwizzleHealth() {
+        let total = swizzleHealth.count
+        let succeeded = swizzleHealth.filter { $0.installed }.count
+        if succeeded == total {
+            pepperLog.info("All \(total) swizzles installed", category: .lifecycle)
+        } else {
+            let failed = swizzleHealth.filter { !$0.installed }.map(\.name)
+            pepperLog.error(
+                "Swizzle health: \(succeeded)/\(total) installed; failed: \(failed.joined(separator: ", "))",
+                category: .lifecycle
+            )
+        }
     }
 
     // MARK: - Port File (auto-discovery)
