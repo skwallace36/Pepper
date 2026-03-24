@@ -5,10 +5,10 @@ import os
 /// Handles {"cmd": "push"} — inject push notifications into the app.
 ///
 /// Commands:
-///   {"cmd":"push","params":{"title":"Walk reminder","body":"Time for a walk!"}}
+///   {"cmd":"push","params":{"title":"Order update","body":"Your order has shipped!"}}
 ///     → Deliver a local notification that appears like a remote push
 ///
-///   {"cmd":"push","params":{"title":"Test","body":"Hello","data":{"type":"walk_summary","pet_id":"123"}}}
+///   {"cmd":"push","params":{"title":"Test","body":"Hello","data":{"type":"order_detail","order_id":"123"}}}
 ///     → Deliver with custom userInfo payload (for deeplink/routing testing)
 ///
 ///   {"cmd":"push","params":{"action":"pending"}}

@@ -22,10 +22,10 @@ protocol TabBarProvider {
     /// Get the name of the currently selected tab.
     func selectedTabName() -> String?
 
-    /// Get all tab names (internal identifiers like "home", "rank").
+    /// Get all tab names (internal identifiers like "home", "search").
     func tabNames() -> [String]
 
-    /// Get all visible tab titles (display text like "Live", "Rank").
+    /// Get all visible tab titles (display text like "Home", "Search").
     func visibleTabTitles() -> [String]
 
     /// Get full tab bar info for the current_screen command.

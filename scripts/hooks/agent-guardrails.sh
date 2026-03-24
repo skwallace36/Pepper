@@ -78,8 +78,8 @@ if [ "$TOOL" = "Write" ] || [ "$TOOL" = "Edit" ]; then
       ;;
     researcher)
       case "$FILE" in
-        */docs/RESEARCH.md) ;; # allowed
-        *) deny "researcher agent can only modify docs/RESEARCH.md. Got: $FILE" ;;
+        */docs/internal/RESEARCH.md) ;; # allowed
+        *) deny "researcher agent can only modify docs/internal/RESEARCH.md. Got: $FILE" ;;
       esac
       ;;
     tester)

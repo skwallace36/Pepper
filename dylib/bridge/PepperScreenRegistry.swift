@@ -17,7 +17,7 @@ enum PepperScreenRegistry {
     ///
     /// Handles both UIKit names and SwiftUI generic wrapper types:
     ///
-    ///     "PetProfileViewController"       -> "pet_profile"
+    ///     "UserProfileViewController"       -> "user_profile"
     ///     "HomeScreenTabBarCoordinator"     -> "home_screen_tab_bar"
     ///     "SettingsController"              -> "settings"
     ///     "AppHostingController<ModifiedContent<ModifiedContent<HomeView, _EnvironmentKeyWritingModifier<...>>>>"

@@ -615,12 +615,12 @@ struct IntrospectHandler: PepperHandler {
         }
 
         // Phase 4d: Detect tappable option groups in non-interactive text.
-        // SwiftUI views with .onTapGesture (radio buttons like Off/Push/Push+SMS)
+        // SwiftUI views with .onTapGesture (radio buttons like Off/Push/Push+Email)
         // appear as staticText in accessibility, not as interactive elements.
         // Detect groups of 2+ short text labels at the same Y and promote them.
         promoteRadioOptionGroups(&mergedInteractive, nonInteractive: &mergedNonInteractive)
 
-        // Phase 4e: Detect segment control groups (Day/Week/Month/Year, Photos/Ranking).
+        // Phase 4e: Detect segment control groups (Day/Week/Month/Year, Photos/Popular).
         // A row of 2+ short labeled buttons at the same Y, spanning < 80% screen width
         // and each button < 100pt wide. Label them as "segment" type.
         promoteSegmentGroups(&mergedInteractive, screenWidth: screenW)

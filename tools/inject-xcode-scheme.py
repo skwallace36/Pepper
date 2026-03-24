@@ -273,7 +273,7 @@ def main():
     parser = argparse.ArgumentParser(description="Inject Pepper into Xcode scheme")
     parser.add_argument("scheme", nargs="?", help="Path to .xcscheme file")
     parser.add_argument("--pepper-root", help="Pepper project root (auto-detected)")
-    parser.add_argument("--adapter", default="fi", help="Adapter type (default: fi)")
+    parser.add_argument("--adapter", default="generic", help="Adapter type (default: generic)")
     parser.add_argument("--remove", action="store_true", help="Remove injection")
     parser.add_argument("--setup-filter", action="store_true",
                         help="Configure git smudge/clean filter (replaces assume-unchanged)")

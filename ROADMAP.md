@@ -2,7 +2,7 @@
 
 High-level priorities and project direction.
 
-For research/ideas, see `docs/RESEARCH.md`.
+For research/ideas, see `docs/internal/RESEARCH.md`.
 For test results, see `test-app/COVERAGE.md` (auto-generated).
 For known bugs, see GitHub Issues (`gh issue list --label bug`).
 For work items, see GitHub Issues (`gh issue list`).
@@ -18,7 +18,7 @@ Every other tool in this space (mobile-mcp, Appium MCP, ios-simulator-mcp, Maest
 ## Priorities
 
 ### P1: Packaging & distribution — make it real
-README with animated demo + 3-step install + architecture diagram. Homebrew tap for one-command install. MCP directory listings. This is what makes Pepper a portfolio piece vs a side project.
+README with animated demo + 3-step install + architecture diagram. Homebrew tap for one-command install. MCP directory listings. Critical for adoption and discoverability.
 
 - #79 README with demo, install, architecture
 - #80 Homebrew tap
@@ -39,7 +39,7 @@ Agents built a wave of new capabilities overnight. They need human review, sim t
 Permission dialogs still block agent sim testing. The notification swizzle (#200) is merged. Need swizzles for ATTrackingManager, camera, contacts, calendar, location. #220 is closed (agent attempted) but the fix needs verification.
 
 ### P4: Real-world app testing
-Test Pepper against real apps — Wikipedia (#208 merged setup), Ice Cubes (#209 merged setup). Validates that Pepper works beyond the purpose-built test app. This is what proves it to employers.
+Test Pepper against real apps — Wikipedia (#208 merged setup), Ice Cubes (#209 merged setup). Validates that Pepper works beyond the purpose-built test app.
 
 ### P5: Test coverage completion
 A few stragglers remain:
@@ -94,4 +94,4 @@ Not pursuing. Focus is iOS quality and packaging first.
 
 ---
 
-**Routing:** Bugs → GitHub Issues (`gh issue list --label bug`) | Tasks → GitHub Issues (`gh issue list`) | Test results → `test-app/COVERAGE.md` | Research → `docs/RESEARCH.md`
+**Routing:** Bugs → GitHub Issues (`gh issue list --label bug`) | Tasks → GitHub Issues (`gh issue list`) | Test results → `test-app/COVERAGE.md` | Research → `docs/internal/RESEARCH.md`
