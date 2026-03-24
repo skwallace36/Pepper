@@ -126,8 +126,9 @@ launch_if_slots() {
   running=$(count_running "$type")
   if [ "$running" -eq 0 ]; then
     echo "$(date +%H:%M) Launching $type"
-    # Run in a subshell with its own process group so runner signals don't kill heartbeat
-    ( trap '' TERM; exec "$REPO_ROOT/scripts/agent-runner.sh" "$type" >> build/logs/heartbeat.log 2>&1 ) &
+    # Run in a subshell that ignores TERM — prevents runner timeout signals from killing heartbeat.
+    # No exec — exec would replace the subshell and lose the trap.
+    ( trap '' TERM; "$REPO_ROOT/scripts/agent-runner.sh" "$type" >> build/logs/heartbeat.log 2>&1 ) &
   fi
 }
 
