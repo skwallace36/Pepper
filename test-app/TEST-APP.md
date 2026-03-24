@@ -47,4 +47,3 @@ When adding a new Pepper command or fixing a bug, add the corresponding UI surfa
 
 ---
 
-**Routing:** Bugs → GitHub Issues (`gh issue list --label bug`) | Work items → `../ROADMAP.md` | Test coverage → `COVERAGE.md` | Research → `../docs/internal/RESEARCH.md`
