@@ -195,9 +195,11 @@ while true; do
     --jq '[.[] | select(.labels | map(.name) | any(startswith("awaiting:")))] | .[].number' 2>/dev/null); do
     LAST_COMMENTER=$(gh api "repos/skwallace36/Pepper-private/issues/$pr/comments" --jq '.[-1].user.login // ""' 2>/dev/null || echo "")
     LAST_COMMENT=$(gh api "repos/skwallace36/Pepper-private/issues/$pr/comments" --jq '.[-1].body // ""' 2>/dev/null || echo "")
-    # Skip if no comments, or last commenter is an agent
+    # Skip if no comments, or last comment is from an agent
     [ -z "$LAST_COMMENT" ] && continue
     echo "$LAST_COMMENTER" | grep -q "^pepper-" && continue
+    # Agent comments posted under the repo owner contain signature lines
+    echo "$LAST_COMMENT" | grep -qE '(pepper-agent/|Verification Result|Rebased on main|conflicts resolved|Auto-merging|Code review:)' && continue
     # Human commented — check if it's an LGTM (approval) or feedback
     if echo "$LAST_COMMENT" | grep -qi "^lgtm"; then
       # LGTM → merge the PR
