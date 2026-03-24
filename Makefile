@@ -23,7 +23,7 @@ DYLIB_PATH  := $(PROJECT_DIR)/build/Pepper.framework/Pepper
 LOGS_DIR    := $(PROJECT_DIR)/build/logs
 
 .PHONY: help build build-device xcframework deploy launch kill relaunch ping check lint lint-py fmt-py smoke typecheck \
-        logs clean test-client pepper-ctl test-app coverage coverage-check \
+        logs clean test-client pepper-ctl test-app demo coverage coverage-check \
         docs setup ci smoke smoke-ice-cubes \
         agent agent-monitor agent-status agent-trigger agents-install agents-uninstall agent-cleanup agents-start agents-stop agent-analyze groom pr-digest \
         fmt fmt-check ci-agents-install ci-agents-check \
@@ -224,6 +224,10 @@ test-app:
 	echo "Installing on $(SIMULATOR_ID)..."; \
 	xcrun simctl install "$(SIMULATOR_ID)" "$$APP"; \
 	echo "PepperTestApp installed. Run 'make deploy BUNDLE_ID=$(TEST_APP_BUNDLE)' to inject Pepper."
+
+## demo: Run interactive demo walkthrough (build + inject + observe + interact)
+demo:
+	@bash "$(PROJECT_DIR)/scripts/demo.sh" $(DEMO_ARGS)
 
 ## test-deploy: Build test app + build dylib + launch with Pepper injected
 test-deploy: test-app build
