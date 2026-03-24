@@ -19,7 +19,7 @@ THEN:
    - Build must pass after each commit (pre-commit hook enforces this).
 5. Push: `git push -u origin agent/builder/TASK-NNN`.
 6. Open a PR that references the issue:
-   - Title: `[agent/builder] TASK-NNN: brief description`
+   - Title: brief description of the change (NO prefix like `[agent/builder]` — keep titles clean and human-readable)
    - Body: What the task was, what you changed, what you verified. Include `Fixes #NNN` (the issue number) to auto-close on merge.
    - Reviewer: skwallace36
 7. If stuck after 3 attempts on the same obstacle, comment on the issue with what you tried and exit.

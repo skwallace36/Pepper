@@ -45,7 +45,7 @@ THEN:
    ```
 7. Commit and push: `git push -u origin agent/researcher/<topic-slug>`.
 8. Open a PR with your findings so they can be reviewed:
-   - Title: `[agent/researcher] Research: <topic>`
+   - Title: `Research: <topic>` (NO prefix like `[agent/researcher]` — keep titles clean)
    - Body: Summary of findings and recommendation
    - Reviewer: skwallace36
 

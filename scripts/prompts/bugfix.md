@@ -21,7 +21,7 @@ THEN:
 8. Fix it. Commit your changes (small, focused commits).
 9. Push: `git push -u origin agent/bugfix/BUG-NNN`.
 10. Open a PR that references the issue:
-    - Title: `[agent/bugfix] BUG-NNN: brief description`
+    - Title: brief description of the fix (NO prefix like `[agent/bugfix]` — keep titles clean and human-readable)
     - Body: What the bug was, what you changed, what you verified. Include `Fixes #NNN` to auto-close the issue on merge.
     - Reviewer: skwallace36
 11. If stuck after 3 attempts on the same obstacle, comment on the issue with what you tried and exit.
