@@ -42,13 +42,22 @@ public func pepperBootstrap() {
         // crashes or hangs on iOS 26 when combined with the .current() swizzle.
         // Notification dialogs are handled by AX dismiss from MCP side (BUG-307).
 
-        // Resolve port: explicit env var > auto-detect from simulator UDID > default 8765
+        // Resolve port: PEPPER_PORT env var > PepperPort Info.plist key > auto-detect from UDID > default 8765
         let port: UInt16
         let udid: String?
 
         if let envPort = ProcessInfo.processInfo.environment["PEPPER_PORT"],
             let parsed = UInt16(envPort)
         {
+            port = parsed
+            udid =
+                ProcessInfo.processInfo.environment["PEPPER_SIM_UDID"]
+                ?? PepperSimDetect.detectUDID()
+        } else if let plistPort = Bundle.main.infoDictionary?["PepperPort"],
+                  let parsed = (plistPort as? Int).map(UInt16.init)
+                              ?? (plistPort as? String).flatMap(UInt16.init)
+        {
+            // Info.plist key — useful when env vars aren't available (e.g. app-clip, on-device builds).
             port = parsed
             udid =
                 ProcessInfo.processInfo.environment["PEPPER_SIM_UDID"]
