@@ -216,6 +216,9 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `accessibility_action` | decrement | untested |  |  |
 | `renders` | start | untested |  |  |
 | `renders` | stop | untested |  |  |
+| `renders` | status | untested |  |  |
+| `renders` | log | untested |  |  |
+| `renders` | clear | untested |  |  |
 | `renders` | counts | untested |  |  |
 | `renders` | snapshot | untested |  |  |
 | `renders` | diff | untested |  |  |

@@ -2,6 +2,29 @@ import Foundation
 import ObjectiveC
 import UIKit
 
+// MARK: - RenderEvent
+
+/// A structured record of one SwiftUI render event.
+struct RenderEvent {
+    let timestampMs: Int64
+    let hostingViewAddress: String
+    let viewControllerType: String
+    let method: String
+    let cumulativeCount: Int
+
+    func toDict() -> [String: AnyCodable] {
+        [
+            "timestamp_ms": AnyCodable(timestampMs),
+            "hosting_view": AnyCodable(hostingViewAddress),
+            "view_controller": AnyCodable(viewControllerType),
+            "method": AnyCodable(method),
+            "cumulative_count": AnyCodable(cumulativeCount),
+        ]
+    }
+}
+
+// MARK: - PepperRenderTracker
+
 /// Tracks SwiftUI render events and captures view tree snapshots via `makeViewDebugData()`.
 ///
 /// Phase 1: Render counting per hosting view (render event tracking).
@@ -14,6 +37,46 @@ import UIKit
 final class PepperRenderTracker {
 
     static let shared = PepperRenderTracker()
+
+    // MARK: - Ring Buffer
+
+    /// Concurrent queue for ring buffer reads/writes.
+    private let renderQueue = DispatchQueue(label: "pepper.renders", attributes: .concurrent)
+
+    /// Ring buffer of recent render events. Capped at maxEvents.
+    private var ringBuffer: [RenderEvent] = []
+    private let maxEvents = 500
+
+    /// Append an event to the ring buffer (barrier write).
+    private func appendEvent(_ event: RenderEvent) {
+        renderQueue.async(flags: .barrier) { [self] in
+            if ringBuffer.count >= maxEvents {
+                ringBuffer.removeFirst()
+            }
+            ringBuffer.append(event)
+        }
+    }
+
+    /// Return recent events, optionally filtered by time and capped by limit.
+    func recentEvents(limit: Int = 100, sinceMs: Int64 = 0) -> [RenderEvent] {
+        renderQueue.sync {
+            let filtered = sinceMs > 0 ? ringBuffer.filter { $0.timestampMs >= sinceMs } : ringBuffer
+            let tail = limit > 0 && filtered.count > limit ? Array(filtered.suffix(limit)) : filtered
+            return tail
+        }
+    }
+
+    /// Total number of events in the ring buffer.
+    var totalEventCount: Int {
+        renderQueue.sync { ringBuffer.count }
+    }
+
+    /// Clear the ring buffer (keeps render counts intact).
+    func clearEvents() {
+        renderQueue.async(flags: .barrier) { [self] in
+            ringBuffer.removeAll()
+        }
+    }
 
     // MARK: - Render Counts
 
@@ -41,8 +104,19 @@ final class PepperRenderTracker {
         let count = renderCounts[key, default: 0]
         lock.unlock()
 
-        // Record into the flight recorder timeline
         let vcType = resolveViewControllerType(for: hostingView)
+
+        // Record into the ring buffer
+        let event = RenderEvent(
+            timestampMs: currentTimestampMs(),
+            hostingViewAddress: key,
+            viewControllerType: vcType,
+            method: "layoutSubviews",
+            cumulativeCount: count
+        )
+        appendEvent(event)
+
+        // Record into the flight recorder timeline
         let summary = "\(vcType) rendered (#\(count))"
         PepperFlightRecorder.shared.record(type: .render, summary: summary, referenceId: key)
     }
@@ -226,7 +300,7 @@ final class PepperRenderTracker {
         ]
     }
 
-    /// Record a spike method call — increments per-method counter and logs to console.
+    /// Record a spike method call — increments per-method counter, logs to console, adds to ring buffer.
     func recordSpikeCall(method: String, view: UIView) {
         let address = addressKey(view)
         let vcType = resolveViewControllerType(for: view)
@@ -235,6 +309,16 @@ final class PepperRenderTracker {
         methodCounts[method, default: 0] += 1
         let count = methodCounts[method, default: 0]
         lock.unlock()
+
+        // Record into the ring buffer
+        let event = RenderEvent(
+            timestampMs: currentTimestampMs(),
+            hostingViewAddress: address,
+            viewControllerType: vcType,
+            method: method,
+            cumulativeCount: count
+        )
+        appendEvent(event)
 
         print("[PepperRenderTracker] \(method) fired — \(vcType) [\(address)] (total: \(count))")
         PepperFlightRecorder.shared.record(
@@ -351,13 +435,20 @@ final class PepperRenderTracker {
         return (changes: changes, current: current)
     }
 
-    /// Reset all tracking data.
+    /// Reset all tracking data including ring buffer.
     func reset() {
         lock.lock()
         renderCounts.removeAll()
         lastSnapshots.removeAll()
         lastSnapshotTimes.removeAll()
         lock.unlock()
+        clearEvents()
+    }
+
+    // MARK: - Timestamp
+
+    private func currentTimestampMs() -> Int64 {
+        Int64(Date().timeIntervalSince1970 * 1000)
     }
 
     // MARK: - Private Helpers
