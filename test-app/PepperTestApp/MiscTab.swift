@@ -274,10 +274,17 @@ struct MiscTab: View {
 
                 // MARK: - UIKit Hosted
                 GroupBox("UIKit") {
-                    NavigationLink("UIKit Controls Screen") {
-                        UIKitControlsWrapper()
+                    VStack(spacing: 8) {
+                        NavigationLink("UIKit Controls Screen") {
+                            UIKitControlsWrapper()
+                        }
+                        .accessibilityIdentifier("uikit_link")
+
+                        NavigationLink("Layout Test Screen") {
+                            LayoutTestWrapper()
+                        }
+                        .accessibilityIdentifier("layout_test_link")
                     }
-                    .accessibilityIdentifier("uikit_link")
                 }
 
                 // MARK: - Snapshot / Diff Testing
