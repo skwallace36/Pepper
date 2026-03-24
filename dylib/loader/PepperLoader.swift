@@ -33,6 +33,10 @@ public func pepperBootstrap() {
     // is in place before any app code runs.
     PepperDialogInterceptor.installAuthorizationSwizzles()
 
+    // Make apps think VoiceOver is active so they populate accessibility labels.
+    // Many SwiftUI apps (e.g. Ice Cubes) only compute labels when VoiceOver is on.
+    PepperAccessibility.installVoiceOverSwizzle()
+
     NotificationCenter.default.addObserver(
         forName: UIApplication.didFinishLaunchingNotification,
         object: nil,

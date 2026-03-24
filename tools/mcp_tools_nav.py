@@ -155,7 +155,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
         double: bool = Field(default=False, description="Double-tap (two rapid taps for zoom, like, etc.)"),
         duration: float | None = Field(default=None, description="Hold duration in seconds. Use >0.5 for long press."),
         debug: bool = Field(default=False, description="Include tap diagnostics: hit-test result, gesture recognizers, responder chain, and overlapping views. Use when a tap doesn't produce the expected result."),
-    ) -> str:
+    ) -> list:
         """Tap an element on screen. Specify exactly one of: text, icon, heuristic, or point.
         Add double=true for double-tap, or duration=1.0 for long press.
         Add debug=true to diagnose why a tap isn't working — shows what view was hit, gesture recognizers, and the responder chain.
@@ -172,9 +172,9 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
                 parts = point.split(",")
                 params["point"] = {"x": float(parts[0]), "y": float(parts[1])}
             except (ValueError, IndexError):
-                return "Error: point must be 'x,y' (e.g. '200,400')"
+                return [TextContent(type="text", text="Error: point must be x,y (e.g. 200,400)")]
         else:
-            return "Error: specify one of text, icon, heuristic, or point"
+            return [TextContent(type="text", text="Error: specify one of text, icon, heuristic, or point")]
         if double:
             params["double"] = True
         if duration is not None:
@@ -188,7 +188,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
         simulator: str | None = Field(default=None, description="Simulator UDID"),
         direction: str = Field(description="Scroll direction: up, down, left, right"),
         amount: int | None = Field(default=None, description="Scroll amount in points"),
-    ) -> str:
+    ) -> list:
         """Scroll the screen in a direction. Automatically shows screen state after scrolling."""
         params: dict = {"direction": direction}
         if amount is not None:
@@ -202,7 +202,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
         value: str = Field(description="Text to type"),
         clear: bool = Field(default=False, description="Clear existing text before typing"),
         submit: bool = Field(default=False, description="Submit/return after typing"),
-    ) -> str:
+    ) -> list:
         """Type text into a text field. Automatically shows screen state after input.
         If no element_id is given, types into the currently focused field or the first text field on screen."""
         params: dict = {"value": value}
@@ -221,7 +221,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
         tab: int | str | None = Field(default=None, description="Tab index (0-based) or tab name to switch to"),
         list_deeplinks: bool = Field(default=False, description="List all available deep link destinations"),
         category: str | None = Field(default=None, description="Filter deep link list by category"),
-    ) -> str:
+    ) -> list:
         """Navigate to a screen via deep link or tab switch. Shows screen state after navigation.
         Use list_deeplinks=true to see all available destinations."""
         if list_deeplinks:
@@ -239,20 +239,20 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
                 # String tab name — resolve via the "to" param which supports name lookup
                 params["to"] = tab
         else:
-            return "Error: specify deeplink, tab, or list_deeplinks=true"
+            return [TextContent(type="text", text="Error: specify deeplink, tab, or list_deeplinks=true")]
         return await act_and_look(simulator, CMD_NAVIGATE, params)
 
     @mcp.tool()
     async def back(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
-    ) -> str:
+    ) -> list:
         """Go back / dismiss the current screen. Automatically shows screen state after going back."""
         return await act_and_look(simulator, CMD_BACK)
 
     @mcp.tool()
     async def dismiss(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
-    ) -> str:
+    ) -> list:
         """Dismiss the topmost modal/sheet. Automatically shows screen state after dismissal."""
         return await act_and_look(simulator, CMD_DISMISS)
 
@@ -260,14 +260,14 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
     async def swipe(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
         direction: str = Field(description="Swipe direction: up, down, left, right"),
-    ) -> str:
+    ) -> list:
         """Swipe in a direction (like a quick flick, vs scroll which is a slow drag). Shows screen state after."""
         return await act_and_look(simulator, CMD_SWIPE, {"direction": direction})
 
     @mcp.tool()
     async def screen(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
-    ) -> str:
+    ) -> list:
         """Get the current screen name and view controller."""
         return await resolve_and_send(simulator, CMD_SCREEN)
 
@@ -277,7 +277,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
         text: str = Field(description="Text to scroll to (scrolls until this text is visible on screen)"),
         direction: str = Field(default="down", description="Scroll direction: up, down, left, right"),
         max_scrolls: int | None = Field(default=None, description="Max scroll attempts (default: 10)"),
-    ) -> str:
+    ) -> list:
         """Scroll incrementally until target text appears on screen. Combines scroll + visibility polling.
         Automatically shows screen state after finding the element."""
         params: dict = {"text": text, "direction": direction}
@@ -288,7 +288,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
     @mcp.tool()
     async def dismiss_keyboard(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
-    ) -> str:
+    ) -> list:
         """Dismiss the on-screen keyboard by resigning first responder. Shows screen state after."""
         return await act_and_look(simulator, CMD_DISMISS_KEYBOARD)
 
@@ -299,7 +299,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
         name: str = Field(default="default", description="Snapshot name for save/diff/delete"),
         ignore_transient: bool = Field(default=False, description="Ignore volatile/transient text elements (timestamps, animation frames) in diffs"),
         assert_no_diff: bool = Field(default=False, description="Return error if any diff is detected (for regression testing)"),
-    ) -> str:
+    ) -> list:
         """Capture screen state as a named snapshot, then diff against it after actions.
 
         Workflow: snapshot action=save name=baseline → perform actions → snapshot action=diff name=baseline.
@@ -316,7 +316,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
     async def diff(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
         action: str = Field(default="start", description="Action: 'start' (capture baseline), 'show' (compare to baseline), 'clear' (discard baseline)"),
-    ) -> str:
+    ) -> list:
         """Quick view hierarchy diff — show what changed between two look snapshots.
 
         Workflow: diff action=start → perform actions (tap, scroll, etc.) → diff action=show.
