@@ -2,7 +2,7 @@ import UIKit
 
 // MARK: - Accessibility Tree Collection
 
-extension PepperSwiftUIBridge {
+extension ElementDiscoveryBridge {
 
     /// Max elements to collect before stopping (prevents hangs on complex views like Health tab).
     static let maxElementCount = 500
