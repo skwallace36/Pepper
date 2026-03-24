@@ -21,14 +21,18 @@ BACKOFF_CYCLES=5      # cycles to skip (5 * 120s = 10 min)
 
 mkdir -p build/logs
 
-# Prevent double-start
-if [ -f "$PIDFILE" ]; then
+# Prevent double-start using mkdir (atomic on all platforms)
+LOCKDIR="build/logs/heartbeat.lock"
+if ! mkdir "$LOCKDIR" 2>/dev/null; then
+  # Lock dir exists — check if the holder is still alive
   OLD_PID=$(cat "$PIDFILE" 2>/dev/null)
-  if kill -0 "$OLD_PID" 2>/dev/null; then
+  if [ -n "$OLD_PID" ] && kill -0 "$OLD_PID" 2>/dev/null; then
     echo "Heartbeat already running (PID $OLD_PID). Use 'make agents-stop' first."
     exit 1
   fi
-  rm -f "$PIDFILE"
+  # Stale lock — reclaim it
+  rm -rf "$LOCKDIR"
+  mkdir "$LOCKDIR" 2>/dev/null || { echo "Failed to acquire lock"; exit 1; }
 fi
 echo $$ > "$PIDFILE"
 
@@ -43,6 +47,7 @@ cleanup() {
     [ "$pid" != "$$" ] && kill -TERM "$pid" 2>/dev/null
   done
   rm -f "$PIDFILE"
+  rm -rf "$LOCKDIR"
   echo "$(date +%H:%M) Heartbeat stopped."
   exit 0
 }
