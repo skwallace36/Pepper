@@ -23,8 +23,6 @@ docs/internal/
 # Environment / secrets
 .env
 .env.local
-.env.*
-!.env.example
 
 # Build artifacts
 build/
