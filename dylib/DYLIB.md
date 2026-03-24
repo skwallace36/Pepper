@@ -107,4 +107,3 @@ Pre-commit validates coverage is in sync — add your new command to `test-app/c
 
 ---
 
-**Routing:** Bugs → GitHub Issues (`gh issue list --label bug`) | Work items → `../ROADMAP.md` | Test coverage → `../test-app/COVERAGE.md` | Research → `../docs/internal/RESEARCH.md`
