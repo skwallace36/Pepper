@@ -23,18 +23,21 @@ mkdir -p build/logs
 
 # Prevent double-start using mkdir (atomic on all platforms)
 LOCKDIR="build/logs/heartbeat.lock"
+CALLER="(ppid=$(ps -o ppid= -p $$ 2>/dev/null | tr -d ' '), cmd=$(ps -o command= -p $(ps -o ppid= -p $$ 2>/dev/null | tr -d ' ') 2>/dev/null | head -c 80))"
 if ! mkdir "$LOCKDIR" 2>/dev/null; then
   # Lock dir exists — check if the holder is still alive
   OLD_PID=$(cat "$PIDFILE" 2>/dev/null)
   if [ -n "$OLD_PID" ] && kill -0 "$OLD_PID" 2>/dev/null; then
-    echo "Heartbeat already running (PID $OLD_PID). Use 'make agents-stop' first."
+    echo "$(date +%H:%M) BLOCKED duplicate heartbeat (PID $$) — holder PID $OLD_PID alive. Caller: $CALLER" >> build/logs/heartbeat.log
     exit 1
   fi
   # Stale lock — reclaim it
+  echo "$(date +%H:%M) Reclaiming stale lock (old PID $OLD_PID dead). New PID $$. Caller: $CALLER" >> build/logs/heartbeat.log
   rm -rf "$LOCKDIR"
   mkdir "$LOCKDIR" 2>/dev/null || { echo "Failed to acquire lock"; exit 1; }
 fi
 echo $$ > "$PIDFILE"
+echo "$(date +%H:%M) Lock acquired by PID $$. Caller: $CALLER" >> build/logs/heartbeat.log
 
 # Cleanup on exit — kill all agents and remove pidfile
 cleanup() {
