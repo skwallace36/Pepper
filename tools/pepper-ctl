@@ -717,6 +717,7 @@ async def cmd_test_report(args):
         if not args.raw_json:
             print(dim(f"  [{i+1}/{len(tests)}] {test_name} ..."), end="", flush=True, file=sys.stderr)
 
+        expect = test.get("expect")
         msg = make_command(cmd, params)
         t0 = time.monotonic()
         try:
@@ -725,14 +726,35 @@ async def cmd_test_report(args):
             elapsed = time.monotonic() - t0
             resp_status = resp.get("status", "unknown")
             if resp_status == "ok":
-                results.append({
-                    "name": test_name,
-                    "status": "pass",
-                    "time": elapsed,
-                    "cmd": cmd,
-                })
-                if not args.raw_json:
-                    print(green(" pass") + dim(f" ({elapsed:.2f}s)"), file=sys.stderr)
+                # Validate expect assertions against response data
+                assertion_failure = None
+                if expect:
+                    data = resp.get("data") or {}
+                    required_keys = expect.get("has_keys", [])
+                    missing = [k for k in required_keys if k not in data]
+                    if missing:
+                        assertion_failure = f"expected keys {missing} missing from data (got: {list(data.keys())})"
+                if assertion_failure:
+                    results.append({
+                        "name": test_name,
+                        "status": "fail",
+                        "time": elapsed,
+                        "cmd": cmd,
+                        "message": assertion_failure,
+                    })
+                    if not args.raw_json:
+                        print(red(f" FAIL") + dim(f" ({elapsed:.2f}s) {assertion_failure}"), file=sys.stderr)
+                    if not args.continue_on_error:
+                        break
+                else:
+                    results.append({
+                        "name": test_name,
+                        "status": "pass",
+                        "time": elapsed,
+                        "cmd": cmd,
+                    })
+                    if not args.raw_json:
+                        print(green(" pass") + dim(f" ({elapsed:.2f}s)"), file=sys.stderr)
             else:
                 data = resp.get("data", {})
                 err_msg = data.get("message", resp_status) if isinstance(data, dict) else str(resp_status)
