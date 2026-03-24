@@ -195,6 +195,9 @@ format_line() {
       session_reads[$agent]=0 2>/dev/null || true
     fi
 
+    # Reset kill-switch counter on any non-kill event
+    [ "$event" != "killed" ] && kill_switch_count=0
+
     # Skip noisy tool-level events in replay (show in live mode only)
     case "$event" in
       pepper|pepper-fail|read|edit|write|grep|glob|gh)
@@ -252,10 +255,15 @@ format_line() {
         session_reads[$agent]=0 2>/dev/null || true
         ;;
       failed)
-        printf "%s  \033[${acol}m[%s]\033[0m %-12s \033[1;31m%-9s\033[0m %s" "$ts_local" "$icon" "$agent" "FAILED" "$detail"
-        [ -n "$cost" ] && [ "$cost" != "0.00" ] && printf " · \$%s" "$cost"
-        [ -n "$dur_fmt" ] && printf " · %s" "$dur_fmt"
-        echo ""
+        # Dim noise: capacity checks and unproductive runs are informational, not errors
+        if echo "$detail" | grep -qE "at capacity|unproductive run"; then
+          printf "\033[2m%s  \033[${acol}m[%s]\033[0;2m %-12s %-9s %s\033[0m\n" "$ts_local" "$icon" "$agent" "skipped" "$detail"
+        else
+          printf "%s  \033[${acol}m[%s]\033[0m %-12s \033[1;31m%-9s\033[0m %s" "$ts_local" "$icon" "$agent" "FAILED" "$detail"
+          [ -n "$cost" ] && [ "$cost" != "0.00" ] && printf " · \$%s" "$cost"
+          [ -n "$dur_fmt" ] && printf " · %s" "$dur_fmt"
+          echo ""
+        fi
         session_bytes[$agent]=0 2>/dev/null || true
         session_reads[$agent]=0 2>/dev/null || true
         ;;
@@ -265,7 +273,19 @@ format_line() {
         session_reads[$agent]=0 2>/dev/null || true
         ;;
       killed)
-        printf "%s  \033[${acol}m[%s]\033[0m %-12s \033[1;31m%-9s\033[0m %s\n" "$ts_local" "$icon" "$agent" "KILLED" "$detail"
+        # Collapse repeated kill-switch kills — show dimmed after the first
+        if echo "$detail" | grep -q "kill switch"; then
+          kill_count=${kill_switch_count:-0}
+          kill_switch_count=$((kill_count + 1))
+          if [ "$kill_switch_count" -le 1 ]; then
+            printf "%s  \033[${acol}m[%s]\033[0m %-12s \033[1;31m%-9s\033[0m %s\n" "$ts_local" "$icon" "$agent" "KILLED" "$detail"
+          else
+            printf "\033[2m%s  [%s] %-12s killed     (kill switch × %d)\033[0m\n" "$ts_local" "$icon" "$agent" "$kill_switch_count"
+          fi
+        else
+          kill_switch_count=0
+          printf "%s  \033[${acol}m[%s]\033[0m %-12s \033[1;31m%-9s\033[0m %s\n" "$ts_local" "$icon" "$agent" "KILLED" "$detail"
+        fi
         session_bytes[$agent]=0 2>/dev/null || true
         session_reads[$agent]=0 2>/dev/null || true
         ;;
@@ -305,6 +325,37 @@ else
   if [ ! -f "$EVENTS" ]; then
     touch "$EVENTS"
   fi
+
+  # Sticky header: use ANSI scroll region to pin banner at top.
+  # Print banner, then set scrollable region below it.
+  HEADER_LINES=8  # approximate lines in banner
+  TERM_ROWS=$(tput lines 2>/dev/null || echo 40)
+
+  # Clear screen and print banner at top
+  clear
   print_banner
+
+  # Set scroll region: rows HEADER_LINES+1 to bottom
+  printf "\033[%d;%dr" "$((HEADER_LINES + 1))" "$TERM_ROWS"
+  # Move cursor to scroll region
+  printf "\033[$((HEADER_LINES + 1));1H"
+
+  # Restore full scroll region on exit
+  trap 'printf "\033[r\033[?25h"; exit 0' INT TERM EXIT
+
+  # Refresh banner every 30s in background
+  (
+    while true; do
+      sleep 30
+      # Save cursor, move to top, redraw banner, restore cursor
+      printf "\033[s\033[1;1H"
+      print_banner
+      printf "\033[u"
+    done
+  ) &
+  BANNER_PID=$!
+
   tail -n 0 -f "$EVENTS" 2>/dev/null | format_line
+
+  kill "$BANNER_PID" 2>/dev/null
 fi
