@@ -21,23 +21,21 @@ BACKOFF_CYCLES=5      # cycles to skip (5 * 120s = 10 min)
 
 mkdir -p build/logs
 
-# Prevent double-start using mkdir (atomic on all platforms)
-LOCKDIR="build/logs/heartbeat.lock"
-CALLER="(ppid=$(ps -o ppid= -p $$ 2>/dev/null | tr -d ' '), cmd=$(ps -o command= -p $(ps -o ppid= -p $$ 2>/dev/null | tr -d ' ') 2>/dev/null | head -c 80))"
-if ! mkdir "$LOCKDIR" 2>/dev/null; then
-  # Lock dir exists — check if the holder is still alive
+# Prevent double-start using PID file with process validation.
+if [ -f "$PIDFILE" ]; then
   OLD_PID=$(cat "$PIDFILE" 2>/dev/null)
+  # Check if OLD_PID is alive AND is actually a heartbeat (not PID reuse)
   if [ -n "$OLD_PID" ] && kill -0 "$OLD_PID" 2>/dev/null; then
-    echo "$(date +%H:%M) BLOCKED duplicate heartbeat (PID $$) — holder PID $OLD_PID alive. Caller: $CALLER" >> build/logs/heartbeat.log
-    exit 1
+    OLD_CMD=$(ps -o command= -p "$OLD_PID" 2>/dev/null || echo "")
+    if echo "$OLD_CMD" | grep -q 'agent-heartbeat'; then
+      echo "$(date +%H:%M) BLOCKED: heartbeat already running (PID $OLD_PID). My PID: $$" >> build/logs/heartbeat.log
+      exit 1
+    fi
   fi
-  # Stale lock — reclaim it
-  echo "$(date +%H:%M) Reclaiming stale lock (old PID $OLD_PID dead). New PID $$. Caller: $CALLER" >> build/logs/heartbeat.log
-  rm -rf "$LOCKDIR"
-  mkdir "$LOCKDIR" 2>/dev/null || { echo "Failed to acquire lock"; exit 1; }
+  # Stale PID file — old process dead or not a heartbeat
+  rm -f "$PIDFILE"
 fi
 echo $$ > "$PIDFILE"
-echo "$(date +%H:%M) Lock acquired by PID $$. Caller: $CALLER" >> build/logs/heartbeat.log
 
 # Cleanup on exit — kill all agents and remove pidfile
 cleanup() {
@@ -50,7 +48,7 @@ cleanup() {
     [ "$pid" != "$$" ] && kill -TERM "$pid" 2>/dev/null
   done
   rm -f "$PIDFILE"
-  rm -rf "$LOCKDIR"
+  rm -rf build/logs/heartbeat.lock
   echo "$(date +%H:%M) Heartbeat stopped."
   exit 0
 }
