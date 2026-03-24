@@ -44,6 +44,14 @@ final class AppState {
     @ObservationIgnored private var notificationObserver: NSObjectProtocol?
     static let testNotificationName = Notification.Name("PepperTestNotification")
 
+    // Concurrency
+    var concurrencyCompleted: Int = 0
+    var concurrencyTotal: Int = 0
+    var actorStatus: String = "idle"
+    @ObservationIgnored let imageProcessor = ImageProcessor()
+    @ObservationIgnored private var concurrencyTaskHandle: Task<Void, Never>?
+    @ObservationIgnored private var actorTaskHandle: Task<Void, Never>?
+
     // Nested object for vars_inspect depth testing
     var nested: NestedState = NestedState()
 
@@ -144,6 +152,60 @@ final class AppState {
             notificationObserver = nil
             print("[PepperTest] Notification observer removed")
         }
+    }
+
+    // MARK: - Concurrency
+
+    func spawnConcurrencyTasks() {
+        concurrencyCompleted = 0
+        concurrencyTotal = 5
+        print("[PepperTest] Spawning 5 concurrent tasks")
+        concurrencyTaskHandle = Task {
+            await withTaskGroup(of: Void.self) { group in
+                for i in 1...5 {
+                    group.addTask {
+                        try? await Task.sleep(nanoseconds: UInt64(i) * 1_000_000_000)
+                        await MainActor.run {
+                            self.concurrencyCompleted += 1
+                            print("[PepperTest] Task \(i) done (\(self.concurrencyCompleted)/5)")
+                        }
+                    }
+                }
+                await group.waitForAll()
+            }
+            print("[PepperTest] All spawned tasks finished")
+        }
+    }
+
+    func startActorWork() {
+        actorStatus = "running"
+        print("[PepperTest] Starting actor work")
+        actorTaskHandle = Task {
+            await imageProcessor.reset()
+            for i in 1...5 {
+                guard !Task.isCancelled else { break }
+                await imageProcessor.processImage(i)
+                let count = await imageProcessor.processedCount
+                await MainActor.run {
+                    self.actorStatus = "processing \(count)/5"
+                }
+            }
+            await MainActor.run {
+                if self.actorStatus != "cancelled" {
+                    self.actorStatus = "done"
+                }
+                print("[PepperTest] Actor work finished")
+            }
+        }
+    }
+
+    func cancelConcurrencyTasks() {
+        concurrencyTaskHandle?.cancel()
+        concurrencyTaskHandle = nil
+        actorTaskHandle?.cancel()
+        actorTaskHandle = nil
+        actorStatus = "cancelled"
+        print("[PepperTest] Tasks cancelled")
     }
 
     func fetchHTTP() {

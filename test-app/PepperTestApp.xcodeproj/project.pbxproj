@@ -18,6 +18,7 @@
 		A1000009 /* UIKitControlsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000009; };
 		A100000C /* DeeplinkView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A200000C; };
 		A100000D /* AppSeeding.swift in Sources */ = {isa = PBXBuildFile; fileRef = A200000D; };
+		A100000E /* ConcurrencyDemoActor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A200000E; };
 		A100000B /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = A200000B; };
 /* End PBXBuildFile section */
 
@@ -35,6 +36,7 @@
 		A200000B /* Localizable.strings */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; path = Localizable.strings; sourceTree = "<group>"; };
 		A200000C /* DeeplinkView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeeplinkView.swift; sourceTree = "<group>"; };
 		A200000D /* AppSeeding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSeeding.swift; sourceTree = "<group>"; };
+		A200000E /* ConcurrencyDemoActor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConcurrencyDemoActor.swift; sourceTree = "<group>"; };
 		A3000001 /* PepperTestApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PepperTestApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -73,6 +75,7 @@
 				A200000B /* Localizable.strings */,
 				A200000C /* DeeplinkView.swift */,
 				A200000D /* AppSeeding.swift */,
+				A200000E /* ConcurrencyDemoActor.swift */,
 			);
 			path = PepperTestApp;
 			sourceTree = "<group>";
@@ -160,6 +163,7 @@
 				A1000009 /* UIKitControlsView.swift in Sources */,
 				A100000C /* DeeplinkView.swift in Sources */,
 				A100000D /* AppSeeding.swift in Sources */,
+				A100000E /* ConcurrencyDemoActor.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
