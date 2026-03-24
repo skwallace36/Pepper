@@ -391,7 +391,7 @@ More control but more code. Prefer Option A if it gives us enough control.
 
 ### Simulator Coordination
 
-See `docs/SESSIONS.md` for full details.
+See `docs/internal/SESSIONS.md` for full details.
 
 | Agent | Needs simulator? | Notes |
 |-------|-----------------|-------|
@@ -417,7 +417,7 @@ Hard boundaries on what each agent type can modify. Enforced in the agent prompt
 | Bug fixer | `dylib/`, `tools/`, `scripts/`, `BUGS.md` | `ROADMAP.md`, `docs/`, `.claude/` |
 | Tester | `test-app/COVERAGE.md`, `BUGS.md` | `dylib/`, `tools/`, `ROADMAP.md` |
 | PR responder | Files already in the PR diff | Anything else |
-| Researcher | `docs/RESEARCH.md` | Everything else |
+| Researcher | `docs/internal/RESEARCH.md` | Everything else |
 
 Common no-touch: `.claude/settings.json`, `.mcp.json`, `.env`, `AGENTIC-PLAN.md`.
 

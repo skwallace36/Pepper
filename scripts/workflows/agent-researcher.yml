@@ -50,9 +50,9 @@ jobs:
             1. Create branch: git checkout -b agent/researcher/issue-${{ github.event.issue.number }}
             2. Read the issue body for the research questions.
             3. Investigate: read relevant source code, search the web, assess feasibility.
-            4. Add findings to docs/RESEARCH.md under a new ### section.
+            4. Add findings to docs/internal/RESEARCH.md under a new ### section.
             5. Commit and push: git push -u origin agent/researcher/issue-${{ github.event.issue.number }}
             6. Comment on the issue with a summary of findings.
 
-            SCOPE: You may ONLY modify docs/RESEARCH.md.
+            SCOPE: You may ONLY modify docs/internal/RESEARCH.md.
             DO NOT modify any code files, ROADMAP.md, .claude/, .mcp.json, .env.

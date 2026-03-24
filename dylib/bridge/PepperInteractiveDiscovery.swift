@@ -278,7 +278,7 @@ extension PepperSwiftUIBridge {
         let screenBounds = UIScreen.main.bounds
         // Collect existing interactive frames — ImageLayer icon_buttons inside these
         // are decorative (e.g., like/share icons inside post cells, gear icons inside
-        // pet cards). Only toggles/sliders/checkboxes bypass this filter.
+        // content cards). Only toggles/sliders/checkboxes bypass this filter.
         let existingFrames = results.map { $0.frame }
         walkLayerTree(
             layer: view.layer, window: window, screenBounds: screenBounds, dedup: &dedup, results: &results,

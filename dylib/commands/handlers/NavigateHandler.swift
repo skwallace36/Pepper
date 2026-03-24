@@ -4,8 +4,8 @@ import os
 /// Handles {"cmd": "navigate", ...} commands.
 ///
 /// Supports four navigation modes:
-/// 1. **Deep links** (preferred): `{"deeplink": "home"}` or `{"deeplink": "activity", "deeplink_params": {"petId": "123"}}`
-///    Uses the app's native deep link system for reliable navigation to 50+ destinations.
+/// 1. **Deep links** (preferred): `{"deeplink": "home"}` or `{"deeplink": "activity", "deeplink_params": {"userId": "123"}}`
+///    Uses the app's native deep link system for reliable navigation.
 /// 2. **Tab switching**: `{"tab": 0}` — taps the actual tab bar button via HID touch synthesis
 /// 3. **Back-navigation**: `{"to": "screen_id"}` — pop to a screen ID already in the nav stack
 /// 4. **Pop**: `{"action": "pop"}` — pop one level back via UINavigationController (works even with hidden back buttons)

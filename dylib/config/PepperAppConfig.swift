@@ -13,7 +13,7 @@ final class PepperAppConfig {
     var deeplinkScheme: String = ""
 
     /// Deep link catalog — self-documenting URL strings.
-    /// Paths are readable (fi://home, fi://collars?deviceId=).
+    /// Paths are readable (myapp://home, myapp://settings?userId=).
     /// The ?param= suffix indicates accepted parameters.
     var deeplinks: [String] = []
 

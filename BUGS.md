@@ -20,4 +20,4 @@ View open bugs: `gh issue list --repo skwallace36/Pepper --label bug --state ope
 
 ---
 
-**Routing:** Tasks → GitHub Issues | Test coverage → `test-app/COVERAGE.md` | Research → `docs/RESEARCH.md`
+**Routing:** Tasks → GitHub Issues | Test coverage → `test-app/COVERAGE.md` | Research → `docs/internal/RESEARCH.md`

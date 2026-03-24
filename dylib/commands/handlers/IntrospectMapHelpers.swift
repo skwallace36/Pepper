@@ -366,13 +366,13 @@ extension IntrospectHandler {
             // Only short labels (2-12 chars) and reasonably sized frames.
             // Max width 210pt allows 2-column option layouts (175pt each on 402pt screen).
             // Exclude very small text (height < 16pt) — chart axis labels (14.7pt).
-            // Keeps segment-sized text (17pt) like "All Dogs", "Sleep", "Naps".
+            // Keeps segment-sized text (17pt) like "Featured", "Sleep", "Recent".
             guard label.count <= 12, elem.frame.width < 210,
                 elem.frame.height >= 16, elem.frame.height < 50
             else { continue }
             // Exclude labels with digits (stat values: "501", "7min", "0.1mi")
             // and ALL-CAPS labels ≥3 chars (stat units: "STEPS", "DURATION").
-            // Real options are mixed-case: "Off", "Push", "Sleep", "Naps".
+            // Real options are mixed-case: "Off", "Push", "Sleep", "Recent".
             guard !label.contains(where: { $0.isNumber }) else { continue }
             if label.count >= 3, label == label.uppercased() { continue }
 
@@ -449,8 +449,8 @@ extension IntrospectHandler {
         guard allValid else { return false }
         // 2-member groups: members must fill their span (not scattered text).
         // Real options: Off(175pt)+Push(175pt) span 187pt → fill=350/187=1.87
-        // Real options: All Dogs(60pt)+Seniors(45pt) span 100pt → fill=105/100=1.05
-        // False positive: Rest(34pt)+Rank(38pt) span 195pt → fill=72/195=0.37
+        // Real options: Featured(60pt)+Popular(45pt) span 100pt → fill=105/100=1.05
+        // False positive: Rest(34pt)+Sort(38pt) span 195pt → fill=72/195=0.37
         let widths = group.map { elements[$0].frame.width }
         let totalW = widths.reduce(0, +)
         let xs = group.map { elements[$0].center.x }
@@ -463,7 +463,7 @@ extension IntrospectHandler {
     // MARK: - Segment Control Detection
 
     /// Detect groups of labeled buttons at the same Y that form a segment control
-    /// (Day/Week/Month/Year, Photos/Ranking, All Dogs/Seniors).
+    /// (Day/Week/Month/Year, Photos/Popular, Featured/Trending).
     /// Labels these with heuristic "segment" so the builder knows they're selectable tabs.
     // swiftlint:disable:next cyclomatic_complexity
     func promoteSegmentGroups(_ interactive: inout [MapElement], screenWidth: CGFloat) {

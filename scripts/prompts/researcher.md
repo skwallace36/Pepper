@@ -4,7 +4,7 @@ You have a generous budget. USE IT. Be thorough, not superficial. Dig into sourc
 
 
 THEN:
-1. Read docs/RESEARCH.md. Find the first item in "Worth Building" that does NOT have a `<!-- researched -->` comment.
+1. Read docs/internal/RESEARCH.md. Find the first item in "Worth Building" that does NOT have a `<!-- researched -->` comment.
 3. Create a branch: `git checkout -b agent/researcher/<topic-slug>` (e.g. `agent/researcher/touch-failure`).
 4. Add `<!-- researched YYYY-MM-DD -->` to that row and commit: `git commit -m "claim research: <topic>"`
 5. Investigate the idea THOROUGHLY:
@@ -48,6 +48,6 @@ THEN:
    - Body: Summary of findings and recommendation
    - Reviewer: skwallace36
 
-SCOPE: You may ONLY modify docs/RESEARCH.md.
+SCOPE: You may ONLY modify docs/internal/RESEARCH.md.
 DO NOT modify any code files, ROADMAP.md, .claude/, .mcp.json, .env.
 ALL comments you post MUST end with: `— pepper-agent/researcher`

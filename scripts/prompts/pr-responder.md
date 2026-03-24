@@ -30,7 +30,7 @@ THEN:
 
 
 SCOPE: You may ONLY modify files already in the PR diff.
-DO NOT modify: ROADMAP.md, docs/plans/, .claude/, .mcp.json, .env, AGENTIC-PLAN.md.
+DO NOT modify: ROADMAP.md, docs/internal/plans/, .claude/, .mcp.json, .env, AGENTIC-PLAN.md.
 DO NOT close or merge PRs.
 DO NOT modify files outside the PR diff.
 ALL comments you post MUST end with: `— pepper-agent/pr-responder`

@@ -1,0 +1,45 @@
+# Files and directories excluded from the public mirror.
+# Used by scripts/sync-public.sh (rsync --exclude-from).
+
+# Agent infrastructure
+scripts/agent-*.sh
+scripts/hooks/
+scripts/prompts/
+scripts/workflows/
+scripts/classify-pr.sh
+scripts/pr-digest.sh
+scripts/pepper-task
+scripts/setup-ci-agents.sh
+
+# Internal docs
+docs/internal/
+
+# Claude Code config
+.claude/
+
+# GitHub Actions (references agent infra)
+.github/
+
+# Environment / secrets
+.env
+.env.local
+.env.*
+!.env.example
+
+# Build artifacts
+build/
+test-app/build/
+.venv/
+.ruff_cache/
+tools/__pycache__/
+
+# Audit logs
+events.jsonl
+
+# Sync infrastructure (meta)
+.public-exclude
+scripts/sync-public.sh
+
+# Agent lock files
+.pepper-kill
+*.lock
