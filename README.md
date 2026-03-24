@@ -1,16 +1,20 @@
 # Pepper
 
-**MCP server for iOS engineering**
+Pepper is an MCP server that gives AI coding assistants the ability to see, interact with, and debug iOS Simulator apps.
 
-Pepper hooks into any iOS Simulator app at runtime and gives your AI real visibility and control — inspect the UI, tap buttons, read state, intercept network traffic, and more.
+It works by injecting a dylib into the target app via `DYLD_INSERT_LIBRARIES`. The dylib starts a WebSocket server inside the app process. Your MCP client connects to that server and gets access to 60+ tools — everything from reading the view hierarchy to tapping buttons to intercepting network traffic.
 
-No SDK. No code changes. Just run your app and connect.
+The target app doesn't need any modifications. If it runs in the simulator, Pepper works with it.
 
-## Setup
+## Quick Start
 
-Run `make setup` first — it creates the `.venv` and installs dependencies.
+```bash
+git clone https://github.com/skwallace36/Pepper.git
+cd Pepper
+make setup
+```
 
-Then add Pepper to your MCP client config (Claude Desktop, Cursor, etc.):
+Add Pepper to your MCP client (Claude Code, Cursor, etc.):
 
 ```json
 {
@@ -23,80 +27,133 @@ Then add Pepper to your MCP client config (Claude Desktop, Cursor, etc.):
 }
 ```
 
-Then point your agent at a running simulator app.
+Try it against the included test app:
+
+```bash
+make test-deploy   # build test app, inject Pepper, launch
+make ping          # verify the connection
+```
+
+Then ask your agent to `look` at the screen.
+
+## Architecture
+
+```mermaid
+flowchart LR
+    subgraph Client
+        AI["AI Agent\n(Claude Code, Cursor)"]
+        CLI["pepper-ctl"]
+    end
+
+    subgraph Host["MCP Server"]
+        MCP["pepper-mcp"]
+    end
+
+    subgraph Sim["iOS Simulator — App Process"]
+        WS["WebSocket\nServer"]
+        Dispatch["Command\nDispatch"]
+        Runtime["UIKit · Accessibility\nHID · Network · Heap"]
+    end
+
+    AI -- "MCP (stdio)" --> MCP
+    CLI -- "WebSocket" --> WS
+    MCP -- "WebSocket\n(localhost)" --> WS
+    WS --> Dispatch
+    Dispatch --> Runtime
+```
+
+The MCP server (`pepper-mcp`) translates tool calls into WebSocket commands. The dylib receives them on the main thread and operates directly on UIKit — no proxies, no bridges, no out-of-process coordination.
+
+Touch input goes through IOHIDEvent injection, which means `tap`, `scroll`, `swipe`, and `gesture` all work identically for UIKit and SwiftUI.
 
 ## Tools
 
-Pepper exposes 50+ tools for working with iOS apps:
+**Observe** — see what's on screen
 
-**Observe** — `look`, `screen`, `find`, `tree`, `layers`, `highlight`
+| Tool | What it does |
+|---|---|
+| `look` | Primary observation tool. Returns a structured map of the screen — interactive elements, labels, coordinates. |
+| `screen` | Current screen name, tab, and navigation state. |
+| `find` | Search for elements by text, type, or accessibility ID. |
+| `tree` | Raw view hierarchy dump with configurable depth. |
+| `layers` | CALayer tree inspection — borders, shadows, transforms. |
+| `highlight` | Visually highlight an element on the simulator screen. |
+| `read_element` | Read detailed properties of a single element. |
 
-**Interact** — `tap`, `scroll`, `scroll_to`, `swipe`, `gesture`, `input_text`, `toggle`, `navigate`, `back`, `dismiss`, `dialog`
+**Interact** — drive the app
 
-**Debug** — `vars_inspect`, `heap`, `console`, `network`, `crash_log`, `timeline`, `animations`, `lifecycle`
+| Tool | What it does |
+|---|---|
+| `tap` | Tap by text, accessibility ID, class, index, or coordinates. |
+| `scroll` | Scroll to text, element, direction, or position. |
+| `scroll_to` | Scroll incrementally until a target becomes visible. |
+| `swipe` | Directional swipe with configurable distance and speed. |
+| `gesture` | Pinch, rotate, long press, and custom multi-touch gestures. |
+| `input_text` | Set text field values by accessibility ID. |
+| `toggle` | Toggle switches and checkboxes. |
+| `navigate` | Deep link, tab switch, or pop to a screen. |
+| `back` | Go back one screen. |
+| `dismiss` | Dismiss presented sheets and modals. |
+| `dialog` | Detect and interact with system permission dialogs. |
 
-**App State** — `defaults`, `clipboard`, `keychain`, `cookies`, `locale`, `flags`, `push`, `orientation`
+**Debug** — inspect runtime state
 
-**Automation** — `wait_for`, `wait_idle`, `record`, `deploy`, `build`, `iterate`
+| Tool | What it does |
+|---|---|
+| `vars_inspect` | Read and mutate `@State`, `@Published`, `@Observable` — any property, live. |
+| `heap` | Scan the heap for instances of a class. Walk the VC hierarchy. |
+| `console` | Capture app logs (print, NSLog, os_log). |
+| `network` | Log, mock, simulate failures, throttle — intercepts all URLSession traffic. |
+| `crash_log` | Read crash logs from the simulator. |
+| `timeline` | Correlated event timeline — screen transitions, network calls, commands. |
+| `animations` | Detect running animations and their properties. |
+| `lifecycle` | ViewController lifecycle events. |
+| `concurrency` | Inspect Swift async tasks and actors. |
+| `constraints` | AutoLayout constraint dump with ambiguity detection. |
+| `responder_chain` | Walk the responder chain from any element. |
+| `timers` | Inspect active NSTimers and CADisplayLinks. |
 
-## How It Works
+**App State** — read and write persistent state
 
-Pepper is injected into the simulator using `DYLD_INSERT_LIBRARIES`. It spins up a WebSocket server inside the app process, which gives direct access to:
+| Tool | What it does |
+|---|---|
+| `defaults` | Read/write UserDefaults. |
+| `clipboard` | Read/write the pasteboard. |
+| `keychain` | Read/write Keychain items. |
+| `cookies` | Inspect HTTP cookies. |
+| `storage` | Unified view of all persistence (defaults, keychain, cookies, files). |
+| `sandbox` | Browse the app's file system. |
+| `locale` | Query locale settings and look up localization keys. |
+| `flags` | Override feature flags at runtime. |
+| `push` | Inject local notifications that look like remote pushes. |
+| `orientation` | Get or set device orientation. |
 
-- View hierarchy
-- Runtime state
-- Network layer
-- Input system
+**Automation** — build, deploy, wait, record
 
-```mermaid
-graph TD
-    AI["Claude Code / Cursor"] -- "MCP stdio\ntool calls (look, tap, scroll...)" --> MCP
-    CLI["pepper-ctl\n(CLI)"] -- "WebSocket JSON" --> Server
+| Tool | What it does |
+|---|---|
+| `deploy` | Build the dylib and launch the app with injection. |
+| `build` | Build an Xcode project or workspace. |
+| `wait_for` | Wait until an element appears on screen. |
+| `wait_idle` | Wait until the app is idle (no animations, no pending network). |
+| `record` | Record a screen video clip. |
+| `iterate` | Re-deploy after code changes without restarting the session. |
+| `snapshot` / `diff` | Capture and compare view hierarchy snapshots. |
+| `screenshot` | Take a simulator screenshot. |
 
-    MCP["pepper-mcp\n(Python · stdio MCP server)"] -- "WebSocket JSON\nws://localhost:8770–8869" --> Server
+## Adapters
 
-    subgraph App["iOS Simulator — Target App Process (unmodified)"]
-        Server["PepperServer\n(NWListener)"]
-        Dispatcher["PepperDispatcher\n50+ commands"]
-        Caps["view hierarchy · network · heap\nHID input · console · crash logs"]
-
-        Server --> Dispatcher
-        Dispatcher --> Caps
-    end
-
-    Caps --> iOS["UIKit / accessibility / IOHIDEvent APIs"]
-```
-
-Your MCP client connects to that socket, and all commands run in-process.
-
-No source patches to the target app. No integration work. Runtime instrumentation via method interposition where needed — but the app ships unmodified.
-
-If it runs in the simulator, Pepper can work with it.
-
-### Touch Input
-
-All interactions (tap, scroll, swipe, etc.) go through a single HID-based pipeline.
-
-That means:
-
-- Works the same for UIKit and SwiftUI
-- No accessibility hacks
-- No guessing screen coordinates
-
-### Adapters
-
-For app-specific behavior (deep links, custom mappings, etc.), you can add adapters.
-
-They're optional. Without one, Pepper runs in a generic mode that works with any app.
+Pepper works with any app out of the box. For app-specific behavior — deep link catalogs, icon mappings, custom tab bar detection — you can write an adapter. Set `APP_ADAPTER_TYPE` and `ADAPTER_PATH` in `.env`. See `.env.example`.
 
 ## Development
 
 ```bash
-make setup         # install deps, git hooks
+make help          # list all targets
+make setup         # install deps, git hooks, venv
 make test-deploy   # build test app + inject Pepper
-make ping          # verify connection
+make ping          # health check
+make smoke         # run smoke tests
+make demo          # interactive demo walkthrough
 ```
 
-Run `make help` for the full list. See `CLAUDE.md` for conventions.
-
-If something isn't working, see [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
+Architecture guide: [`dylib/DYLIB.md`](dylib/DYLIB.md) · Tool reference: [`tools/TOOLS.md`](tools/TOOLS.md) · Troubleshooting: [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md)
