@@ -27,13 +27,6 @@ Add Pepper to your MCP client (Claude Code, Cursor, etc.):
 }
 ```
 
-Try it against the included test app:
-
-```bash
-make test-deploy   # build test app, inject Pepper, launch
-make ping          # verify the connection
-```
-
 Then ask your agent to `look` at the screen.
 
 ## How It Works
