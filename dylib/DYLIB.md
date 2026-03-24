@@ -90,6 +90,41 @@ ObjC method hooking engine (runtime swizzling), dispatch interposition tracking.
 ### `recorder/`
 Flight recorder for event timeline debugging.
 
+## Adapters
+
+An adapter is a directory of Swift files compiled alongside the dylib. It sets app-specific config (deep links, icon mappings, custom tab bar, etc.) via `PepperAppConfig`. Generic mode runs without one.
+
+**Structure:** one file must contain `static func registerAdapter()`. The build script finds it automatically — the filename becomes the class name in the generated shim.
+
+```
+my-app-adapter/
+  MyAppAdapter.swift   ← must contain `static func registerAdapter()`
+  MyTabBar.swift       ← additional files, optional
+```
+
+**Minimal adapter** (`MyAppAdapter.swift`):
+
+```swift
+final class MyAppAdapter {
+    static func registerAdapter() {
+        let config = PepperAppConfig.shared
+        config.logSubsystem  = "com.example.myapp.pepper"
+        config.deeplinkScheme = "myapp"
+        config.deeplinks     = ["myapp://home", "myapp://settings"]
+        config.classLookupPrefixes = ["MyApp"]
+    }
+}
+```
+
+**`.env` wiring:**
+
+```sh
+APP_ADAPTER_TYPE=myapp
+ADAPTER_PATH=/path/to/my-app-adapter
+```
+
+A complete, copy-paste starting point lives in `adapters/example/`.
+
 ## Adding a New Command
 
 1. Create `commands/handlers/MyHandler.swift` implementing `PepperHandler`
