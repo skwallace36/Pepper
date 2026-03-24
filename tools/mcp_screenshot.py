@@ -1,4 +1,5 @@
 """Screenshot capture for Pepper MCP — in-process fast path + simctl fallback."""
+from __future__ import annotations
 
 import asyncio
 import base64

@@ -3,6 +3,7 @@
 Simulator resolution, xcodebuild invocation, app deployment with dylib injection,
 and physical device build/install/launch.
 """
+from __future__ import annotations
 
 import asyncio
 import json
