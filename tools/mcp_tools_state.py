@@ -215,3 +215,23 @@ def register_state_tools(mcp, resolve_and_send):
         if limit is not None:
             params["limit"] = limit
         return await resolve_and_send(simulator, "storage", params)
+
+    @mcp.tool()
+    async def coredata(
+        simulator: str | None = Field(default=None, description="Simulator UDID"),
+        action: str = Field(default="entities", description="Action: entities"),
+    ) -> str:
+        """Inspect the Core Data schema — entities, attributes, and relationships.
+
+        Discovers the app's NSPersistentContainer via common singleton patterns
+        (AppDelegate.persistentContainer, PersistenceController.shared, etc.) and
+        returns the managed object model schema.
+
+        Actions:
+        - entities: list all entity names, their attributes, and their relationships
+
+        Returns structured JSON:
+        { "entities": [{ "name": "User", "attributes": ["id", "name"], "relationships": ["posts"] }] }
+
+        Related tools: storage (Core Data row counts and data), heap (object discovery)."""
+        return await resolve_and_send(simulator, "coredata", {"action": action})
