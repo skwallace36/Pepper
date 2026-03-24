@@ -231,7 +231,7 @@ logs:
 		--level debug
 
 # ============================================================
-# Tools / Agent
+# Tools
 # ============================================================
 
 ## test-client: Start the interactive Python test client
@@ -241,6 +241,10 @@ test-client:
 ## pepper-ctl: Show pepper-ctl CLI usage
 pepper-ctl:
 	@python3 "$(TOOLS_DIR)/pepper-ctl" --help
+
+# ============================================================
+# Agent (private — stripped from public mirror)
+# ============================================================
 
 ## agent: Run an agent (e.g. make agent TYPE=bugfix)
 agent:
