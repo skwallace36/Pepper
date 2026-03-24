@@ -1,0 +1,25 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pepper-ios"
+version = "0.1.0"
+description = "MCP server for iOS engineering"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+dependencies = [
+    "mcp>=1.26.0",
+    "websockets>=12.0",
+]
+
+[project.scripts]
+pepper-mcp = "pepper_ios.server:main"
+pepper-ctl = "pepper_ios.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["pepper_ios"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"pepper_ios/registry.json" = "pepper_ios/registry.json"
