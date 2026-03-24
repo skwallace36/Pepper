@@ -47,6 +47,13 @@ CLAUDE.md
 ROADMAP.md
 BUGS.md
 
+# Linter/formatter config (clutters root, not useful to viewers)
+.swift-format
+.swiftlint.yml
+pyrightconfig.json
+ruff.toml
+smithery.yaml
+
 # Agent lock files
 .pepper-kill
 *.lock
