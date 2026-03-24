@@ -2,6 +2,9 @@ name: CI
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
 
 concurrency:
   group: ci-${{ github.head_ref || github.sha }}
