@@ -290,11 +290,13 @@ if [ -n "$CLAIMED_SIM" ]; then
     sleep 3
   fi
 
-  # Pre-grant permissions so system dialogs never block agents.
+  # Pre-grant ALL permissions so system dialogs never block agents.
   # Fresh simctl install resets permissions; these grants prevent the
   # out-of-process SpringBoard dialogs that auto-dismiss can't handle (BUG-307).
+  # Keep in sync with _ALL_PERMISSIONS in tools/mcp_tools_system.py.
   BUNDLE_ID="${APP_BUNDLE_ID:-com.pepper.PepperTestApp}"
-  for _perm in location-always camera microphone photos contacts reminders; do
+  for _perm in photos photos-add camera microphone contacts calendar reminders \
+               location-always location-when-in-use notifications health; do
     xcrun simctl privacy "$CLAIMED_SIM" grant "$_perm" "$BUNDLE_ID" 2>/dev/null || true
   done
 fi
