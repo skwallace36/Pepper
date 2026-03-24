@@ -45,7 +45,7 @@ Collect commit messages from private main since the last sync. Only include comm
 # Get commits since last sync that touch public files
 git log <last-sync-hash>..HEAD --oneline -- \
   dylib/ tools/ test-app/ docs/PR-STATE-MACHINE.md docs/TROUBLESHOOTING.md \
-  Makefile .mcp.json README.md ROADMAP.md CLAUDE.md BUGS.md \
+  Makefile .mcp.json README.md \
   .env.example .gitignore .swift-format .swiftlint.yml \
   pyrightconfig.json ruff.toml requirements.txt smithery.yaml \
   scripts/setup.sh scripts/demo.sh scripts/pre-commit scripts/gen-coverage.py \

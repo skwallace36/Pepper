@@ -40,6 +40,11 @@ events.jsonl
 .public-exclude
 scripts/sync-public.sh
 
+# Private project docs (issue numbers, agent references, internal planning)
+CLAUDE.md
+ROADMAP.md
+BUGS.md
+
 # Agent lock files
 .pepper-kill
 *.lock
