@@ -2,6 +2,7 @@
 
 Tool definitions for: vars_inspect, defaults, clipboard, keychain, cookies.
 """
+from __future__ import annotations
 
 from pepper_common import try_parse_json
 from pydantic import Field

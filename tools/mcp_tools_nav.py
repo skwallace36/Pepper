@@ -3,6 +3,7 @@
 Tool definitions for: look, tap, scroll, input_text, navigate, back, dismiss,
 swipe, screen, scroll_to, dismiss_keyboard, snapshot, diff.
 """
+from __future__ import annotations
 
 import asyncio
 import base64

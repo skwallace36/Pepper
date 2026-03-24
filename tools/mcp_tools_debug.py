@@ -3,6 +3,7 @@
 Tool definitions for: layers, console, network, timeline, crash_log,
 animations, lifecycle, heap, responder_chain, notifications, timers, perf.
 """
+from __future__ import annotations
 
 import json
 import os

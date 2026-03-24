@@ -11,6 +11,7 @@ Usage:
   pepper-context --class MyViewController   # skip pepper-ctl, use this class
   pepper-context --port 8850          # pass port to pepper-ctl
 """
+from __future__ import annotations
 
 import argparse
 import json
