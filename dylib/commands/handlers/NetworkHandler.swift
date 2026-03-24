@@ -21,7 +21,7 @@ import os
 ///   {"cmd":"network", "params":{"action":"simulate", "effect":"fail_status", "status_code":500, "url":"api.example.com"}}
 ///   {"cmd":"network", "params":{"action":"simulate", "effect":"fail_error", "error_domain":"NSURLErrorDomain", "error_code":-1009}}
 ///   {"cmd":"network", "params":{"action":"simulate", "effect":"throttle", "bytes_per_second":1024, "url":"cdn.example.com"}}
-///   {"cmd":"network", "params":{"action":"mock", "url":"api.example.com/pets", "status":200, "body":"{\"pets\":[]}"}}
+///   {"cmd":"network", "params":{"action":"mock", "url":"api.example.com/users", "status":200, "body":"{\"users\":[]}"}}
 ///   {"cmd":"network", "params":{"action":"mock", "url":"api.example.com/error", "status":500, "body":"{\"error\":\"fail\"}", "method":"POST"}}
 ///   {"cmd":"network", "params":{"action":"mocks"}}
 ///   {"cmd":"network", "params":{"action":"remove_mock", "id":"mock-id"}}

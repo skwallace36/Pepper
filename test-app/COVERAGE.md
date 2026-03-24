@@ -264,9 +264,9 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 
 ## Summary
 
-**236 test points** across 66 commands.
+**239 test points** across 66 commands.
 
 - pass: 138
 - fail: 3
-- untested: 85
+- untested: 88
 

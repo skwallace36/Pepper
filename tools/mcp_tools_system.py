@@ -310,7 +310,7 @@ def register_system_tools(mcp, resolve_and_send, act_and_look, resolve_simulator
         title: str | None = Field(default=None, description="Notification title"),
         body: str | None = Field(default=None, description="Notification body text"),
         data: str | None = Field(
-            default=None, description='JSON userInfo payload for deeplink routing (e.g. \'{"type":"walk_summary"}\')'
+            default=None, description='JSON userInfo payload for deeplink routing (e.g. \'{"type":"order_detail"}\')'
         ),
     ) -> str:
         """Simulate push notifications — deliver, list pending, or clear all.

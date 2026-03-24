@@ -12,7 +12,7 @@ A PR must have exactly **one** state label at any time. Never stack labels. When
 |---|---|---|
 | `awaiting:verifier` | pr-verifier agent | Build/test or code-review the PR |
 | `awaiting:responder` | pr-responder agent | Address feedback and push fixes |
-| `awaiting:human` | Human (Stuart) | Review and approve/reject |
+| `awaiting:human` | Human (Maintainer) | Review and approve/reject |
 | `verified` | Auto-merge or human | Terminal — PR is merged |
 | *(no label)* | Heartbeat | Classify and assign initial label |
 
@@ -23,7 +23,7 @@ flowchart TD
     START(("PR\nCreated")) --> AV
 
     AV["🔵 awaiting:verifier\n<i>pr-verifier agent</i>"]
-    AH["🟡 awaiting:human\n<i>Stuart reviews</i>"]
+    AH["🟡 awaiting:human\n<i>Maintainer reviews</i>"]
     AR["🔴 awaiting:responder\n<i>pr-responder agent</i>"]
     V["🟢 verified"]
     M(("Merged"))

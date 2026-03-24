@@ -165,7 +165,7 @@ struct TapHandler: PepperHandler {
         }
 
         // Priority: if text exactly matches a visible tab title, select it directly.
-        // This prevents "Rank" matching "Ranking" text elsewhere on screen.
+        // This prevents "News" matching "Newsletter" text elsewhere on screen.
         if let text = command.params?["text"]?.stringValue,
             let tabBar = UIWindow.pepper_tabBarController
         {

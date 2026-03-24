@@ -48,4 +48,4 @@ Everything is GitHub-native. No markdown databases.
 
 ---
 
-**Routing:** Priorities → `ROADMAP.md` | Test results → `test-app/COVERAGE.md` (auto-generated) | Research → `docs/RESEARCH.md`
+**Routing:** Priorities → `ROADMAP.md` | Test results → `test-app/COVERAGE.md` (auto-generated) | Research → `docs/internal/RESEARCH.md`

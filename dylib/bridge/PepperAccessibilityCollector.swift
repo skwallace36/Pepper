@@ -43,8 +43,8 @@ extension PepperSwiftUIBridge {
         // SwiftUI can leave stale accessibility elements after list row deletion —
         // the visual row is gone but the a11y node persists with a valid frame.
         // Detection: when multiple labeled elements share the same center, the later
-        // one in the tree walk is the replacement (e.g. "Add safe zone" slid up);
-        // the earlier one is the ghost (e.g. deleted "Zone 1234").
+        // one in the tree walk is the replacement (e.g. "Add item" slid up);
+        // the earlier one is the ghost (e.g. deleted "Item 1234").
         let screenBounds = UIScreen.main.bounds
 
         // First pass: find overlapping elements by frame origin (top-left corner).
