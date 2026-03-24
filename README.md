@@ -8,7 +8,9 @@ No SDK. No code changes. Just run your app and connect.
 
 ## Setup
 
-Add Pepper to your MCP client config (Claude Desktop, Cursor, etc.):
+Run `make setup` first — it creates the `.venv` and installs dependencies.
+
+Then add Pepper to your MCP client config (Claude Desktop, Cursor, etc.):
 
 ```json
 {
