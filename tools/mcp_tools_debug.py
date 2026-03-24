@@ -244,12 +244,13 @@ def register_debug_tools(mcp, resolve_and_send):
     @mcp.tool()
     async def heap(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
-        action: str = Field(description="Action: classes, controllers, find, inspect, read, snapshot, diff, snapshot_clear, snapshot_status"),
+        action: str = Field(description="Action: classes, controllers, find, inspect, read, snapshot, diff, baseline, check, snapshot_clear, snapshot_status"),
         class_name: str | None = Field(default=None, description="Class name or pattern to search for"),
         pattern: str | None = Field(default=None, description="Pattern for classes search"),
         key_path: str | None = Field(default=None, description="KVC key path to read (for 'read' action, e.g. 'camera.zoom')"),
         limit: int | None = Field(default=None, description="Max results to return"),
         min_growth: int | None = Field(default=None, description="Min instance growth to report in diff (default: 1)"),
+        threshold: int | None = Field(default=None, description="Min instance growth to flag in check (default: 1)"),
     ) -> str:
         """Find live objects, inspect state, and detect memory leaks.
 
@@ -264,21 +265,29 @@ def register_debug_tools(mcp, resolve_and_send):
           (e.g. class_name='GMSMapView', key_path='camera.zoom'). Read-only — cannot set values.
 
         Leak detection actions:
-        - snapshot: save current VC instance counts as baseline
+        - baseline: capture current instance counts as a reference baseline
+        - check: compare current counts to baseline, flag growing classes with severity levels
+          (high/medium/low). Returns structured { leaks: [{class, baseline, current, delta, severity}] }
+          suitable for automated test assertions.
+        - snapshot: alias for baseline (save current counts)
         - diff: compare current counts to baseline — growing counts indicate retain cycles
         - snapshot_clear / snapshot_status: manage the saved baseline
 
-        Leak detection workflow: snapshot → navigate to a screen and back 3x → diff.
+        Leak detection workflow: baseline → navigate to a screen and back 3x → check.
+        Automated test workflow: baseline → exercise feature → check (assert leak_count == 0).
 
         Related tools: vars_inspect (ViewModel @Published properties — read AND write),
         defaults (UserDefaults — persistent config), layers (CALayer visual properties)."""
-        # Route snapshot/diff actions to the heap_snapshot handler
+        # Route snapshot/diff/baseline/check actions to the heap_snapshot handler
         snapshot_actions = {"snapshot": "snapshot", "diff": "diff",
-                            "snapshot_clear": "clear", "snapshot_status": "status"}
+                            "snapshot_clear": "clear", "snapshot_status": "status",
+                            "baseline": "baseline", "check": "check"}
         if action in snapshot_actions:
             params: dict = {"action": snapshot_actions[action]}
             if min_growth is not None:
                 params["min_growth"] = min_growth
+            if threshold is not None:
+                params["threshold"] = threshold
             return await resolve_and_send(simulator, "heap_snapshot", params)
         params = {"action": action}
         if class_name:
