@@ -167,6 +167,10 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `find` | count | pass | Controls tab with type=='button' predicate | Returned count=27 for type=='button'. Also tested label CONTAINS 'Tap' (count=1). Correct counts for known elements. |
 | `find` | first | pass | Controls tab with type=='button' predicate | Returns first matching element with label, type, center, traits, tap_cmd, view_controller, total_matches=27. No-match predicate returns proper 'No elements match predicate' error. |
 | `find` | list | pass | Controls tab with type=='button' limit=5 | Returns array of matches with count and per-element details (label, center, type, traits, tap_cmd). Limit param works correctly, capping results at 5. |
+| `flags` | list | untested |  |  |
+| `flags` | get | untested |  |  |
+| `flags` | set | untested |  |  |
+| `flags` | clear | untested |  |  |
 | `hook` | install | pass | UIKitControlsViewController ObjC methods | Installed hook on PepperTestApp.UIKitControlsViewController viewDidAppear:. Returns {hook_id:'hook_1', class, method, class_method:false}. System classes (UIViewController) are properly rejected with safety error. Missing class/method params return proper errors. |
 | `hook` | remove | pass | After install | Removes hook by ID. Returns {removed:'hook_1'}. Subsequent list confirms hook removed (count=0). Nonexistent hook ID returns proper 'Hook not found' error. |
 | `hook` | remove_all | pass | After install | Installed 2 hooks (viewDidAppear: and viewWillAppear:), then remove_all. Returns {removed:'all'}. Subsequent list confirms count=0. |
@@ -252,9 +256,9 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 
 ## Summary
 
-**227 test points** across 65 commands.
+**231 test points** across 66 commands.
 
 - pass: 138
 - fail: 3
-- untested: 85
+- untested: 89
 
