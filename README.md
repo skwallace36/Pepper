@@ -71,7 +71,7 @@ Pepper is injected into the simulator using `DYLD_INSERT_LIBRARIES`. It spins up
 
 Your MCP client connects to that socket, and all commands run in-process.
 
-No swizzling. No private API wrappers. No integration work.
+No source patches to the target app. No integration work. Runtime instrumentation via method interposition where needed — but the app ships unmodified.
 
 If it runs in the simulator, Pepper can work with it.
 
