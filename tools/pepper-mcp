@@ -38,6 +38,7 @@ from mcp_crash import fetch_crash_info
 from mcp_tools_debug import register_debug_tools
 from mcp_tools_nav import register_nav_tools
 from mcp_tools_record import register_record_tools
+from mcp_tools_renders import register_renders_tools
 from mcp_tools_sim import register_sim_tools
 from mcp_tools_state import register_state_tools
 from mcp_tools_system import register_system_tools
@@ -540,6 +541,7 @@ _register_adapter_tools()
 register_nav_tools(mcp, send_command, resolve_and_send, act_and_look)
 register_state_tools(mcp, resolve_and_send)
 register_debug_tools(mcp, resolve_and_send)
+register_renders_tools(mcp, resolve_and_send)
 register_system_tools(mcp, resolve_and_send, act_and_look, _resolve_simulator)
 register_record_tools(mcp)
 register_sim_tools(mcp, resolve_and_send, _resolve_simulator)
