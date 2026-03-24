@@ -51,8 +51,16 @@ from pepper_websocket import CrashError, make_command
 from pepper_websocket import send_command as ws_send_command
 
 # Suppress all stdout except MCP protocol — critical for stdio transport
+# Logs go to stderr (safe for MCP stdio transport). Set PEPPER_DEBUG=1 for verbose output.
 import logging
-logging.basicConfig(stream=sys.stderr, level=logging.WARNING)
+_log_level = logging.DEBUG if os.environ.get("PEPPER_DEBUG") else logging.WARNING
+logging.basicConfig(
+    stream=sys.stderr,
+    level=_log_level,
+    format="[pepper] %(asctime)s %(levelname)s %(name)s: %(message)s",
+    datefmt="%H:%M:%S",
+)
+logger = logging.getLogger("pepper_mcp")
 
 try:
     from mcp.server.fastmcp import FastMCP
@@ -169,19 +177,27 @@ async def send_command(port: int, cmd: str, params: Optional[dict] = None,
     """
     msg = make_command(cmd, params)
     addr = f"{host}:{port}"
+    logger.debug("send cmd=%s params=%s addr=%s timeout=%s", cmd, params, addr, timeout)
     try:
-        return await ws_send_command(host, port, msg, timeout=timeout)
+        result = await ws_send_command(host, port, msg, timeout=timeout)
+        if result.get("status") != "ok":
+            logger.warning("cmd=%s error=%s", cmd, result.get("error", result.get("data")))
+        return result
     except asyncio.TimeoutError:
+        logger.warning("cmd=%s timed out after %ss", cmd, timeout)
         return {"status": "error", "error": f"Command timed out after {timeout}s"}
     except ConnectionRefusedError:
+        logger.warning("cmd=%s connection refused at %s", cmd, addr)
         return {"status": "error", "error": f"Connection refused at {addr}. Is Pepper running?"}
     except CrashError as e:
+        logger.warning("cmd=%s crash: %s", cmd, e)
         return {
             "status": "error",
             "error": f"{e} Crash log will be auto-attached below."
         }
     except Exception as e:
         err_str = str(e)
+        logger.warning("cmd=%s exception: %s", cmd, err_str)
         if "close frame" in err_str or "connection" in err_str.lower():
             return {
                 "status": "error",
@@ -197,9 +213,11 @@ async def resolve_and_send(simulator: Optional[str], cmd: str, params: Optional[
     The simulator parameter accepts any Pepper instance identifier — simulator UDID or device UDID.
     Discovery checks both simulator port files and device registrations.
     """
+    logger.debug("resolve_and_send cmd=%s simulator=%s params=%s", cmd, simulator, params)
     try:
         host, port, udid = discover_instance(simulator)
     except RuntimeError as e:
+        logger.warning("resolve_and_send cmd=%s discovery failed: %s", cmd, e)
         return json.dumps({"status": "error", "error": str(e)}, indent=2)
     resp = await send_command(port, cmd, params, timeout, host=host)
     result = json.dumps(resp, indent=2)
@@ -358,9 +376,11 @@ async def act_and_look(simulator: Optional[str], cmd: str, params: Optional[dict
     Returns: action result + screen summary + telemetry. Forces the check-act-verify loop."""
     from pepper_format import format_look
 
+    logger.debug("act_and_look cmd=%s simulator=%s params=%s", cmd, simulator, params)
     try:
         host, port, udid = discover_instance(simulator)
     except RuntimeError as e:
+        logger.warning("act_and_look cmd=%s discovery failed: %s", cmd, e)
         return json.dumps({"status": "error", "error": str(e)}, indent=2)
 
     # Bind host so downstream telemetry calls reach the right target
