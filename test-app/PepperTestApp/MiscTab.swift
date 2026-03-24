@@ -109,6 +109,69 @@ struct MiscTab: View {
                     }
                 }
 
+                // MARK: - NSTimer & CADisplayLink (for timers command)
+                GroupBox("NSTimer & CADisplayLink") {
+                    VStack(spacing: 8) {
+                        HStack(spacing: 12) {
+                            Button("Start Timer") {
+                                state.startRepeatingTimer()
+                            }
+                            .accessibilityIdentifier("start_repeating_timer_button")
+
+                            Button("Stop Timer") {
+                                state.stopRepeatingTimer()
+                            }
+                            .accessibilityIdentifier("stop_repeating_timer_button")
+                        }
+
+                        Text("Timer ticks: \(state.repeatingTimerCount)")
+                            .font(.caption.monospacedDigit())
+                            .accessibilityIdentifier("repeating_timer_count")
+
+                        HStack(spacing: 12) {
+                            Button("Start Display Link") {
+                                state.startDisplayLink()
+                            }
+                            .accessibilityIdentifier("start_display_link_button")
+
+                            Button("Stop Display Link") {
+                                state.stopDisplayLink()
+                            }
+                            .accessibilityIdentifier("stop_display_link_button")
+                        }
+
+                        Text("Display link frames: \(state.displayLinkFrameCount)")
+                            .font(.caption.monospacedDigit())
+                            .accessibilityIdentifier("display_link_frame_count")
+                    }
+                }
+
+                // MARK: - NSNotificationCenter Observers (for notifications command)
+                GroupBox("NSNotificationCenter Observers") {
+                    VStack(spacing: 8) {
+                        HStack(spacing: 12) {
+                            Button("Register Observer") {
+                                state.registerNotificationObserver()
+                            }
+                            .accessibilityIdentifier("register_observer_button")
+
+                            Button("Remove Observer") {
+                                state.removeNotificationObserver()
+                            }
+                            .accessibilityIdentifier("remove_observer_button")
+                        }
+
+                        Button("Post Notification") {
+                            state.postTestNotification()
+                        }
+                        .accessibilityIdentifier("post_notification_button")
+
+                        Text("Received: \(state.notificationReceivedCount)")
+                            .font(.caption.monospacedDigit())
+                            .accessibilityIdentifier("notification_received_count")
+                    }
+                }
+
                 // MARK: - Network
                 GroupBox("Network") {
                     VStack(spacing: 8) {
