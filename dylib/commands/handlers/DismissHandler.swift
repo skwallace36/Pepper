@@ -45,7 +45,12 @@ struct DismissHandler: PepperHandler {
             return .error(id: command.id, message: "Nothing to dismiss — no presented view controller found")
         }
         let screenId = topmostPresented.pepper_topMostViewController.pepperScreenID
-        topmostPresented.dismiss(animated: true)
+        var animationDone = false
+        topmostPresented.dismiss(animated: true) { animationDone = true }
+        let deadline = Date(timeIntervalSinceNow: 0.5)
+        while !animationDone && Date() < deadline {
+            RunLoop.current.run(mode: .default, before: Date(timeIntervalSinceNow: 0.05))
+        }
 
         return .ok(
             id: command.id,
