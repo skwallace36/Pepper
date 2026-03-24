@@ -44,7 +44,7 @@ Everything is GitHub-native. No markdown databases.
 
 **Area labels:** area:ci-cd, area:packaging, area:device-support, area:android-port, area:system-dialogs, area:generic-mode, area:real-world-testing, area:new-capabilities, area:test-coverage, area:ice-cubes
 
-**Priority labels:** priority:p3 → p4 → p6 → p7 → p8 → p9
+**Priority labels:** priority:p3 → p4 → p6 → p7 → p8 → p9 (p5 doesn't exist — the gap is intentional). Not to be confused with ROADMAP.md's P1–P11 roadmap phases, which are project phases, not issue severity.
 
 ---
 
