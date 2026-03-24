@@ -180,19 +180,33 @@ while true; do
     fi
   fi
 
-  # Also detect human comments on PRs missing the awaiting:responder label.
-  # This catches comments on PRs that were labeled before the state machine existed.
+  # Detect human comments on open PRs and transition labels accordingly.
+  # Only scans PRs that have an awaiting: label (skip verified / unlabeled).
   for pr in $(gh pr list --repo skwallace36/Pepper --state open --json number,labels \
-    --jq '[.[] | select(.labels | map(.name) | (index("awaiting:responder") | not) and (index("verified") | not))] | .[].number' 2>/dev/null); do
+    --jq '[.[] | select(.labels | map(.name) | any(startswith("awaiting:")))] | .[].number' 2>/dev/null); do
+    LAST_COMMENTER=$(gh api "repos/skwallace36/Pepper/issues/$pr/comments" --jq '.[-1].user.login // ""' 2>/dev/null || echo "")
     LAST_COMMENT=$(gh api "repos/skwallace36/Pepper/issues/$pr/comments" --jq '.[-1].body // ""' 2>/dev/null || echo "")
-    if [ -n "$LAST_COMMENT" ] && ! echo "$LAST_COMMENT" | grep -q "pepper-agent"; then
-      # Human commented — relabel to awaiting:responder
+    # Skip if no comments, or last commenter is an agent
+    [ -z "$LAST_COMMENT" ] && continue
+    echo "$LAST_COMMENTER" | grep -q "^pepper-" && continue
+    # Human commented — check if it's an LGTM (approval) or feedback
+    if echo "$LAST_COMMENT" | grep -qi "^lgtm"; then
+      # LGTM → merge the PR
+      echo "$(date +%H:%M) Human LGTM on PR #$pr — merging"
+      for lbl in awaiting:verifier awaiting:responder awaiting:human; do
+        gh pr edit "$pr" --repo skwallace36/Pepper --remove-label "$lbl" 2>/dev/null || true
+      done
+      gh pr edit "$pr" --repo skwallace36/Pepper --add-label "verified" 2>/dev/null || true
+      gh pr merge "$pr" --repo skwallace36/Pepper --squash --delete-branch 2>/dev/null || true
+    else
+      # Feedback → send to responder
+      echo "$(date +%H:%M) Human commented on PR #$pr — relabeling to awaiting:responder"
       for lbl in awaiting:verifier awaiting:human; do
         gh pr edit "$pr" --repo skwallace36/Pepper --remove-label "$lbl" 2>/dev/null || true
       done
       gh pr edit "$pr" --repo skwallace36/Pepper --add-label "awaiting:responder" 2>/dev/null || true
-      break  # one per cycle
     fi
+    break  # one per cycle
   done
 
   # Merge conflicts → conflict-resolver (runs on any conflicting PR)
