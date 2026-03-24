@@ -11,6 +11,7 @@ import subprocess
 
 from pepper_ax import detect_dialog as _ax_detect
 from pepper_ax import find_and_dismiss_dialog as _ax_dismiss
+from pepper_commands import CMD_DIALOG
 from pepper_common import get_config, require_parse_json, try_parse_json
 from pydantic import Field
 
@@ -64,7 +65,7 @@ def _infer_permissions(text: str) -> list[str]:
 async def _dismiss_system_dialog(simulator, resolve_and_send, resolve_simulator):
     """Detect and dismiss a system dialog via simctl privacy grant + button click fallback."""
     # Step 1: Detect system dialog
-    detect_raw = await resolve_and_send(simulator, "dialog", {"action": "detect_system"})
+    detect_raw = await resolve_and_send(simulator, CMD_DIALOG, {"action": "detect_system"})
     try:
         detect_resp = json.loads(detect_raw)
     except json.JSONDecodeError:
@@ -92,7 +93,7 @@ async def _dismiss_system_dialog(simulator, resolve_and_send, resolve_simulator)
     # Step 3: Infer permissions from intercepted dialog text (if available)
     permissions_to_try = []
     if data.get("intercepted_dialog_count", 0) > 0:
-        current_raw = await resolve_and_send(simulator, "dialog", {"action": "current"})
+        current_raw = await resolve_and_send(simulator, CMD_DIALOG, {"action": "current"})
         try:
             current_resp = json.loads(current_raw)
             cd = current_resp.get("data", current_resp)
@@ -121,7 +122,7 @@ async def _dismiss_system_dialog(simulator, resolve_and_send, resolve_simulator)
     await asyncio.sleep(0.5)
 
     # Step 5: Re-detect
-    recheck_raw = await resolve_and_send(simulator, "dialog", {"action": "detect_system"})
+    recheck_raw = await resolve_and_send(simulator, CMD_DIALOG, {"action": "detect_system"})
     try:
         recheck_resp = json.loads(recheck_raw)
         recheck_data = recheck_resp.get("data", recheck_resp)
@@ -158,7 +159,7 @@ async def _dismiss_system_dialog(simulator, resolve_and_send, resolve_simulator)
 
     # Step 7: Last resort — try in-process button click (works for intercepted alerts)
     for btn in _PERMISSION_BUTTONS:
-        dismiss_raw = await resolve_and_send(simulator, "dialog", {"action": "dismiss", "button": btn})
+        dismiss_raw = await resolve_and_send(simulator, CMD_DIALOG, {"action": "dismiss", "button": btn})
         try:
             dismiss_resp = json.loads(dismiss_raw)
             dd = dismiss_resp.get("data", dismiss_resp)
@@ -226,7 +227,7 @@ def register_dialog_tools(mcp, resolve_and_send, resolve_simulator=None):
             # Single source of truth: combine in-process (dylib) + AX (macOS) detection.
             # In-process catches UIAlertControllers intercepted by present() swizzle.
             # AX catches SpringBoard dialogs (permissions, tracking) rendered outside the app.
-            in_process_raw = await resolve_and_send(simulator, "dialog", {"action": "detect_system"})
+            in_process_raw = await resolve_and_send(simulator, CMD_DIALOG, {"action": "detect_system"})
             in_process = try_parse_json(in_process_raw) or {}
             ip_data = in_process.get("data", in_process)
 
@@ -262,4 +263,4 @@ def register_dialog_tools(mcp, resolve_and_send, resolve_simulator=None):
                 params["buttons"] = require_parse_json(buttons, "buttons")
             except ValueError as e:
                 return f"Error: {e}"
-        return await resolve_and_send(simulator, "dialog", params)
+        return await resolve_and_send(simulator, CMD_DIALOG,params)

@@ -4,6 +4,7 @@ Tool definitions for: renders
 """
 from __future__ import annotations
 
+from pepper_commands import CMD_RENDERS
 from pydantic import Field
 
 
@@ -85,4 +86,4 @@ def register_renders_tools(mcp, resolve_and_send):
             params["name"] = name
         if sub is not None:
             params["sub"] = sub
-        return await resolve_and_send(simulator, "renders", params)
+        return await resolve_and_send(simulator, CMD_RENDERS, params)
