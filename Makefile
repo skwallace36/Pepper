@@ -22,6 +22,11 @@ DYLIB_PATH  := $(PROJECT_DIR)/build/Pepper.framework/Pepper
 
 LOGS_DIR    := $(PROJECT_DIR)/build/logs
 
+TEST_APP_DIR  := $(PROJECT_DIR)/test-app
+TEST_APP_BUNDLE := com.pepper.testapp
+
+WIKI_BUNDLE_ID := org.wikimedia.wikipedia
+
 .PHONY: help build build-device xcframework deploy launch kill relaunch ping check lint lint-py fmt-py smoke typecheck \
         logs clean test-client pepper-ctl test-app demo coverage coverage-check \
         docs setup ci smoke smoke-ice-cubes \
@@ -53,7 +58,15 @@ help:
 	@echo "  SKIP_PRIVACY  = $(SKIP_PRIVACY)  (set to 1 to skip auto-granting permissions)"
 
 # ============================================================
-# Core workflow: build dylib → launch with injection
+# Setup
+# ============================================================
+
+## setup: Install deps, verify env, set up git hooks
+setup:
+	@bash "$(PROJECT_DIR)/scripts/setup.sh"
+
+# ============================================================
+# Build
 # ============================================================
 
 ## build: Build Pepper.framework dylib
@@ -63,6 +76,10 @@ build:
 ## xcframework: Build Pepper.xcframework (device + simulator)
 xcframework:
 	@bash "$(TOOLS_DIR)/build-xcframework.sh"
+
+## build-device: Build Pepper.framework for physical iOS devices (arm64)
+build-device:
+	@bash "$(TOOLS_DIR)/build-dylib.sh" --device
 
 ## launch: Launch app on simulator with Pepper injected
 launch:
@@ -92,19 +109,6 @@ from pepper_sessions import quick_port_check, claim_simulator_with_port; \
 [time.sleep(0.5) for _ in range(20) if not quick_port_check($(PORT), 0.5)]; \
 claim_simulator_with_port('$(SIMULATOR_ID)', '$(BUNDLE_ID)', $(PORT), label='make-deploy') if not os.environ.get('PEPPER_AGENT_TYPE') else None" 2>/dev/null || true
 
-## build-device: Build Pepper.framework for physical iOS devices (arm64)
-build-device:
-	@bash "$(TOOLS_DIR)/build-dylib.sh" --device
-
-## xcframework: Build Pepper.xcframework (simulator + device slices)
-xcframework:
-	@bash "$(TOOLS_DIR)/build-xcframework.sh"
-
-## deploy: Build dylib + launch with injection
-deploy: build launch
-	@echo ""
-	@echo "Deploy complete. Run 'make ping' to verify control plane."
-
 ## kill: Terminate the running app
 kill:
 	@xcrun simctl terminate "$(SIMULATOR_ID)" "$(BUNDLE_ID)" 2>/dev/null && echo "App terminated." || echo "App not running."
@@ -113,7 +117,20 @@ kill:
 relaunch: kill launch
 
 # ============================================================
-# Quality checks
+# Deploy
+# ============================================================
+
+## deploy: Build dylib + launch with injection
+deploy: build launch
+	@echo ""
+	@echo "Deploy complete. Run 'make ping' to verify control plane."
+
+## test-deploy: Build test app + build dylib + launch with Pepper injected
+test-deploy: test-app build
+	@$(MAKE) launch BUNDLE_ID=$(TEST_APP_BUNDLE)
+
+# ============================================================
+# Quality
 # ============================================================
 
 ## lint: Run SwiftLint on dylib sources
@@ -161,55 +178,28 @@ fmt-check:
 typecheck:
 	@npx --yes pyright
 
+## ci: Full boot → inject → test → teardown cycle
+ci:
+	@bash "$(PROJECT_DIR)/scripts/ci.sh" $(CI_ARGS)
+
 # ============================================================
-# Control plane commands
+# Test
 # ============================================================
 
 ## ping: Quick health check — test if control plane is responding
 ping:
 	@python3 "$(TOOLS_DIR)/pepper-ctl" --port $(PORT) ping
 
-## smoke: Run smoke tests against a running Pepper server
+## smoke: Run smoke tests against any installed app (e.g. make smoke BUNDLE_ID=com.example.app)
 smoke:
-	@python3 "$(TOOLS_DIR)/pepper-ctl" --port $(PORT) \
-		test-report --file "$(PROJECT_DIR)/scripts/smoke-tests.json" \
-		--format json --output "$(PROJECT_DIR)/build/smoke-results.json" \
-		--continue-on-error
-	@echo ""
-	@python3 -c "\
-import json, sys; \
-data = json.load(open('$(PROJECT_DIR)/build/smoke-results.json')); \
-results = data.get('results', data) if isinstance(data, dict) else data; \
-passed = sum(1 for r in results if r.get('status') == 'pass'); \
-failed = [r for r in results if r.get('status') != 'pass']; \
-[print(f'  FAIL: {f[\"name\"]} — {f.get(\"message\", \"unknown\")}') for f in failed]; \
-print(f'{passed}/{len(results)} tests passed'); \
-sys.exit(1 if failed else 0)"
+	@bash "$(PROJECT_DIR)/scripts/real-app-smoke.sh" --bundle-id "$(BUNDLE_ID)" $(SMOKE_ARGS)
 
-## logs: Tail simulator system log for the injected app
-logs:
-	@xcrun simctl spawn "$(SIMULATOR_ID)" log stream \
-		--predicate 'subsystem CONTAINS "pepper"' \
-		--level debug
-
-# ============================================================
-# Tools
-# ============================================================
-
-## test-client: Start the interactive Python test client
-test-client:
-	@python3 "$(TOOLS_DIR)/test-client.py" --port $(PORT)
-
-## pepper-ctl: Show pepper-ctl CLI usage
-pepper-ctl:
-	@python3 "$(TOOLS_DIR)/pepper-ctl" --help
-
-# ============================================================
-# Test App
-# ============================================================
-
-TEST_APP_DIR  := $(PROJECT_DIR)/test-app
-TEST_APP_BUNDLE := com.pepper.testapp
+## smoke-ice-cubes: Run smoke tests against Ice Cubes app
+smoke-ice-cubes:
+	@bash "$(PROJECT_DIR)/scripts/real-app-smoke.sh" \
+		--bundle-id "com.thomasricouard.IceCubesApp" \
+		--suite "$(PROJECT_DIR)/scripts/smoke-ice-cubes.json" \
+		$(SMOKE_ARGS)
 
 ## test-app: Build and install the test app on the booted simulator
 test-app:
@@ -229,67 +219,23 @@ test-app:
 demo:
 	@bash "$(PROJECT_DIR)/scripts/demo.sh" $(DEMO_ARGS)
 
-## test-deploy: Build test app + build dylib + launch with Pepper injected
-test-deploy: test-app build
-	@$(MAKE) launch BUNDLE_ID=$(TEST_APP_BUNDLE)
-
-## ci: Full boot → inject → test → teardown cycle
-ci:
-	@bash "$(PROJECT_DIR)/scripts/ci.sh" $(CI_ARGS)
-
-## smoke: Run smoke tests against any installed app (e.g. make smoke BUNDLE_ID=com.example.app)
-smoke:
-	@bash "$(PROJECT_DIR)/scripts/real-app-smoke.sh" --bundle-id "$(BUNDLE_ID)" $(SMOKE_ARGS)
-
-## smoke-ice-cubes: Run smoke tests against Ice Cubes app
-smoke-ice-cubes:
-	@bash "$(PROJECT_DIR)/scripts/real-app-smoke.sh" \
-		--bundle-id "com.thomasricouard.IceCubesApp" \
-		--suite "$(PROJECT_DIR)/scripts/smoke-ice-cubes.json" \
-		$(SMOKE_ARGS)
+## logs: Tail simulator system log for the injected app
+logs:
+	@xcrun simctl spawn "$(SIMULATOR_ID)" log stream \
+		--predicate 'subsystem CONTAINS "pepper"' \
+		--level debug
 
 # ============================================================
-# External App Testing (Wikipedia)
+# Tools / Agent
 # ============================================================
 
-WIKI_BUNDLE_ID := org.wikimedia.wikipedia
+## test-client: Start the interactive Python test client
+test-client:
+	@python3 "$(TOOLS_DIR)/test-client.py" --port $(PORT)
 
-## wikipedia-setup: Clone, build, and install Wikipedia iOS on the simulator
-wikipedia-setup:
-	@bash "$(PROJECT_DIR)/scripts/setup-wikipedia.sh"
-
-## wikipedia-deploy: Build dylib + launch Wikipedia with Pepper injected
-wikipedia-deploy: build
-	@$(MAKE) launch BUNDLE_ID=$(WIKI_BUNDLE_ID)
-
-## wikipedia-smoke: Run smoke tests against Wikipedia with Pepper
-wikipedia-smoke:
-	@python3 "$(TOOLS_DIR)/pepper-ctl" --port $(PORT) \
-		test-report --file "$(PROJECT_DIR)/scripts/wikipedia-smoke.json" \
-		--continue-on-error
-
-# ============================================================
-# Housekeeping
-# ============================================================
-
-## coverage: Regenerate test-app/COVERAGE.md from source
-coverage:
-	@python3 "$(PROJECT_DIR)/scripts/gen-coverage.py"
-
-## coverage-check: Verify COVERAGE.md is in sync with source
-coverage-check:
-	@python3 "$(PROJECT_DIR)/scripts/gen-coverage.py" --check
-
-## docs: Regenerate all auto-generated docs
-docs: coverage
-
-## setup: Install deps, verify env, set up git hooks
-setup:
-	@bash "$(PROJECT_DIR)/scripts/setup.sh"
-
-# ============================================================
-# Agent System
-# ============================================================
+## pepper-ctl: Show pepper-ctl CLI usage
+pepper-ctl:
+	@python3 "$(TOOLS_DIR)/pepper-ctl" --help
 
 ## agent: Run an agent (e.g. make agent TYPE=bugfix)
 agent:
@@ -354,8 +300,37 @@ groom:
 pr-digest:
 	@./scripts/pr-digest.sh
 
+# ============================================================
+# Housekeeping
+# ============================================================
+
+## coverage: Regenerate test-app/COVERAGE.md from source
+coverage:
+	@python3 "$(PROJECT_DIR)/scripts/gen-coverage.py"
+
+## coverage-check: Verify COVERAGE.md is in sync with source
+coverage-check:
+	@python3 "$(PROJECT_DIR)/scripts/gen-coverage.py" --check
+
+## docs: Regenerate all auto-generated docs
+docs: coverage
+
 ## clean: Clean build artifacts
 clean:
 	@echo "Cleaning build artifacts..."
 	@rm -rf build/
 	@echo "Done."
+
+## wikipedia-setup: Clone, build, and install Wikipedia iOS on the simulator
+wikipedia-setup:
+	@bash "$(PROJECT_DIR)/scripts/setup-wikipedia.sh"
+
+## wikipedia-deploy: Build dylib + launch Wikipedia with Pepper injected
+wikipedia-deploy: build
+	@$(MAKE) launch BUNDLE_ID=$(WIKI_BUNDLE_ID)
+
+## wikipedia-smoke: Run smoke tests against Wikipedia with Pepper
+wikipedia-smoke:
+	@python3 "$(TOOLS_DIR)/pepper-ctl" --port $(PORT) \
+		test-report --file "$(PROJECT_DIR)/scripts/wikipedia-smoke.json" \
+		--continue-on-error
