@@ -9,6 +9,7 @@ import asyncio
 import json
 import os
 import subprocess
+import tempfile
 from collections.abc import Callable
 
 import pepper_sessions
@@ -374,14 +375,18 @@ def find_built_app(workspace: str | None = None, platform: str = "iphonesimulato
 
 async def verify_device_connected(devicectl_uuid: str) -> tuple[bool, str]:
     """Check if a physical device is connected via devicectl. Returns (connected, message)."""
-    result = subprocess.run(
-        ["xcrun", "devicectl", "list", "devices", "-j"],
-        capture_output=True, text=True, timeout=15
-    )
-    if result.returncode != 0:
-        return False, f"devicectl list failed: {result.stderr.strip()}"
+    tmp_path = None
     try:
-        data = json.loads(result.stdout)
+        fd, tmp_path = tempfile.mkstemp(suffix=".json")
+        os.close(fd)
+        result = subprocess.run(
+            ["xcrun", "devicectl", "list", "devices", "-j", tmp_path],
+            capture_output=True, text=True, timeout=15
+        )
+        if result.returncode != 0:
+            return False, f"devicectl list failed: {result.stderr.strip()}"
+        with open(tmp_path) as f:
+            data = json.load(f)
         devices = data.get("result", {}).get("devices", [])
         for dev in devices:
             if dev.get("identifier") == devicectl_uuid:
@@ -391,6 +396,9 @@ async def verify_device_connected(devicectl_uuid: str) -> tuple[bool, str]:
         return False, f"Device {devicectl_uuid} not found. Is it connected?"
     except (json.JSONDecodeError, KeyError) as e:
         return False, f"Failed to parse devicectl output: {e}"
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            os.unlink(tmp_path)
 
 
 async def build_app_device(workspace: str | None = None, scheme: str | None = None,
