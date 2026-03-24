@@ -204,9 +204,14 @@ if [ -n "$BRIDGING_HEADER" ]; then
 fi
 
 # --- Step 2: Compile Swift + link with C objects ---
+# Per-worktree module cache to prevent concurrent build corruption.
+MODULE_CACHE="$BUILD_DIR/ModuleCache"
+mkdir -p "$MODULE_CACHE"
+
 xcrun -sdk "$SDK_NAME" swiftc \
     -target "$TARGET" \
     -sdk "$SDK_PATH" \
+    -module-cache-path "$MODULE_CACHE" \
     -emit-library \
     -emit-module \
     -emit-module-path "$FRAMEWORK_DIR/Modules/Pepper.swiftmodule/${ARCH}.swiftmodule" \
