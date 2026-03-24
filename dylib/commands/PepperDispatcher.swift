@@ -15,7 +15,9 @@ protocol PepperHandler {
 
     /// Handle the command and return a response.
     /// Called on the main thread to allow safe UIKit access.
-    func handle(_ command: PepperCommand) -> PepperResponse
+    /// May throw — the dispatcher catches errors at the boundary and converts them
+    /// to structured error responses so handler failures never crash the host app.
+    func handle(_ command: PepperCommand) throws -> PepperResponse
 }
 
 extension PepperHandler {
@@ -160,11 +162,38 @@ final class PepperDispatcher {
         // command dispatch and making the main thread permanently unresponsive.
         pauseActiveVideoPlayers()
 
-        // withoutActuallyEscaping is not needed here — we use withExtendedLifetime to
-        // ensure the handler stays alive through the call.
-        let response = withExtendedLifetime(handler) { h in
-            h.handle(command)
+        // Defensive boundary: catch any Swift error or ObjC exception from the handler
+        // and convert it to a structured error response instead of crashing the host app.
+        var result: PepperResponse?
+        var objcException: NSException?
+
+        PepperObjCExceptionCatcher.try(
+            {
+                do {
+                    result = try handler.handle(command)
+                } catch {
+                    self.logger.error(
+                        "Handler '\(command.cmd)' threw: \(error.localizedDescription)")
+                    result = .error(
+                        id: command.id,
+                        message: "[\(command.cmd)] \(error.localizedDescription)")
+                }
+            },
+            catch: { exception in
+                objcException = exception
+            })
+
+        if let exception = objcException {
+            let reason = exception.reason ?? exception.name.rawValue
+            logger.error("Handler '\(command.cmd)' raised ObjC exception: \(reason)")
+            result = .error(
+                id: command.id,
+                message: "[\(command.cmd)] ObjC exception: \(reason)")
         }
+
+        let response = result ?? .error(
+            id: command.id,
+            message: "[\(command.cmd)] Handler produced no response")
 
         // Record to flight recorder (skip timeline queries to avoid noise)
         if command.cmd != "timeline" {
