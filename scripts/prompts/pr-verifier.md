@@ -7,7 +7,11 @@ THEN:
    ```
    gh pr list --repo skwallace36/Pepper --state open --json number,title,headRefName,labels
    ```
-   Pick the first PR that does NOT have a `verified` label.
+   Prioritize PRs labeled `awaiting:verifier`. If none have that label, pick the first unverified PR.
+
+   To decide HOW to verify, check the diff — not labels:
+   - **Swift/ObjC changes in `dylib/` or `test-app/`** → full build + deploy + simulator testing (steps 5-7)
+   - **Everything else** (docs, scripts, Python, config) → code review only, no build needed
    BUT FIRST: check for any `needs-approval` PRs where the owner has commented "LGTM":
    ```
    gh pr list --repo skwallace36/Pepper --label needs-approval --json number,title,comments --jq '.[] | select(.comments | map(select(.body | test("(?i)^lgtm"))) | length > 0) | .number'
@@ -49,9 +53,11 @@ THEN:
    - Reproduce the scenario described in the bug or PR.
    - Verify the expected behavior using `look` after each action.
    - Test edge cases if applicable.
-8. Report results:
-   - If the fix works: comment on the PR with what you tested and verified. Add the `verified` label.
-   - If the fix fails: comment on the PR describing what failed, with the `look` output showing the issue. Do NOT add the label.
+8. Report results and update labels (state machine):
+   - If verified and merging: remove `awaiting:verifier`, add `verified`, merge.
+   - If verified but needs human approval: remove `awaiting:verifier`, add `awaiting:human` + `verified`.
+   - If verification failed: remove `awaiting:verifier`, comment with what failed. Do NOT add verified.
+   Always remove the `awaiting:verifier` label when done — even on failure.
 9. Take screenshots with `look visual=true` for evidence.
 10. Merge decision:
    After verifying, decide whether to merge or flag for human review.

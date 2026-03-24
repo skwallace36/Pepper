@@ -157,9 +157,12 @@ while true; do
     fi
   fi
 
-  # Check for unverified PRs → pr-verifier
-  UNVERIFIED=$(gh pr list --repo skwallace36/Pepper --state open --json number,labels --jq '[.[] | select(.labels | map(.name) | index("verified") | not)] | length' 2>/dev/null || echo 0)
-  if [ "$UNVERIFIED" -gt 0 ]; then
+  # ── PR state machine: launch agents based on awaiting: labels ──
+  # Each PR has exactly one awaiting:X label → the agent that needs to act.
+
+  # awaiting:verifier → pr-verifier
+  AWAITING_VERIFIER=$(gh pr list --repo skwallace36/Pepper --state open --label "awaiting:verifier" --json number --jq 'length' 2>/dev/null || echo 0)
+  if [ "$AWAITING_VERIFIER" -gt 0 ]; then
     if should_backoff pr-verifier; then
       echo "$(date +%H:%M) pr-verifier in backoff (${BACKOFF_THRESHOLD}+ consecutive failures) — skipping"
     else
@@ -167,9 +170,34 @@ while true; do
     fi
   fi
 
-  # Check for verified PRs with merge conflicts → conflict-resolver
-  CONFLICTING=$(gh pr list --repo skwallace36/Pepper --state open --json number,labels,mergeable \
-    --jq '[.[] | select(.mergeable == "CONFLICTING" and (.labels | map(.name) | index("verified")))] | length' 2>/dev/null || echo 0)
+  # awaiting:responder → pr-responder
+  AWAITING_RESPONDER=$(gh pr list --repo skwallace36/Pepper --state open --label "awaiting:responder" --json number --jq 'length' 2>/dev/null || echo 0)
+  if [ "$AWAITING_RESPONDER" -gt 0 ]; then
+    if should_backoff pr-responder; then
+      echo "$(date +%H:%M) pr-responder in backoff (${BACKOFF_THRESHOLD}+ consecutive failures) — skipping"
+    else
+      launch_if_slots pr-responder
+    fi
+  fi
+
+  # Also detect human comments on PRs missing the awaiting:responder label.
+  # This catches comments on PRs that were labeled before the state machine existed.
+  for pr in $(gh pr list --repo skwallace36/Pepper --state open --json number,labels \
+    --jq '[.[] | select(.labels | map(.name) | (index("awaiting:responder") | not) and (index("verified") | not))] | .[].number' 2>/dev/null); do
+    LAST_COMMENT=$(gh api "repos/skwallace36/Pepper/issues/$pr/comments" --jq '.[-1].body // ""' 2>/dev/null || echo "")
+    if [ -n "$LAST_COMMENT" ] && ! echo "$LAST_COMMENT" | grep -q "pepper-agent"; then
+      # Human commented — relabel to awaiting:responder
+      for lbl in awaiting:verifier awaiting:human; do
+        gh pr edit "$pr" --repo skwallace36/Pepper --remove-label "$lbl" 2>/dev/null || true
+      done
+      gh pr edit "$pr" --repo skwallace36/Pepper --add-label "awaiting:responder" 2>/dev/null || true
+      break  # one per cycle
+    fi
+  done
+
+  # Merge conflicts → conflict-resolver (runs on any conflicting PR)
+  CONFLICTING=$(gh pr list --repo skwallace36/Pepper --state open --json number,mergeable \
+    --jq '[.[] | select(.mergeable == "CONFLICTING")] | length' 2>/dev/null || echo 0)
   if [ "$CONFLICTING" -gt 0 ]; then
     if should_backoff conflict-resolver; then
       echo "$(date +%H:%M) conflict-resolver in backoff (${BACKOFF_THRESHOLD}+ consecutive failures) — skipping"
@@ -191,34 +219,14 @@ while true; do
     if [ "$COMMIT_EPOCH" -lt "$CUTOFF" ]; then
       echo "$(date +%H:%M) Closing stale conflicting PR #$PR_NUM (last commit: $LAST_COMMIT)"
       gh pr close "$PR_NUM" --repo skwallace36/Pepper \
-        --comment "Closing: this PR has had merge conflicts for >24 hours with no new commits. The underlying task has been unclaimed so a fresh agent can retry from current main. — pepper-agent/heartbeat" \
+        --comment "Closing: this PR has had merge conflicts for >24 hours with no new commits. — pepper-agent/heartbeat" \
         2>/dev/null || true
-      # Unclaim the linked issue
       ISSUE_NUM=$(echo "$pr_json" | base64 -d | jq -r '.body' | grep -oE 'Fixes #[0-9]+' | head -1 | tr -dc '0-9')
       if [ -n "$ISSUE_NUM" ]; then
         gh issue edit "$ISSUE_NUM" --repo skwallace36/Pepper --remove-label "in-progress" 2>/dev/null || true
       fi
     fi
   done
-
-  # Check for PRs with human comments → pr-responder
-  # Uses issue comments (not pull review comments) — that's where humans comment.
-  # Only triggers if the latest comment is NOT from an agent (no "pepper-agent" signature).
-  HAS_HUMAN_COMMENT=false
-  for pr in $(gh pr list --repo skwallace36/Pepper --state open --json number --jq '.[].number' 2>/dev/null); do
-    LAST_COMMENT=$(gh api "repos/skwallace36/Pepper/issues/$pr/comments" --jq '.[-1].body // ""' 2>/dev/null || echo "")
-    if [ -n "$LAST_COMMENT" ] && ! echo "$LAST_COMMENT" | grep -q "pepper-agent"; then
-      HAS_HUMAN_COMMENT=true
-      break
-    fi
-  done
-  if [ "$HAS_HUMAN_COMMENT" = true ]; then
-    if should_backoff pr-responder; then
-      echo "$(date +%H:%M) pr-responder in backoff (${BACKOFF_THRESHOLD}+ consecutive failures) — skipping"
-    else
-      launch_if_slots pr-responder
-    fi
-  fi
 
   # Groom backlog — twice per day max
   GROOMER_RUNS_TODAY=$(python3 -c "
