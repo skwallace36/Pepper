@@ -98,3 +98,5 @@ make ping          # verify connection
 ```
 
 Run `make help` for the full list. See `CLAUDE.md` for conventions.
+
+If something isn't working, see [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
