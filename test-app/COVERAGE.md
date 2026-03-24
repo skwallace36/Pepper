@@ -187,11 +187,11 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `notifications` | post | untested |  |  |
 | `notifications` | events | untested |  |  |
 | `notifications` | clear | untested |  |  |
-| `snapshot` | save | untested | Any state | New command. Captures current look/introspect map output as a named baseline for later diffing. |
-| `snapshot` | diff | untested | After snapshot save | New command. Compares current screen state against saved snapshot. Returns added/removed/changed elements and text. Supports ignore_transient and assert_no_diff. |
-| `snapshot` | list | untested | Any state | New command. Lists all saved snapshot names. |
-| `snapshot` | delete | untested | After snapshot save | New command. Deletes a saved snapshot by name. |
-| `snapshot` | clear | untested | After snapshot save | New command. Deletes all saved snapshots. |
+| `snapshot` | save | untested | MiscTab > Snapshot Test Screen | New command. Captures current look/introspect map output as a named baseline for later diffing. |
+| `snapshot` | diff | untested | MiscTab > Snapshot Test Screen (after save) | New command. Compares current screen state against saved snapshot. Returns added/removed/changed elements and text. Supports ignore_transient and assert_no_diff. |
+| `snapshot` | list | untested | MiscTab > Snapshot Test Screen | New command. Lists all saved snapshot names. |
+| `snapshot` | delete | untested | MiscTab > Snapshot Test Screen (after save) | New command. Deletes a saved snapshot by name. |
+| `snapshot` | clear | untested | MiscTab > Snapshot Test Screen (after save) | New command. Deletes all saved snapshots. |
 | `diff` | start | untested |  |  |
 | `diff` | show | untested |  |  |
 | `diff` | clear | untested |  |  |
