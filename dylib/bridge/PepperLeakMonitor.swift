@@ -43,7 +43,7 @@ final class PepperLeakMonitor {
     /// parameter is the first N element labels from the introspect pipeline.
     static func buildScreenKey(screenID: String, elementLabels: [String]) -> String {
         // If the screen ID is already specific enough, use it directly
-        // (e.g., "home_view", "rankings_tab_view", "menu_view")
+        // (e.g., "home_view", "settings_view", "menu_view")
         let genericIDs = ["view", "hosting", "content", "any_view"]
         let isGeneric = genericIDs.contains(screenID) || screenID.count <= 3
 

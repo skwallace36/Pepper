@@ -7,7 +7,7 @@ import Foundation
 /// Usage:
 ///   {"cmd":"timeline", "params":{"action":"query", "limit":50}}
 ///   {"cmd":"timeline", "params":{"action":"query", "types":["network","screen"], "since_ms":1710000000000}}
-///   {"cmd":"timeline", "params":{"action":"query", "filter":"GetPetPlaces"}}
+///   {"cmd":"timeline", "params":{"action":"query", "filter":"GetUserProfile"}}
 ///   {"cmd":"timeline", "params":{"action":"status"}}
 ///   {"cmd":"timeline", "params":{"action":"config", "buffer_size":5000}}
 ///   {"cmd":"timeline", "params":{"action":"clear"}}

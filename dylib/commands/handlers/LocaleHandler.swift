@@ -16,10 +16,10 @@ import UIKit
 ///   {"cmd":"locale","params":{"action":"current"}}
 ///     → Query current locale info
 ///
-///   {"cmd":"locale","params":{"action":"lookup","key":"walk_reminder_title"}}
+///   {"cmd":"locale","params":{"action":"lookup","key":"welcome_title"}}
 ///     → Lookup a localization key in the app's string tables
 ///
-///   {"cmd":"locale","params":{"action":"lookup","key":"walk_reminder_title","table":"Localizable","language":"es"}}
+///   {"cmd":"locale","params":{"action":"lookup","key":"welcome_title","table":"Localizable","language":"es"}}
 ///     → Lookup in a specific table and language
 struct LocaleHandler: PepperHandler {
     let commandName = "locale"

@@ -1,7 +1,7 @@
 import UIKit
 import os
 
-/// Handles {"cmd": "scroll_to", "params": {"text": "Safe Zone", "direction": "down", "max_scrolls": 10, "timeout_ms": 10000}}
+/// Handles {"cmd": "scroll_to", "params": {"text": "Settings", "direction": "down", "max_scrolls": 10, "timeout_ms": 10000}}
 /// Scrolls incrementally by direction until the target text appears on screen (in the viewport).
 /// Combines scroll (HID swipe) + text visibility polling.
 ///

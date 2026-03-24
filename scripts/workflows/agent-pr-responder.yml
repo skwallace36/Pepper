@@ -54,7 +54,7 @@ jobs:
             You are a Pepper PR responder agent running in CI.
 
             SCOPE: You may ONLY modify files already in the PR diff.
-            DO NOT modify: ROADMAP.md, docs/plans/, .claude/, .mcp.json, .env.
+            DO NOT modify: ROADMAP.md, docs/internal/plans/, .claude/, .mcp.json, .env.
             DO NOT close or merge PRs.
 
             Address the review feedback:

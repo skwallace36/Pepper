@@ -2,7 +2,7 @@ import UIKit
 import os
 
 /// Handles scroll commands:
-///   {"cmd": "scroll", "params": {"text": "Safe Zone"}}           -- scroll text into view (smart, nav-bar-aware)
+///   {"cmd": "scroll", "params": {"text": "Settings"}}            -- scroll text into view (smart, nav-bar-aware)
 ///   {"cmd": "scroll", "params": {"element": "accessibility_id"}} -- scroll element into view by a11y ID
 ///   {"cmd": "scroll", "params": {"direction": "down", "distance": 300}}
 ///   {"cmd": "scroll", "params": {"position": "top"}}

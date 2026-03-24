@@ -106,7 +106,7 @@ def find_vc_source(vc_class: str) -> Optional[str]:
     if files:
         return files[0]
 
-    # For FiHostingController wrappers, the VC is generic -- look for who
+    # For generic HostingController wrappers, the VC is generic -- look for who
     # creates it with this class name referenced
     files = rg_files(vc_class, glob="*.swift")
     return files[0] if files else None
@@ -128,9 +128,9 @@ def find_coordinator(vc_class: str) -> Tuple[Optional[str], Optional[str]]:
         if m:
             return m.group(1), path
 
-    # Strategy 2: FiHostingController pattern -- look for coordinators that
-    # create a View with environmentObject and wrap in FiHostingController
-    # The VC class will be FiHostingController, so look for the screen_id
+    # Strategy 2: HostingController pattern -- look for coordinators that
+    # create a View with environmentObject and wrap in a HostingController
+    # The VC class will be a HostingController, so look for the screen_id
     # or the view namespace
     # Strip common suffixes to get the feature namespace
     namespace = vc_class.replace("ViewController", "").replace("Controller", "")
@@ -154,8 +154,8 @@ def find_coordinator(vc_class: str) -> Tuple[Optional[str], Optional[str]]:
 
 
 def find_coordinator_for_hosting(screen_type: str) -> Tuple[Optional[str], Optional[str]]:
-    """When the VC is FiHostingController, find coordinator by screen type name."""
-    # screen_type is like "pet_profile" -- convert to PascalCase for search
+    """When the VC is a HostingController, find coordinator by screen type name."""
+    # screen_type is like "user_profile" -- convert to PascalCase for search
     # But we also have the raw type from pepper-ctl, try that first
     parts = screen_type.split("_")
     pascal = "".join(p.capitalize() for p in parts)
@@ -333,7 +333,7 @@ def find_viewmodel(coord_file: str, coord_class: str) -> Tuple[Optional[str], Op
             top_level = [f for f in ns_matches
                          if "/Page/" not in f and "/Sub/" not in f
                          and "/Account/" not in f and "/Integration/" not in f
-                         and "/FiUpdates/" not in f]
+                         and "/Updates/" not in f]
             named = [f for f in (top_level or ns_matches)
                      if f.lower().endswith("/viewmodel.swift")
                      or f.lower().endswith(f"/{namespace.lower()}+viewmodel.swift")]
@@ -464,7 +464,7 @@ def main():
 
     # Step 3: Find coordinator
     coord_class, coord_file = None, None
-    if "FiHostingController" in vc_class or "HostingController" in vc_class:
+    if "HostingController" in vc_class:
         # Generic hosting controller -- find by screen_id
         if screen_id:
             coord_class, coord_file = find_coordinator_for_hosting(screen_id)

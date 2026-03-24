@@ -51,8 +51,8 @@ enum PepperDefaults {
     // MARK: - Toggle Detection
 
     /// Toggle height range — capsule-shaped CALayers within this range are treated as toggles.
-    /// Calibrated: FiToggle is 56x30. System UISwitch is 49x31.
-    /// Min 26pt excludes 23pt ranking badge pills. Max 50pt excludes large buttons.
+    /// Calibrated against common toggle sizes. System UISwitch is 49x31.
+    /// Min 26pt excludes small badge pills. Max 50pt excludes large buttons.
     static let toggleMinHeight: CGFloat = 26
     static let toggleMaxHeight: CGFloat = 50
 

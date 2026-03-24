@@ -43,7 +43,7 @@ final class PepperNetworkInterceptor {
     // MARK: - Duplicate Request Detection
 
     /// Tracks recent request keys (method+path) with timestamps for duplicate detection.
-    /// Key: "GET /api/v1/pets/profile" → Value: [timestamp_ms, timestamp_ms, ...]
+    /// Key: "GET /api/v1/users/profile" → Value: [timestamp_ms, timestamp_ms, ...]
     private var recentRequestTimestamps: [String: [Int64]] = [:]
 
     /// Window in ms to consider requests as duplicates (default 3 seconds)
@@ -66,7 +66,7 @@ final class PepperNetworkInterceptor {
     private var mocks: [PepperNetworkMock] = []
 
     struct DuplicateRequestWarning {
-        let endpoint: String  // "GET /api/pets" or "POST /graphql (GetPetProfile)"
+        let endpoint: String  // "GET /api/users" or "POST /graphql (GetUserProfile)"
         let count: Int
         let windowMs: Int64
         let timestamp: Date
@@ -252,7 +252,7 @@ final class PepperNetworkInterceptor {
             let bodySize = transaction.response?.originalBodySize ?? 0
             let url = transaction.request.url
 
-            // Build compact summary: "200 POST /graphql GetPetProfile (89ms, 1.1KB)"
+            // Build compact summary: "200 POST /graphql GetUserProfile (89ms, 1.1KB)"
             var summary = "\(status) \(method)"
             let urlObj = URL(string: url)
             if let path = urlObj?.path, !path.isEmpty {
@@ -297,7 +297,7 @@ final class PepperNetworkInterceptor {
         }
 
         // For GraphQL endpoints, extract the operation name from the body
-        // so "POST /graphql (GetPetProfile)" and "POST /graphql (GetActivity)" are separate keys
+        // so "POST /graphql (GetUserProfile)" and "POST /graphql (GetOrders)" are separate keys
         var key = "\(method) \(path)"
         if path.hasSuffix("/graphql") || path.hasSuffix("/graphql/") {
             if let body = transaction.request.body,
@@ -463,8 +463,8 @@ final class PepperNetworkInterceptor {
     }
 
     /// Extract GraphQL operation name from a request body string.
-    /// Handles both JSON format {"operationName": "GetPet", "query": "..."}
-    /// and raw query format "query GetPet { ... }" / "mutation CreatePost { ... }"
+    /// Handles both JSON format {"operationName": "GetUser", "query": "..."}
+    /// and raw query format "query GetUser { ... }" / "mutation CreatePost { ... }"
     static func extractGraphQLOperationName(_ body: String) -> String? {
         // Try JSON format first (most common)
         if let data = body.data(using: .utf8),
@@ -483,7 +483,7 @@ final class PepperNetworkInterceptor {
     }
 
     /// Parse operation name from a GraphQL query string.
-    /// Matches: "query GetPet {" or "mutation CreatePost(" or "subscription OnUpdate {"
+    /// Matches: "query GetUser {" or "mutation CreatePost(" or "subscription OnUpdate {"
     private static func parseOperationName(from query: String) -> String? {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         let prefixes = ["query ", "mutation ", "subscription "]

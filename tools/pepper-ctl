@@ -197,7 +197,7 @@ def build_parser():
   pepper-ctl ping                            Health check
   pepper-ctl snapshot                        List interactive elements
   pepper-ctl tree --depth 3                  View hierarchy (limited depth)
-  pepper-ctl tap --text "Start Walk"         Tap element by label text
+  pepper-ctl tap --text "Sign In"            Tap element by label text
   pepper-ctl tap --id start_button           Tap element by accessibility ID
   pepper-ctl tap --class button --index 2    Tap 3rd button on screen
   pepper-ctl tap --point 200,400             Tap at screen coordinates
@@ -257,7 +257,7 @@ def build_parser():
     p = sub.add_parser("navigate", aliases=["nav"], help="Navigate to a screen")
     nav_target = p.add_mutually_exclusive_group(required=True)
     nav_target.add_argument("--screen", help="Screen ID to navigate to")
-    nav_target.add_argument("--deeplink", help="Deep link URL (e.g. pepper://walk)")
+    nav_target.add_argument("--deeplink", help="Deep link URL (e.g. myapp://settings)")
     nav_target.add_argument("--tab", type=int, help="Tab index to switch to")
 
     # back
