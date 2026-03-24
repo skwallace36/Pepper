@@ -40,106 +40,32 @@ Then ask your agent to `look` at the screen.
 
 ```mermaid
 flowchart LR
-    subgraph Client
-        AI["AI Agent\n(Claude Code, Cursor)"]
-        CLI["pepper-ctl"]
-    end
+    AI(AI Agent) -- MCP --> MCP_S(pepper-mcp) -- WebSocket --> Dylib
 
-    subgraph Host["MCP Server"]
-        MCP["pepper-mcp"]
+    subgraph Simulator["iOS Simulator App"]
+        Dylib(Pepper Dylib) --> UIKit & Network & Heap & HID
     end
-
-    subgraph Sim["iOS Simulator — App Process"]
-        WS["WebSocket\nServer"]
-        Dispatch["Command\nDispatch"]
-        Runtime["UIKit · Accessibility\nHID · Network · Heap"]
-    end
-
-    AI -- "MCP (stdio)" --> MCP
-    CLI -- "WebSocket" --> WS
-    MCP -- "WebSocket\n(localhost)" --> WS
-    WS --> Dispatch
-    Dispatch --> Runtime
 ```
 
-The MCP server (`pepper-mcp`) translates tool calls into WebSocket commands. The dylib receives them on the main thread and operates directly on UIKit — no proxies, no bridges, no out-of-process coordination.
+The MCP server translates tool calls into WebSocket commands. The dylib receives them on the main thread and operates directly on UIKit.
 
-Touch input goes through IOHIDEvent injection, which means `tap`, `scroll`, `swipe`, and `gesture` all work identically for UIKit and SwiftUI.
+Touch input goes through IOHIDEvent injection — `tap`, `scroll`, `swipe`, and `gesture` work identically for UIKit and SwiftUI.
 
 ## Tools
 
-**Observe** — see what's on screen
+60+ tools across five categories:
 
-| Tool | What it does |
-|---|---|
-| `look` | Primary observation tool. Returns a structured map of the screen — interactive elements, labels, coordinates. |
-| `screen` | Current screen name, tab, and navigation state. |
-| `find` | Search for elements by text, type, or accessibility ID. |
-| `tree` | Raw view hierarchy dump with configurable depth. |
-| `layers` | CALayer tree inspection — borders, shadows, transforms. |
-| `highlight` | Visually highlight an element on the simulator screen. |
-| `read_element` | Read detailed properties of a single element. |
+**Observe** — `look` · `screen` · `find` · `tree` · `layers` · `highlight` · `read_element`
 
-**Interact** — drive the app
+**Interact** — `tap` · `scroll` · `scroll_to` · `swipe` · `gesture` · `input_text` · `toggle` · `navigate` · `back` · `dismiss` · `dialog`
 
-| Tool | What it does |
-|---|---|
-| `tap` | Tap by text, accessibility ID, class, index, or coordinates. |
-| `scroll` | Scroll to text, element, direction, or position. |
-| `scroll_to` | Scroll incrementally until a target becomes visible. |
-| `swipe` | Directional swipe with configurable distance and speed. |
-| `gesture` | Pinch, rotate, long press, and custom multi-touch gestures. |
-| `input_text` | Set text field values by accessibility ID. |
-| `toggle` | Toggle switches and checkboxes. |
-| `navigate` | Deep link, tab switch, or pop to a screen. |
-| `back` | Go back one screen. |
-| `dismiss` | Dismiss presented sheets and modals. |
-| `dialog` | Detect and interact with system permission dialogs. |
+**Debug** — `vars_inspect` · `heap` · `console` · `network` · `crash_log` · `timeline` · `animations` · `lifecycle` · `concurrency` · `constraints` · `responder_chain` · `timers`
 
-**Debug** — inspect runtime state
+**App State** — `defaults` · `clipboard` · `keychain` · `cookies` · `storage` · `sandbox` · `locale` · `flags` · `push` · `orientation`
 
-| Tool | What it does |
-|---|---|
-| `vars_inspect` | Read and mutate `@State`, `@Published`, `@Observable` — any property, live. |
-| `heap` | Scan the heap for instances of a class. Walk the VC hierarchy. |
-| `console` | Capture app logs (print, NSLog, os_log). |
-| `network` | Log, mock, simulate failures, throttle — intercepts all URLSession traffic. |
-| `crash_log` | Read crash logs from the simulator. |
-| `timeline` | Correlated event timeline — screen transitions, network calls, commands. |
-| `animations` | Detect running animations and their properties. |
-| `lifecycle` | ViewController lifecycle events. |
-| `concurrency` | Inspect Swift async tasks and actors. |
-| `constraints` | AutoLayout constraint dump with ambiguity detection. |
-| `responder_chain` | Walk the responder chain from any element. |
-| `timers` | Inspect active NSTimers and CADisplayLinks. |
+**Automation** — `deploy` · `build` · `wait_for` · `wait_idle` · `record` · `iterate` · `snapshot` · `diff` · `screenshot`
 
-**App State** — read and write persistent state
-
-| Tool | What it does |
-|---|---|
-| `defaults` | Read/write UserDefaults. |
-| `clipboard` | Read/write the pasteboard. |
-| `keychain` | Read/write Keychain items. |
-| `cookies` | Inspect HTTP cookies. |
-| `storage` | Unified view of all persistence (defaults, keychain, cookies, files). |
-| `sandbox` | Browse the app's file system. |
-| `locale` | Query locale settings and look up localization keys. |
-| `flags` | Override feature flags at runtime. |
-| `push` | Inject local notifications that look like remote pushes. |
-| `orientation` | Get or set device orientation. |
-
-**Automation** — build, deploy, wait, record
-
-| Tool | What it does |
-|---|---|
-| `deploy` | Build the dylib and launch the app with injection. |
-| `build` | Build an Xcode project or workspace. |
-| `wait_for` | Wait until an element appears on screen. |
-| `wait_idle` | Wait until the app is idle (no animations, no pending network). |
-| `record` | Record a screen video clip. |
-| `iterate` | Re-deploy after code changes without restarting the session. |
-| `snapshot` / `diff` | Capture and compare view hierarchy snapshots. |
-| `screenshot` | Take a simulator screenshot. |
+Each tool has built-in documentation — your MCP client will show parameter descriptions and usage examples.
 
 ## Adapters
 
