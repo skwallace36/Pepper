@@ -280,6 +280,14 @@ struct MiscTab: View {
                     .accessibilityIdentifier("uikit_link")
                 }
 
+                // MARK: - Snapshot / Diff Testing
+                GroupBox("Snapshot & Diff") {
+                    NavigationLink("Snapshot Test Screen") {
+                        SnapshotTestView()
+                    }
+                    .accessibilityIdentifier("snapshot_test_link")
+                }
+
                 // MARK: - File Manager
                 GroupBox("File Manager") {
                     NavigationLink("File Manager Screen") {
