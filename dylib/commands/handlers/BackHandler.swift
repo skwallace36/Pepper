@@ -31,7 +31,12 @@ struct BackHandler: PepperHandler {
         // Check if we should dismiss a modal first
         if topVC.presentingViewController != nil && topVC.pepper_effectiveNavController == nil {
             // This VC was presented modally and isn't inside a nav controller
-            topVC.dismiss(animated: true)
+            var animationDone = false
+            topVC.dismiss(animated: true) { animationDone = true }
+            let deadline = Date(timeIntervalSinceNow: 0.5)
+            while !animationDone && Date() < deadline {
+                RunLoop.current.run(mode: .default, before: Date(timeIntervalSinceNow: 0.05))
+            }
             return .ok(
                 id: command.id,
                 data: [
@@ -58,7 +63,12 @@ struct BackHandler: PepperHandler {
 
             // At root of nav controller — try dismissing the nav controller itself if modal
             if navController.presentingViewController != nil {
-                navController.dismiss(animated: true)
+                var animationDone = false
+                navController.dismiss(animated: true) { animationDone = true }
+                let deadline = Date(timeIntervalSinceNow: 0.5)
+                while !animationDone && Date() < deadline {
+                    RunLoop.current.run(mode: .default, before: Date(timeIntervalSinceNow: 0.05))
+                }
                 return .ok(
                     id: command.id,
                     data: [
@@ -72,7 +82,12 @@ struct BackHandler: PepperHandler {
         // Check if there's a presented VC anywhere in the chain
         if let presented = findTopmostPresentedVC() {
             let presentedScreen = presented.pepper_topMostViewController.pepperScreenID
-            presented.dismiss(animated: true)
+            var animationDone = false
+            presented.dismiss(animated: true) { animationDone = true }
+            let deadline = Date(timeIntervalSinceNow: 0.5)
+            while !animationDone && Date() < deadline {
+                RunLoop.current.run(mode: .default, before: Date(timeIntervalSinceNow: 0.05))
+            }
             return .ok(
                 id: command.id,
                 data: [
