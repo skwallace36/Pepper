@@ -9,6 +9,7 @@ import asyncio
 import json
 import subprocess
 
+from pepper_ax import detect_dialog as _ax_detect
 from pepper_ax import find_and_dismiss_dialog as _ax_dismiss
 from pepper_common import get_config, require_parse_json, try_parse_json
 from pydantic import Field
@@ -215,12 +216,42 @@ def register_system_tools(mcp, resolve_and_send, act_and_look, resolve_simulator
         - current: get the topmost dialog
         - dismiss: tap a button on the current dialog
         - dismiss_system: detect + dismiss system dialog in one step (tries simctl privacy grant, then button click fallback)
-        - detect_system: actively check for system dialog presence (key window status, hit-test probe, window hierarchy) with confidence level
+        - detect_system: single source of truth for ALL dialogs — combines in-process (intercepted UIAlertControllers) + system (SpringBoard via macOS Accessibility). Returns both signals.
         - auto_dismiss: auto-handle permission dialogs (Allow, OK, etc.)
         - share_sheet: check if a share sheet is showing
         - dismiss_sheet: close the share sheet"""
         if action == "dismiss_system":
             return await _dismiss_system_dialog(simulator, resolve_and_send, resolve_simulator)
+
+        if action == "detect_system":
+            # Single source of truth: combine in-process (dylib) + AX (macOS) detection.
+            # In-process catches UIAlertControllers intercepted by present() swizzle.
+            # AX catches SpringBoard dialogs (permissions, tracking) rendered outside the app.
+            in_process_raw = await resolve_and_send(simulator, "dialog", {"action": "detect_system"})
+            in_process = try_parse_json(in_process_raw) or {}
+            ip_data = in_process.get("data", in_process)
+
+            ax_result = {"detected": False, "buttons": [], "pids": []}
+            try:
+                ax_result = await asyncio.get_event_loop().run_in_executor(None, _ax_detect)
+            except Exception:
+                pass
+
+            detected = ip_data.get("detected", False) or ax_result.get("detected", False)
+            return json.dumps({
+                "status": "ok",
+                "detected": detected,
+                "in_process": {
+                    "detected": ip_data.get("detected", False),
+                    "confidence": ip_data.get("confidence", "none"),
+                    "intercepted_dialogs": ip_data.get("intercepted_dialog_count", 0),
+                    "signals": ip_data.get("signals", []),
+                },
+                "system": {
+                    "detected": ax_result.get("detected", False),
+                    "buttons": ax_result.get("buttons", []),
+                },
+            }, indent=2)
 
         params: dict = {"action": action}
         if button:

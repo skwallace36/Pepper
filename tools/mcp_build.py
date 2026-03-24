@@ -15,11 +15,6 @@ import pepper_sessions
 from pepper_common import PORT_DIR, get_config
 from pepper_format import format_look
 
-try:
-    from pepper_ax import find_and_dismiss_dialog as _ax_dismiss
-except ImportError:
-    _ax_dismiss = None
-
 # Type alias for the send_command callable expected by deploy_app.
 # Signature: async (port, cmd, params=None, timeout=10) -> dict
 SendFn = Callable[..., "asyncio.Future[dict]"]
@@ -324,19 +319,9 @@ async def deploy_app(simulator: str, send_fn: SendFn,
     pid = result.stdout.strip().split(":")[-1].strip() if ":" in result.stdout else result.stdout.strip()
 
     # Wait for Pepper to connect (10s timeout — cold launches need more time)
-    # Every 2s, try AX dismiss to clear any system dialog blocking the app.
     port_file = os.path.join(PORT_DIR, f"{simulator}.port")
     for _attempt in range(20):
         await asyncio.sleep(0.5)
-
-        # Every 2s, try AX dismiss for system dialogs simctl can't handle.
-        # Requires macOS Accessibility access (System Settings > Privacy > Accessibility).
-        if _attempt % 4 == 3 and _ax_dismiss is not None:
-            try:
-                await asyncio.get_event_loop().run_in_executor(None, _ax_dismiss)
-            except Exception:
-                pass
-
         if os.path.exists(port_file):
             try:
                 port = int(open(port_file).read().strip())
