@@ -96,7 +96,7 @@ Flight recorder for event timeline debugging.
 2. Register in `commands/PepperDispatcher.swift` → `registerBuiltins()`
 3. Add MCP tool wrapper in `tools/pepper-mcp` (`@mcp.tool()`)
 
-Pre-commit handles the rest — coverage auto-discovers new commands, build runs automatically.
+Pre-commit validates coverage is in sync — add your new command to `test-app/coverage-status.json`, then run `make coverage` to regenerate.
 
 ## Design Principles
 
