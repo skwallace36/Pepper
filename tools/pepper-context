@@ -29,7 +29,7 @@ from typing import Dict, List, Optional, Tuple
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from pepper_common import require_tool
 
-FI_ROOT = Path(os.environ.get("FI_ROOT", os.path.expanduser("~/Developer/ios")))
+APP_SOURCE_ROOT = Path(os.environ.get("APP_SOURCE_ROOT", os.path.expanduser("~/Developer/ios")))
 PEPPER_CTL = Path(__file__).parent / "pepper-ctl"
 
 # Validate ripgrep is available (used for all source lookups)
@@ -42,7 +42,7 @@ def rg(pattern: str, *extra_args: str, glob: Optional[str] = None) -> List[str]:
     if glob:
         cmd += ["--glob", glob]
     cmd += list(extra_args)
-    cmd.append(str(FI_ROOT))
+    cmd.append(str(APP_SOURCE_ROOT))
     try:
         out = subprocess.check_output(cmd, text=True, stderr=subprocess.DEVNULL)
         return out.strip().splitlines()
@@ -55,7 +55,7 @@ def rg_files(pattern: str, **kwargs) -> List[str]:
     cmd = ["rg", "-l", pattern]
     if "glob" in kwargs:
         cmd += ["--glob", kwargs["glob"]]
-    cmd.append(str(FI_ROOT))
+    cmd.append(str(APP_SOURCE_ROOT))
     try:
         out = subprocess.check_output(cmd, text=True, stderr=subprocess.DEVNULL)
         return out.strip().splitlines()
@@ -71,9 +71,9 @@ def read_file(path: str) -> str:
 
 
 def rel(path: str) -> str:
-    """Make a path relative to FI_ROOT for display."""
+    """Make a path relative to APP_SOURCE_ROOT for display."""
     try:
-        return str(Path(path).relative_to(FI_ROOT))
+        return str(Path(path).relative_to(APP_SOURCE_ROOT))
     except ValueError:
         return path
 
