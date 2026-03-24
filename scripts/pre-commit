@@ -107,6 +107,17 @@ else
     pass "COVERAGE.md (no relevant changes)"
 fi
 
+# 4b. Commands constants sync — regenerate and check if pepper_commands.py matches
+if echo "$STAGED_FILES" | grep -qE "Handler\.swift|pepper_commands\.py"; then
+    if python3 "$REPO_DIR/scripts/gen-pepper-commands.py" --check 2>/dev/null; then
+        pass "pepper_commands.py in sync"
+    else
+        fail "pepper_commands.py is stale — run 'make commands' and stage the result"
+    fi
+else
+    pass "pepper_commands.py (no relevant changes)"
+fi
+
 # 5. Block direct edits to @generated files (bypass with PEPPER_REGEN=1)
 if [ -z "${PEPPER_REGEN:-}" ]; then
     GEN_EDITED=""

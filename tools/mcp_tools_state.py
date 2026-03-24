@@ -4,6 +4,17 @@ Tool definitions for: vars_inspect, defaults, clipboard, keychain, cookies.
 """
 from __future__ import annotations
 
+from pepper_commands import (
+    CMD_CLIPBOARD,
+    CMD_COOKIES,
+    CMD_COREDATA,
+    CMD_DEFAULTS,
+    CMD_KEYCHAIN,
+    CMD_SANDBOX,
+    CMD_STORAGE,
+    CMD_UNDO,
+    CMD_VARS,
+)
 from pepper_common import try_parse_json
 from pydantic import Field
 
@@ -37,7 +48,7 @@ def register_state_tools(mcp, resolve_and_send):
             params["path"] = path
         if value is not None:
             params["value"] = try_parse_json(value)
-        return await resolve_and_send(simulator, "vars", params)
+        return await resolve_and_send(simulator, CMD_VARS, params)
 
     @mcp.tool()
     async def defaults(
@@ -70,7 +81,7 @@ def register_state_tools(mcp, resolve_and_send):
             params["suite"] = suite
         if value is not None:
             params["value"] = try_parse_json(value)
-        return await resolve_and_send(simulator, "defaults", params)
+        return await resolve_and_send(simulator, CMD_DEFAULTS, params)
 
     @mcp.tool()
     async def clipboard(
@@ -85,7 +96,7 @@ def register_state_tools(mcp, resolve_and_send):
         params: dict = {"action": action}
         if value is not None:
             params["value"] = value
-        return await resolve_and_send(simulator, "clipboard", params)
+        return await resolve_and_send(simulator, CMD_CLIPBOARD, params)
 
     @mcp.tool()
     async def keychain(
@@ -108,7 +119,7 @@ def register_state_tools(mcp, resolve_and_send):
             params["account"] = account
         if value is not None:
             params["value"] = value
-        return await resolve_and_send(simulator, "keychain", params)
+        return await resolve_and_send(simulator, CMD_KEYCHAIN, params)
 
     @mcp.tool()
     async def cookies(
@@ -127,7 +138,7 @@ def register_state_tools(mcp, resolve_and_send):
             params["domain"] = domain
         if name:
             params["name"] = name
-        return await resolve_and_send(simulator, "cookies", params)
+        return await resolve_and_send(simulator, CMD_COOKIES, params)
 
     @mcp.tool()
     async def undo_manager(
@@ -149,7 +160,7 @@ def register_state_tools(mcp, resolve_and_send):
         params: dict = {"action": action}
         if index is not None:
             params["index"] = index
-        return await resolve_and_send(simulator, "undo", params)
+        return await resolve_and_send(simulator, CMD_UNDO, params)
 
     @mcp.tool()
     async def sandbox(
@@ -185,7 +196,7 @@ def register_state_tools(mcp, resolve_and_send):
             params["recursive"] = recursive
         if max_length is not None:
             params["max_length"] = max_length
-        return await resolve_and_send(simulator, "sandbox", params)
+        return await resolve_and_send(simulator, CMD_SANDBOX, params)
 
     @mcp.tool()
     async def storage(
@@ -214,7 +225,7 @@ def register_state_tools(mcp, resolve_and_send):
             params["type"] = type
         if limit is not None:
             params["limit"] = limit
-        return await resolve_and_send(simulator, "storage", params)
+        return await resolve_and_send(simulator, CMD_STORAGE, params)
 
     @mcp.tool()
     async def coredata(
@@ -234,4 +245,4 @@ def register_state_tools(mcp, resolve_and_send):
         { "entities": [{ "name": "User", "attributes": ["id", "name"], "relationships": ["posts"] }] }
 
         Related tools: storage (Core Data row counts and data), heap (object discovery)."""
-        return await resolve_and_send(simulator, "coredata", {"action": action})
+        return await resolve_and_send(simulator, CMD_COREDATA, {"action": action})

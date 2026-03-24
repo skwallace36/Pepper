@@ -4,6 +4,17 @@ Tool definitions for: push, status, highlight, orientation, locale, gesture, hoo
 """
 from __future__ import annotations
 
+from pepper_commands import (
+    CMD_FLAGS,
+    CMD_GESTURE,
+    CMD_HIGHLIGHT,
+    CMD_HOOK,
+    CMD_LOCALE,
+    CMD_MEMORY,
+    CMD_ORIENTATION,
+    CMD_PUSH,
+    CMD_STATUS,
+)
 from pepper_common import require_parse_json, try_parse_json
 from pydantic import Field
 
@@ -41,7 +52,7 @@ def register_system_tools(mcp, resolve_and_send, act_and_look):
                 params["data"] = require_parse_json(data, "data")
             except ValueError as e:
                 return f"Error: {e}"
-        return await resolve_and_send(simulator, "push", params)
+        return await resolve_and_send(simulator, CMD_PUSH, params)
 
     @mcp.tool()
     async def status(
@@ -55,12 +66,12 @@ def register_system_tools(mcp, resolve_and_send, act_and_look):
     ) -> str:
         """Get device, app, and Pepper server info — bundle ID, version, port, connections, current screen.
         Add memory=true for process memory stats, or memory_detail=true for full VM breakdown."""
-        result = await resolve_and_send(simulator, "status")
+        result = await resolve_and_send(simulator, CMD_STATUS)
         if memory or memory_detail:
             mem_params: dict = {}
             if memory_detail:
                 mem_params["action"] = "vm"
-            mem_result = await resolve_and_send(simulator, "memory", mem_params)
+            mem_result = await resolve_and_send(simulator, CMD_MEMORY, mem_params)
             result += f"\n\n--- Memory ---\n{mem_result}"
         return result
 
@@ -96,7 +107,7 @@ def register_system_tools(mcp, resolve_and_send, act_and_look):
             params["label"] = label
         if duration is not None:
             params["duration"] = duration
-        return await resolve_and_send(simulator, "highlight", params)
+        return await resolve_and_send(simulator, CMD_HIGHLIGHT, params)
 
     @mcp.tool()
     async def orientation(
@@ -110,7 +121,7 @@ def register_system_tools(mcp, resolve_and_send, act_and_look):
         params: dict = {}
         if value:
             params["value"] = value
-        return await resolve_and_send(simulator, "orientation", params)
+        return await resolve_and_send(simulator, CMD_ORIENTATION, params)
 
     @mcp.tool()
     async def locale(
@@ -133,7 +144,7 @@ def register_system_tools(mcp, resolve_and_send, act_and_look):
             params["region"] = region
         if key:
             params["key"] = key
-        return await resolve_and_send(simulator, "locale", params)
+        return await resolve_and_send(simulator, CMD_LOCALE, params)
 
     @mcp.tool()
     async def gesture(
@@ -169,7 +180,7 @@ def register_system_tools(mcp, resolve_and_send, act_and_look):
                 params["center"]["x"] = center_x
             if center_y is not None:
                 params["center"]["y"] = center_y
-        return await act_and_look(simulator, "gesture", params)
+        return await act_and_look(simulator, CMD_GESTURE, params)
 
     @mcp.tool()
     async def hook(
@@ -205,7 +216,7 @@ def register_system_tools(mcp, resolve_and_send, act_and_look):
             params["id"] = hook_id
         if limit is not None:
             params["limit"] = limit
-        return await resolve_and_send(simulator, "hook", params)
+        return await resolve_and_send(simulator, CMD_HOOK, params)
 
     @mcp.tool()
     async def flags(
@@ -235,4 +246,4 @@ def register_system_tools(mcp, resolve_and_send, act_and_look):
             params["key"] = key
         if value is not None:
             params["value"] = try_parse_json(value)
-        return await resolve_and_send(simulator, "flags", params)
+        return await resolve_and_send(simulator, CMD_FLAGS, params)
