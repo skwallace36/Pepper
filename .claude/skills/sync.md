@@ -76,6 +76,32 @@ Show the user:
 2. The file-level diff (which files added/removed/changed)
 3. The proposed commit message (changelog from step 3)
 
+## Step 4b: Security audit (subagents)
+
+Before showing the user the diff, launch 2 subagents IN PARALLEL to audit the staging directory for leaks. Both must pass before proceeding.
+
+**Agent 1: Secrets & credentials scan**
+Scan all files in the staging dir for:
+- API keys, tokens, passwords (patterns: `sk-`, `ghp_`, `gho_`, `key=`, `token=`, `password=`, `secret`)
+- Email addresses (check each one — only `skwallace36@gmail.com` and `@example.com` are OK)
+- Private hostnames, IP addresses (except 127.0.0.1 and example IPs)
+- Hardcoded paths containing usernames (`/Users/stuart`, `/home/`)
+- `.env` values that aren't placeholders
+- Base64-encoded blobs that could be encoded secrets
+
+**Agent 2: Product/employer reference scan**
+Scan all files in the staging dir for:
+- Any references to "Fi", "tryfi", "fi.com", "fi://" (employer product)
+- Pet/dog domain terms in non-generic context: `GetPet`, `pet_id`, `walk_summary`, `collar`, `FiHosting`
+- Career/personal language: "portfolio", "proves it to employers", "hired"
+- References to private repos, internal docs (`docs/internal/`, `ROADMAP.md`, `BUGS.md`, `CLAUDE.md`)
+- Agent infrastructure references that shouldn't be public: `agent-runner`, `heartbeat`, `prompts/`, `guardrails`
+- Any mention of `Pepper-private`
+
+If EITHER agent finds issues, list them all and STOP — do not proceed to approval. The user must fix before syncing.
+
+If both pass clean, continue.
+
 ## Step 5: Ask for approval
 
 Present the commit message and ask:
