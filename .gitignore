@@ -10,6 +10,7 @@ xcuserdata/
 
 # Environment (app-specific config)
 .env
+.env.local
 
 # Python
 __pycache__/
