@@ -6,35 +6,31 @@ It works by injecting a dylib into the target app via `DYLD_INSERT_LIBRARIES`. T
 
 The target app doesn't need any modifications. If it runs in the simulator, Pepper works with it.
 
-## Quick Start
+## Setup
 
 ```bash
-git clone https://github.com/skwallace36/Pepper.git
-cd Pepper
-make setup
+pip install pepper-ios
+claude mcp add pepper -- pepper-mcp
 ```
 
-Add Pepper to your MCP client (Claude Code, Cursor, etc.):
+That's it. Pepper will be available as an MCP tool in your next Claude Code session.
+
+<details>
+<summary>Manual MCP config (Claude Desktop, Cursor, etc.)</summary>
+
+Add to your MCP client config:
 
 ```json
 {
   "mcpServers": {
     "pepper": {
-      "command": "/path/to/pepper/.venv/bin/python3",
-      "args": ["/path/to/pepper/tools/pepper-mcp"]
+      "command": "pepper-mcp"
     }
   }
 }
 ```
 
-Try it against the included test app:
-
-```bash
-make test-deploy   # build test app, inject Pepper, launch
-make ping          # verify the connection
-```
-
-Then ask your agent to `look` at the screen.
+</details>
 
 ## How It Works
 
