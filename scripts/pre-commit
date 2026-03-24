@@ -107,7 +107,25 @@ else
     pass "COVERAGE.md (no relevant changes)"
 fi
 
-# 5. New handler must have MCP tool + coverage entry
+# 5. Block direct edits to @generated files (bypass with PEPPER_REGEN=1)
+if [ -z "${PEPPER_REGEN:-}" ]; then
+    GEN_EDITED=""
+    for f in $STAGED_FILES; do
+        [ -f "$f" ] || continue
+        if head -1 "$f" 2>/dev/null | grep -q '@generated'; then
+            GEN_EDITED="$GEN_EDITED $f"
+        fi
+    done
+    if [ -n "$GEN_EDITED" ]; then
+        fail "direct edit to @generated file(s):$GEN_EDITED — regenerate with the source script, or set PEPPER_REGEN=1 to bypass"
+    else
+        pass "No @generated files edited directly"
+    fi
+else
+    pass "No @generated files edited directly (PEPPER_REGEN=1 bypass)"
+fi
+
+# 5b. New handler must have MCP tool + coverage entry
 if echo "$STAGED_FILES" | grep -q "dylib/commands/handlers/.*Handler\.swift"; then
     NEW_HANDLERS=$(echo "$STAGED_FILES" | grep "dylib/commands/handlers/.*Handler\.swift")
     MISSING=""
