@@ -201,18 +201,24 @@ while true; do
     fi
   done
 
-  # Check for PRs with comments → pr-responder
+  # Check for PRs with human comments → pr-responder
+  # Uses issue comments (not pull review comments) — that's where humans comment.
+  # Only triggers if the latest comment is NOT from an agent (no "pepper-agent" signature).
+  HAS_HUMAN_COMMENT=false
   for pr in $(gh pr list --repo skwallace36/Pepper --state open --json number --jq '.[].number' 2>/dev/null); do
-    COMMENTS=$(gh api "repos/skwallace36/Pepper/pulls/$pr/comments" --jq 'length' 2>/dev/null || echo 0)
-    if [ "$COMMENTS" -gt 0 ]; then
-      if should_backoff pr-responder; then
-        echo "$(date +%H:%M) pr-responder in backoff (${BACKOFF_THRESHOLD}+ consecutive failures) — skipping"
-      else
-        launch_if_slots pr-responder
-      fi
+    LAST_COMMENT=$(gh api "repos/skwallace36/Pepper/issues/$pr/comments" --jq '.[-1].body // ""' 2>/dev/null || echo "")
+    if [ -n "$LAST_COMMENT" ] && ! echo "$LAST_COMMENT" | grep -q "pepper-agent"; then
+      HAS_HUMAN_COMMENT=true
       break
     fi
   done
+  if [ "$HAS_HUMAN_COMMENT" = true ]; then
+    if should_backoff pr-responder; then
+      echo "$(date +%H:%M) pr-responder in backoff (${BACKOFF_THRESHOLD}+ consecutive failures) — skipping"
+    else
+      launch_if_slots pr-responder
+    fi
+  fi
 
   # Groom backlog — twice per day max
   GROOMER_RUNS_TODAY=$(python3 -c "
