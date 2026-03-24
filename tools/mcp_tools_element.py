@@ -4,6 +4,7 @@ Tool definitions for: toggle, read_element, tree, find.
 """
 from __future__ import annotations
 
+from pepper_commands import CMD_FIND, CMD_READ, CMD_TOGGLE, CMD_TREE
 from pydantic import Field
 
 
@@ -28,7 +29,7 @@ def register_element_tools(mcp, resolve_and_send, act_and_look):
         params: dict = {"element": element}
         if value is not None:
             params["value"] = value
-        return await act_and_look(simulator, "toggle", params)
+        return await act_and_look(simulator, CMD_TOGGLE, params)
 
     @mcp.tool()
     async def read_element(
@@ -37,7 +38,7 @@ def register_element_tools(mcp, resolve_and_send, act_and_look):
     ) -> str:
         """Read an element's current value, type, and state by accessibility ID.
         Returns detailed info: text content, enabled/disabled, selected state, frame, etc."""
-        return await resolve_and_send(simulator, "read", {"element": element})
+        return await resolve_and_send(simulator, CMD_READ, {"element": element})
 
     @mcp.tool()
     async def tree(
@@ -52,7 +53,7 @@ def register_element_tools(mcp, resolve_and_send, act_and_look):
             params["depth"] = depth
         if element:
             params["element"] = element
-        return await resolve_and_send(simulator, "tree", params)
+        return await resolve_and_send(simulator, CMD_TREE, params)
 
     @mcp.tool()
     async def find(
@@ -83,4 +84,4 @@ def register_element_tools(mcp, resolve_and_send, act_and_look):
         params: dict = {"predicate": predicate, "action": action}
         if limit is not None:
             params["limit"] = limit
-        return await resolve_and_send(simulator, "find", params)
+        return await resolve_and_send(simulator, CMD_FIND, params)
