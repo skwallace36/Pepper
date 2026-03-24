@@ -4,6 +4,7 @@ Tool definitions for: perf, animations, heap.
 """
 from __future__ import annotations
 
+from pepper_commands import CMD_ANIMATIONS, CMD_HEAP, CMD_HEAP_SNAPSHOT, CMD_PERF
 from pydantic import Field
 
 
@@ -33,7 +34,7 @@ def register_perf_tools(mcp, resolve_and_send):
             params["duration_ms"] = duration_ms
         if threshold_ms is not None:
             params["threshold_ms"] = threshold_ms
-        return await resolve_and_send(simulator, "perf", params, timeout=30)
+        return await resolve_and_send(simulator, CMD_PERF, params, timeout=30)
 
     @mcp.tool()
     async def animations(
@@ -49,13 +50,13 @@ def register_perf_tools(mcp, resolve_and_send):
             params: dict = {"action": "speed"}
             if speed is not None:
                 params["speed"] = speed
-            return await resolve_and_send(simulator, "animations", params)
+            return await resolve_and_send(simulator, CMD_ANIMATIONS, params)
         params = {}
         if action:
             params["action"] = action
         if point:
             params["point"] = point
-        return await resolve_and_send(simulator, "animations", params)
+        return await resolve_and_send(simulator, CMD_ANIMATIONS, params)
 
     @mcp.tool()
     async def heap(
@@ -104,7 +105,7 @@ def register_perf_tools(mcp, resolve_and_send):
                 params["min_growth"] = min_growth
             if threshold is not None:
                 params["threshold"] = threshold
-            return await resolve_and_send(simulator, "heap_snapshot", params)
+            return await resolve_and_send(simulator, CMD_HEAP_SNAPSHOT, params)
         params = {"action": action}
         if class_name:
             params["class"] = class_name
@@ -114,4 +115,4 @@ def register_perf_tools(mcp, resolve_and_send):
             params["key_path"] = key_path
         if limit is not None:
             params["limit"] = limit
-        return await resolve_and_send(simulator, "heap", params)
+        return await resolve_and_send(simulator, CMD_HEAP, params)

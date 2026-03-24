@@ -4,6 +4,7 @@ Tool definitions for: accessibility_audit, accessibility_action, accessibility_e
 """
 from __future__ import annotations
 
+from pepper_commands import CMD_ACCESSIBILITY_ACTION, CMD_ACCESSIBILITY_AUDIT, CMD_ACCESSIBILITY_EVENTS
 from pydantic import Field
 
 
@@ -40,7 +41,7 @@ def register_accessibility_tools(mcp, resolve_and_send):
             params["checks"] = checks
         if severity is not None:
             params["severity"] = severity
-        return await resolve_and_send(simulator, "accessibility_audit", params, timeout=15)
+        return await resolve_and_send(simulator, CMD_ACCESSIBILITY_AUDIT, params, timeout=15)
 
     @mcp.tool()
     async def accessibility_action(
@@ -85,7 +86,7 @@ def register_accessibility_tools(mcp, resolve_and_send):
             params["name"] = name
         if index is not None:
             params["index"] = index
-        return await resolve_and_send(simulator, "accessibility_action", params)
+        return await resolve_and_send(simulator, CMD_ACCESSIBILITY_ACTION, params)
 
     @mcp.tool()
     async def accessibility_events(
@@ -119,4 +120,4 @@ def register_accessibility_tools(mcp, resolve_and_send):
             params["limit"] = limit
         if since_ms is not None:
             params["since_ms"] = since_ms
-        return await resolve_and_send(simulator, "accessibility_events", params)
+        return await resolve_and_send(simulator, CMD_ACCESSIBILITY_EVENTS, params)

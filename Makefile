@@ -29,7 +29,7 @@ TEST_APP_BUNDLE := com.pepper.testapp
 WIKI_BUNDLE_ID := org.wikimedia.wikipedia
 
 .PHONY: help build build-device xcframework deploy launch kill relaunch ping check lint lint-py fmt-py smoke typecheck \
-        logs clean test-client pepper-ctl test-app demo coverage coverage-check unit-test \
+        logs clean test-client pepper-ctl test-app demo coverage coverage-check commands commands-check unit-test \
         docs setup ci smoke smoke-ice-cubes \
         agent agent-monitor agent-status agent-trigger agents-install agents-uninstall agent-cleanup agents-start agents-stop agent-analyze groom pr-digest \
         fmt fmt-check ci-agents-install ci-agents-check \
@@ -145,12 +145,12 @@ lint:
 
 ## lint-py: Run ruff linter on Python code
 lint-py:
-	@ruff check tools/ scripts/gen-coverage.py
+	@ruff check tools/ scripts/gen-coverage.py scripts/gen-pepper-commands.py
 
 ## fmt-py: Format Python code with ruff
 fmt-py:
-	@ruff format tools/ scripts/gen-coverage.py
-	@ruff check --fix tools/ scripts/gen-coverage.py
+	@ruff format tools/ scripts/gen-coverage.py scripts/gen-pepper-commands.py
+	@ruff check --fix tools/ scripts/gen-coverage.py scripts/gen-pepper-commands.py
 
 ## check: Run all pre-commit checks (build, syntax, MCP, paths)
 check:
@@ -321,8 +321,16 @@ coverage:
 coverage-check:
 	@python3 "$(PROJECT_DIR)/scripts/gen-coverage.py" --check
 
+## commands: Regenerate tools/pepper_commands.py from Swift handlers
+commands:
+	@PEPPER_REGEN=1 python3 "$(PROJECT_DIR)/scripts/gen-pepper-commands.py"
+
+## commands-check: Verify pepper_commands.py is in sync with Swift handlers
+commands-check:
+	@python3 "$(PROJECT_DIR)/scripts/gen-pepper-commands.py" --check
+
 ## docs: Regenerate all auto-generated docs
-docs: coverage
+docs: coverage commands
 
 ## clean: Clean build artifacts
 clean:

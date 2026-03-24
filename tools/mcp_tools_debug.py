@@ -10,6 +10,16 @@ import os
 import time
 
 from mcp_crash import parse_crash_report
+from pepper_commands import (
+    CMD_CONCURRENCY,
+    CMD_CONSOLE,
+    CMD_CONSTRAINTS,
+    CMD_LAYERS,
+    CMD_LIFECYCLE,
+    CMD_NOTIFICATIONS,
+    CMD_RESPONDER_CHAIN,
+    CMD_TIMERS,
+)
 from pepper_common import get_config
 from pydantic import Field
 
@@ -32,7 +42,7 @@ def register_debug_tools(mcp, resolve_and_send):
         params: dict = {"point": point}
         if depth is not None:
             params["depth"] = depth
-        return await resolve_and_send(simulator, "layers", params)
+        return await resolve_and_send(simulator, CMD_LAYERS, params)
 
     @mcp.tool()
     async def console(
@@ -47,7 +57,7 @@ def register_debug_tools(mcp, resolve_and_send):
             params["filter"] = filter_text
         if limit is not None:
             params["limit"] = limit
-        return await resolve_and_send(simulator, "console", params)
+        return await resolve_and_send(simulator, CMD_CONSOLE, params)
 
     @mcp.tool()
     async def crash_log(
@@ -113,7 +123,7 @@ def register_debug_tools(mcp, resolve_and_send):
         action: str = Field(description="Action: background, foreground, memory_warning"),
     ) -> str:
         """Trigger app lifecycle events (background/foreground/memory warning)."""
-        return await resolve_and_send(simulator, "lifecycle", {"action": action})
+        return await resolve_and_send(simulator, CMD_LIFECYCLE, {"action": action})
 
     @mcp.tool()
     async def responder_chain(
@@ -134,7 +144,7 @@ def register_debug_tools(mcp, resolve_and_send):
             params["element"] = element
         if text:
             params["text"] = text
-        return await resolve_and_send(simulator, "responder_chain", params)
+        return await resolve_and_send(simulator, CMD_RESPONDER_CHAIN, params)
 
     @mcp.tool()
     async def notifications(
@@ -174,7 +184,7 @@ def register_debug_tools(mcp, resolve_and_send):
                 return "Error: user_info must be valid JSON"
         if limit is not None:
             params["limit"] = limit
-        return await resolve_and_send(simulator, "notifications", params)
+        return await resolve_and_send(simulator, CMD_NOTIFICATIONS, params)
 
     @mcp.tool()
     async def constraints(
@@ -197,7 +207,7 @@ def register_debug_tools(mcp, resolve_and_send):
             params["ambiguous_only"] = True
         if depth is not None:
             params["depth"] = depth
-        return await resolve_and_send(simulator, "constraints", params)
+        return await resolve_and_send(simulator, CMD_CONSTRAINTS, params)
 
     @mcp.tool()
     async def timers(
@@ -232,7 +242,7 @@ def register_debug_tools(mcp, resolve_and_send):
             params["filter"] = filter_text
         if limit is not None:
             params["limit"] = limit
-        return await resolve_and_send(simulator, "timers", params)
+        return await resolve_and_send(simulator, CMD_TIMERS, params)
 
     @mcp.tool()
     async def concurrency(
@@ -270,4 +280,4 @@ def register_debug_tools(mcp, resolve_and_send):
             params["address"] = address
         if limit is not None:
             params["limit"] = limit
-        return await resolve_and_send(simulator, "concurrency", params)
+        return await resolve_and_send(simulator, CMD_CONCURRENCY, params)

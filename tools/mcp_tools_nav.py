@@ -11,6 +11,22 @@ import json
 
 from mcp.types import ImageContent, TextContent
 from mcp_screenshot import capture_screenshot, capture_screenshot_inprocess
+from pepper_commands import (
+    CMD_BACK,
+    CMD_DEEPLINKS,
+    CMD_DIFF,
+    CMD_DISMISS,
+    CMD_DISMISS_KEYBOARD,
+    CMD_INPUT,
+    CMD_LOOK,
+    CMD_NAVIGATE,
+    CMD_SCREEN,
+    CMD_SCROLL,
+    CMD_SCROLL_TO,
+    CMD_SNAPSHOT,
+    CMD_SWIPE,
+    CMD_TAP,
+)
 from pepper_common import discover_instance
 from pepper_format import format_look, format_look_compact, format_look_slim
 from pydantic import Field
@@ -52,7 +68,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
             # Try fast in-process capture first; fall back to simctl if unavailable.
             quality = screenshot_quality if screenshot_quality in ("standard", "high") else "standard"
             introspect_task = asyncio.create_task(
-                send_command(port, "look", {}, host=host)
+                send_command(port, CMD_LOOK, {}, host=host)
             )
             screenshot_task = asyncio.create_task(
                 capture_screenshot_inprocess(send_command, port, quality, host=host)
@@ -62,7 +78,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
             if screenshot_b64 is None:
                 screenshot_b64 = await capture_screenshot(udid, quality=quality)
         else:
-            resp = await send_command(port, "look", {}, host=host)
+            resp = await send_command(port, CMD_LOOK, {}, host=host)
             screenshot_b64 = None
 
         if raw:
@@ -165,7 +181,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
             params["duration"] = duration
         if debug:
             params["debug"] = True
-        return await act_and_look(simulator, "tap", params)
+        return await act_and_look(simulator, CMD_TAP, params)
 
     @mcp.tool()
     async def scroll(
@@ -177,7 +193,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
         params: dict = {"direction": direction}
         if amount is not None:
             params["amount"] = amount
-        return await act_and_look(simulator, "scroll", params)
+        return await act_and_look(simulator, CMD_SCROLL, params)
 
     @mcp.tool()
     async def input_text(
@@ -196,7 +212,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
             params["clear"] = True
         if submit:
             params["submit"] = True
-        return await act_and_look(simulator, "input", params)
+        return await act_and_look(simulator, CMD_INPUT, params)
 
     @mcp.tool()
     async def navigate(
@@ -212,7 +228,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
             params: dict = {}
             if category:
                 params["category"] = category
-            return await resolve_and_send(simulator, "deeplinks", params)
+            return await resolve_and_send(simulator, CMD_DEEPLINKS, params)
         params = {}
         if deeplink:
             params["deeplink"] = deeplink
@@ -224,21 +240,21 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
                 params["to"] = tab
         else:
             return "Error: specify deeplink, tab, or list_deeplinks=true"
-        return await act_and_look(simulator, "navigate", params)
+        return await act_and_look(simulator, CMD_NAVIGATE, params)
 
     @mcp.tool()
     async def back(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
     ) -> str:
         """Go back / dismiss the current screen. Automatically shows screen state after going back."""
-        return await act_and_look(simulator, "back")
+        return await act_and_look(simulator, CMD_BACK)
 
     @mcp.tool()
     async def dismiss(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
     ) -> str:
         """Dismiss the topmost modal/sheet. Automatically shows screen state after dismissal."""
-        return await act_and_look(simulator, "dismiss")
+        return await act_and_look(simulator, CMD_DISMISS)
 
     @mcp.tool()
     async def swipe(
@@ -246,14 +262,14 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
         direction: str = Field(description="Swipe direction: up, down, left, right"),
     ) -> str:
         """Swipe in a direction (like a quick flick, vs scroll which is a slow drag). Shows screen state after."""
-        return await act_and_look(simulator, "swipe", {"direction": direction})
+        return await act_and_look(simulator, CMD_SWIPE, {"direction": direction})
 
     @mcp.tool()
     async def screen(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
     ) -> str:
         """Get the current screen name and view controller."""
-        return await resolve_and_send(simulator, "screen")
+        return await resolve_and_send(simulator, CMD_SCREEN)
 
     @mcp.tool()
     async def scroll_to(
@@ -267,14 +283,14 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
         params: dict = {"text": text, "direction": direction}
         if max_scrolls is not None:
             params["max_scrolls"] = max_scrolls
-        return await act_and_look(simulator, "scroll_to", params, timeout=15)
+        return await act_and_look(simulator, CMD_SCROLL_TO, params, timeout=15)
 
     @mcp.tool()
     async def dismiss_keyboard(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
     ) -> str:
         """Dismiss the on-screen keyboard by resigning first responder. Shows screen state after."""
-        return await act_and_look(simulator, "dismiss_keyboard")
+        return await act_and_look(simulator, CMD_DISMISS_KEYBOARD)
 
     @mcp.tool()
     async def snapshot(
@@ -289,7 +305,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
         Workflow: snapshot action=save name=baseline → perform actions → snapshot action=diff name=baseline.
         Returns semantic diff: added/removed/changed elements and text.
         Use assert_no_diff=true to fail if state changed (regression testing)."""
-        return await resolve_and_send(simulator, "snapshot", {
+        return await resolve_and_send(simulator, CMD_SNAPSHOT, {
             "action": action,
             "name": name,
             "ignore_transient": ignore_transient,
@@ -306,4 +322,4 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
         Workflow: diff action=start → perform actions (tap, scroll, etc.) → diff action=show.
         Returns only added/removed/changed elements — much smaller than a full look call.
         Useful for verifying that an action actually changed the UI."""
-        return await resolve_and_send(simulator, "diff", {"action": action})
+        return await resolve_and_send(simulator, CMD_DIFF, {"action": action})

@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import time
 
+from pepper_commands import CMD_NETWORK, CMD_TIMELINE
 from pydantic import Field
 
 
@@ -88,7 +89,7 @@ def register_network_tools(mcp, resolve_and_send):
             params["body"] = mock_body
         if mock_id:
             params["id"] = mock_id
-        return await resolve_and_send(simulator, "network", params)
+        return await resolve_and_send(simulator, CMD_NETWORK, params)
 
     @mcp.tool()
     async def timeline(
@@ -119,4 +120,4 @@ def register_network_tools(mcp, resolve_and_send):
             params["buffer_size"] = buffer_size
         if recording is not None:
             params["recording"] = recording
-        return await resolve_and_send(simulator, "timeline", params)
+        return await resolve_and_send(simulator, CMD_TIMELINE, params)
