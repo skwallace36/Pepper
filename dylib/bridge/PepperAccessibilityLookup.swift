@@ -2,7 +2,7 @@ import UIKit
 
 // MARK: - Accessibility Element Lookup & Activation
 
-extension PepperSwiftUIBridge {
+extension ElementDiscoveryBridge {
 
     // MARK: - Find by Accessibility Label
 

@@ -2,7 +2,7 @@ import UIKit
 
 // MARK: - Interactive Element Discovery
 
-extension PepperSwiftUIBridge {
+extension ElementDiscoveryBridge {
 
     /// Discover ALL interactive elements (labeled + unlabeled) in one unified list.
     /// Combines enhanced accessibility walk with UIView hierarchy walk, deduplicates,
