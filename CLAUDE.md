@@ -22,6 +22,18 @@ look, tap, scroll, scroll_to, swipe, gesture, input_text, toggle, navigate, back
 - All command handlers run on main thread (required for UIKit safety).
 - Adding a command: see `dylib/DYLIB.md`.
 
+## Writing Docs
+
+- Short sentences. If it has a comma, consider splitting or cutting half.
+- Say what it does, not what it is. "Grants all sim permissions" not "This script is responsible for the granting of simulator permissions."
+- No hedge words. Drop "generally", "typically", "it's worth noting", "consider", "may want to". Just say the thing.
+- No restating the obvious. If the heading says "Setup", don't open with "This section covers setup."
+- Active voice. "Deploy injects the dylib" not "The dylib is injected by deploy."
+- Structure only when it earns it. Lists for 4+ items, tables for comparisons, paragraphs for everything else.
+- Informal tone, correct grammar. Contractions fine, typos aren't.
+- Commands over explanations. Show `make deploy` before explaining what it does.
+- No padding sections. No "Overview" that repeats the next 3 sections. No "Conclusion" that repeats the intro.
+
 ## Work Tracking
 
 Everything is GitHub-native. No markdown databases.
