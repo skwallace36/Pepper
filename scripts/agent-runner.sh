@@ -396,6 +396,13 @@ AGENT_PID=""  # Clear so cleanup doesn't try to kill again
 END=$(date +%s)
 DURATION=$((END - START))
 
+# Handle empty transcripts — CLI crashed before writing output
+if [ ! -s "$TRANSCRIPT" ]; then
+  emit "auth-retry" ",\"detail\":\"empty transcript — CLI may have crashed or session expired\",\"duration_s\":$((END - START))"
+  echo "Empty transcript. Transcript: $TRANSCRIPT"
+  exit 0  # Don't count as failure — prevents backoff
+fi
+
 # Extract cost from transcript
 COST=$(jq -r '.total_cost_usd // .cost_usd // 0' "$TRANSCRIPT" 2>/dev/null || echo 0)
 
@@ -521,9 +528,19 @@ print(f'{blocks} {commits} {pushes} {edits} {builds}')
   fi
 fi
 
+# Detect "Not logged in" — Claude CLI session issue, not a real agent failure.
+# Don't count these toward backoff — they'll resolve on their own.
+NOT_LOGGED_IN=false
+if jq -r '.result // ""' "$TRANSCRIPT" 2>/dev/null | grep -q 'Not logged in'; then
+  NOT_LOGGED_IN=true
+fi
+
 # Emit final event based on outcome
 if [ "$TIMED_OUT" = true ]; then
   emit_final "timeout" ",\"detail\":\"killed after ${TIMEOUT_S}s\",\"cost_usd\":${COST},\"duration_s\":${DURATION},\"turns\":${TURNS}"
+elif [ "$NOT_LOGGED_IN" = true ]; then
+  # Emit as a warning, not a failure — prevents backoff escalation
+  emit "auth-retry" ",\"detail\":\"Claude CLI session expired — will retry next cycle\",\"cost_usd\":${COST},\"duration_s\":${DURATION},\"turns\":${TURNS}"
 elif [ $EXIT_CODE -ne 0 ]; then
   emit_final "failed" ",\"detail\":${EXIT_REASON},\"cost_usd\":${COST},\"duration_s\":${DURATION},\"turns\":${TURNS}"
 elif [ "$UNPRODUCTIVE" = true ]; then
