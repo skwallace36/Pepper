@@ -18,8 +18,8 @@ set -euo pipefail
 REPO="skwallace36/Pepper"
 PR="${1:?Usage: classify-pr.sh <pr-number>}"
 
-# Remove any existing awaiting: labels, then set the right one
-for label in awaiting:verifier awaiting:responder awaiting:human; do
+# Remove any existing state labels, then set the right one
+for label in awaiting:verifier awaiting:responder awaiting:human verified; do
   gh pr edit "$PR" --repo "$REPO" --remove-label "$label" 2>/dev/null || true
 done
 
