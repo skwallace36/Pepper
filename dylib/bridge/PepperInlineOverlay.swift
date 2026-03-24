@@ -112,7 +112,9 @@ final class PepperInlineOverlay {
     /// Trigger a builder re-introspect to refresh highlights for newly visible cells.
     private func notifyScrollEnd() {
         guard !activeLayers.isEmpty else { return }
-        guard let url = URL(string: "http://localhost:8767/api/agent/tool/observe") else { return }
+        // Notify the local agent observation endpoint (if running) to refresh highlights.
+        let port = ProcessInfo.processInfo.environment["PEPPER_OBSERVE_PORT"] ?? "8767"
+        guard let url = URL(string: "http://localhost:\(port)/api/agent/tool/observe") else { return }
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         URLSession.shared.dataTask(with: request) { _, _, _ in }.resume()
