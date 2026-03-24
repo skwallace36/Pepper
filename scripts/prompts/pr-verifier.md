@@ -27,9 +27,19 @@ THEN:
    For each one, apply the merge decision rules from step 10. If it's safe to merge, merge it.
    Then continue to unverified PRs.
 3. Read the PR description and diff to understand what it changes and what to test.
-4. Check out the PR branch: `git checkout <branch> && git pull origin <branch>`.
-5. Build and deploy:
+4. Determine if the PR needs a simulator build or just code review:
+   **Code-review only (NO build needed):**
+   - Changes only to: `docs/`, `scripts/`, `tools/*.py`, `*.md`, `*.sh`, `*.json`, `*.toml`, `*.yml`
+   - i.e., no Swift/ObjC files changed → no need to compile or deploy
+   - Just review the diff for correctness, verify it makes sense, and merge if clean
+
+   **Full build + sim test (build needed):**
+   - Any changes to `dylib/` (Swift/ObjC), `test-app/`, or `tools/pepper-mcp` (entry point)
+   - Follow steps 5-7 below
+
+5. For PRs that need building: check out, build, deploy:
    ```
+   git checkout <branch> && git pull origin <branch>
    make test-deploy
    ```
    Wait for the app to launch and Pepper to connect.
