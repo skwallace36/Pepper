@@ -195,6 +195,7 @@
   "snapshot.clear":      { "status": "untested",  "surface": "MiscTab > Snapshot Test Screen (after save)", "notes": "New command. Deletes all saved snapshots." },
   "undo":                { "status": "untested",  "surface": "Any state",                                 "notes": "New command. NSUndoManager inspector — list undo managers, query undo/redo stack state, trigger undo/redo programmatically." },
   "accessibility_audit": { "status": "untested",  "surface": "Any state",                                "notes": "" },
+  "accessibility_events": { "status": "untested", "surface": "Any app",                                  "notes": "New command. Subscribes to UIAccessibility notifications (announcements, focus changes) and VC lifecycle events. Ring buffer of 500 events. Enables event-driven wait_for." },
   "renders":             { "status": "untested",  "surface": "SwiftUI app",                               "notes": "New command. SwiftUI view tree snapshots via makeViewDebugData() and snapshot diffing." },
   "perf":                { "status": "untested",  "surface": "Any app",                                   "notes": "New command. FPS counter (CADisplayLink), main-thread hitch detection (watchdog), expensive redraw identification (layer tree scan)." },
   "diff":                { "status": "untested",  "surface": "Any screen",                               "notes": "Quick view hierarchy diff. Delegates to snapshot infrastructure with reserved baseline." },

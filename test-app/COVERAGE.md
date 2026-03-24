@@ -206,6 +206,11 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `accessibility_action` | magic_tap | untested |  |  |
 | `accessibility_action` | increment | untested |  |  |
 | `accessibility_action` | decrement | untested |  |  |
+| `accessibility_events` | start | untested |  |  |
+| `accessibility_events` | stop | untested |  |  |
+| `accessibility_events` | status | untested |  |  |
+| `accessibility_events` | events | untested |  |  |
+| `accessibility_events` | clear | untested |  |  |
 | `renders` | start | untested |  |  |
 | `renders` | stop | untested |  |  |
 | `renders` | counts | untested |  |  |
@@ -254,9 +259,9 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 
 ## Summary
 
-**228 test points** across 66 commands.
+**233 test points** across 67 commands.
 
 - pass: 138
 - fail: 3
-- untested: 86
+- untested: 91
 

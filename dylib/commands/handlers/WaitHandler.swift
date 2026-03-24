@@ -52,9 +52,17 @@ struct WaitHandler: PepperHandler {
         let handler = self
 
         DispatchQueue.global(qos: .userInitiated).async {
+            let axObserver = PepperAccessibilityObserver.shared
             while Date() < deadline {
-                // Sleep on background thread — main thread is free for rendering
-                Thread.sleep(forTimeInterval: Self.pollInterval)
+                // Wake on accessibility notification or poll interval, whichever is first.
+                // When the accessibility observer is active, screen changes signal the
+                // semaphore immediately, so wait_for detects transitions near-instantly.
+                // Without the observer, fall back to a fixed sleep.
+                if axObserver.isRunning {
+                    let _ = axObserver.waitForChange(timeout: Self.pollInterval)
+                } else {
+                    Thread.sleep(forTimeInterval: Self.pollInterval)
+                }
 
                 // Brief hop to main thread for UIKit-safe condition evaluation
                 var conditionMet = false
