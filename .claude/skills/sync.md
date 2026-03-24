@@ -95,6 +95,28 @@ If the user edits the message, use their version. If they say no, stop.
 
 ## Step 6: Push
 
+Check the current mode before pushing:
+
+### Squash mode (default until user says otherwise)
+
+While in squash mode, every sync replaces the single commit on public. This keeps
+the public repo at one commit until we're happy with the initial state.
+
+```bash
+cd "$STAGING_DIR"
+git init -q
+git checkout -q -b main
+git add -A
+git commit -q -m "<approved message>"
+
+git remote add public <public-repo-url>
+git push public main --force
+```
+
+### Linear mode (enabled when user says "switch to linear" or "stop squashing")
+
+Once switched, each sync adds a new commit on top of the existing public history.
+
 ```bash
 cd "$STAGING_DIR"
 git init -q
@@ -127,6 +149,7 @@ git tag "public-sync/$(date +%Y-%m-%d-%H%M)" HEAD
 - NEVER push without explicit user approval of the commit message
 - NEVER include files matched by `.public-exclude`
 - ALWAYS show the diff before asking to push
-- ALWAYS use `--force-with-lease` (not `--force`)
+- ALWAYS use `--force` in squash mode, `--force-with-lease` in linear mode
 - If the diff is empty, say "Public is up to date" and stop
 - Clean up temp dirs on exit
+- Default to SQUASH mode unless the user has explicitly switched to linear
