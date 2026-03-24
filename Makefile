@@ -1,8 +1,9 @@
 # pepper Makefile
 # Runtime control for iOS apps — dylib injection
 
-# Load .env if present
+# Load .env if present; .env.local overrides (machine-local, gitignored)
 -include .env
+-include .env.local
 
 # ============================================================
 # Configuration
