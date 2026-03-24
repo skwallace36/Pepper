@@ -569,10 +569,10 @@ if [ "$TYPE" != "pr-verifier" ] && [ "$TYPE" != "pr-responder" ]; then
     VERIFIER_RUNNING=true
   fi
   if [ "$VERIFIER_RUNNING" = false ]; then
-    UNVERIFIED=$(gh pr list --repo skwallace36/Pepper --state open --json number,labels \
-      --jq '[.[] | select(.labels | map(.name) | index("verified") | not)] | length' 2>/dev/null || echo 0)
-    if [ "$UNVERIFIED" -gt 0 ]; then
-      echo "$UNVERIFIED unverified PR(s) — chaining pr-verifier..."
+    AWAITING_VERIFY=$(gh pr list --repo skwallace36/Pepper --state open --label "awaiting:verifier" \
+      --json number --jq 'length' 2>/dev/null || echo 0)
+    if [ "$AWAITING_VERIFY" -gt 0 ]; then
+      echo "$AWAITING_VERIFY PR(s) awaiting verification — chaining pr-verifier..."
       nohup "$REPO_ROOT/scripts/agent-runner.sh" pr-verifier >> build/logs/chain.log 2>&1 &
     fi
   fi
