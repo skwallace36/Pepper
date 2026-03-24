@@ -44,6 +44,7 @@ scripts/submit-mcp-directories.sh
 CLAUDE.md
 ROADMAP.md
 BUGS.md
+docs/PR-STATE-MACHINE.md
 
 # Linter/formatter config (clutters root, not useful to viewers)
 .swift-format

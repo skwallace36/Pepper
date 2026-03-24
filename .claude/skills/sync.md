@@ -63,6 +63,11 @@ Summarize into a clean changelog. Strip TASK-NNN prefixes. Group by area if ther
 STAGING_DIR=$(mktemp -d)
 rsync -a --exclude-from=".public-exclude" --exclude='.git' ./ "$STAGING_DIR/"
 
+# Strip agent section from Makefile (between "# Agent (private" and "# Housekeeping")
+sed -i '' '/^# Agent (private/,/^# Housekeeping/{/^# Housekeeping/!d;}' "$STAGING_DIR/Makefile"
+# Strip agent targets from .PHONY line
+sed -i '' 's/ agent [^\\]*agent-[^ ]*//' "$STAGING_DIR/Makefile"
+
 # Export current public state
 PUBLIC_DIR=$(mktemp -d)
 git archive public/main | tar -x -C "$PUBLIC_DIR" 2>/dev/null
