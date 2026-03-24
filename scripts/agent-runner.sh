@@ -542,19 +542,22 @@ if [ "$TYPE" != "pr-verifier" ] && [ "$TYPE" != "pr-responder" ]; then
 fi
 
 # Auto-chain: if this agent opened a PR, launch the verifier next.
-# Only launch if pr-verifier isn't already running (prevents race with heartbeat).
+# Only chains if heartbeat is alive (prevents zombie chains after kill).
 if [ "$TYPE" != "pr-verifier" ] && [ "$TYPE" != "pr-responder" ]; then
-  VERIFIER_LOCK="build/logs/.lock-pr-verifier"
-  VERIFIER_RUNNING=false
-  if [ -f "$VERIFIER_LOCK" ] && kill -0 "$(cat "$VERIFIER_LOCK" 2>/dev/null)" 2>/dev/null; then
-    VERIFIER_RUNNING=true
-  fi
-  if [ "$VERIFIER_RUNNING" = false ]; then
-    AWAITING_VERIFY=$(gh pr list --repo skwallace36/Pepper --state open --label "awaiting:verifier" \
-      --json number --jq 'length' 2>/dev/null || echo 0)
-    if [ "$AWAITING_VERIFY" -gt 0 ]; then
-      echo "$AWAITING_VERIFY PR(s) awaiting verification — chaining pr-verifier..."
-      nohup "$REPO_ROOT/scripts/agent-runner.sh" pr-verifier >> build/logs/chain.log 2>&1 &
+  HB_PID=$(cat "$REPO_ROOT/build/logs/heartbeat.pid" 2>/dev/null)
+  if [ -n "$HB_PID" ] && kill -0 "$HB_PID" 2>/dev/null; then
+    VERIFIER_LOCK="build/logs/.lock-pr-verifier"
+    VERIFIER_RUNNING=false
+    for lf in ${VERIFIER_LOCK}-*; do
+      [ -f "$lf" ] && kill -0 "$(cat "$lf" 2>/dev/null)" 2>/dev/null && VERIFIER_RUNNING=true && break
+    done
+    if [ "$VERIFIER_RUNNING" = false ]; then
+      AWAITING_VERIFY=$(gh pr list --repo skwallace36/Pepper --state open --label "awaiting:verifier" \
+        --json number --jq 'length' 2>/dev/null || echo 0)
+      if [ "$AWAITING_VERIFY" -gt 0 ]; then
+        echo "$AWAITING_VERIFY PR(s) awaiting verification — chaining pr-verifier..."
+        nohup "$REPO_ROOT/scripts/agent-runner.sh" pr-verifier >> build/logs/chain.log 2>&1 &
+      fi
     fi
   fi
 fi
