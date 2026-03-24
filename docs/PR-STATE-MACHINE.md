@@ -19,35 +19,20 @@ A PR must have exactly **one** state label at any time. Never stack labels. When
 ## State Diagram
 
 ```mermaid
-flowchart TD
-    START(("PR\nCreated")) --> AV
+stateDiagram-v2
+    [*] --> verifier : PR created
 
-    AV["🔵 awaiting:verifier\n<i>pr-verifier agent</i>"]
-    AH["🟡 awaiting:human\n<i>Maintainer reviews</i>"]
-    AR["🔴 awaiting:responder\n<i>pr-responder agent</i>"]
-    V["🟢 verified"]
-    M(("Merged"))
-    C(("Closed"))
+    verifier --> verified : auto-merge
+    verifier --> human : needs approval
+    verifier --> responder : failed
 
-    AV -- "auto-merge\n(safe change)" --> V
-    AV -- "needs approval\n(infra/config)" --> AH
-    AV -- "verification\nfailed" --> AR
+    human --> verified : LGTM
+    human --> responder : feedback
+    human --> [*] : rejected
 
-    AH -- "LGTM" --> V
-    AH -- "feedback" --> AR
-    AH -- "rejected" --> C
+    responder --> verifier : fixes pushed
 
-    AR -- "fixes pushed" --> AV
-
-    V --> M
-
-    style AV fill:#1D76DB,color:#fff,stroke:#1D76DB
-    style AH fill:#FBCA04,color:#000,stroke:#FBCA04
-    style AR fill:#D93F0B,color:#fff,stroke:#D93F0B
-    style V fill:#0E8A16,color:#fff,stroke:#0E8A16
-    style M fill:#333,color:#fff
-    style C fill:#666,color:#fff
-    style START fill:#555,color:#fff
+    verified --> [*] : merged
 ```
 
 > **Conflict-resolver** operates orthogonally — rebases any PR with merge conflicts, regardless of `awaiting:` label.
