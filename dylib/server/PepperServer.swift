@@ -42,19 +42,6 @@ final class PepperServer {
     private func registerServerHandlers() {
         dispatcher.register(SubscribeHandler(connectionManager: connectionManager))
         dispatcher.register(UnsubscribeHandler(connectionManager: connectionManager))
-        // Status command — report server and connection info
-        dispatcher.register("status") { [weak self] cmd in
-            guard let self = self else {
-                return .error(id: cmd.id, message: "Server not available")
-            }
-            return .ok(
-                id: cmd.id,
-                data: [
-                    "connections": AnyCodable(self.connectionManager.connectionCount),
-                    "connectionDetails": AnyCodable(self.connectionManager.statusReport()),
-                    "port": AnyCodable(Int(self.port)),
-                ])
-        }
     }
 
     // MARK: - Server Lifecycle

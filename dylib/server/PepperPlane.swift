@@ -209,6 +209,11 @@ public final class PepperPlane {
         server?.connectionManager.connectionCount ?? 0
     }
 
+    /// Detailed status of each connected client.
+    var connectionDetails: [[String: AnyCodable]] {
+        server?.connectionManager.statusReport() ?? []
+    }
+
     /// Broadcast an event to all connected clients (or those subscribed to the event type).
     func broadcast(_ event: PepperEvent) {
         server?.broadcast(event)
