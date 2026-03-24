@@ -7,6 +7,16 @@ from __future__ import annotations
 
 import re
 
+# SF Symbol private-use-area characters (U+100000–U+100FFF) that appear in
+# combined accessibility labels. Strip them to keep output readable.
+_SF_SYMBOL_RE = re.compile(r'[\U00100000-\U00100FFF]+')
+
+
+def _strip_sf_symbols(text: str) -> str:
+    """Remove SF Symbol characters and collapse whitespace."""
+    cleaned = _SF_SYMBOL_RE.sub('', text).strip()
+    return re.sub(r'\s+', ' ', cleaned)
+
 # ---------------------------------------------------------------------------
 # ANSI color helpers
 # ---------------------------------------------------------------------------
@@ -142,19 +152,24 @@ def format_look(resp: dict) -> str:
         header += f"  Title: \"{nav_title}\""
     if mem:
         header += f"  [{mem:.0f}MB]"
-    lines = [header, ""]
+    lines = [header]
 
     # Interactive rows
+    prev_y_max = -1
     for row in rows:
         elements = row.get("elements", [])
         if not elements:
             continue
         y_range = row.get("y_range", [0, 0])
+        # Add a blank line only when there's a vertical gap between row groups
+        if prev_y_max >= 0 and y_range[0] - prev_y_max > 40:
+            lines.append("")
+        prev_y_max = y_range[1]
         lines.append(dim(f"[y={y_range[0]}-{y_range[1]}]"))
 
         for e in elements:
             etype = e.get("type", "?")
-            label = e.get("label", "")
+            label = _strip_sf_symbols(e.get("label", ""))
             tap_cmd = e.get("tap_cmd", "")
             icon = e.get("icon_name", "")
             heuristic = e.get("heuristic", "")
@@ -207,20 +222,18 @@ def format_look(resp: dict) -> str:
                 tap = f"tap point:{cx},{cy}"
 
             lines.append(f"  {cyan(prefix):>8s}  {desc:<52s} → {tap}{flags}")
-        lines.append("")
 
     # Non-interactive text
     if ni:
         lines.append(dim("--- text ---"))
         for e in ni:
-            label = e.get("label", "")
+            label = _strip_sf_symbols(e.get("label", ""))
             if label:
                 lines.append(f"  {dim(label)}")
 
     # Leak warnings
     leaks = data.get("leaks", [])
     if leaks:
-        lines.append("")
         lines.append("--- leaks detected ---")
         for leak in leaks[:10]:
             cls = leak.get("class", "?")
