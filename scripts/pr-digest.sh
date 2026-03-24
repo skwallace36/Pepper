@@ -10,7 +10,7 @@
 
 set -euo pipefail
 
-REPO="skwallace36/Pepper"
+REPO="skwallace36/Pepper-private"
 JSON_MODE=false
 [ "${1:-}" = "--json" ] && JSON_MODE=true
 

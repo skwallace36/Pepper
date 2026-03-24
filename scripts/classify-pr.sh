@@ -15,7 +15,7 @@
 
 set -euo pipefail
 
-REPO="skwallace36/Pepper"
+REPO="skwallace36/Pepper-private"
 PR="${1:?Usage: classify-pr.sh <pr-number>}"
 
 # Remove any existing state labels, then set the right one
