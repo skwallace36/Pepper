@@ -27,13 +27,15 @@ struct PepperResponse: Codable {
     }
 
     /// Enriched error for element-not-found conditions.
-    /// Includes up to 5 similar on-screen labels and an actionable suggestion.
+    /// Includes up to 5 similar on-screen labels, an actionable suggestion,
+    /// and optional structured diagnostics (candidate count, rejection reasons).
     /// Must be called on the main thread.
     static func elementNotFound(
         id: String,
         message: String,
         query: String? = nil,
-        suggestion: String = "Try `look` to see current screen state"
+        suggestion: String = "Try `look` to see current screen state",
+        diagnostics: [String: AnyCodable] = [:]
     ) -> PepperResponse {
         let found = PepperElementSuggestions.nearbyLabels(for: query, maxResults: 5)
         var data: [String: AnyCodable] = ["message": AnyCodable(message)]
@@ -41,6 +43,9 @@ struct PepperResponse: Codable {
             data["found"] = AnyCodable(found.map { AnyCodable($0) })
         }
         data["suggestion"] = AnyCodable(suggestion)
+        for (key, value) in diagnostics {
+            data[key] = value
+        }
         return PepperResponse(id: id, status: .error, data: data)
     }
 }
