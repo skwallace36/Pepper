@@ -100,15 +100,6 @@ brew install python@3.12
 
 Then run `make setup` again.
 
-**System Python is too old.**
-Set `PEPPER_PYTHON` in `.env` to point to a newer Python:
-
-```
-export PEPPER_PYTHON=/opt/homebrew/bin/python3.12
-```
-
-Then run `make setup` again.
-
 **Manual fix.**
 If setup still fails to create the venv, create it directly:
 
