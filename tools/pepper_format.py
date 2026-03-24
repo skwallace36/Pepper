@@ -3,6 +3,7 @@ Pepper formatting utilities — ANSI color helpers and look output formatting.
 
 Used by pepper-mcp, pepper-ctl, and pepper-stream.
 """
+from __future__ import annotations
 
 import re
 

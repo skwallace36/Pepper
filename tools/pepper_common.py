@@ -3,6 +3,7 @@ Pepper common utilities — shared constants, config helpers, and port discovery
 
 Used by pepper-mcp, pepper-ctl, pepper-stream, and test-client.py.
 """
+from __future__ import annotations
 
 import json
 import os

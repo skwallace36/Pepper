@@ -2,6 +2,7 @@
 
 Tool definition for: record (start/stop simulator recording, mp4/gif output).
 """
+from __future__ import annotations
 
 import asyncio
 import os
