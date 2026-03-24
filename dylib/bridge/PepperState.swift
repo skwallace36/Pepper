@@ -239,6 +239,7 @@ extension UIViewController {
         PepperState.shared.screenAppeared(self)
         PepperIdleMonitor.shared.vcDidAppear(self)
         PepperVarRegistry.shared.discoverFromViewController(self)
+        PepperAccessibilityObserver.shared.signalScreenChanged()
 
         // Auto-tag interactive elements with accessibility IDs after layout settles
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in

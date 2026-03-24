@@ -529,3 +529,56 @@ def register_debug_tools(mcp, resolve_and_send):
             params["limit"] = limit
         return await resolve_and_send(simulator, "concurrency", params)
 
+    @mcp.tool()
+    async def perf(
+        simulator: str | None = Field(default=None, description="Simulator UDID"),
+        action: str = Field(default="fps", description="Action: fps, hitches, redraws"),
+        duration_ms: int | None = Field(default=None, description="Sampling duration in ms (for fps/hitches; default: 2000/5000)"),
+        threshold_ms: int | None = Field(default=None, description="Hitch threshold in ms (for hitches action; default: 16)"),
+    ) -> str:
+        """Performance diagnostics: FPS measurement, main-thread hitch detection, expensive redraw identification.
+
+        action=fps: measure frame rate using CADisplayLink. Returns avg/min/max FPS, dropped frames, per-second buckets.
+        action=hitches: detect main-thread blocks via background watchdog. Returns hitch count, durations, and timestamps.
+        action=redraws: scan the layer tree for expensive rendering: shadows without shadowPath, masks, rasterization,
+        oversized images, semi-transparent large layers. Returns issues sorted by severity."""
+        params: dict = {"action": action}
+        if duration_ms is not None:
+            params["duration_ms"] = duration_ms
+        if threshold_ms is not None:
+            params["threshold_ms"] = threshold_ms
+        return await resolve_and_send(simulator, "perf", params, timeout=30)
+
+    @mcp.tool()
+    async def accessibility_events(
+        simulator: str | None = Field(default=None, description="Simulator UDID"),
+        action: str = Field(description="Action: start, stop, status, events, clear"),
+        limit: int | None = Field(default=None, description="Max events to return (for 'events' action, default 100)"),
+        since_ms: int | None = Field(default=None, description="Only events after this epoch-ms timestamp (for 'events' action)"),
+    ) -> str:
+        """Subscribe to UIAccessibility notifications for event-driven screen change detection.
+
+        Unlike polling, accessibility notifications fire immediately when the screen updates.
+        When the observer is active, wait_for uses these signals to wake up early instead of
+        sleeping the full poll interval — making transitions near-instant to detect.
+
+        Event types captured:
+        - screen_changed: major screen transition (view controller push/pop, modal)
+        - layout_changed: partial layout update within current screen
+        - announcement: VoiceOver announcement finished (includes text)
+
+        Actions:
+        - start: begin observing (registers for UIAccessibility notifications)
+        - stop: stop observing
+        - status: check if active and current event counts
+        - events: drain the ring buffer (newest last, up to 500 events retained)
+        - clear: empty the ring buffer without stopping
+
+        Workflow: start → trigger UI actions → events to see what fired → stop.
+        Keep the observer running alongside wait_for for faster condition detection."""
+        params: dict = {"action": action}
+        if limit is not None:
+            params["limit"] = limit
+        if since_ms is not None:
+            params["since_ms"] = since_ms
+        return await resolve_and_send(simulator, "accessibility_events", params)
