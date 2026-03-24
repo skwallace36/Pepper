@@ -26,6 +26,7 @@ struct StatusHandler: PepperHandler {
             "pepper": AnyCodable([
                 "port": AnyCodable(PepperPlane.shared.currentPort ?? 0),
                 "connections": AnyCodable(PepperPlane.shared.connectionCount),
+                "connectionDetails": AnyCodable(PepperPlane.shared.connectionDetails),
                 "commands": AnyCodable(PepperPlane.shared.commandDispatcher.registeredCommands.count),
                 "hid_available": AnyCodable(HIDEventAPI.isAvailable),
             ]),
