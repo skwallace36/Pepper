@@ -398,26 +398,27 @@ async def act_and_look(simulator: Optional[str], cmd: str, params: Optional[dict
         data_msg = action_resp.get("data", {}).get("message", "")
         err = error_msg or data_msg
 
+        from mcp.types import TextContent
         # Crash — don't try to look (app is dead), but fetch crash info
         if "APP CRASHED" in err:
             result = json.dumps(action_resp, indent=2)
             crash_info = await fetch_crash_info(udid)
             if crash_info:
                 result += crash_info
-            return result
+            return [TextContent(type="text", text=result)]
 
         # Element not found — show what IS on screen
         if "not found" in err.lower() or "no hit-reachable" in err.lower():
             await asyncio.sleep(0.2)
             look_resp = await bound_fn(port, "look", {}, timeout=5)
             screen_summary = format_look(look_resp) if look_resp.get("status") == "ok" else "(look failed)"
-            return f"Error: {err}\n\n--- What's actually on screen ---\n{screen_summary}"
+            return [TextContent(type="text", text=f"Error: {err}\n--- What's actually on screen ---\n{screen_summary}")]
 
         # Connection error
         if "refused" in err.lower() or "connect" in err.lower():
-            return f"Error: {err}\n\nPepper is not running. Use `deploy` to launch the app with Pepper injected."
+            return [TextContent(type="text", text=f"Error: {err}\n\nPepper is not running. Use `deploy` to launch the app with Pepper injected.")]
 
-        return json.dumps(action_resp, indent=2)
+        return [TextContent(type="text", text=json.dumps(action_resp, indent=2))]
 
     # Brief pause for UI to settle after interaction
     await asyncio.sleep(0.3)
@@ -444,10 +445,11 @@ async def act_and_look(simulator: Optional[str], cmd: str, params: Optional[dict
     action_data = action_resp.get("data", {})
     action_summary = action_data.get("description", action_data.get("strategy", cmd))
 
-    result = f"Action: {action_summary}\n\n--- Screen after {cmd} ---\n{screen_summary}"
+    result = f"Action: {action_summary}\n--- Screen after {cmd} ---\n{screen_summary}"
     if telemetry:
-        result += f"\n{telemetry}"
-    return result
+        result += f"\n{telemetry.lstrip()}"
+    from mcp.types import TextContent
+    return [TextContent(type="text", text=result)]
 
 
 # ---------------------------------------------------------------------------

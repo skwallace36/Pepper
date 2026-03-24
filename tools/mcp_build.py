@@ -296,6 +296,14 @@ async def deploy_app(simulator: str, send_fn: SendFn,
             capture_output=True, text=True
         )
 
+    # Enable VoiceOver accessibility flag so SwiftUI apps populate labels.
+    # Many apps (Ice Cubes, etc.) only compute accessibilityLabel when VoiceOver is on.
+    subprocess.run(
+        ["xcrun", "simctl", "spawn", simulator, "defaults", "write",
+         "com.apple.Accessibility", "VoiceOverTouchEnabled", "-bool", "true"],
+        capture_output=True, text=True
+    )
+
     # Launch with injection + adapter env vars
     env = os.environ.copy()
     env["SIMCTL_CHILD_DYLD_INSERT_LIBRARIES"] = dylib
@@ -333,7 +341,7 @@ async def deploy_app(simulator: str, send_fn: SendFn,
                     screen_summary = format_look(look_resp) if look_resp.get("status") == "ok" else "(look not ready yet)"
                     # Claim this simulator for our session
                     pepper_sessions.claim_simulator(simulator, bundle_id=bid, port=port)
-                    return f"Deployed to {simulator} (PID {pid}, port {port}). Pepper is connected.\n\n--- Screen ---\n{screen_summary}"
+                    return f"Deployed to {simulator} (PID {pid}, port {port}). Pepper is connected.\n--- Screen ---\n{screen_summary}"
             except (TimeoutError, OSError, ValueError):
                 pass
 

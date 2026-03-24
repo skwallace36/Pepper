@@ -22,6 +22,35 @@ final class PepperAccessibility {
 
     private init() {}
 
+    // MARK: - VoiceOver Swizzle
+
+    /// Swizzle UIAccessibility.isVoiceOverRunning to return true.
+    /// Many SwiftUI apps only populate accessibility labels when VoiceOver is active.
+    /// Without this, Pepper sees empty labels on feed cells, list rows, etc.
+    /// VoiceOver interposition is handled by accessibility_hook.c (DYLD_INTERPOSE).
+    /// Post the status-change notification so SwiftUI re-reads the (now-true) value.
+    /// Fire immediately AND after a delay to catch both early and late readers.
+    static func installVoiceOverSwizzle() {
+        // Immediate — catches anything reading during didFinishLaunching
+        NotificationCenter.default.post(
+            name: UIAccessibility.voiceOverStatusDidChangeNotification,
+            object: nil
+        )
+        // Delayed — catches SwiftUI environment updates after first render
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            NotificationCenter.default.post(
+                name: UIAccessibility.voiceOverStatusDidChangeNotification,
+                object: nil
+            )
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            NotificationCenter.default.post(
+                name: UIAccessibility.voiceOverStatusDidChangeNotification,
+                object: nil
+            )
+        }
+    }
+
     // MARK: - Tagging
 
     /// Walk a view controller's view hierarchy and assign accessibility IDs
