@@ -544,6 +544,15 @@ else
   emit_final "done" ",\"cost_usd\":${COST},\"duration_s\":${DURATION},\"turns\":${TURNS},\"exit_reason\":${EXIT_REASON}"
 fi
 
+# Auto-label new PRs with awaiting:verifier (state machine entry point).
+# Only labels PRs that have no awaiting: or verified label yet.
+if [ "$TYPE" != "pr-verifier" ] && [ "$TYPE" != "pr-responder" ]; then
+  for pr_num in $(gh pr list --repo skwallace36/Pepper --state open --author "pepper-${TYPE}-agent" \
+    --json number,labels --jq '.[] | select(.labels | map(.name) | (index("awaiting:verifier") | not) and (index("awaiting:responder") | not) and (index("awaiting:human") | not) and (index("verified") | not)) | .number' 2>/dev/null); do
+    "$REPO_ROOT/scripts/classify-pr.sh" "$pr_num" 2>/dev/null || true
+  done
+fi
+
 # Auto-chain: if this agent opened a PR, launch the verifier next.
 # Only launch if pr-verifier isn't already running (prevents race with heartbeat).
 if [ "$TYPE" != "pr-verifier" ] && [ "$TYPE" != "pr-responder" ]; then
