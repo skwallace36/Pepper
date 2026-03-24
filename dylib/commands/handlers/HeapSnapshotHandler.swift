@@ -24,10 +24,12 @@ func pepper_heap_scan(
 /// ViewModels, services, managers, closures — anything that's an NSObject subclass.
 ///
 /// Actions:
-///   - "snapshot": Save current instance counts as baseline.
-///   - "diff":     Compare current counts to baseline. Shows growing classes.
-///   - "clear":    Clear saved snapshot.
-///   - "status":   Show when the last snapshot was taken.
+///   - "snapshot":  Save current instance counts as baseline.
+///   - "diff":      Compare current counts to baseline. Shows growing classes.
+///   - "baseline":  Alias for snapshot — capture reference counts as a named baseline.
+///   - "check":     Compare current counts to baseline, classify growth by severity.
+///   - "clear":     Clear saved snapshot.
+///   - "status":    Show when the last snapshot was taken.
 struct HeapSnapshotHandler: PepperHandler {
     let commandName = "heap_snapshot"
 
@@ -38,10 +40,12 @@ struct HeapSnapshotHandler: PepperHandler {
         let action = command.params?["action"]?.stringValue ?? "snapshot"
 
         switch action {
-        case "snapshot":
+        case "snapshot", "baseline":
             return handleSnapshot(command)
         case "diff":
             return handleDiff(command)
+        case "check":
+            return handleCheck(command)
         case "clear":
             Self.savedSnapshot = nil
             Self.snapshotTime = nil
@@ -60,7 +64,8 @@ struct HeapSnapshotHandler: PepperHandler {
             return .ok(id: command.id, data: ["has_snapshot": AnyCodable(false)])
         default:
             return .error(
-                id: command.id, message: "Unknown heap_snapshot action '\(action)'. Use snapshot/diff/clear/status.")
+                id: command.id,
+                message: "Unknown heap_snapshot action '\(action)'. Use snapshot/baseline/diff/check/clear/status.")
         }
     }
 
@@ -147,6 +152,82 @@ struct HeapSnapshotHandler: PepperHandler {
                 "verdict": AnyCodable(
                     growing.isEmpty ? "No leaks detected" : "\(growing.count) class(es) growing — potential leaks"),
             ])
+    }
+
+    // MARK: - Check (automatic leak detection with severity classification)
+
+    private func handleCheck(_ command: PepperCommand) -> PepperResponse {
+        guard let baseline = Self.savedSnapshot, let baselineTime = Self.snapshotTime else {
+            return .error(id: command.id, message: "No baseline snapshot. Run action:baseline first.")
+        }
+
+        let current = scanHeap()
+        let threshold = command.params?["threshold"]?.intValue ?? 1
+
+        var leaks: [[String: AnyCodable]] = []
+
+        for (cls, currentCount) in current {
+            let baseCount = baseline[cls] ?? 0
+            let delta = currentCount - baseCount
+            guard delta >= threshold else { continue }
+
+            let severity = classifySeverity(baseline: baseCount, current: currentCount, delta: delta)
+            leaks.append([
+                "class": AnyCodable(cls),
+                "baseline": AnyCodable(baseCount),
+                "current": AnyCodable(currentCount),
+                "delta": AnyCodable(delta),
+                "severity": AnyCodable(severity),
+            ])
+        }
+
+        // Sort: high severity first, then by delta descending
+        leaks.sort { a, b in
+            let severityOrder = ["high": 0, "medium": 1, "low": 2]
+            let sa = severityOrder[a["severity"]?.stringValue ?? "low"] ?? 2
+            let sb = severityOrder[b["severity"]?.stringValue ?? "low"] ?? 2
+            if sa != sb { return sa < sb }
+            return (a["delta"]?.intValue ?? 0) > (b["delta"]?.intValue ?? 0)
+        }
+
+        let highCount = leaks.filter { $0["severity"]?.stringValue == "high" }.count
+        let mediumCount = leaks.filter { $0["severity"]?.stringValue == "medium" }.count
+        let elapsed = Int(-baselineTime.timeIntervalSinceNow)
+
+        let verdict: String
+        if leaks.isEmpty {
+            verdict = "No leaks detected"
+        } else if highCount > 0 {
+            verdict = "\(highCount) high-severity leak(s) detected — likely retain cycles"
+        } else {
+            verdict = "\(mediumCount) medium-severity growth(s) detected — review recommended"
+        }
+
+        return .ok(
+            id: command.id,
+            data: [
+                "leaks": AnyCodable(leaks),
+                "leak_count": AnyCodable(leaks.count),
+                "high_count": AnyCodable(highCount),
+                "medium_count": AnyCodable(mediumCount),
+                "elapsed_seconds": AnyCodable(elapsed),
+                "verdict": AnyCodable(verdict),
+                "memory": AnyCodable(getMemoryInfo()),
+            ])
+    }
+
+    /// Classify growth severity based on delta and growth ratio.
+    /// - high:   delta >= 5 or 5x+ growth from a non-zero baseline
+    /// - medium: delta >= 2 or 2x+ growth from a non-zero baseline
+    /// - low:    any other positive delta
+    private func classifySeverity(baseline: Int, current: Int, delta: Int) -> String {
+        let ratio = baseline > 0 ? Double(current) / Double(baseline) : Double.infinity
+        if delta >= 5 || ratio >= 5.0 {
+            return "high"
+        } else if delta >= 2 || ratio >= 2.0 {
+            return "medium"
+        }
+        return "low"
     }
 
     // MARK: - Heap Scan (via C bridge)
