@@ -10,6 +10,9 @@ struct MiscTab: View {
     @AppStorage("pepper_feature_new_ui") private var newUIFlag: Bool = false
     @AppStorage("pepper_feature_beta") private var betaFlag: Bool = false
     @State private var allFeatureFlags: String = "none"
+    @State private var stepperValue: Int = 5
+    @State private var lastCustomAction: String = "none"
+    @State private var magicTapTriggered: Bool = false
 
     var body: some View {
         ScrollView {
@@ -400,6 +403,45 @@ struct MiscTab: View {
                         AccessibilityTestWrapper()
                     }
                     .accessibilityIdentifier("accessibility_test_link")
+                }
+
+                // MARK: - Accessibility Actions
+                GroupBox("Accessibility Actions") {
+                    VStack(spacing: 16) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Adjustable stepper (increment / decrement)")
+                                .font(.caption).foregroundStyle(.secondary)
+                            AdjustableStepperView(value: $stepperValue)
+                                .frame(height: 70)
+                            Text("Value: \(stepperValue) / 10")
+                                .font(.caption.monospacedDigit())
+                                .accessibilityIdentifier("adjustable_stepper_label")
+                        }
+
+                        Divider()
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Custom actions (Mark as Read, Archive)")
+                                .font(.caption).foregroundStyle(.secondary)
+                            CustomActionsCardView(lastAction: $lastCustomAction)
+                                .frame(height: 70)
+                            Text("Last action: \(lastCustomAction)")
+                                .font(.caption)
+                                .accessibilityIdentifier("custom_actions_last_action")
+                        }
+
+                        Divider()
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Magic tap (two-finger double-tap)")
+                                .font(.caption).foregroundStyle(.secondary)
+                            MagicTapTargetView(triggered: $magicTapTriggered)
+                                .frame(height: 70)
+                            Text(magicTapTriggered ? "Magic tap: triggered" : "Magic tap: not triggered")
+                                .font(.caption)
+                                .accessibilityIdentifier("magic_tap_status")
+                        }
+                    }
                 }
 
                 // MARK: - Context Menu

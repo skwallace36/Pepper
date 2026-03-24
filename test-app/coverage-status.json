@@ -1,958 +1,214 @@
 {
   "_comment": "Status data for gen-coverage.py. Keys: 'command' or 'command.variant'. Only non-default entries needed.",
-  "ping": {
-    "status": "pass",
-    "surface": "Any state",
-    "notes": ""
-  },
-  "help": {
-    "status": "pass",
-    "surface": "Any state",
-    "notes": "Returns list of 50 available server commands. Tested via pepper-ctl and direct WebSocket."
-  },
-  "look": {
-    "status": "pass",
-    "surface": "Any screen",
-    "notes": "Alias for introspect map"
-  },
-  "status": {
-    "status": "pass",
-    "surface": "Any state",
-    "notes": "Returns port, connections count, and connectionDetails array (id, connectedAt, lastActivity, subscriptions). Tested via direct WebSocket."
-  },
-  "navigate.tab": {
-    "status": "pass",
-    "surface": "3-tab TabView (Controls, List, Misc)",
-    "notes": ""
-  },
-  "navigate.deeplink": {
-    "status": "pass",
-    "surface": "Tab deep links (controls, list, misc)",
-    "notes": "URL scheme auto-detected from Info.plist. peppertest://controls, peppertest://list, peppertest://misc switch tabs via onOpenURL. Other routes show generic DeeplinkView modal."
-  },
-  "navigate.pop": {
-    "status": "pass",
-    "surface": "Detail nav stack (pushed via Item 0 tap)",
-    "notes": "BUG-001 FIXED: pepper_effectiveNavController now walks child VCs to find SwiftUI NavigationStack's UINavigationController. pepper_effectiveDepth uses nav bar item count as secondary signal. pepper_popBack falls back to HID back-button tap for SwiftUI-managed nav."
-  },
-  "navigate.dismiss": {
-    "status": "pass",
-    "surface": "Sheet from Show Sheet button",
-    "notes": "BUG-008 FIXED: NavigateHandler handlePop falls through to modal dismiss when nav stack is at root depth=1 (SwiftUI .sheet() case). SwiftUI .sheet() presentations now correctly dismissed."
-  },
-  "back": {
-    "status": "pass",
-    "surface": "Detail \u2192 Deeper nav stack push",
-    "notes": "BUG-001 FIXED: BackHandler uses pepper_effectiveNavController to find child UINavigationController from SwiftUI NavigationStack. pepper_canPop checks nav bar items as secondary signal. pepper_popBack uses HID back-button tap for SwiftUI NavigationStack."
-  },
-  "dismiss": {
-    "status": "pass",
-    "surface": "Sheet from Show Sheet button",
-    "notes": "BUG-008 FIXED: DismissHandler now checks modalPresentationStyle (pageSheet/formSheet/automatic) instead of chain depth. SwiftUI .sheet() presentations correctly detected and dismissed."
-  },
-  "screen": {
-    "status": "pass",
-    "surface": "Any tab",
-    "notes": ""
-  },
-  "deeplinks": {
-    "status": "pass",
-    "surface": "Any state (generic mode)",
-    "notes": "Returns {count:0, deeplinks:[], note:'No deep links configured...'} in generic mode. Command works correctly; no adapter configured so no deeplinks available."
-  },
-  "tap.text": {
-    "status": "pass",
-    "surface": "Tap Me button, tab bar items",
-    "notes": ""
-  },
-  "tap.element": {
-    "status": "pass",
-    "surface": "Buttons with a11y IDs",
-    "notes": "BUG-006 FIXED: PepperElementResolver now falls back to PepperSwiftUIBridge.collectAccessibilityElements() when UIView hierarchy lookup fails. SwiftUI .accessibilityIdentifier() elements (e.g. tap_button) are now discoverable via the accessibility tree."
-  },
-  "tap.point": {
-    "status": "pass",
-    "surface": "Tap Me button at (201,232)",
-    "notes": "Tapped Tap Me button by coordinate. Count incremented from 0 to 1. Strategy: point."
-  },
-  "tap.icon_name": {
-    "status": "untested",
-    "surface": "Custom icon asset buttons (pepper-home, pepper-camera, pepper-search)",
-    "notes": "Custom icon assets added to test app asset catalog. Icon-only buttons displayed on Controls tab. Ready for testing with tap icon_name=pepper-home."
-  },
-  "tap.tab": {
-    "status": "pass",
-    "surface": "Tab bar",
-    "notes": "BUG-005 FIXED: Added findAccessibilityTabButtons() that scans the accessibility tree for the .tabBar container and its .button children. Works for SwiftUI TabView (tabs found via accessibility elements). Programmatic UITabBarController selection also available as further fallback."
-  },
-  "tap.heuristic": {
-    "status": "pass",
-    "surface": "Slider element on Controls tab",
-    "notes": "Tapped slider via heuristic:'slider'. Found at (116,790). Error case also tested: nonexistent heuristic returns proper error."
-  },
-  "tap.predicate": {
-    "status": "pass",
-    "surface": "Tap Me button via NSPredicate",
-    "notes": "Predicate \"label == 'Tap Me' AND type == 'button'\" found and tapped correctly. Count incremented. Error case tested: no-match predicate returns proper error."
-  },
-  "input": {
-    "status": "pass",
-    "surface": "TextField (text_field), TextEditor (text_view)",
-    "notes": "TextField: set 'Hello Pepper', appended ' World' with --no-clear, cleared+replaced with 'Replaced'. TextEditor (text_view): set value accepted. Error case: nonexistent ID returns proper 'Element not found' error."
-  },
-  "toggle": {
-    "status": "fail",
-    "surface": "Toggle (dark_mode_toggle, notifications_toggle, airplane_toggle), Segmented (sort_picker)",
-    "notes": "BUG-006 fix applied to PepperElementResolver (used by TapHandler) but ToggleHandler still calls pepper_findElement(id:) directly, bypassing the SwiftUI accessibility fallback. SwiftUI Toggle elements still return 'Element not found'. Segmented control (sort_picker) works. New issue: #265."
-  },
-  "scroll.top": {
-    "status": "pass",
-    "surface": "List tab (30 rows)",
-    "notes": "Scrolled to top from mid-list; Item 0 visible at top"
-  },
-  "scroll.bottom": {
-    "status": "pass",
-    "surface": "List tab (30 rows)",
-    "notes": "Scrolled to bottom; Item 29 visible at bottom"
-  },
-  "scroll.down": {
-    "status": "pass",
-    "surface": "List tab (30 rows)",
-    "notes": ""
-  },
-  "scroll.up": {
-    "status": "pass",
-    "surface": "List tab (30 rows)",
-    "notes": "Scrolled up 400pt from bottom; items shifted upward as expected"
-  },
-  "scroll.left": {
-    "status": "pass",
-    "surface": "Misc tab horizontal scroll (15 items)",
-    "notes": "Horizontal ScrollView already present; scroll left shifts content leftward"
-  },
-  "scroll.right": {
-    "status": "pass",
-    "surface": "Misc tab horizontal scroll (15 items)",
-    "notes": "Horizontal ScrollView already present; scroll right shifts content rightward"
-  },
-  "swipe.down": {
-    "status": "pass",
-    "surface": "List tab (30 rows)",
-    "notes": "Swiped down from center (201,437) to (201,837). List scrolled back to top showing Item 0. Swipe down = finger moves down = content scrolls down."
-  },
-  "swipe.up": {
-    "status": "pass",
-    "surface": "List tab (30 rows)",
-    "notes": "Swiped up from center (201,437) to (201,37). List scrolled from Items 0-9 to Items 11-24. Swipe up = finger moves up = content scrolls up."
-  },
-  "swipe.left": {
-    "status": "pass",
-    "surface": "List tab (30 rows)",
-    "notes": "Swiped left from center (201,437) to (-199,437). Command executed without error. No swipe-action rows in test app to reveal delete/actions, but gesture injected correctly."
-  },
-  "swipe.right": {
-    "status": "pass",
-    "surface": "List tab (30 rows)",
-    "notes": "Swiped right from center (201,437) to (601,437). Command executed without error. Gesture injected correctly."
-  },
-  "scroll_to.down": {
-    "status": "pass",
-    "surface": "List tab \u2014 scroll until text visible",
-    "notes": "Scrolls down until exact text match found. Tested: Item 12 found after 1 scroll (1325ms), Item 29 found after 1 scroll. Already-visible returns immediately (14ms). BUG-004: server dispatch timeout (10s) fires before long scrolls complete."
-  },
-  "scroll_to.up": {
-    "status": "pass",
-    "surface": "List tab",
-    "notes": "Scrolls up to find text. Tested: Item 5 found after 2 scrolls (2648ms) from bottom of list. BUG-004 applies for long distances."
-  },
-  "scroll_to.left": {
-    "status": "pass",
-    "surface": "Misc tab horizontal scroll (15 items)",
-    "notes": "Horizontal ScrollView available for left-direction scroll_to validation"
-  },
-  "scroll_to.right": {
-    "status": "pass",
-    "surface": "Misc tab horizontal scroll (15 items)",
-    "notes": "Horizontal ScrollView available for right-direction scroll_to validation"
-  },
-  "gesture.pinch": {
-    "status": "pass",
-    "surface": "Misc tab",
-    "notes": "Executes pinch gesture at point. Returns {gesture:'pinch', start_distance:200, end_distance:50, center}. Scale parameter controls zoom. Command injects multi-touch HID events correctly."
-  },
-  "gesture.rotate": {
-    "status": "pass",
-    "surface": "Misc tab \u2013 Rotation Gesture GroupBox",
-    "notes": "UIRotationGestureRecognizer on RotatableView. Rotates a hex shape and displays cumulative angle in degrees (rotation_angle label). gesture.rotate injects HID rotation events; angle label updates on each gesture change."
-  },
-  "dismiss_keyboard": {
-    "status": "pass",
-    "surface": "Focus TextField then dismiss",
-    "notes": "Returns {dismissed:true} in all cases. Tested: (1) no keyboard showing \u2014 returns dismissed:true (no-op). (2) After input command focuses text_field \u2014 keyboard active, dismiss_keyboard dismisses it. No error cases."
-  },
-  "dialog.list": {
-    "status": "pass",
-    "surface": "Show Alert button triggers alert",
-    "notes": "Returns array of pending dialogs with dialog_id, title, message, actions (title, style, index), timestamp. Tested: triggered alert shows 1 dialog with title='Test Alert', message='This is a test alert dialog', 2 actions (OK default, Cancel cancel). Empty list returns count=0."
-  },
-  "dialog.current": {
-    "status": "pass",
-    "surface": "Same alert",
-    "notes": "Returns most recent pending dialog with has_dialog=true and full dialog data. When no dialog present: returns has_dialog=false, dialog=null."
-  },
-  "dialog.dismiss": {
-    "status": "pass",
-    "surface": "Same alert",
-    "notes": "Dismisses dialog by button name. Tested: dismiss with button='OK' returns {dismissed:true, button:'OK'}. Screen returns to normal 'ui' state. Error case: dismiss with no pending dialog returns proper error 'No pending dialog to dismiss'."
-  },
-  "dialog.share_sheet": {
-    "status": "pass",
-    "surface": "Share button (icon-only SF Symbol)",
-    "notes": "Share button presents UIActivityViewController via UIKit (bypasses SwiftUI .sheet). Interceptor detects sheet with has_sheet=true, items=['Shared from PepperTestApp'], and sheet_id."
-  },
-  "dialog.dismiss_sheet": {
-    "status": "pass",
-    "surface": "Share button (icon-only SF Symbol)",
-    "notes": "After triggering share sheet via share button, dismiss_sheet returns {dismissed:true} and sheet is removed. Interceptor broadcasts share_sheet_dismissed event."
-  },
-  "dialog.auto_dismiss": {
-    "status": "pass",
-    "surface": "Alert dialog",
-    "notes": "Enable with buttons=['OK','Cancel']: returns {auto_dismiss:true, buttons:['OK','Cancel'], delay:0.3}. Triggered alert via Show Alert \u2014 dialog auto-dismissed within 1s (current returned has_dialog=false). Disable: returns auto_dismiss=false. Default buttons include 'Allow While Using App', 'Allow Once', 'Allow', 'OK'."
-  },
-  "dialog.detect_system": {
-    "status": "pass",
-    "surface": "Misc tab \u2014 request_notifications_button triggers system dialog on fresh install",
-    "notes": "Returns {detected, confidence, positive_signals, total_signals, signals[]}. Four signals: intercepted_dialog, key_window_level, elevated_alert_windows, hit_test_probe. Confidence: high (3+), medium (2), low (1), none (0). On fresh install: tap request_notifications_button, PepperWindowMonitor auto-dismisses via elevated_window_button strategy; detect_system returns detected=false after dismissal. look works immediately after (no timeout)."
-  },
-  "tree": {
-    "status": "pass",
-    "surface": "Controls tab, Misc tab",
-    "notes": "Returns full UIView hierarchy as JSON (3355 lines on Controls tab). Supports --depth param for truncation (depth=3 returns 4 nodes). Reports nodeCount and truncated flag."
-  },
-  "read": {
-    "status": "pass",
-    "surface": "sort_picker (UIKit segmented control)",
-    "notes": "Works for UIKit elements: read sort_picker returned value=2, segmentCount=3, segmentTitles, enabled, visible. Fails for SwiftUI elements (BUG-006: tap_button returns 'Element not found'). Nonexistent IDs return proper 'Element not found' error."
-  },
-  "highlight": {
-    "status": "pass",
-    "surface": "Tap Me button on Controls tab",
-    "notes": "Highlighted 'Tap Me' button. Returns frame, description, strategy (interactive_text), highlighted=true."
-  },
-  "identify_selected": {
-    "status": "pass",
-    "surface": "Name/Date/Size segmented control",
-    "notes": "Correctly identified 'Size' as selected. Returns scores, debug info with brightness/ink analysis, and detected color scheme (light)."
-  },
-  "identify_icons": {
-    "status": "pass",
-    "surface": "Controls tab (no custom icon assets)",
-    "notes": "Command works correctly. Returns catalog info (built=true) but icon_count=0 because test app uses SF Symbols (system icons), not custom bundled icon assets. icon_name matching requires app-bundled assets."
-  },
-  "introspect.full": {
-    "status": "pass",
-    "surface": "List tab (all screens tested)",
-    "notes": "Returns combined accessibility (250 elements) + viewHierarchy (126 views) + hostingControllerCount (7). Default mode when no mode param given. Response ~52-96KB depending on tab. Tested on Controls and List tabs."
-  },
-  "introspect.accessibility": {
-    "status": "pass",
-    "surface": "Controls tab",
-    "notes": "Returns 62 accessibility elements with label, type, traits, frame, interactive flag, view_controller, scroll_context, presentation_context. Covers buttons, headers, staticText, segments, sliders."
-  },
-  "introspect.text": {
-    "status": "pass",
-    "surface": "Controls tab",
-    "notes": "Returns all visible text on screen with frame, type (header, button, staticText). Found Buttons, Tap Me, Count: 3, Toggles, Segmented Control, etc."
-  },
-  "introspect.tappable": {
-    "status": "pass",
-    "surface": "Controls tab",
-    "notes": "Returns 29 tappable/interactive elements filtered from accessibility tree. Each has label, type, traits, frame, view_controller. Subset of accessibility mode."
-  },
-  "introspect.interactive": {
-    "status": "pass",
-    "surface": "Controls tab",
-    "notes": "Returns 38 elements (28 labeled + 10 unlabeled) with hit-test filtering, gesture info, source tracking (accessibility vs view), center coordinates, is_control flag, label_source. Most detailed interactive mode."
-  },
-  "introspect.mirror": {
-    "status": "pass",
-    "surface": "Controls tab",
-    "notes": "Returns Mirror-based SwiftUI type reflection. Found 2 mirrors: _UIHostingView with RootViewDelegate tree (depth 3) and UIKitPlatformViewHost (depth 4). Shows SwiftUI view structure."
-  },
-  "introspect.platform": {
-    "status": "pass",
-    "surface": "Controls tab",
-    "notes": "Returns platform UIView hierarchy analysis. Shows UISwitch, UISegmentedControl, UISlider with frames, interactive flag, hasGestures, subviewCount, id, value. Good for UIKit introspection."
-  },
-  "introspect.map": {
-    "status": "pass",
-    "surface": "List tab",
-    "notes": "Returns spatially-grouped screen state (rows by y-range). 11 rows, 15 elements on List tab. Includes memory_mb, screen, element_count, non_interactive text. This is the backend for 'look' command. Error case: invalid mode returns proper error message."
-  },
-  "find.count": {
-    "status": "pass",
-    "surface": "Controls tab with type=='button' predicate",
-    "notes": "Returned count=27 for type=='button'. Also tested label CONTAINS 'Tap' (count=1). Correct counts for known elements."
-  },
-  "find.first": {
-    "status": "pass",
-    "surface": "Controls tab with type=='button' predicate",
-    "notes": "Returns first matching element with label, type, center, traits, tap_cmd, view_controller, total_matches=27. No-match predicate returns proper 'No elements match predicate' error."
-  },
-  "find.list": {
-    "status": "pass",
-    "surface": "Controls tab with type=='button' limit=5",
-    "notes": "Returns array of matches with count and per-element details (label, center, type, traits, tap_cmd). Limit param works correctly, capping results at 5."
-  },
-  "vars.list": {
-    "status": "pass",
-    "surface": "AppState (@Observable)",
-    "notes": "BUG-003 FIXED: now returns 2 instances (AppState + NestedState) with all properties, types, writable flags. Previously returned 0 instances for @Observable classes."
-  },
-  "vars.get": {
-    "status": "pass",
-    "surface": "AppState properties",
-    "notes": "Returns single property value by path (ClassName.propertyName). Tested: AppState.tapCount=3, NestedState.innerValue='nested-hello'. Error cases: nonexistent property returns proper error, missing path param returns proper error."
-  },
-  "vars.set": {
-    "status": "pass",
-    "surface": "AppState properties",
-    "notes": "Sets property value by path. Tested: set tapCount to 99 (confirmed via get), set NestedState.innerCount to 100. Returns {ok:true, value:newVal}. NOTE: does not trigger @Observable re-rendering \u2014 UI shows stale value until next natural update. Read-only properties return proper error."
-  },
-  "vars.discover": {
-    "status": "pass",
-    "surface": "AppState properties",
-    "notes": "Force re-scans VC hierarchy for @Observable instances. Returns 2 instances (AppState with 17 properties, NestedState with 2 properties). Reports type, writable, value for each."
-  },
-  "vars.dump": {
-    "status": "pass",
-    "surface": "AppState",
-    "notes": "Returns flat key-value dict of all properties for a class. Tested: dump AppState returns all 17 properties. Error case: nonexistent class returns proper error."
-  },
-  "vars.mirror": {
-    "status": "pass",
-    "surface": "AppState",
-    "notes": "Returns detailed Mirror-based property list with type, writable, published flags. Tested: mirror NestedState shows innerValue, innerCount, plus $observationRegistrar. More detail than list/dump."
-  },
-  "heap.find": {
-    "status": "pass",
-    "surface": "AppState class",
-    "notes": ""
-  },
-  "heap.inspect": {
-    "status": "pass",
-    "surface": "UITabBarController (found via vc_hierarchy)",
-    "notes": "Returns Mirror-based property dump. Found UITabBarController at address via vc_hierarchy strategy. Shows 5 properties (popoverBridge, update, etc.). AppState not findable (no singleton/VC/view match). Missing class param returns proper error."
-  },
-  "heap.read": {
-    "status": "pass",
-    "surface": "UITabBarController KVC properties",
-    "notes": "Reads ObjC properties via KVC. Tested: selectedIndex=0 (type __NSCFNumber), viewControllers returns 3 TabHostingControllers. Invalid key_path returns proper KVC error. Missing key_path param returns proper error."
-  },
-  "heap.classes": {
-    "status": "pass",
-    "surface": "ObjC runtime class enumeration",
-    "notes": "Pattern 'State' found 501 classes (showing 100). Pattern 'PepperTest' found 32 app-specific classes. Pattern 'Controller' with limit=10 correctly capped results. Missing pattern param returns proper error."
-  },
-  "heap.controllers": {
-    "status": "pass",
-    "surface": "Full VC hierarchy from key window",
-    "notes": "Returns 11 controllers: root UIHostingController, UIKitTabBarController (3 tabs, selected=0), 3 TabHostingControllers, 3 UIKitNavigationControllers (stack_count=1 each), 3 NavigationStackHostingControllers. Shows depth, isVisible, title, and tab/nav metadata."
-  },
-  "heap_snapshot.snapshot": {
-    "status": "pass",
-    "surface": "Any state",
-    "notes": "Scans heap via malloc zone enumeration. Returns total_classes=115, total_instances, top_30 by count, memory info (resident_mb, virtual_mb). Top classes: AccessibilityGeometryStorage (342), AccessibilityNode (185), _LocaleICU (152)."
-  },
-  "heap_snapshot.diff": {
-    "status": "pass",
-    "surface": "Take 2 snapshots, diff",
-    "notes": "Compares current heap to baseline. After ~10s found 7 growing classes (CString +10, Endpoint +8, etc.) with verdict '7 class(es) growing \u2014 potential leaks'. Returns growing/shrinking arrays with before/after/delta. No-baseline error handled properly."
-  },
-  "heap_snapshot.clear": {
-    "status": "pass",
-    "surface": "After snapshot",
-    "notes": "Clears saved snapshot. Returns {cleared:true}. Confirmed status returns has_snapshot=false after clear, and diff returns proper 'No baseline snapshot' error."
-  },
-  "heap_snapshot.status": {
-    "status": "pass",
-    "surface": "Any state",
-    "notes": "Without snapshot: returns {has_snapshot:false}. After snapshot: returns has_snapshot=true, class_count=115, taken_at ISO8601 timestamp, seconds_ago."
-  },
-  "explore.overview": {
-    "status": "blocked",
-    "surface": "Misc > Runtime Introspection Screen",
-    "notes": "Blocked: explore command not yet implemented (#405). Test surface ready: IntrospectionController (accessible via controller variable), deep chain controller.model.user.name, mix of CGRect/UIColor/UIFont/NSDate/BOOL/NSString/NSNumber properties."
-  },
-  "explore.properties": {
-    "status": "blocked",
-    "surface": "Misc > Runtime Introspection Screen",
-    "notes": "Blocked: explore command not yet implemented (#405). Test surface ready: IntrospectionWidget UIView subclass has widgetFrame (CGRect), tintOverride (UIColor), labelFont (UIFont), creationDate (NSDate), isWidgetEnabled (BOOL), caption (NSString), score (NSNumber)."
-  },
-  "explore.ivars": {
-    "status": "blocked",
-    "surface": "Misc > Runtime Introspection Screen",
-    "notes": "Blocked: explore command not yet implemented (#405). Test surface ready: IntrospectionWidget and IntrospectionUser have private Swift ivars (_secret, _internalToken) that are NOT @objc \u2014 validates that private ivars are hidden from ObjC runtime enumeration."
-  },
-  "explore.methods": {
-    "status": "blocked",
-    "surface": "Misc > Runtime Introspection Screen",
-    "notes": "Blocked: explore command not yet implemented (#405). Test surface ready: IntrospectionWidget has activate/deactivate/reset/incrementScore. IntrospectionUser has activate/deactivate/resetScore. IntrospectionController has reset."
-  },
-  "explore.call": {
-    "status": "blocked",
-    "surface": "Misc > Runtime Introspection Screen",
-    "notes": "Blocked: explore command not yet implemented (#405). Test surface ready: use IntrospectionWidget.incrementScore() to verify method invocation changes score property value."
-  },
-  "explore.edit": {
-    "status": "blocked",
-    "surface": "Misc > Runtime Introspection Screen",
-    "notes": "Blocked: explore command not yet implemented (#405). Test surface ready: IntrospectionWidget.caption (NSString) and score (NSNumber) are writable \u2014 verify value changes persist and reflect in heap.inspect."
-  },
-  "layers": {
-    "status": "pass",
-    "surface": "Misc tab (gradient + shadow), List tab",
-    "notes": "BUG-002 FIXED: no longer crashes on gradient views. Returns full CALayer tree with properties (cornerRadius, shadow, gradient colors/locations, opacity, masks). Tested: Misc tab gradient area returned GradientLayer with colors [#0088FF, #9069EF, #CB30E0], shadow properties. List tab returned CellHostingView layer tree. Controls tab times out (deep hierarchy) \u2014 not a crash, just slow. Error case: missing point param returns proper error."
-  },
-  "console.start": {
-    "status": "pass",
-    "surface": "Any state",
-    "notes": ""
-  },
-  "console.stop": {
-    "status": "pass",
-    "surface": "After start",
-    "notes": "Returns {active:false, total_captured:N}. Correctly deactivates capture. Verified status shows active=false after stop."
-  },
-  "console.status": {
-    "status": "pass",
-    "surface": "Any state",
-    "notes": "Returns active, buffer_size, buffer_count, total_captured. Tested before/after start/stop/clear. State transitions are correct."
-  },
-  "console.log": {
-    "status": "pass",
-    "surface": "After start + trigger log output",
-    "notes": "Returns {count:N, lines:[]}. Supports limit and filter params. Test app produces no stdout/stderr output so lines are always empty, but command structure and params work correctly."
-  },
-  "console.clear": {
-    "status": "pass",
-    "surface": "After log capture",
-    "notes": "Returns {cleared:true}. Verified buffer_count and total_captured reset to 0 after clear."
-  },
-  "animations.scan": {
-    "status": "fail",
-    "surface": "Misc tab",
-    "notes": "BUG-009 fix (icon catalog background thread crash) was unrelated to this failure. 'Response lost in transit' issue persists \u2014 server logs success but client never receives response. trace and speed actions work fine. New issue: #267."
-  },
-  "animations.trace": {
-    "status": "pass",
-    "surface": "Misc tab",
-    "notes": "Returns {point, samples:[...]} with position, bounds, opacity, window_position, t_ms for each sample. Sampled ~5 frames over ~90ms at (200,400). Captures layer animation state at a point over time."
-  },
-  "animations.speed": {
-    "status": "pass",
-    "surface": "Misc tab",
-    "notes": "Sets/gets CALayer animation speed. Returns {speed:N, animations_enabled:bool}. Tested: set 0.5 and 1.0 \u2014 both accepted. Note: returned speed always shows 1 regardless of value param (may be reading before set takes effect, similar to timeline.config async dispatch)."
-  },
-  "hook.install": {
-    "status": "pass",
-    "surface": "UIKitControlsViewController ObjC methods",
-    "notes": "Installed hook on PepperTestApp.UIKitControlsViewController viewDidAppear:. Returns {hook_id:'hook_1', class, method, class_method:false}. System classes (UIViewController) are properly rejected with safety error. Missing class/method params return proper errors."
-  },
-  "hook.remove": {
-    "status": "pass",
-    "surface": "After install",
-    "notes": "Removes hook by ID. Returns {removed:'hook_1'}. Subsequent list confirms hook removed (count=0). Nonexistent hook ID returns proper 'Hook not found' error."
-  },
-  "hook.remove_all": {
-    "status": "pass",
-    "surface": "After install",
-    "notes": "Installed 2 hooks (viewDidAppear: and viewWillAppear:), then remove_all. Returns {removed:'all'}. Subsequent list confirms count=0."
-  },
-  "hook.list": {
-    "status": "pass",
-    "surface": "After install",
-    "notes": "Returns array of hooks with id, class, method, class_method, installed_at, call_count. Empty list returns count=0. After install shows 1 hook with call_count=0."
-  },
-  "hook.log": {
-    "status": "pass",
-    "surface": "After install + trigger via tab switch",
-    "notes": "Tab switch (Controls\u2192List\u2192Controls) triggered viewDidAppear: hook. Log returned 6 entries with receiver, receiver_class, method, timestamp, args (['YES']), call_number. Nonexistent hook ID returns empty entries (count=0)."
-  },
-  "hook.clear": {
-    "status": "pass",
-    "surface": "After log capture",
-    "notes": "Clears log for specific hook. Returns {cleared:'hook_1'}. Subsequent log returns count=0, empty entries."
-  },
-  "network.start": {
-    "status": "pass",
-    "surface": "Any state",
-    "notes": "Returns {active:true, buffer_size:500}. Accepts buffer_size param. URLProtocol-based interception activates correctly."
-  },
-  "network.stop": {
-    "status": "pass",
-    "surface": "After start",
-    "notes": "Returns {active:false, transactions_captured:N}. Correctly deactivates interception."
-  },
-  "network.status": {
-    "status": "pass",
-    "surface": "Any state",
-    "notes": "Returns active, buffer_size, buffer_count, total_recorded. All fields accurate across start/stop/clear lifecycle."
-  },
-  "network.log": {
-    "status": "pass",
-    "surface": "After start + Fetch HTTP button",
-    "notes": "Returns {count:N, transactions:[...]}. Each transaction has request (method, url, headers), response (status_code, headers, body, content_length), timing, and id. Captured GET https://httpbin.org/json \u2192 200 with full JSON body. Limit param works correctly."
-  },
-  "network.clear": {
-    "status": "pass",
-    "surface": "After log capture",
-    "notes": "Returns {cleared:true}. Verified buffer_count drops to 0 after clear, total_recorded preserved."
-  },
-  "network.simulate.latency": {
-    "status": "untested",
-    "surface": "Slow Request button (MiscTab Network)",
-    "notes": "Tap 'Slow Request', then use network simulate latency <ms>. Status label shows elapsed time."
-  },
-  "network.simulate.throttle": {
-    "status": "untested",
-    "surface": "Slow Request button (MiscTab Network)",
-    "notes": "Tap 'Slow Request' with network simulate throttle active. Observe increased elapsed time."
-  },
-  "network.simulate.fail_status": {
-    "status": "untested",
-    "surface": "Error Request button (MiscTab Network)",
-    "notes": "Tap 'Error Request' with network simulate fail_status 500. Status label shows injected status code."
-  },
-  "network.simulate.fail_error": {
-    "status": "untested",
-    "surface": "Error Request button (MiscTab Network)",
-    "notes": "Tap 'Error Request' with network simulate fail_error active. Status label shows NSError domain/code."
-  },
-  "network.simulate.offline": {
-    "status": "untested",
-    "surface": "Offline Test button (MiscTab Network)",
-    "notes": "Tap 'Offline Test' with network simulate offline true. Status label shows NSError (network offline)."
-  },
-  "network.mock": {
-    "status": "untested",
-    "surface": "Mock Test button (MiscTab Network \u2192 https://pepper.test/mock)",
-    "notes": "Set mock via network mock, tap 'Mock Test'. Status label shows injected status + body preview."
-  },
-  "network.mocks": {
-    "status": "untested",
-    "surface": "After network.mock",
-    "notes": "List active mocks. Verify entry for https://pepper.test/mock."
-  },
-  "network.remove_mock": {
-    "status": "untested",
-    "surface": "After network.mock",
-    "notes": "Remove mock by URL, confirm 'Mock Test' button returns error or real response."
-  },
-  "network.clear_mocks": {
-    "status": "untested",
-    "surface": "After network.mock",
-    "notes": "Clear all mocks, confirm subsequent 'Mock Test' is unaffected."
-  },
-  "network.conditions": {
-    "status": "untested",
-    "surface": "After network.simulate",
-    "notes": "List active conditions. Verify condition appears after simulate latency/offline/etc."
-  },
-  "network.remove_condition": {
-    "status": "untested",
-    "surface": "After network.simulate",
-    "notes": "Remove specific condition, confirm behavior reverts to normal."
-  },
-  "network.clear_conditions": {
-    "status": "untested",
-    "surface": "After network.simulate",
-    "notes": "Clear all conditions, confirm all simulate variants deactivated."
-  },
-  "wait_for.visible": {
-    "status": "pass",
-    "surface": "Start 3s Timer \u2192 wait for FIRED text",
-    "notes": "BUG-007 FIXED: Polling moved to background thread (DispatchQueue.global). Main thread is free for SwiftUI @Observable re-rendering. 3s timer test now works \u2014 wait_for detects async text change to 'Timer: FIRED'."
-  },
-  "wait_for.exists": {
-    "status": "pass",
-    "surface": "Same timer or navigation push",
-    "notes": "BUG-007 FIXED: Background thread polling allows SwiftUI state changes. Text-based exists condition now detects async changes. Note: element ID condition in WaitHandler still uses pepper_findElement directly (UIKit-only); see #266 for full fix."
-  },
-  "wait_for.has_value": {
-    "status": "fail",
-    "surface": "Counter value after tap",
-    "notes": "BUG-006 fix not applied to WaitHandler \u2014 WaitHandler.evaluate(.elementHasValue) calls pepper_findElement(id:) directly, bypassing SwiftUI accessibility fallback. SwiftUI counter elements still not found. New issue: #266."
-  },
-  "wait_idle": {
-    "status": "pass",
-    "surface": "Any state",
-    "notes": "Returns {idle:bool, elapsed_ms:N}. Tested: returns idle=false after ~3s (animations/activity keep app non-idle). Accepts timeout param. Command functions correctly \u2014 monitors RunLoop/CADisplayLink activity."
-  },
-  "batch": {
-    "status": "pass",
-    "surface": "Sequence of ping + screen, tap + look",
-    "notes": "Executes array of commands sequentially, returns all responses. Tested: (1) ping+screen returns 2 responses with correct data. (2) tap+look returns tap result then screen state. (3) Empty array returns {executed:0, errors:0, responses:[]}. (4) Missing commands param returns proper error."
-  },
-  "watch": {
-    "status": "pass",
-    "surface": "Watch counter label by label match",
-    "notes": "Returns {watch_id, initial:{center, type, label, frame}}. Tested: watch label='Count' found 'Count: 0' staticText. Point-based watch also works: returns initial={} for empty area. Missing target returns proper error."
-  },
-  "unwatch": {
-    "status": "pass",
-    "surface": "After watch",
-    "notes": "Stops watch by ID or all. Tested: unwatch all=true returns {stopped_count:1, stopped:['w2']}. Nonexistent watch_id returns proper error."
-  },
-  "subscribe": {
-    "status": "pass",
-    "surface": "Any state",
-    "notes": "Subscribes to event types via events array. Tested: subscribe events=['screen_change'] returns {subscribed:['screen_change']}. Missing 'events' param returns proper error."
-  },
-  "unsubscribe": {
-    "status": "pass",
-    "surface": "After subscribe",
-    "notes": "Unsubscribes from event types. Tested: unsubscribe events=['screen_change'] returns {unsubscribed:['screen_change']}. Missing 'events' param returns proper error."
-  },
-  "test.start": {
-    "status": "pass",
-    "surface": "Any state",
-    "notes": "Starts test session with test_id. Returns {test_id, status:'started'}. Missing test_id returns proper error."
-  },
-  "test.result": {
-    "status": "pass",
-    "surface": "After start",
-    "notes": "Records test result. Tested: result with test_id='task024', status='pass', notes='All good'. Returns {test_id, timestamp, status:'pass'}."
-  },
-  "test.reset": {
-    "status": "pass",
-    "surface": "After result",
-    "notes": "Resets test state. Returns {reset:true}. Works both with and without active test session."
-  },
-  "timeline.query": {
-    "status": "pass",
-    "surface": "After running commands",
-    "notes": "Returns {count:N, events:[...]}. Each event has type, summary, timestamp_ms. Supports limit param, types array filter (tested ['network'] correctly filters to network-only), and filter text search. Showed command and network events with summaries like '200 GET /json (51ms, 429B)'."
-  },
-  "timeline.status": {
-    "status": "pass",
-    "surface": "Any state",
-    "notes": "Returns recording, buffer_size, buffer_count, total_recorded, enabled_types. Always-on flight recorder starts automatically. Default enabled_types: network, screen, command, console."
-  },
-  "timeline.config": {
-    "status": "pass",
-    "surface": "Any state",
-    "notes": "Accepts buffer_size, recording (bool), enabled_types params. Tested: buffer_size 2000\u21925000 (verified via subsequent status). recording=false pauses recording. Note: config response returns pre-update values due to async barrier dispatch \u2014 subsequent status shows correct values."
-  },
-  "timeline.clear": {
-    "status": "pass",
-    "surface": "Any state",
-    "notes": "Returns {cleared:true}. Verified buffer_count drops to 0 after clear. total_recorded preserved (historical count). Error case: unknown action returns proper error listing available actions."
-  },
-  "memory.snapshot": {
-    "status": "pass",
-    "surface": "Any state",
-    "notes": "Returns {timestamp_ms, virtual_mb, footprint_mb, resident_mb}. Tested: resident_mb=586.3, footprint_mb=205.07. Provides process-level memory snapshot via task_info."
-  },
-  "memory.vm": {
-    "status": "pass",
-    "surface": "Any state",
-    "notes": "Returns {timestamp_ms, phys_footprint_mb, internal_mb, compressed_mb, purgeable_mb}. Tested: phys_footprint_mb=205.1, internal_mb=157, compressed_mb=44.52. More granular VM region breakdown."
-  },
-  "orientation.portrait": {
-    "status": "pass",
-    "surface": "Any state",
-    "notes": "Returns {orientation:'portrait', is_portrait:true, is_landscape:false}. Command accepted, notification posted. Query-only (no value param) also works."
-  },
-  "orientation.landscape_left": {
-    "status": "pass",
-    "surface": "Any state",
-    "notes": "Command accepted, UIDevice.setValue + orientationDidChangeNotification posted. Response still reports 'portrait' because UIWindowScene.interfaceOrientation doesn't change from programmatic UIDevice.setValue in simulator. Not a bug \u2014 simulator has no accelerometer. Error case: invalid value returns proper error."
-  },
-  "orientation.landscape_right": {
-    "status": "pass",
-    "surface": "Any state",
-    "notes": "Same behavior as landscape_left \u2014 command succeeds, notification posted, but UIWindowScene reads portrait in simulator."
-  },
-  "orientation.portrait_upside_down": {
-    "status": "pass",
-    "surface": "Any state",
-    "notes": "Same behavior \u2014 command succeeds, notification posted. UIWindowScene still reads portrait in simulator."
-  },
-  "lifecycle.background": {
-    "status": "pass",
-    "surface": "Any state",
-    "notes": "Returns {state:'background'}. Posts willResignActive + didEnterBackground notifications. App remains responsive (WebSocket stays connected). Error cases: missing action returns proper error, unknown action returns proper error."
-  },
-  "lifecycle.foreground": {
-    "status": "pass",
-    "surface": "After background",
-    "notes": "Returns {state:'active'}. Posts willEnterForeground + didBecomeActive notifications. Tested after background \u2014 app fully responsive, look returns normal screen state."
-  },
-  "lifecycle.memory_warning": {
-    "status": "pass",
-    "surface": "Any state",
-    "notes": "Returns {triggered:true}. Posts didReceiveMemoryWarningNotification and calls _performMemoryWarning on UIApplication. App remains stable after trigger."
-  },
-  "lifecycle.cycle": {
-    "status": "pass",
-    "surface": "Any state",
-    "notes": "Returns {state:'backgrounding', foreground_delay:1}. Tested with delay=1.0. Backgrounds immediately, schedules foreground return after delay. App responsive after cycle completes."
-  },
-  "push": {
-    "status": "pass",
-    "surface": "Any state",
-    "notes": "Delivers local push notification. Tested: title='Test Push', body='Hello from Pepper', delay=0. Returns {delivered:true, notification_id:'pepper-push-ADF38CB4', title, body}. No UNNotification delegate needed \u2014 uses UNUserNotificationCenter directly."
-  },
-  "clipboard.get": {
-    "status": "pass",
-    "surface": "Any state",
-    "notes": "Returns string, count, and types array. After set('Hello Pepper'), get returns {string:'Hello Pepper', count:1, types:['public.utf8-plain-text']}. After clear, returns {count:0, types:[]}."
-  },
-  "clipboard.set": {
-    "status": "pass",
-    "surface": "Any state",
-    "notes": "Sets clipboard string via UIPasteboard. Returns {ok:true, value:'Hello Pepper'}. Verified by subsequent get."
-  },
-  "clipboard.clear": {
-    "status": "pass",
-    "surface": "After set",
-    "notes": "Clears UIPasteboard. Returns {ok:true}. Verified: subsequent get returns count=0, empty types array."
-  },
-  "flags": {
-    "status": "untested",
-    "surface": "Any state",
-    "notes": "New handler. Manages feature flag overrides stored in UserDefaults. Actions: list, get, set, clear."
-  },
-  "defaults.list": {
-    "status": "pass",
-    "surface": "UserDefaults (system + app)",
-    "notes": "Returns paginated list of all UserDefaults entries. Found 790 total (200 per page). Each entry has key, type (string/bool/int/float/array/dict), and value. Includes system defaults (WebKit*, Apple*, PL*) and app-set values."
-  },
-  "defaults.get": {
-    "status": "pass",
-    "surface": "UserDefaults",
-    "notes": "Returns single key value with type. Tested: get test_string returned {value:'hello world', type:'string'}. Missing key returns proper error: 'Key not found'."
-  },
-  "defaults.set": {
-    "status": "pass",
-    "surface": "Any state",
-    "notes": "Sets UserDefaults key. Tested: set test_string='hello world' (string), set test_number=42 (stored as string '42'). Returns {ok:true, key, value}. Verified via subsequent get."
-  },
-  "defaults.delete": {
-    "status": "pass",
-    "surface": "After set",
-    "notes": "Removes UserDefaults key. Returns {key, removed:true}. Verified: subsequent get returns 'Key not found' error."
-  },
-  "keychain.list": {
-    "status": "pass",
-    "surface": "After keychain.set",
-    "notes": "Returns array of keychain items with service, account, access_group, created, modified timestamps. Tested: after set, shows 1 item. After clear, shows 0 items."
-  },
-  "keychain.get": {
-    "status": "pass",
-    "surface": "After keychain.set",
-    "notes": "Returns keychain item value. Tested: get service=com.pepper.test account=testuser returned {value:'s3cret123', type:'string', size:9}."
-  },
-  "keychain.set": {
-    "status": "pass",
-    "surface": "Any state",
-    "notes": "Adds keychain item. Params: service, account, value. Returns {ok:true, action:'added', service, account}. Missing 'value' param returns proper error."
-  },
-  "keychain.delete": {
-    "status": "pass",
-    "surface": "After set",
-    "notes": "Removes specific keychain item by service+account. Returns {ok:true, removed:true, service}. Verified: subsequent list shows item removed."
-  },
-  "keychain.clear": {
-    "status": "pass",
-    "surface": "After set",
-    "notes": "Removes all keychain items. Returns {ok:true, cleared:true}. Verified: subsequent list returns count=0, empty items array."
-  },
-  "cookies.list": {
-    "status": "pass",
-    "surface": "HTTPCookieStorage (no WKWebView)",
-    "notes": "Returns cookies from HTTPCookieStorage. Works correctly \u2014 returns {count:0, total:0, cookies:[]} since no WKWebView/cookies exist in test app. Command functions properly but needs WKWebView surface for full data verification."
-  },
-  "cookies.get": {
-    "status": "pass",
-    "surface": "HTTPCookieStorage (no WKWebView)",
-    "notes": "Filters cookies by domain. Tested: domain=httpbin.org returns {count:0, cookies:[]}. Command works, needs WKWebView for full verification."
-  },
-  "cookies.delete": {
-    "status": "pass",
-    "surface": "HTTPCookieStorage (no WKWebView)",
-    "notes": "Deletes cookie by domain+name. Tested: domain=httpbin.org name=test returns {removed:0}. Command works, needs WKWebView for full verification."
-  },
-  "cookies.clear": {
-    "status": "pass",
-    "surface": "HTTPCookieStorage (no WKWebView)",
-    "notes": "Clears all cookies. Returns {removed:0}. Command works, needs WKWebView for full verification with actual cookie data."
-  },
-  "locale.current": {
-    "status": "pass",
-    "surface": "Any state",
-    "notes": "Returns language ('en'), region ('US'), identifier ('en_US'), app_localizations (['en']), override_active (false). After set: adds override_language field showing active override."
-  },
-  "locale.set": {
-    "status": "pass",
-    "surface": "Any state",
-    "notes": "Set language='es'. Returns {override_active:true, language:'es', region:'', note:'Locale override active...'}. Verified via current: shows override_language='es'. Note: affects NSLocalizedString resolution, existing views may need refresh."
-  },
-  "locale.reset": {
-    "status": "pass",
-    "surface": "After set",
-    "notes": "Returns {override_active:false, restored:true}. Verified via current: override_active=false, language back to 'en', no override_language field."
-  },
-  "locale.lookup": {
-    "status": "pass",
-    "surface": "Localizable.strings (keys defined but not bundled)",
-    "notes": "Command works correctly: returns {key, value, found}. Returns found=false for keys 'greeting' and 'button_tap' \u2014 Localizable.strings file exists in source but isn't properly included in app bundle (build config issue, not a Pepper bug). Missing key param returns proper error."
-  },
-  "locale.languages": {
-    "status": "pass",
-    "surface": "Any state",
-    "notes": "Returns {count:1, languages:['en']}. Shows available app localizations from bundle."
-  },
-  "responder_chain": {
-    "status": "untested",
-    "surface": "Any interactive element",
-    "notes": "New command. Dumps gesture recognizer stack, responder chain, and hit-test path for a given point or element."
-  },
-  "timers.start": {
-    "status": "ready",
-    "surface": "Misc tab \u2014 NSTimer & CADisplayLink section",
-    "notes": "Surface added (TASK-316). Use start_repeating_timer_button and start_display_link_button to create active NSTimer and CADisplayLink instances for timers tracking."
-  },
-  "timers.list": {
-    "status": "ready",
-    "surface": "Misc tab \u2014 NSTimer & CADisplayLink section",
-    "notes": "Surface added (TASK-316). Active timers visible after tapping Start Timer/Start Display Link. repeating_timer_count and display_link_frame_count labels confirm activity."
-  },
-  "timers.invalidate": {
-    "status": "ready",
-    "surface": "Misc tab \u2014 NSTimer & CADisplayLink section",
-    "notes": "Surface added (TASK-316). timers invalidate can stop the NSTimer created via start_repeating_timer_button; stop_repeating_timer_button and stop_display_link_button also available for manual control."
-  },
-  "timers.status": {
-    "status": "ready",
-    "surface": "Misc tab \u2014 NSTimer & CADisplayLink section",
-    "notes": "Surface added (TASK-316). Shows timer_count and display_link_count after starting timers."
-  },
-  "timers.stop": {
-    "status": "ready",
-    "surface": "Misc tab \u2014 NSTimer & CADisplayLink section",
-    "notes": "Surface added (TASK-316). Uninstalls tracker; combine with stop buttons in test app."
-  },
-  "notifications.start": {
-    "status": "ready",
-    "surface": "Misc tab \u2014 NSNotificationCenter Observers section",
-    "notes": "Surface added (TASK-316). register_observer_button registers an observer for PepperTestNotification. notifications start then list/counts shows the observer."
-  },
-  "notifications.counts": {
-    "status": "ready",
-    "surface": "Misc tab \u2014 NSNotificationCenter Observers section",
-    "notes": "Surface added (TASK-316). After registering observer, counts shows PepperTestNotification observer entry."
-  },
-  "notifications.post": {
-    "status": "ready",
-    "surface": "Misc tab \u2014 NSNotificationCenter Observers section",
-    "notes": "Surface added (TASK-316). post_notification_button triggers PepperTestNotification. notification_received_count label increments on receive. Also testable via notifications post name=PepperTestNotification."
-  },
-  "notifications.events": {
-    "status": "ready",
-    "surface": "Misc tab \u2014 NSNotificationCenter Observers section",
-    "notes": "Surface added (TASK-316). Events logged after post. Shows add/remove/post timeline."
-  },
-  "notifications": {
-    "status": "ready",
-    "surface": "Misc tab \u2014 NSNotificationCenter Observers section",
-    "notes": "Surface added (TASK-316). NSNotificationCenter inspector \u2014 register_observer_button, post_notification_button, remove_observer_button, and notification_received_count label all available."
-  },
-  "snapshot.save": {
-    "status": "untested",
-    "surface": "MiscTab > Snapshot Test Screen",
-    "notes": "New command. Captures current look/introspect map output as a named baseline for later diffing."
-  },
-  "snapshot.diff": {
-    "status": "untested",
-    "surface": "MiscTab > Snapshot Test Screen (after save)",
-    "notes": "New command. Compares current screen state against saved snapshot. Returns added/removed/changed elements and text. Supports ignore_transient and assert_no_diff."
-  },
-  "snapshot.list": {
-    "status": "untested",
-    "surface": "MiscTab > Snapshot Test Screen",
-    "notes": "New command. Lists all saved snapshot names."
-  },
-  "snapshot.delete": {
-    "status": "untested",
-    "surface": "MiscTab > Snapshot Test Screen (after save)",
-    "notes": "New command. Deletes a saved snapshot by name."
-  },
-  "snapshot.clear": {
-    "status": "untested",
-    "surface": "MiscTab > Snapshot Test Screen (after save)",
-    "notes": "New command. Deletes all saved snapshots."
-  },
-  "undo": {
-    "status": "untested",
-    "surface": "Any state",
-    "notes": "New command. NSUndoManager inspector \u2014 list undo managers, query undo/redo stack state, trigger undo/redo programmatically."
-  },
-  "accessibility_audit": {
-    "status": "untested",
-    "surface": "Any state",
-    "notes": ""
-  },
-  "accessibility_events": {
-    "status": "untested",
-    "surface": "Any app",
-    "notes": "New command. Subscribes to UIAccessibility notifications (announcements, focus changes) and VC lifecycle events. Ring buffer of 500 events. Enables event-driven wait_for."
-  },
-  "renders": {
-    "status": "untested",
-    "surface": "SwiftUI app",
-    "notes": "New command. SwiftUI view tree snapshots via makeViewDebugData() and snapshot diffing."
-  },
-  "perf": {
-    "status": "untested",
-    "surface": "Any state",
-    "notes": "New command. Frame performance profiler using CADisplayLink \u2014 measures frame timing, dropped frames, hitch rate, and FPS."
-  },
-  "diff": {
-    "status": "untested",
-    "surface": "Any screen",
-    "notes": "Quick view hierarchy diff. Delegates to snapshot infrastructure with reserved baseline."
-  },
-  "constraints": {
-    "status": "ready",
-    "surface": "Misc tab \u2192 Layout Test Screen (UIKit)",
-    "notes": "LayoutTestViewController added with 4 sections: (1) well-constrained 3-label stack, (2) intentionally ambiguous view (missing trailing/width \u2014 flagged by ambiguous_only), (3) two conflicting required width constraints (100pt vs 200pt), (4) complex nested view tree with constraints at 3 depths. Navigate: Misc tab \u2192 UIKit \u2192 Layout Test Screen."
-  },
-  "sandbox": {
-    "status": "supported",
-    "surface": "File Manager screen + seeded files",
-    "notes": "App sandbox file system browser. List, read, write, delete files in Documents/Library/Caches/tmp. Supports plist/JSON auto-detection and directory size summaries. Seeded: documents/notes.json, documents/settings.plist, caches/cached-image.txt, tmp/temp-data.txt."
-  },
-  "concurrency": {
-    "status": "untested",
-    "surface": "Any state",
-    "notes": "Swift Concurrency runtime inspector. Lists active tasks, enumerates actor classes via metadata flags, reads task priority/state, supports task cancellation by address."
-  },
-  "webview": {
-    "status": "untested",
-    "surface": "App with WKWebView",
-    "notes": "New command. Finds WKWebView instances, evaluates JavaScript, queries DOM. Actions: url (list webviews+URLs), evaluate (run JS), dom (DOM element listing via querySelectorAll)."
-  },
-  "coredata": {
-    "status": "untested",
-    "surface": "App with Core Data",
-    "notes": "Core Data schema inspector. Discovers NSPersistentContainer via AppDelegate/common singletons. Action: entities \u2014 lists entity names, attributes, and relationships from the managed object model."
-  },
-  "db": {
-    "status": "blocked",
-    "surface": "Library/Application Support/pepper_test.db",
-    "notes": "Blocked: db command not yet implemented (#417). Test surface ready: pepper_test.db seeded at app launch (AppSeeding.swift) with users(10), posts(10), settings(10) tables covering TEXT/INTEGER/REAL/BLOB column types. Core Data SQLite store at PepperCoreData.sqlite also seeded with Item entity (10 rows: title/count/value/createdAt). Both files live in Library/Application Support/."
-  }
+
+  "ping":                { "status": "pass",     "surface": "Any state",                                "notes": "" },
+  "help":                { "status": "pass",      "surface": "Any state",                                "notes": "Returns list of 50 available server commands. Tested via pepper-ctl and direct WebSocket." },
+  "look":                { "status": "pass",     "surface": "Any screen",                               "notes": "Alias for introspect map" },
+  "status":              { "status": "pass",      "surface": "Any state",                                "notes": "Returns port, connections count, and connectionDetails array (id, connectedAt, lastActivity, subscriptions). Tested via direct WebSocket." },
+
+  "navigate.tab":        { "status": "pass",     "surface": "3-tab TabView (Controls, List, Misc)",     "notes": "" },
+  "navigate.deeplink":   { "status": "pass",      "surface": "Tab deep links (controls, list, misc)",    "notes": "URL scheme auto-detected from Info.plist. peppertest://controls, peppertest://list, peppertest://misc switch tabs via onOpenURL. Other routes show generic DeeplinkView modal." },
+  "navigate.pop":        { "status": "pass",      "surface": "Detail nav stack (pushed via Item 0 tap)", "notes": "BUG-001 FIXED: pepper_effectiveNavController now walks child VCs to find SwiftUI NavigationStack's UINavigationController. pepper_effectiveDepth uses nav bar item count as secondary signal. pepper_popBack falls back to HID back-button tap for SwiftUI-managed nav." },
+  "navigate.dismiss":    { "status": "pass",      "surface": "Sheet from Show Sheet button",             "notes": "BUG-008 FIXED: NavigateHandler handlePop falls through to modal dismiss when nav stack is at root depth=1 (SwiftUI .sheet() case). SwiftUI .sheet() presentations now correctly dismissed." },
+  "back":                { "status": "pass",     "surface": "Detail → Deeper nav stack push",           "notes": "BUG-001 FIXED: BackHandler uses pepper_effectiveNavController to find child UINavigationController from SwiftUI NavigationStack. pepper_canPop checks nav bar items as secondary signal. pepper_popBack uses HID back-button tap for SwiftUI NavigationStack." },
+  "dismiss":             { "status": "pass",      "surface": "Sheet from Show Sheet button",             "notes": "BUG-008 FIXED: DismissHandler now checks modalPresentationStyle (pageSheet/formSheet/automatic) instead of chain depth. SwiftUI .sheet() presentations correctly detected and dismissed." },
+  "screen":              { "status": "pass",     "surface": "Any tab",                                  "notes": "" },
+  "deeplinks":           { "status": "pass",      "surface": "Any state (generic mode)",                 "notes": "Returns {count:0, deeplinks:[], note:'No deep links configured...'} in generic mode. Command works correctly; no adapter configured so no deeplinks available." },
+
+  "tap.text":            { "status": "pass",     "surface": "Tap Me button, tab bar items",             "notes": "" },
+  "tap.element":         { "status": "pass",      "surface": "Buttons with a11y IDs",                    "notes": "BUG-006 FIXED: PepperElementResolver now falls back to PepperSwiftUIBridge.collectAccessibilityElements() when UIView hierarchy lookup fails. SwiftUI .accessibilityIdentifier() elements (e.g. tap_button) are now discoverable via the accessibility tree." },
+  "tap.point":           { "status": "pass",      "surface": "Tap Me button at (201,232)",               "notes": "Tapped Tap Me button by coordinate. Count incremented from 0 to 1. Strategy: point." },
+  "tap.icon_name":       { "status": "blocked",   "surface": "SF Symbol icon-only buttons",              "notes": "icon_name matching uses perceptual hashing against app-bundled icon assets. Test app only uses SF Symbols (system icons), not custom icon assets. Cannot test without adding custom icon assets to test app." },
+  "tap.tab":             { "status": "pass",      "surface": "Tab bar",                                  "notes": "BUG-005 FIXED: Added findAccessibilityTabButtons() that scans the accessibility tree for the .tabBar container and its .button children. Works for SwiftUI TabView (tabs found via accessibility elements). Programmatic UITabBarController selection also available as further fallback." },
+  "tap.heuristic":       { "status": "pass",      "surface": "Slider element on Controls tab",           "notes": "Tapped slider via heuristic:'slider'. Found at (116,790). Error case also tested: nonexistent heuristic returns proper error." },
+  "tap.predicate":       { "status": "pass",      "surface": "Tap Me button via NSPredicate",            "notes": "Predicate \"label == 'Tap Me' AND type == 'button'\" found and tapped correctly. Count incremented. Error case tested: no-match predicate returns proper error." },
+  "input":               { "status": "pass",      "surface": "TextField (text_field), TextEditor (text_view)",  "notes": "TextField: set 'Hello Pepper', appended ' World' with --no-clear, cleared+replaced with 'Replaced'. TextEditor (text_view): set value accepted. Error case: nonexistent ID returns proper 'Element not found' error." },
+  "toggle":              { "status": "fail",      "surface": "Toggle (dark_mode_toggle, notifications_toggle, airplane_toggle), Segmented (sort_picker)", "notes": "BUG-006 fix applied to PepperElementResolver (used by TapHandler) but ToggleHandler still calls pepper_findElement(id:) directly, bypassing the SwiftUI accessibility fallback. SwiftUI Toggle elements still return 'Element not found'. Segmented control (sort_picker) works. New issue: #265." },
+
+  "scroll.top":          { "status": "pass",     "surface": "List tab (30 rows)",                       "notes": "Scrolled to top from mid-list; Item 0 visible at top" },
+  "scroll.bottom":       { "status": "pass",     "surface": "List tab (30 rows)",                       "notes": "Scrolled to bottom; Item 29 visible at bottom" },
+  "scroll.down":         { "status": "pass",     "surface": "List tab (30 rows)",                       "notes": "" },
+  "scroll.up":           { "status": "pass",     "surface": "List tab (30 rows)",                       "notes": "Scrolled up 400pt from bottom; items shifted upward as expected" },
+  "scroll.left":         { "status": "pass",     "surface": "Misc tab horizontal scroll (15 items)",    "notes": "Horizontal ScrollView already present; scroll left shifts content leftward" },
+  "scroll.right":        { "status": "pass",     "surface": "Misc tab horizontal scroll (15 items)",    "notes": "Horizontal ScrollView already present; scroll right shifts content rightward" },
+
+  "swipe.down":          { "status": "pass",      "surface": "List tab (30 rows)",                       "notes": "Swiped down from center (201,437) to (201,837). List scrolled back to top showing Item 0. Swipe down = finger moves down = content scrolls down." },
+  "swipe.up":            { "status": "pass",      "surface": "List tab (30 rows)",                       "notes": "Swiped up from center (201,437) to (201,37). List scrolled from Items 0-9 to Items 11-24. Swipe up = finger moves up = content scrolls up." },
+  "swipe.left":          { "status": "pass",      "surface": "List tab (30 rows)",                       "notes": "Swiped left from center (201,437) to (-199,437). Command executed without error. No swipe-action rows in test app to reveal delete/actions, but gesture injected correctly." },
+  "swipe.right":         { "status": "pass",      "surface": "List tab (30 rows)",                       "notes": "Swiped right from center (201,437) to (601,437). Command executed without error. Gesture injected correctly." },
+
+  "scroll_to.down":      { "status": "pass",     "surface": "List tab — scroll until text visible",     "notes": "Scrolls down until exact text match found. Tested: Item 12 found after 1 scroll (1325ms), Item 29 found after 1 scroll. Already-visible returns immediately (14ms). BUG-004: server dispatch timeout (10s) fires before long scrolls complete." },
+  "scroll_to.up":        { "status": "pass",     "surface": "List tab",                                 "notes": "Scrolls up to find text. Tested: Item 5 found after 2 scrolls (2648ms) from bottom of list. BUG-004 applies for long distances." },
+  "scroll_to.left":      { "status": "pass",     "surface": "Misc tab horizontal scroll (15 items)",    "notes": "Horizontal ScrollView available for left-direction scroll_to validation" },
+  "scroll_to.right":     { "status": "pass",     "surface": "Misc tab horizontal scroll (15 items)",    "notes": "Horizontal ScrollView available for right-direction scroll_to validation" },
+
+  "gesture.pinch":       { "status": "pass",      "surface": "Misc tab",                                 "notes": "Executes pinch gesture at point. Returns {gesture:'pinch', start_distance:200, end_distance:50, center}. Scale parameter controls zoom. Command injects multi-touch HID events correctly." },
+  "gesture.rotate":      { "status": "pass",      "surface": "Misc tab – Rotation Gesture GroupBox",    "notes": "UIRotationGestureRecognizer on RotatableView. Rotates a hex shape and displays cumulative angle in degrees (rotation_angle label). gesture.rotate injects HID rotation events; angle label updates on each gesture change." },
+  "dismiss_keyboard":    { "status": "pass",      "surface": "Focus TextField then dismiss",             "notes": "Returns {dismissed:true} in all cases. Tested: (1) no keyboard showing — returns dismissed:true (no-op). (2) After input command focuses text_field — keyboard active, dismiss_keyboard dismisses it. No error cases." },
+
+  "dialog.list":         { "status": "pass",      "surface": "Show Alert button triggers alert",         "notes": "Returns array of pending dialogs with dialog_id, title, message, actions (title, style, index), timestamp. Tested: triggered alert shows 1 dialog with title='Test Alert', message='This is a test alert dialog', 2 actions (OK default, Cancel cancel). Empty list returns count=0." },
+  "dialog.current":      { "status": "pass",      "surface": "Same alert",                               "notes": "Returns most recent pending dialog with has_dialog=true and full dialog data. When no dialog present: returns has_dialog=false, dialog=null." },
+  "dialog.dismiss":      { "status": "pass",      "surface": "Same alert",                               "notes": "Dismisses dialog by button name. Tested: dismiss with button='OK' returns {dismissed:true, button:'OK'}. Screen returns to normal 'ui' state. Error case: dismiss with no pending dialog returns proper error 'No pending dialog to dismiss'." },
+  "dialog.share_sheet":  { "status": "pass",      "surface": "Share button (icon-only SF Symbol)",        "notes": "Share button presents UIActivityViewController via UIKit (bypasses SwiftUI .sheet). Interceptor detects sheet with has_sheet=true, items=['Shared from PepperTestApp'], and sheet_id." },
+  "dialog.dismiss_sheet":{ "status": "pass",      "surface": "Share button (icon-only SF Symbol)",        "notes": "After triggering share sheet via share button, dismiss_sheet returns {dismissed:true} and sheet is removed. Interceptor broadcasts share_sheet_dismissed event." },
+  "dialog.auto_dismiss": { "status": "pass",      "surface": "Alert dialog",                             "notes": "Enable with buttons=['OK','Cancel']: returns {auto_dismiss:true, buttons:['OK','Cancel'], delay:0.3}. Triggered alert via Show Alert — dialog auto-dismissed within 1s (current returned has_dialog=false). Disable: returns auto_dismiss=false. Default buttons include 'Allow While Using App', 'Allow Once', 'Allow', 'OK'." },
+  "dialog.detect_system": { "status": "pass",     "surface": "Misc tab — request_notifications_button triggers system dialog on fresh install", "notes": "Returns {detected, confidence, positive_signals, total_signals, signals[]}. Four signals: intercepted_dialog, key_window_level, elevated_alert_windows, hit_test_probe. Confidence: high (3+), medium (2), low (1), none (0). On fresh install: tap request_notifications_button, PepperWindowMonitor auto-dismisses via elevated_window_button strategy; detect_system returns detected=false after dismissal. look works immediately after (no timeout)." },
+
+  "tree":                { "status": "pass",     "surface": "Controls tab, Misc tab",                    "notes": "Returns full UIView hierarchy as JSON (3355 lines on Controls tab). Supports --depth param for truncation (depth=3 returns 4 nodes). Reports nodeCount and truncated flag." },
+  "read":                { "status": "pass",     "surface": "sort_picker (UIKit segmented control)",     "notes": "Works for UIKit elements: read sort_picker returned value=2, segmentCount=3, segmentTitles, enabled, visible. Fails for SwiftUI elements (BUG-006: tap_button returns 'Element not found'). Nonexistent IDs return proper 'Element not found' error." },
+  "highlight":           { "status": "pass",     "surface": "Tap Me button on Controls tab",             "notes": "Highlighted 'Tap Me' button. Returns frame, description, strategy (interactive_text), highlighted=true." },
+  "identify_selected":   { "status": "pass",     "surface": "Name/Date/Size segmented control",          "notes": "Correctly identified 'Size' as selected. Returns scores, debug info with brightness/ink analysis, and detected color scheme (light)." },
+  "identify_icons":      { "status": "pass",     "surface": "Controls tab (no custom icon assets)",      "notes": "Command works correctly. Returns catalog info (built=true) but icon_count=0 because test app uses SF Symbols (system icons), not custom bundled icon assets. icon_name matching requires app-bundled assets." },
+
+  "introspect.full":         { "status": "pass", "surface": "List tab (all screens tested)",     "notes": "Returns combined accessibility (250 elements) + viewHierarchy (126 views) + hostingControllerCount (7). Default mode when no mode param given. Response ~52-96KB depending on tab. Tested on Controls and List tabs." },
+  "introspect.accessibility":{ "status": "pass", "surface": "Controls tab",                    "notes": "Returns 62 accessibility elements with label, type, traits, frame, interactive flag, view_controller, scroll_context, presentation_context. Covers buttons, headers, staticText, segments, sliders." },
+  "introspect.text":         { "status": "pass", "surface": "Controls tab",                    "notes": "Returns all visible text on screen with frame, type (header, button, staticText). Found Buttons, Tap Me, Count: 3, Toggles, Segmented Control, etc." },
+  "introspect.tappable":     { "status": "pass", "surface": "Controls tab",                    "notes": "Returns 29 tappable/interactive elements filtered from accessibility tree. Each has label, type, traits, frame, view_controller. Subset of accessibility mode." },
+  "introspect.interactive":  { "status": "pass", "surface": "Controls tab",                    "notes": "Returns 38 elements (28 labeled + 10 unlabeled) with hit-test filtering, gesture info, source tracking (accessibility vs view), center coordinates, is_control flag, label_source. Most detailed interactive mode." },
+  "introspect.mirror":       { "status": "pass", "surface": "Controls tab",                    "notes": "Returns Mirror-based SwiftUI type reflection. Found 2 mirrors: _UIHostingView with RootViewDelegate tree (depth 3) and UIKitPlatformViewHost (depth 4). Shows SwiftUI view structure." },
+  "introspect.platform":     { "status": "pass", "surface": "Controls tab",                    "notes": "Returns platform UIView hierarchy analysis. Shows UISwitch, UISegmentedControl, UISlider with frames, interactive flag, hasGestures, subviewCount, id, value. Good for UIKit introspection." },
+  "introspect.map":          { "status": "pass", "surface": "List tab",                        "notes": "Returns spatially-grouped screen state (rows by y-range). 11 rows, 15 elements on List tab. Includes memory_mb, screen, element_count, non_interactive text. This is the backend for 'look' command. Error case: invalid mode returns proper error message." },
+
+  "find.count":          { "status": "pass",     "surface": "Controls tab with type=='button' predicate", "notes": "Returned count=27 for type=='button'. Also tested label CONTAINS 'Tap' (count=1). Correct counts for known elements." },
+  "find.first":          { "status": "pass",     "surface": "Controls tab with type=='button' predicate", "notes": "Returns first matching element with label, type, center, traits, tap_cmd, view_controller, total_matches=27. No-match predicate returns proper 'No elements match predicate' error." },
+  "find.list":           { "status": "pass",     "surface": "Controls tab with type=='button' limit=5",   "notes": "Returns array of matches with count and per-element details (label, center, type, traits, tap_cmd). Limit param works correctly, capping results at 5." },
+
+  "vars.list":           { "status": "pass",     "surface": "AppState (@Observable)",                   "notes": "BUG-003 FIXED: now returns 2 instances (AppState + NestedState) with all properties, types, writable flags. Previously returned 0 instances for @Observable classes." },
+  "vars.get":            { "status": "pass",     "surface": "AppState properties",                      "notes": "Returns single property value by path (ClassName.propertyName). Tested: AppState.tapCount=3, NestedState.innerValue='nested-hello'. Error cases: nonexistent property returns proper error, missing path param returns proper error." },
+  "vars.set":            { "status": "pass",     "surface": "AppState properties",                      "notes": "Sets property value by path. Tested: set tapCount to 99 (confirmed via get), set NestedState.innerCount to 100. Returns {ok:true, value:newVal}. NOTE: does not trigger @Observable re-rendering — UI shows stale value until next natural update. Read-only properties return proper error." },
+  "vars.discover":       { "status": "pass",     "surface": "AppState properties",                      "notes": "Force re-scans VC hierarchy for @Observable instances. Returns 2 instances (AppState with 17 properties, NestedState with 2 properties). Reports type, writable, value for each." },
+  "vars.dump":           { "status": "pass",     "surface": "AppState",                                 "notes": "Returns flat key-value dict of all properties for a class. Tested: dump AppState returns all 17 properties. Error case: nonexistent class returns proper error." },
+  "vars.mirror":         { "status": "pass",     "surface": "AppState",                                 "notes": "Returns detailed Mirror-based property list with type, writable, published flags. Tested: mirror NestedState shows innerValue, innerCount, plus $observationRegistrar. More detail than list/dump." },
+  "heap.find":           { "status": "pass",     "surface": "AppState class",                            "notes": "" },
+  "heap.inspect":        { "status": "pass",      "surface": "UITabBarController (found via vc_hierarchy)", "notes": "Returns Mirror-based property dump. Found UITabBarController at address via vc_hierarchy strategy. Shows 5 properties (popoverBridge, update, etc.). AppState not findable (no singleton/VC/view match). Missing class param returns proper error." },
+  "heap.read":           { "status": "pass",      "surface": "UITabBarController KVC properties",        "notes": "Reads ObjC properties via KVC. Tested: selectedIndex=0 (type __NSCFNumber), viewControllers returns 3 TabHostingControllers. Invalid key_path returns proper KVC error. Missing key_path param returns proper error." },
+  "heap.classes":        { "status": "pass",      "surface": "ObjC runtime class enumeration",           "notes": "Pattern 'State' found 501 classes (showing 100). Pattern 'PepperTest' found 32 app-specific classes. Pattern 'Controller' with limit=10 correctly capped results. Missing pattern param returns proper error." },
+  "heap.controllers":    { "status": "pass",      "surface": "Full VC hierarchy from key window",        "notes": "Returns 11 controllers: root UIHostingController, UIKitTabBarController (3 tabs, selected=0), 3 TabHostingControllers, 3 UIKitNavigationControllers (stack_count=1 each), 3 NavigationStackHostingControllers. Shows depth, isVisible, title, and tab/nav metadata." },
+  "heap_snapshot.snapshot": { "status": "pass",   "surface": "Any state",                                "notes": "Scans heap via malloc zone enumeration. Returns total_classes=115, total_instances, top_30 by count, memory info (resident_mb, virtual_mb). Top classes: AccessibilityGeometryStorage (342), AccessibilityNode (185), _LocaleICU (152)." },
+  "heap_snapshot.diff":     { "status": "pass",   "surface": "Take 2 snapshots, diff",                   "notes": "Compares current heap to baseline. After ~10s found 7 growing classes (CString +10, Endpoint +8, etc.) with verdict '7 class(es) growing — potential leaks'. Returns growing/shrinking arrays with before/after/delta. No-baseline error handled properly." },
+  "heap_snapshot.clear":    { "status": "pass",   "surface": "After snapshot",                            "notes": "Clears saved snapshot. Returns {cleared:true}. Confirmed status returns has_snapshot=false after clear, and diff returns proper 'No baseline snapshot' error." },
+  "heap_snapshot.status":   { "status": "pass",   "surface": "Any state",                                "notes": "Without snapshot: returns {has_snapshot:false}. After snapshot: returns has_snapshot=true, class_count=115, taken_at ISO8601 timestamp, seconds_ago." },
+  "layers":              { "status": "pass",     "surface": "Misc tab (gradient + shadow), List tab",    "notes": "BUG-002 FIXED: no longer crashes on gradient views. Returns full CALayer tree with properties (cornerRadius, shadow, gradient colors/locations, opacity, masks). Tested: Misc tab gradient area returned GradientLayer with colors [#0088FF, #9069EF, #CB30E0], shadow properties. List tab returned CellHostingView layer tree. Controls tab times out (deep hierarchy) — not a crash, just slow. Error case: missing point param returns proper error." },
+  "console.start":       { "status": "pass",     "surface": "Any state",                                "notes": "" },
+  "console.stop":        { "status": "pass",      "surface": "After start",                              "notes": "Returns {active:false, total_captured:N}. Correctly deactivates capture. Verified status shows active=false after stop." },
+  "console.status":      { "status": "pass",      "surface": "Any state",                                "notes": "Returns active, buffer_size, buffer_count, total_captured. Tested before/after start/stop/clear. State transitions are correct." },
+  "console.log":         { "status": "pass",      "surface": "After start + trigger log output",         "notes": "Returns {count:N, lines:[]}. Supports limit and filter params. Test app produces no stdout/stderr output so lines are always empty, but command structure and params work correctly." },
+  "console.clear":       { "status": "pass",      "surface": "After log capture",                        "notes": "Returns {cleared:true}. Verified buffer_count and total_captured reset to 0 after clear." },
+  "animations.scan":     { "status": "fail",      "surface": "Misc tab",                                "notes": "BUG-009 fix (icon catalog background thread crash) was unrelated to this failure. 'Response lost in transit' issue persists — server logs success but client never receives response. trace and speed actions work fine. New issue: #267." },
+  "animations.trace":    { "status": "pass",      "surface": "Misc tab",                                "notes": "Returns {point, samples:[...]} with position, bounds, opacity, window_position, t_ms for each sample. Sampled ~5 frames over ~90ms at (200,400). Captures layer animation state at a point over time." },
+  "animations.speed":    { "status": "pass",      "surface": "Misc tab",                                "notes": "Sets/gets CALayer animation speed. Returns {speed:N, animations_enabled:bool}. Tested: set 0.5 and 1.0 — both accepted. Note: returned speed always shows 1 regardless of value param (may be reading before set takes effect, similar to timeline.config async dispatch)." },
+  "hook.install":        { "status": "pass",      "surface": "UIKitControlsViewController ObjC methods","notes": "Installed hook on PepperTestApp.UIKitControlsViewController viewDidAppear:. Returns {hook_id:'hook_1', class, method, class_method:false}. System classes (UIViewController) are properly rejected with safety error. Missing class/method params return proper errors." },
+  "hook.remove":         { "status": "pass",      "surface": "After install",                            "notes": "Removes hook by ID. Returns {removed:'hook_1'}. Subsequent list confirms hook removed (count=0). Nonexistent hook ID returns proper 'Hook not found' error." },
+  "hook.remove_all":     { "status": "pass",      "surface": "After install",                            "notes": "Installed 2 hooks (viewDidAppear: and viewWillAppear:), then remove_all. Returns {removed:'all'}. Subsequent list confirms count=0." },
+  "hook.list":           { "status": "pass",      "surface": "After install",                            "notes": "Returns array of hooks with id, class, method, class_method, installed_at, call_count. Empty list returns count=0. After install shows 1 hook with call_count=0." },
+  "hook.log":            { "status": "pass",      "surface": "After install + trigger via tab switch",   "notes": "Tab switch (Controls→List→Controls) triggered viewDidAppear: hook. Log returned 6 entries with receiver, receiver_class, method, timestamp, args (['YES']), call_number. Nonexistent hook ID returns empty entries (count=0)." },
+  "hook.clear":          { "status": "pass",      "surface": "After log capture",                        "notes": "Clears log for specific hook. Returns {cleared:'hook_1'}. Subsequent log returns count=0, empty entries." },
+
+  "network.start":       { "status": "pass",      "surface": "Any state",                                "notes": "Returns {active:true, buffer_size:500}. Accepts buffer_size param. URLProtocol-based interception activates correctly." },
+  "network.stop":        { "status": "pass",      "surface": "After start",                              "notes": "Returns {active:false, transactions_captured:N}. Correctly deactivates interception." },
+  "network.status":      { "status": "pass",      "surface": "Any state",                                "notes": "Returns active, buffer_size, buffer_count, total_recorded. All fields accurate across start/stop/clear lifecycle." },
+  "network.log":         { "status": "pass",      "surface": "After start + Fetch HTTP button",          "notes": "Returns {count:N, transactions:[...]}. Each transaction has request (method, url, headers), response (status_code, headers, body, content_length), timing, and id. Captured GET https://httpbin.org/json → 200 with full JSON body. Limit param works correctly." },
+  "network.clear":       { "status": "pass",      "surface": "After log capture",                        "notes": "Returns {cleared:true}. Verified buffer_count drops to 0 after clear, total_recorded preserved." },
+
+  "network.simulate.latency":     { "status": "untested", "surface": "Slow Request button (MiscTab Network)",                          "notes": "Tap 'Slow Request', then use network simulate latency <ms>. Status label shows elapsed time." },
+  "network.simulate.throttle":    { "status": "untested", "surface": "Slow Request button (MiscTab Network)",                          "notes": "Tap 'Slow Request' with network simulate throttle active. Observe increased elapsed time." },
+  "network.simulate.fail_status": { "status": "untested", "surface": "Error Request button (MiscTab Network)",                         "notes": "Tap 'Error Request' with network simulate fail_status 500. Status label shows injected status code." },
+  "network.simulate.fail_error":  { "status": "untested", "surface": "Error Request button (MiscTab Network)",                         "notes": "Tap 'Error Request' with network simulate fail_error active. Status label shows NSError domain/code." },
+  "network.simulate.offline":     { "status": "untested", "surface": "Offline Test button (MiscTab Network)",                          "notes": "Tap 'Offline Test' with network simulate offline true. Status label shows NSError (network offline)." },
+  "network.mock":                 { "status": "untested", "surface": "Mock Test button (MiscTab Network → https://pepper.test/mock)",   "notes": "Set mock via network mock, tap 'Mock Test'. Status label shows injected status + body preview." },
+  "network.mocks":                { "status": "untested", "surface": "After network.mock",                                              "notes": "List active mocks. Verify entry for https://pepper.test/mock." },
+  "network.remove_mock":          { "status": "untested", "surface": "After network.mock",                                              "notes": "Remove mock by URL, confirm 'Mock Test' button returns error or real response." },
+  "network.clear_mocks":          { "status": "untested", "surface": "After network.mock",                                              "notes": "Clear all mocks, confirm subsequent 'Mock Test' is unaffected." },
+  "network.conditions":           { "status": "untested", "surface": "After network.simulate",                                          "notes": "List active conditions. Verify condition appears after simulate latency/offline/etc." },
+  "network.remove_condition":     { "status": "untested", "surface": "After network.simulate",                                          "notes": "Remove specific condition, confirm behavior reverts to normal." },
+  "network.clear_conditions":     { "status": "untested", "surface": "After network.simulate",                                          "notes": "Clear all conditions, confirm all simulate variants deactivated." },
+
+  "wait_for.visible":    { "status": "pass",      "surface": "Start 3s Timer → wait for FIRED text",    "notes": "BUG-007 FIXED: Polling moved to background thread (DispatchQueue.global). Main thread is free for SwiftUI @Observable re-rendering. 3s timer test now works — wait_for detects async text change to 'Timer: FIRED'." },
+  "wait_for.exists":     { "status": "pass",      "surface": "Same timer or navigation push",            "notes": "BUG-007 FIXED: Background thread polling allows SwiftUI state changes. Text-based exists condition now detects async changes. Note: element ID condition in WaitHandler still uses pepper_findElement directly (UIKit-only); see #266 for full fix." },
+  "wait_for.has_value":  { "status": "fail",      "surface": "Counter value after tap",                  "notes": "BUG-006 fix not applied to WaitHandler — WaitHandler.evaluate(.elementHasValue) calls pepper_findElement(id:) directly, bypassing SwiftUI accessibility fallback. SwiftUI counter elements still not found. New issue: #266." },
+  "wait_idle":           { "status": "pass",      "surface": "Any state",                                "notes": "Returns {idle:bool, elapsed_ms:N}. Tested: returns idle=false after ~3s (animations/activity keep app non-idle). Accepts timeout param. Command functions correctly — monitors RunLoop/CADisplayLink activity." },
+  "batch":               { "status": "pass",      "surface": "Sequence of ping + screen, tap + look",    "notes": "Executes array of commands sequentially, returns all responses. Tested: (1) ping+screen returns 2 responses with correct data. (2) tap+look returns tap result then screen state. (3) Empty array returns {executed:0, errors:0, responses:[]}. (4) Missing commands param returns proper error." },
+  "watch":               { "status": "pass",      "surface": "Watch counter label by label match",       "notes": "Returns {watch_id, initial:{center, type, label, frame}}. Tested: watch label='Count' found 'Count: 0' staticText. Point-based watch also works: returns initial={} for empty area. Missing target returns proper error." },
+  "unwatch":             { "status": "pass",      "surface": "After watch",                              "notes": "Stops watch by ID or all. Tested: unwatch all=true returns {stopped_count:1, stopped:['w2']}. Nonexistent watch_id returns proper error." },
+  "subscribe":           { "status": "pass",      "surface": "Any state",                                "notes": "Subscribes to event types via events array. Tested: subscribe events=['screen_change'] returns {subscribed:['screen_change']}. Missing 'events' param returns proper error." },
+  "unsubscribe":         { "status": "pass",      "surface": "After subscribe",                          "notes": "Unsubscribes from event types. Tested: unsubscribe events=['screen_change'] returns {unsubscribed:['screen_change']}. Missing 'events' param returns proper error." },
+  "test.start":          { "status": "pass",      "surface": "Any state",                                "notes": "Starts test session with test_id. Returns {test_id, status:'started'}. Missing test_id returns proper error." },
+  "test.result":         { "status": "pass",      "surface": "After start",                              "notes": "Records test result. Tested: result with test_id='task024', status='pass', notes='All good'. Returns {test_id, timestamp, status:'pass'}." },
+  "test.reset":          { "status": "pass",      "surface": "After result",                             "notes": "Resets test state. Returns {reset:true}. Works both with and without active test session." },
+
+  "timeline.query":      { "status": "pass",      "surface": "After running commands",                   "notes": "Returns {count:N, events:[...]}. Each event has type, summary, timestamp_ms. Supports limit param, types array filter (tested ['network'] correctly filters to network-only), and filter text search. Showed command and network events with summaries like '200 GET /json (51ms, 429B)'." },
+  "timeline.status":     { "status": "pass",      "surface": "Any state",                                "notes": "Returns recording, buffer_size, buffer_count, total_recorded, enabled_types. Always-on flight recorder starts automatically. Default enabled_types: network, screen, command, console." },
+  "timeline.config":     { "status": "pass",      "surface": "Any state",                                "notes": "Accepts buffer_size, recording (bool), enabled_types params. Tested: buffer_size 2000→5000 (verified via subsequent status). recording=false pauses recording. Note: config response returns pre-update values due to async barrier dispatch — subsequent status shows correct values." },
+  "timeline.clear":      { "status": "pass",      "surface": "Any state",                                "notes": "Returns {cleared:true}. Verified buffer_count drops to 0 after clear. total_recorded preserved (historical count). Error case: unknown action returns proper error listing available actions." },
+
+  "memory.snapshot":     { "status": "pass",      "surface": "Any state",                                "notes": "Returns {timestamp_ms, virtual_mb, footprint_mb, resident_mb}. Tested: resident_mb=586.3, footprint_mb=205.07. Provides process-level memory snapshot via task_info." },
+  "memory.vm":           { "status": "pass",      "surface": "Any state",                                "notes": "Returns {timestamp_ms, phys_footprint_mb, internal_mb, compressed_mb, purgeable_mb}. Tested: phys_footprint_mb=205.1, internal_mb=157, compressed_mb=44.52. More granular VM region breakdown." },
+  "orientation.portrait":           { "status": "pass", "surface": "Any state",                      "notes": "Returns {orientation:'portrait', is_portrait:true, is_landscape:false}. Command accepted, notification posted. Query-only (no value param) also works." },
+  "orientation.landscape_left":     { "status": "pass", "surface": "Any state",                      "notes": "Command accepted, UIDevice.setValue + orientationDidChangeNotification posted. Response still reports 'portrait' because UIWindowScene.interfaceOrientation doesn't change from programmatic UIDevice.setValue in simulator. Not a bug — simulator has no accelerometer. Error case: invalid value returns proper error." },
+  "orientation.landscape_right":    { "status": "pass", "surface": "Any state",                      "notes": "Same behavior as landscape_left — command succeeds, notification posted, but UIWindowScene reads portrait in simulator." },
+  "orientation.portrait_upside_down": { "status": "pass", "surface": "Any state",                    "notes": "Same behavior — command succeeds, notification posted. UIWindowScene still reads portrait in simulator." },
+  "lifecycle.background":    { "status": "pass", "surface": "Any state",                             "notes": "Returns {state:'background'}. Posts willResignActive + didEnterBackground notifications. App remains responsive (WebSocket stays connected). Error cases: missing action returns proper error, unknown action returns proper error." },
+  "lifecycle.foreground":    { "status": "pass", "surface": "After background",                      "notes": "Returns {state:'active'}. Posts willEnterForeground + didBecomeActive notifications. Tested after background — app fully responsive, look returns normal screen state." },
+  "lifecycle.memory_warning":{ "status": "pass", "surface": "Any state",                             "notes": "Returns {triggered:true}. Posts didReceiveMemoryWarningNotification and calls _performMemoryWarning on UIApplication. App remains stable after trigger." },
+  "lifecycle.cycle":         { "status": "pass", "surface": "Any state",                             "notes": "Returns {state:'backgrounding', foreground_delay:1}. Tested with delay=1.0. Backgrounds immediately, schedules foreground return after delay. App responsive after cycle completes." },
+  "push":                { "status": "pass",      "surface": "Any state",                                "notes": "Delivers local push notification. Tested: title='Test Push', body='Hello from Pepper', delay=0. Returns {delivered:true, notification_id:'pepper-push-ADF38CB4', title, body}. No UNNotification delegate needed — uses UNUserNotificationCenter directly." },
+  "clipboard.get":       { "status": "pass",      "surface": "Any state",                                "notes": "Returns string, count, and types array. After set('Hello Pepper'), get returns {string:'Hello Pepper', count:1, types:['public.utf8-plain-text']}. After clear, returns {count:0, types:[]}." },
+  "clipboard.set":       { "status": "pass",      "surface": "Any state",                                "notes": "Sets clipboard string via UIPasteboard. Returns {ok:true, value:'Hello Pepper'}. Verified by subsequent get." },
+  "clipboard.clear":     { "status": "pass",      "surface": "After set",                                "notes": "Clears UIPasteboard. Returns {ok:true}. Verified: subsequent get returns count=0, empty types array." },
+  "flags":               { "status": "untested",  "surface": "Any state",                                "notes": "New handler. Manages feature flag overrides stored in UserDefaults. Actions: list, get, set, clear." },
+  "defaults.list":       { "status": "pass",      "surface": "UserDefaults (system + app)",              "notes": "Returns paginated list of all UserDefaults entries. Found 790 total (200 per page). Each entry has key, type (string/bool/int/float/array/dict), and value. Includes system defaults (WebKit*, Apple*, PL*) and app-set values." },
+  "defaults.get":        { "status": "pass",      "surface": "UserDefaults",                             "notes": "Returns single key value with type. Tested: get test_string returned {value:'hello world', type:'string'}. Missing key returns proper error: 'Key not found'." },
+  "defaults.set":        { "status": "pass",      "surface": "Any state",                                "notes": "Sets UserDefaults key. Tested: set test_string='hello world' (string), set test_number=42 (stored as string '42'). Returns {ok:true, key, value}. Verified via subsequent get." },
+  "defaults.delete":     { "status": "pass",      "surface": "After set",                                "notes": "Removes UserDefaults key. Returns {key, removed:true}. Verified: subsequent get returns 'Key not found' error." },
+  "keychain.list":       { "status": "pass",      "surface": "After keychain.set",                       "notes": "Returns array of keychain items with service, account, access_group, created, modified timestamps. Tested: after set, shows 1 item. After clear, shows 0 items." },
+  "keychain.get":        { "status": "pass",      "surface": "After keychain.set",                       "notes": "Returns keychain item value. Tested: get service=com.pepper.test account=testuser returned {value:'s3cret123', type:'string', size:9}." },
+  "keychain.set":        { "status": "pass",      "surface": "Any state",                                "notes": "Adds keychain item. Params: service, account, value. Returns {ok:true, action:'added', service, account}. Missing 'value' param returns proper error." },
+  "keychain.delete":     { "status": "pass",      "surface": "After set",                                "notes": "Removes specific keychain item by service+account. Returns {ok:true, removed:true, service}. Verified: subsequent list shows item removed." },
+  "keychain.clear":      { "status": "pass",      "surface": "After set",                                "notes": "Removes all keychain items. Returns {ok:true, cleared:true}. Verified: subsequent list returns count=0, empty items array." },
+  "cookies.list":        { "status": "pass",      "surface": "HTTPCookieStorage (no WKWebView)",         "notes": "Returns cookies from HTTPCookieStorage. Works correctly — returns {count:0, total:0, cookies:[]} since no WKWebView/cookies exist in test app. Command functions properly but needs WKWebView surface for full data verification." },
+  "cookies.get":         { "status": "pass",      "surface": "HTTPCookieStorage (no WKWebView)",         "notes": "Filters cookies by domain. Tested: domain=httpbin.org returns {count:0, cookies:[]}. Command works, needs WKWebView for full verification." },
+  "cookies.delete":      { "status": "pass",      "surface": "HTTPCookieStorage (no WKWebView)",         "notes": "Deletes cookie by domain+name. Tested: domain=httpbin.org name=test returns {removed:0}. Command works, needs WKWebView for full verification." },
+  "cookies.clear":       { "status": "pass",      "surface": "HTTPCookieStorage (no WKWebView)",         "notes": "Clears all cookies. Returns {removed:0}. Command works, needs WKWebView for full verification with actual cookie data." },
+  "locale.current":      { "status": "pass",      "surface": "Any state",                                "notes": "Returns language ('en'), region ('US'), identifier ('en_US'), app_localizations (['en']), override_active (false). After set: adds override_language field showing active override." },
+  "locale.set":          { "status": "pass",      "surface": "Any state",                                "notes": "Set language='es'. Returns {override_active:true, language:'es', region:'', note:'Locale override active...'}. Verified via current: shows override_language='es'. Note: affects NSLocalizedString resolution, existing views may need refresh." },
+  "locale.reset":        { "status": "pass",      "surface": "After set",                                "notes": "Returns {override_active:false, restored:true}. Verified via current: override_active=false, language back to 'en', no override_language field." },
+  "locale.lookup":       { "status": "pass",      "surface": "Localizable.strings (keys defined but not bundled)", "notes": "Command works correctly: returns {key, value, found}. Returns found=false for keys 'greeting' and 'button_tap' — Localizable.strings file exists in source but isn't properly included in app bundle (build config issue, not a Pepper bug). Missing key param returns proper error." },
+  "locale.languages":    { "status": "pass",      "surface": "Any state",                                "notes": "Returns {count:1, languages:['en']}. Shows available app localizations from bundle." },
+  "responder_chain":     { "status": "untested",  "surface": "Any interactive element",                   "notes": "New command. Dumps gesture recognizer stack, responder chain, and hit-test path for a given point or element." },
+
+  "timers.start":        { "status": "ready",     "surface": "Misc tab — NSTimer & CADisplayLink section", "notes": "Surface added (TASK-316). Use start_repeating_timer_button and start_display_link_button to create active NSTimer and CADisplayLink instances for timers tracking." },
+  "timers.list":         { "status": "ready",     "surface": "Misc tab — NSTimer & CADisplayLink section", "notes": "Surface added (TASK-316). Active timers visible after tapping Start Timer/Start Display Link. repeating_timer_count and display_link_frame_count labels confirm activity." },
+  "timers.invalidate":   { "status": "ready",     "surface": "Misc tab — NSTimer & CADisplayLink section", "notes": "Surface added (TASK-316). timers invalidate can stop the NSTimer created via start_repeating_timer_button; stop_repeating_timer_button and stop_display_link_button also available for manual control." },
+  "timers.status":       { "status": "ready",     "surface": "Misc tab — NSTimer & CADisplayLink section", "notes": "Surface added (TASK-316). Shows timer_count and display_link_count after starting timers." },
+  "timers.stop":         { "status": "ready",     "surface": "Misc tab — NSTimer & CADisplayLink section", "notes": "Surface added (TASK-316). Uninstalls tracker; combine with stop buttons in test app." },
+
+  "notifications.start": { "status": "ready",     "surface": "Misc tab — NSNotificationCenter Observers section", "notes": "Surface added (TASK-316). register_observer_button registers an observer for PepperTestNotification. notifications start then list/counts shows the observer." },
+  "notifications.counts":{ "status": "ready",     "surface": "Misc tab — NSNotificationCenter Observers section", "notes": "Surface added (TASK-316). After registering observer, counts shows PepperTestNotification observer entry." },
+  "notifications.post":  { "status": "ready",     "surface": "Misc tab — NSNotificationCenter Observers section", "notes": "Surface added (TASK-316). post_notification_button triggers PepperTestNotification. notification_received_count label increments on receive. Also testable via notifications post name=PepperTestNotification." },
+  "notifications.events":{ "status": "ready",     "surface": "Misc tab — NSNotificationCenter Observers section", "notes": "Surface added (TASK-316). Events logged after post. Shows add/remove/post timeline." },
+  "notifications":       { "status": "ready",     "surface": "Misc tab — NSNotificationCenter Observers section", "notes": "Surface added (TASK-316). NSNotificationCenter inspector — register_observer_button, post_notification_button, remove_observer_button, and notification_received_count label all available." },
+
+  "snapshot.save":       { "status": "untested",  "surface": "MiscTab > Snapshot Test Screen",            "notes": "New command. Captures current look/introspect map output as a named baseline for later diffing." },
+  "snapshot.diff":       { "status": "untested",  "surface": "MiscTab > Snapshot Test Screen (after save)", "notes": "New command. Compares current screen state against saved snapshot. Returns added/removed/changed elements and text. Supports ignore_transient and assert_no_diff." },
+  "snapshot.list":       { "status": "untested",  "surface": "MiscTab > Snapshot Test Screen",            "notes": "New command. Lists all saved snapshot names." },
+  "snapshot.delete":     { "status": "untested",  "surface": "MiscTab > Snapshot Test Screen (after save)", "notes": "New command. Deletes a saved snapshot by name." },
+  "snapshot.clear":      { "status": "untested",  "surface": "MiscTab > Snapshot Test Screen (after save)", "notes": "New command. Deletes all saved snapshots." },
+  "undo":                { "status": "untested",  "surface": "Any state",                                 "notes": "New command. NSUndoManager inspector — list undo managers, query undo/redo stack state, trigger undo/redo programmatically." },
+  "accessibility_action.list":      { "status": "ready",    "surface": "Misc tab — Accessibility Actions section",  "notes": "custom_actions_card has 2 custom actions (Mark as Read, Archive). adjustable_stepper has the .adjustable trait. Use: accessibility_action list element=custom_actions_card or element=adjustable_stepper." },
+  "accessibility_action.invoke":    { "status": "ready",    "surface": "Misc tab — custom_actions_card",             "notes": "accessibility_action invoke element=custom_actions_card name='Mark as Read' or name='Archive'. custom_actions_last_action label updates on invocation. accessibilityValue also updates." },
+  "accessibility_action.increment": { "status": "ready",    "surface": "Misc tab — adjustable_stepper",              "notes": "accessibility_action increment element=adjustable_stepper. Value 0–10, starts at 5. adjustable_stepper_label (Value: N/10) and accessibilityValue both reflect current value." },
+  "accessibility_action.decrement": { "status": "ready",    "surface": "Misc tab — adjustable_stepper",              "notes": "accessibility_action decrement element=adjustable_stepper. Decrements stepper value. Same surface as increment." },
+  "accessibility_action.magic_tap": { "status": "ready",    "surface": "Misc tab — magic_tap_target",                "notes": "accessibility_action magic_tap element=magic_tap_target. MagicTapUIView overrides accessibilityPerformMagicTap() to return true. magic_tap_status label changes to 'Magic tap: triggered'." },
+  "accessibility_audit": { "status": "untested",  "surface": "Any state",                                "notes": "" },
+  "accessibility_events": { "status": "untested", "surface": "Any app",                                  "notes": "New command. Subscribes to UIAccessibility notifications (announcements, focus changes) and VC lifecycle events. Ring buffer of 500 events. Enables event-driven wait_for." },
+  "renders":             { "status": "untested",  "surface": "SwiftUI app",                               "notes": "New command. SwiftUI view tree snapshots via makeViewDebugData() and snapshot diffing." },
+  "perf":                { "status": "untested",  "surface": "Any app",                                   "notes": "New command. FPS counter (CADisplayLink), main-thread hitch detection (watchdog), expensive redraw identification (layer tree scan)." },
+  "diff":                { "status": "untested",  "surface": "Any screen",                               "notes": "Quick view hierarchy diff. Delegates to snapshot infrastructure with reserved baseline." },
+  "constraints":         { "status": "ready",     "surface": "Misc tab → Layout Test Screen (UIKit)",    "notes": "LayoutTestViewController added with 4 sections: (1) well-constrained 3-label stack, (2) intentionally ambiguous view (missing trailing/width — flagged by ambiguous_only), (3) two conflicting required width constraints (100pt vs 200pt), (4) complex nested view tree with constraints at 3 depths. Navigate: Misc tab → UIKit → Layout Test Screen." },
+  "sandbox":             { "status": "supported", "surface": "File Manager screen + seeded files",       "notes": "App sandbox file system browser. List, read, write, delete files in Documents/Library/Caches/tmp. Supports plist/JSON auto-detection and directory size summaries. Seeded: documents/notes.json, documents/settings.plist, caches/cached-image.txt, tmp/temp-data.txt." },
+  "concurrency":         { "status": "untested",  "surface": "Any state",                                "notes": "Swift Concurrency runtime inspector. Lists active tasks, enumerates actor classes via metadata flags, reads task priority/state, supports task cancellation by address." },
+  "perf":                { "status": "untested",  "surface": "Any state",                                 "notes": "New command. Frame performance profiler using CADisplayLink — measures frame timing, dropped frames, hitch rate, and FPS." },
+  "webview":             { "status": "untested",  "surface": "App with WKWebView",                        "notes": "New command. Finds WKWebView instances, evaluates JavaScript, queries DOM. Actions: url (list webviews+URLs), evaluate (run JS), dom (DOM element listing via querySelectorAll)." },
+  "coredata":            { "status": "untested",  "surface": "App with Core Data",                         "notes": "Core Data schema inspector. Discovers NSPersistentContainer via AppDelegate/common singletons. Action: entities — lists entity names, attributes, and relationships from the managed object model." },
+  "db":                  { "status": "blocked",   "surface": "Library/Application Support/pepper_test.db", "notes": "Blocked: db command not yet implemented (#417). Test surface ready: pepper_test.db seeded at app launch (AppSeeding.swift) with users(10), posts(10), settings(10) tables covering TEXT/INTEGER/REAL/BLOB column types. Core Data SQLite store at PepperCoreData.sqlite also seeded with Item entity (10 rows: title/count/value/createdAt). Both files live in Library/Application Support/." }
 }

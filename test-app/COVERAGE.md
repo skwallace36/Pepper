@@ -25,7 +25,7 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `tap` | text | pass | Tap Me button, tab bar items |  |
 | `tap` | element | pass | Buttons with a11y IDs | BUG-006 FIXED: PepperElementResolver now falls back to PepperSwiftUIBridge.collectAccessibilityElements() when UIView hierarchy lookup fails. SwiftUI .accessibilityIdentifier() elements (e.g. tap_button) are now discoverable via the accessibility tree. |
 | `tap` | point | pass | Tap Me button at (201,232) | Tapped Tap Me button by coordinate. Count incremented from 0 to 1. Strategy: point. |
-| `tap` | icon_name | untested | Custom icon asset buttons (pepper-home, pepper-camera, pepper-search) | Custom icon assets added to test app asset catalog. Icon-only buttons displayed on Controls tab. Ready for testing with tap icon_name=pepper-home. |
+| `tap` | icon_name | blocked | SF Symbol icon-only buttons | icon_name matching uses perceptual hashing against app-bundled icon assets. Test app only uses SF Symbols (system icons), not custom icon assets. Cannot test without adding custom icon assets to test app. |
 | `tap` | tab | pass | Tab bar | BUG-005 FIXED: Added findAccessibilityTabButtons() that scans the accessibility tree for the .tabBar container and its .button children. Works for SwiftUI TabView (tabs found via accessibility elements). Programmatic UITabBarController selection also available as further fallback. |
 | `tap` | heuristic | pass | Slider element on Controls tab | Tapped slider via heuristic:'slider'. Found at (116,790). Error case also tested: nonexistent heuristic returns proper error. |
 | `tap` | predicate | pass | Tap Me button via NSPredicate | Predicate "label == 'Tap Me' AND type == 'button'" found and tapped correctly. Count incremented. Error case tested: no-match predicate returns proper error. |
@@ -206,12 +206,12 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `undo` | undo | untested |  |  |
 | `undo` | redo | untested |  |  |
 | `accessibility_audit` | — | untested | Any state |  |
-| `accessibility_action` | list | untested |  |  |
-| `accessibility_action` | invoke | untested |  |  |
+| `accessibility_action` | list | ready | Misc tab — Accessibility Actions section | custom_actions_card has 2 custom actions (Mark as Read, Archive). adjustable_stepper has the .adjustable trait. Use: accessibility_action list element=custom_actions_card or element=adjustable_stepper. |
+| `accessibility_action` | invoke | ready | Misc tab — custom_actions_card | accessibility_action invoke element=custom_actions_card name='Mark as Read' or name='Archive'. custom_actions_last_action label updates on invocation. accessibilityValue also updates. |
 | `accessibility_action` | escape | untested |  |  |
-| `accessibility_action` | magic_tap | untested |  |  |
-| `accessibility_action` | increment | untested |  |  |
-| `accessibility_action` | decrement | untested |  |  |
+| `accessibility_action` | magic_tap | ready | Misc tab — magic_tap_target | accessibility_action magic_tap element=magic_tap_target. MagicTapUIView overrides accessibilityPerformMagicTap() to return true. magic_tap_status label changes to 'Magic tap: triggered'. |
+| `accessibility_action` | increment | ready | Misc tab — adjustable_stepper | accessibility_action increment element=adjustable_stepper. Value 0–10, starts at 5. adjustable_stepper_label (Value: N/10) and accessibilityValue both reflect current value. |
+| `accessibility_action` | decrement | ready | Misc tab — adjustable_stepper | accessibility_action decrement element=adjustable_stepper. Decrements stepper value. Same surface as increment. |
 | `accessibility_events` | start | untested |  |  |
 | `accessibility_events` | stop | untested |  |  |
 | `accessibility_events` | status | untested |  |  |
@@ -272,5 +272,5 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 
 - pass: 137
 - fail: 3
-- untested: 95
+- untested: 89
 
