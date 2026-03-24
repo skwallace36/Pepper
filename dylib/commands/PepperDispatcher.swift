@@ -303,6 +303,7 @@ final class PepperDispatcher {
         register(CookieHandler())
         register(KeychainHandler())
         register(FindHandler())
+        register(FlagsHandler())
         register(HookHandler())
         register(TimelineHandler())
         register(ResponderChainHandler())
