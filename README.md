@@ -36,18 +36,15 @@ make ping          # verify the connection
 
 Then ask your agent to `look` at the screen.
 
-## Architecture
+## How It Works
 
-```mermaid
-flowchart LR
-    AI(AI Agent) -- MCP --> MCP_S(pepper-mcp) -- WebSocket --> Dylib
-
-    subgraph Simulator["iOS Simulator App"]
-        Dylib(Pepper Dylib) --> UIKit & Network & Heap & HID
-    end
+```
+AI Agent  →  pepper-mcp  →  WebSocket  →  Pepper Dylib (inside app process)
+(Claude Code,   (MCP server,     (localhost)     (UIKit, Accessibility,
+ Cursor, etc.)   Python)                          HID, Network, Heap)
 ```
 
-The MCP server translates tool calls into WebSocket commands. The dylib receives them on the main thread and operates directly on UIKit.
+The MCP server translates tool calls into WebSocket commands. The dylib receives them on the main thread and operates directly on the app's runtime — UIKit, SwiftUI, accessibility, networking.
 
 Touch input goes through IOHIDEvent injection — `tap`, `scroll`, `swipe`, and `gesture` work identically for UIKit and SwiftUI.
 
