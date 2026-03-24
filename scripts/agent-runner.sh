@@ -104,6 +104,13 @@ print(' '.join(d['udid'] for r in devs.values() for d in r if d['state'] == 'Boo
   fi
   git worktree prune 2>/dev/null || true
 
+  # Ensure primary worktree is back on main — agents sometimes leave it on a branch
+  local current_branch
+  current_branch=$(git -C "$REPO_ROOT" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")
+  if [ "$current_branch" != "main" ]; then
+    git -C "$REPO_ROOT" checkout main --quiet 2>/dev/null || true
+  fi
+
   # Safety net: if no final event was emitted, emit one now with diagnostic info
   if [ "$FINAL_EVENT_EMITTED" = false ] && [ -n "$START" ]; then
     local end_ts
