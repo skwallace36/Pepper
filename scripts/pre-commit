@@ -155,7 +155,48 @@ if echo "$STAGED_FILES" | grep -q "dylib/commands/handlers/.*Handler\.swift"; th
     fi
 fi
 
-# 6. No hardcoded personal paths in committed files
+# 6. CLAUDE.md tool list must match mcp-registry.json
+if python3 - <<'PYEOF' 2>&1; then
+import json, re, sys
+
+registry_path = '$REPO_DIR/tools/mcp-registry.json'
+claude_path = '$REPO_DIR/CLAUDE.md'
+
+with open(registry_path) as f:
+    d = json.load(f)
+registry_tools = {t['name'] for t in d.get('tools', [])}
+
+with open(claude_path) as f:
+    content = f.read()
+
+section_match = re.search(r'## MCP Tools\n(.*?)(?=\n## )', content, re.DOTALL)
+if not section_match:
+    print('Could not find ## MCP Tools section in CLAUDE.md')
+    sys.exit(1)
+
+section = section_match.group(1)
+tool_line_match = re.search(r'^([a-z][a-z_, ]+[a-z_])$', section, re.MULTILINE)
+if not tool_line_match:
+    print('Could not find tool list in ## MCP Tools section')
+    sys.exit(1)
+
+claude_tools = {t.strip() for t in tool_line_match.group(1).split(',') if t.strip()}
+missing = registry_tools - claude_tools
+extra = claude_tools - registry_tools
+
+if missing or extra:
+    if missing:
+        print('In registry but missing from CLAUDE.md: ' + ', '.join(sorted(missing)))
+    if extra:
+        print('In CLAUDE.md but not in registry: ' + ', '.join(sorted(extra)))
+    sys.exit(1)
+PYEOF
+    pass "CLAUDE.md tool list matches registry"
+else
+    fail "CLAUDE.md tool list diverges from mcp-registry.json"
+fi
+
+# 7. No hardcoded personal paths in committed files
 if echo "$STAGED_FILES" | xargs grep -l "/Users/[a-z]" 2>/dev/null | grep -v ".env" | grep -v ".mcp.json" | head -5 | grep -q .; then
     fail "Hardcoded personal paths found in staged files:"
     echo "$STAGED_FILES" | xargs grep -n "/Users/[a-z]" 2>/dev/null | grep -v ".env" | grep -v ".mcp.json" | head -5
@@ -163,7 +204,7 @@ else
     pass "No hardcoded personal paths"
 fi
 
-# 7. No secrets/credentials staged
+# 8. No secrets/credentials staged
 SECRETS_PATTERN='(api[_-]?key|secret[_-]?key|password|token|credential|private[_-]?key)\s*[:=]'
 if echo "$STAGED_FILES" | grep -v ".env.example" | grep -v "gh-app-token" | xargs grep -ilE "$SECRETS_PATTERN" 2>/dev/null | head -5 | grep -q .; then
     fail "Possible secrets in staged files:"
