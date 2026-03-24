@@ -3,6 +3,7 @@
 Tool definitions for: push, status, highlight, orientation, locale,
 gesture, hook, find, flags, dialog, toggle, read_element, tree.
 """
+from __future__ import annotations
 
 import asyncio
 import json

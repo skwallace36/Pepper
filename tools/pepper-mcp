@@ -12,6 +12,7 @@ Multiple simulators: tools accept an optional `simulator` parameter (UDID).
 If omitted and exactly one sim is running, auto-discovers. If multiple, returns
 an error listing available sims.
 """
+from __future__ import annotations
 
 import asyncio
 import json

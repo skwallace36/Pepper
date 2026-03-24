@@ -2,6 +2,7 @@
 
 Tool definitions for: raw (send any command), simulator (simctl operations).
 """
+from __future__ import annotations
 
 import os
 import subprocess
