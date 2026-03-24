@@ -15,56 +15,41 @@ Every open PR has exactly one `awaiting:X` label indicating who needs to act nex
 ## State Diagram
 
 ```mermaid
-stateDiagram-v2
-    direction LR
+flowchart TD
+    START(("PR\nCreated")) --> AV
 
-    state "New PR" as new
-    state "awaiting:verifier" as av
-    state "awaiting:human" as ah
-    state "awaiting:responder" as ar
-    state "verified" as v
-    state "Merged" as merged
-    state "Closed" as closed
+    AV["🔵 awaiting:verifier\n<i>pr-verifier agent</i>"]
+    AH["🟡 awaiting:human\n<i>Stuart reviews</i>"]
+    AR["🔴 awaiting:responder\n<i>pr-responder agent</i>"]
+    V["🟢 verified"]
+    M(("Merged"))
+    C(("Closed"))
 
-    [*] --> new: Builder/Bugfix opens PR
+    AV -- "auto-merge\n(safe change)" --> V
+    AV -- "needs approval\n(infra/config)" --> AH
+    AV -. "fails → retry" .-> AV
 
-    %% Entry
-    new --> av: classify-pr.sh labels it
+    AH -- "LGTM" --> V
+    AH -- "changes\nrequested" --> AR
+    AH -- "rejected" --> C
 
-    %% Verifier flow
-    av --> v: Verifier: passes, safe to auto-merge
-    av --> ah: Verifier: passes, but touches infra/config
-    av --> av: Verifier: fails verification (comment added, retry later)
-    av --> closed: Verifier: PR is fundamentally broken
+    AR -- "fixes pushed" --> AV
+    AR -. "escalate" .-> AH
 
-    %% Human flow
-    ah --> v: Human: LGTM → merge
-    ah --> ar: Human: requests changes
-    ah --> closed: Human: rejects PR
+    V --> M
 
-    %% Responder flow
-    ar --> av: Responder: pushes fixes → re-verify
-    ar --> ar: Responder: partially addresses (still needs work)
-    ar --> ah: Responder: can't fix, escalates back to human
-
-    %% Terminal
-    v --> merged: Auto-merge or human merge
-    merged --> [*]
-    closed --> [*]
-
-    %% Conflict resolution (orthogonal — can happen in any state)
-    note right of av
-        Conflict-resolver operates independently:
-        rebases any PR with merge conflicts,
-        regardless of awaiting: label.
-    end note
-
-    %% Stale cleanup
-    note left of closed
-        Heartbeat auto-closes PRs with
-        merge conflicts >24h old.
-    end note
+    style AV fill:#1D76DB,color:#fff,stroke:#1D76DB
+    style AH fill:#FBCA04,color:#000,stroke:#FBCA04
+    style AR fill:#D93F0B,color:#fff,stroke:#D93F0B
+    style V fill:#0E8A16,color:#fff,stroke:#0E8A16
+    style M fill:#333,color:#fff
+    style C fill:#666,color:#fff
+    style START fill:#555,color:#fff
 ```
+
+> **Conflict-resolver** operates orthogonally — rebases any PR with merge conflicts, regardless of `awaiting:` label.
+>
+> **Heartbeat** auto-closes PRs with merge conflicts >24h old.
 
 ## Agent Responsibilities
 
