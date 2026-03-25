@@ -552,9 +552,11 @@ fi
 
 # Auto-label new PRs with awaiting:verifier (state machine entry point).
 # Only labels PRs that have no awaiting: or verified label yet.
+# Note: --author is omitted because agents push under the repo owner's GitHub
+# account, not their git commit identity. Filter on unlabeled PRs only.
 if [ "$TYPE" != "pr-verifier" ] && [ "$TYPE" != "pr-responder" ]; then
-  for pr_num in $(gh pr list --repo skwallace36/Pepper-private --state open --author "pepper-${TYPE}-agent" \
-    --json number,labels --jq '.[] | select(.labels | map(.name) | (index("awaiting:verifier") | not) and (index("awaiting:responder") | not) and (index("awaiting:human") | not) and (index("verified") | not)) | .number' 2>/dev/null); do
+  for pr_num in $(gh pr list --repo skwallace36/Pepper-private --state open \
+    --json number,labels --jq '.[] | select(.labels | length == 0) | .number' 2>/dev/null); do
     "$REPO_ROOT/scripts/classify-pr.sh" "$pr_num" 2>/dev/null || true
   done
 fi
