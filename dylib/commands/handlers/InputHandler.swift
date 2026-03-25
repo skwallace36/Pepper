@@ -17,15 +17,23 @@ struct InputHandler: PepperHandler {
     private var logger: Logger { PepperLogger.logger(category: "input") }
 
     func handle(_ command: PepperCommand) -> PepperResponse {
+        do {
+            return try performInput(command)
+        } catch {
+            return .error(id: command.id, message: "[input] \(error.localizedDescription)")
+        }
+    }
+
+    private func performInput(_ command: PepperCommand) throws -> PepperResponse {
         guard let value = command.params?["value"]?.stringValue else {
-            return .error(id: command.id, message: "Missing required param: value")
+            throw PepperHandlerError.missingParam("value")
         }
 
         let clear = command.params?["clear"]?.boolValue ?? true
         let submit = command.params?["submit"]?.boolValue ?? false
 
         guard let window = UIWindow.pepper_keyWindow else {
-            return .error(id: command.id, message: "No key window available")
+            throw PepperHandlerError.noKeyWindow
         }
 
         // If no element selector is given, try the first responder

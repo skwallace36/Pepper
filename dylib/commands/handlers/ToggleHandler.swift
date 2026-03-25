@@ -8,12 +8,20 @@ struct ToggleHandler: PepperHandler {
     private var logger: Logger { PepperLogger.logger(category: "toggle") }
 
     func handle(_ command: PepperCommand) -> PepperResponse {
+        do {
+            return try performToggle(command)
+        } catch {
+            return .error(id: command.id, message: "[toggle] \(error.localizedDescription)")
+        }
+    }
+
+    private func performToggle(_ command: PepperCommand) throws -> PepperResponse {
         guard let elementID = command.params?["element"]?.value as? String else {
-            return .error(id: command.id, message: "Missing required param: element")
+            throw PepperHandlerError.missingParam("element")
         }
 
         guard let window = UIWindow.pepper_keyWindow else {
-            return .error(id: command.id, message: "No key window available")
+            throw PepperHandlerError.noKeyWindow
         }
 
         // Try UIKit view hierarchy first, then fall back to PepperElementResolver
