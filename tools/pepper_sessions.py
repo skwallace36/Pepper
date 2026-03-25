@@ -593,3 +593,67 @@ def find_available_simulator() -> str:
         "No available iPhone simulators found. "
         "Install one via Xcode > Settings > Platforms."
     )
+
+
+def is_app_installed(udid: str, bundle_id: str) -> bool:
+    """Check if an app is installed on a simulator."""
+    import subprocess
+    result = subprocess.run(
+        ["xcrun", "simctl", "listapps", udid],
+        capture_output=True, text=True
+    )
+    return bundle_id in result.stdout
+
+
+def provision_simulators(count: int, bundle_id: str = "",
+                         project_dir: str = "") -> list[dict]:
+    """Find, boot, and optionally install an app on N simulators.
+
+    Returns list of dicts with 'udid' and 'installed' keys.
+    Used by the coordinator script to pre-provision sims for workers.
+    """
+    import subprocess
+
+    cleanup_stale()
+    results = []
+
+    for _ in range(count):
+        try:
+            udid = find_available_simulator()
+        except RuntimeError:
+            break
+
+        # Boot if needed
+        booted = udid in _list_booted_sims()
+        if not booted:
+            subprocess.run(
+                ["open", "-a", "Simulator", "--args", "-CurrentDeviceUDID", udid],
+                capture_output=True, text=True
+            )
+            try:
+                subprocess.run(
+                    ["xcrun", "simctl", "bootstatus", udid, "-b"],
+                    capture_output=True, text=True, timeout=120
+                )
+            except subprocess.TimeoutExpired:
+                pass
+
+        # Pre-claim so subsequent find_available_simulator() skips this one
+        claim_simulator_deploying(udid, label="coordinator")
+
+        # Install app if bundle_id and project_dir given
+        installed = False
+        if bundle_id and project_dir:
+            if not is_app_installed(udid, bundle_id):
+                install_result = subprocess.run(
+                    ["make", "-C", project_dir, "test-app",
+                     f"SIMULATOR_ID={udid}"],
+                    capture_output=True, text=True, timeout=300
+                )
+                installed = install_result.returncode == 0
+            else:
+                installed = True
+
+        results.append({"udid": udid, "installed": installed})
+
+    return results
