@@ -6,6 +6,7 @@ Includes system-dialog dismiss helper with simctl privacy grant + AX fallback.
 from __future__ import annotations
 
 import asyncio
+import json
 import subprocess
 
 from pepper_ax import detect_dialog as _ax_detect
@@ -192,7 +193,8 @@ def register_dialog_tools(mcp, resolve_and_send, resolve_simulator=None):
         - share_sheet: check if a share sheet is showing
         - dismiss_sheet: close the share sheet"""
         if action == "dismiss_system":
-            return await _dismiss_system_dialog(simulator, resolve_and_send, resolve_simulator)
+            result = await _dismiss_system_dialog(simulator, resolve_and_send, resolve_simulator)
+            return json.dumps(result, indent=2) if isinstance(result, dict) else result
 
         if action == "detect_system":
             # Single source of truth: combine in-process (dylib) + AX (macOS) detection.
@@ -208,7 +210,7 @@ def register_dialog_tools(mcp, resolve_and_send, resolve_simulator=None):
                 pass
 
             detected = ip_data.get("detected", False) or ax_result.get("detected", False)
-            return {
+            return json.dumps({
                 "status": "ok",
                 "detected": detected,
                 "in_process": {
@@ -221,7 +223,7 @@ def register_dialog_tools(mcp, resolve_and_send, resolve_simulator=None):
                     "detected": ax_result.get("detected", False),
                     "buttons": ax_result.get("buttons", []),
                 },
-            }
+            }, indent=2)
 
         params: dict = {"action": action}
         if button:
@@ -233,4 +235,5 @@ def register_dialog_tools(mcp, resolve_and_send, resolve_simulator=None):
                 params["buttons"] = require_parse_json(buttons, "buttons")
             except ValueError as e:
                 return f"Error: {e}"
-        return await resolve_and_send(simulator, CMD_DIALOG,params)
+        resp = await resolve_and_send(simulator, CMD_DIALOG, params)
+        return json.dumps(resp, indent=2) if isinstance(resp, dict) else resp

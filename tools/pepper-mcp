@@ -212,6 +212,9 @@ async def resolve_and_send(simulator: Optional[str], cmd: str, params: Optional[
 
     The simulator parameter accepts any Pepper instance identifier — simulator UDID or device UDID.
     Discovery checks both simulator port files and device registrations.
+
+    Note: most MCP tool handlers call resolve_and_send_json() instead, which
+    serializes the dict to a JSON string for FastMCP return-type compliance.
     """
     logger.debug("resolve_and_send cmd=%s simulator=%s params=%s", cmd, simulator, params)
     try:
@@ -227,6 +230,17 @@ async def resolve_and_send(simulator: Optional[str], cmd: str, params: Optional[
         if crash_info:
             resp["crash_info"] = crash_info
     return resp
+
+
+async def resolve_and_send_json(simulator: Optional[str], cmd: str, params: Optional[dict] = None, timeout: float = 10) -> str:
+    """Like resolve_and_send but returns a JSON string.
+
+    Use this from MCP tool handlers that declare -> str return type.
+    FastMCP validates return types via pydantic — returning a dict when the
+    handler declares -> str causes a validation error.
+    """
+    resp = await resolve_and_send(simulator, cmd, params, timeout)
+    return json.dumps(resp, indent=2)
 
 
 async def _snapshot_counts(port: int, send_fn) -> dict:
@@ -574,17 +588,18 @@ _register_adapter_tools()
 
 
 register_nav_tools(mcp, send_command, resolve_and_send, act_and_look)
-register_state_tools(mcp, resolve_and_send)
-register_debug_tools(mcp, resolve_and_send)
-register_network_tools(mcp, resolve_and_send)
-register_perf_tools(mcp, resolve_and_send)
-register_accessibility_tools(mcp, resolve_and_send)
-register_renders_tools(mcp, resolve_and_send)
-register_system_tools(mcp, resolve_and_send, act_and_look)
+register_state_tools(mcp, resolve_and_send_json)
+register_debug_tools(mcp, resolve_and_send_json)
+register_network_tools(mcp, resolve_and_send_json)
+register_perf_tools(mcp, resolve_and_send_json)
+register_accessibility_tools(mcp, resolve_and_send_json)
+register_renders_tools(mcp, resolve_and_send_json)
+register_system_tools(mcp, resolve_and_send_json, act_and_look)
+# dialog needs raw dict for _dismiss_system_dialog + detect_system internal logic
 register_dialog_tools(mcp, resolve_and_send, _resolve_simulator)
-register_element_tools(mcp, resolve_and_send, act_and_look)
+register_element_tools(mcp, resolve_and_send_json, act_and_look)
 register_record_tools(mcp)
-register_sim_tools(mcp, resolve_and_send, _resolve_simulator)
+register_sim_tools(mcp, resolve_and_send_json, _resolve_simulator)
 
 
 @mcp.tool()
@@ -616,7 +631,7 @@ async def wait_for(
     params: dict = {"until": until}
     if timeout_ms is not None:
         params["timeout_ms"] = timeout_ms
-    return await resolve_and_send(simulator, "wait_for", params, timeout=max(15, (timeout_ms or 5000) / 1000 + 2))
+    return await resolve_and_send_json(simulator, "wait_for", params, timeout=max(15, (timeout_ms or 5000) / 1000 + 2))
 
 
 @mcp.tool()
@@ -635,7 +650,7 @@ async def wait_idle(
         params["include_network"] = True
     if debug:
         params["debug"] = True
-    return await resolve_and_send(simulator, "wait_idle", params, timeout=max(10, (timeout_ms or 3000) / 1000 + 2))
+    return await resolve_and_send_json(simulator, "wait_idle", params, timeout=max(10, (timeout_ms or 3000) / 1000 + 2))
 
 
 
@@ -797,7 +812,7 @@ async def webview(
         params["index"] = index
     if limit is not None:
         params["limit"] = limit
-    return await resolve_and_send(simulator, "webview", params, timeout=15)
+    return await resolve_and_send_json(simulator, "webview", params, timeout=15)
 
 
 if __name__ == "__main__":
