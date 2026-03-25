@@ -232,7 +232,7 @@ final class PepperInteractiveOverlay {
         var config = UIButton.Configuration.filled()
         config.title = label
         config.baseForegroundColor = .white
-        config.baseBackgroundColor = Self.pillColors[colorKey] ?? Self.pillColors["action"]!
+        config.baseBackgroundColor = Self.pillColors[colorKey] ?? Self.pillColors["action"] ?? .systemBlue
         config.cornerStyle = .capsule
         config.contentInsets = NSDirectionalEdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10)
         config.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { incoming in
@@ -271,9 +271,14 @@ final class PepperInteractiveOverlay {
         if let l = elemLabel { body["element_label"] = l }
         if let s = suggestedStep { body["suggested_step"] = s }
         if let c = category { body["category"] = c }
-        guard let jsonData = try? JSONSerialization.data(withJSONObject: body),
-            let endpoint = URL(string: url)
-        else { return }
+        let jsonData: Data
+        do {
+            jsonData = try JSONSerialization.data(withJSONObject: body)
+        } catch {
+            pepperLog.debug("Failed to serialize interaction POST body: \(error)", category: .bridge)
+            return
+        }
+        guard let endpoint = URL(string: url) else { return }
 
         var request = URLRequest(url: endpoint)
         request.httpMethod = "POST"

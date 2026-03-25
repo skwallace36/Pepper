@@ -226,7 +226,11 @@ struct StorageHandler: PepperHandler {
             }
         }
 
-        try? context.save()
+        do {
+            try context.save()
+        } catch {
+            pepperLog.warning("context.save() failed after clearing CoreData: \(error)", category: .commands)
+        }
 
         return .ok(
             id: command.id,
@@ -339,7 +343,12 @@ struct StorageHandler: PepperHandler {
 
     private func fetchCount(context: NSManagedObjectContext, entityName: String) -> Int {
         let request = NSFetchRequest<NSManagedObject>(entityName: entityName)
-        return (try? context.count(for: request)) ?? 0
+        do {
+            return try context.count(for: request)
+        } catch {
+            pepperLog.debug("count(for:) failed for \(entityName): \(error)", category: .commands)
+            return 0
+        }
     }
 
     private func summarizeValue(_ value: Any) -> String {
