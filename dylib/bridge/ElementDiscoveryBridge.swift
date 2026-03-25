@@ -4,6 +4,7 @@ import UIKit
 /// accessibility tree traversal, interactive element discovery, and text collection.
 ///
 /// `PepperSwiftUIBridge` delegates all discovery calls here.
+/// Cache state (generation, TTL, cached results) lives in `ElementCacheBridge`.
 /// Extensions for the discovery pipeline live in:
 /// - `PepperAccessibilityCollector.swift` — tree walk + annotation
 /// - `PepperAccessibilityLookup.swift` — find/activate by label
@@ -13,38 +14,25 @@ final class ElementDiscoveryBridge {
 
     static let shared = ElementDiscoveryBridge()
 
+    let cache = ElementCacheBridge.shared
+
     private var accessibilityActivated = false
     private var voiceOverNotificationPosted = false
 
-    // MARK: - Cache
-
-    /// Monotonic counter — bumped by `invalidateCache()` after every HID/UI event.
-    private(set) var cacheGeneration: UInt64 = 0
-
     /// True when the last `collectAccessibilityElements()` hit the element cap.
-    var lastAccessibilityTruncated = false
+    var lastAccessibilityTruncated: Bool {
+        get { cache.lastAccessibilityTruncated }
+        set { cache.lastAccessibilityTruncated = newValue }
+    }
 
     /// True when the last `discoverInteractiveElements()` hit any element cap.
-    var lastInteractiveTruncated = false
-
-    var cachedAccessibility:
-        (gen: UInt64, rootID: ObjectIdentifier?, elements: [PepperAccessibilityElement], truncated: Bool, time: CFAbsoluteTime)?
-    var cachedInteractive: (gen: UInt64, rootID: ObjectIdentifier?, elements: [PepperInteractiveElement], truncated: Bool, time: CFAbsoluteTime)?
-
-    /// Cached scroll view metadata for the current generation.
-    var cachedScrollViews: (gen: UInt64, views: [(scrollView: UIScrollView, frameInWindow: CGRect, direction: String)])?
-
-    /// Maximum cache age in seconds. Prevents stale results when the UI changes without
-    /// a UI-mutating command (e.g. sheet content loading, async SwiftUI renders).
-    let cacheTTL: CFTimeInterval = 0.3
+    var lastInteractiveTruncated: Bool {
+        get { cache.lastInteractiveTruncated }
+        set { cache.lastInteractiveTruncated = newValue }
+    }
 
     /// Call after any UI-mutating event (tap, swipe, input, navigate, toggle).
-    func invalidateCache() {
-        cacheGeneration &+= 1
-        cachedAccessibility = nil
-        cachedInteractive = nil
-        cachedScrollViews = nil
-    }
+    func invalidateCache() { cache.invalidateCache() }
 
     private init() {}
 
@@ -91,13 +79,13 @@ final class ElementDiscoveryBridge {
 
     /// Build a list of all visible UIScrollViews with their window-space frames and direction.
     func collectScrollViews() -> [(scrollView: UIScrollView, frameInWindow: CGRect, direction: String)] {
-        if let cached = cachedScrollViews, cached.gen == cacheGeneration {
+        if let cached = cache.scrollViews, cached.gen == cache.generation {
             return cached.views
         }
         guard let window = UIWindow.pepper_keyWindow else { return [] }
         var scrollViews: [(scrollView: UIScrollView, frameInWindow: CGRect, direction: String)] = []
         collectScrollViewsRecursive(view: window, into: &scrollViews)
-        cachedScrollViews = (gen: cacheGeneration, views: scrollViews)
+        cache.scrollViews = (gen: cache.generation, views: scrollViews)
         return scrollViews
     }
 

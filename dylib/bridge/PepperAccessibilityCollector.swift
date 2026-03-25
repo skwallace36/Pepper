@@ -18,9 +18,9 @@ extension ElementDiscoveryBridge {
         // AND the cache hasn't expired (TTL prevents stale results from async UI updates).
         // Caches both window-scope (rootView == nil) and scoped (modal root) calls.
         let currentRootID = rootView.map(ObjectIdentifier.init)
-        if let cached = cachedAccessibility, cached.gen == cacheGeneration,
+        if let cached = cache.accessibility, cached.gen == cache.generation,
             cached.rootID == currentRootID,
-            CFAbsoluteTimeGetCurrent() - cached.time < cacheTTL
+            CFAbsoluteTimeGetCurrent() - cached.time < cache.ttl
         {
             lastAccessibilityTruncated = cached.truncated
             return cached.elements
@@ -88,8 +88,8 @@ extension ElementDiscoveryBridge {
 
         // Cache result for both window-scope and scoped calls
         lastAccessibilityTruncated = wasTruncated
-        cachedAccessibility = (
-            gen: cacheGeneration, rootID: currentRootID, elements: filtered, truncated: wasTruncated,
+        cache.accessibility = (
+            gen: cache.generation, rootID: currentRootID, elements: filtered, truncated: wasTruncated,
             time: CFAbsoluteTimeGetCurrent()
         )
 
