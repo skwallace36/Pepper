@@ -210,7 +210,7 @@ if [ ! -f "$PROMPT_FILE" ]; then
 fi
 
 # Daily budget enforcement
-# Per-type: $75/day, Total: $300/day
+# Per-type: $150/day, Total: $500/day
 TODAY=$(date -u +%Y-%m-%d)
 sum_cost() {
   local filter="$1"
@@ -315,23 +315,24 @@ TRANSCRIPT="build/logs/transcript-${TYPE}-${START}.json"
 
 PROMPT=$(cat "$PROMPT_FILE")
 
-# Per-agent budget (verifier/tester need more for build+deploy)
+# Per-agent budget (Opus agents get more headroom since it costs more per token)
 case "$TYPE" in
   verifier|pr-verifier) BUDGET=5.00 ;;
   tester)   BUDGET=5.00 ;;
-  bugfix)   BUDGET=3.00 ;;
-  builder)  BUDGET=3.00 ;;
-  groomer)  BUDGET=3.00 ;;
+  bugfix)   BUDGET=5.00 ;;
+  builder)  BUDGET=5.00 ;;
+  pr-responder) BUDGET=5.00 ;;
   researcher) BUDGET=5.00 ;;
+  groomer)  BUDGET=3.00 ;;
   conflict-resolver) BUDGET=1.00 ;;
   *)        BUDGET=2.00 ;;
 esac
 
-# Model routing — reserve Opus for complex reasoning, use Sonnet for scripted work
+# Model routing — Opus for reasoning-heavy work, Sonnet for mechanical/scripted tasks
 case "$TYPE" in
-  bugfix|researcher)                        MODEL="opus" ;;
-  tester|pr-responder|pr-verifier|verifier) MODEL="sonnet" ;;
-  *)                                       MODEL="sonnet" ;;
+  bugfix|builder|researcher|pr-verifier|pr-responder) MODEL="opus" ;;
+  tester|groomer|conflict-resolver|verifier)          MODEL="sonnet" ;;
+  *)                                                  MODEL="sonnet" ;;
 esac
 
 # Snapshot worktrees before launch so we can identify ours
