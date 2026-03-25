@@ -337,7 +337,7 @@ async def deploy_app(simulator: str, send_fn: SendFn,
                 resp = await send_fn(port, "ping", timeout=2)
                 if resp.get("status") == "ok":
                     await asyncio.sleep(1)  # let UI settle
-                    look_resp = await send_fn(port, "look", {}, timeout=20)
+                    look_resp = await send_fn(port, "look", {}, timeout=30)
                     screen_summary = format_look(look_resp) if look_resp.get("status") == "ok" else "(look not ready yet)"
                     # Claim this simulator for our session
                     pepper_sessions.claim_simulator(simulator, bundle_id=bid, port=port)
