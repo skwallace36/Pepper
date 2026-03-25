@@ -97,6 +97,12 @@ public final class PepperPlane {
             }
 
             let transport = NWListenerTransport(port: port)
+            transport.onReady = { [weak self] in
+                self?.writeReadinessSentinel(port: port)
+            }
+            transport.onFailed = { [weak self] in
+                self?.removeReadinessSentinel()
+            }
             let server = PepperServer(transport: transport, dispatcher: dispatcher)
             self.server = server
             self.currentPort = port
@@ -177,10 +183,6 @@ public final class PepperPlane {
 
             // Write port file for auto-discovery by pepper-ctl
             writePortFile(port: port)
-
-            // Write a readiness sentinel so CI scripts can detect successful startup
-            // without relying on WebSocket connectivity (useful when diagnosing launch issues).
-            writeReadinessSentinel(port: port)
 
             pepperLog.info("Control plane started on port \(port)", category: .lifecycle)
             logger.info("[pepper] Control plane started on port \(port)")
