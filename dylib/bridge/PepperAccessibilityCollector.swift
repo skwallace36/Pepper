@@ -269,6 +269,7 @@ extension ElementDiscoveryBridge {
 
         // Extract info from the element itself
         var selfIsUnlabeledContainer = false
+        var unlabeledContainerInfo: PepperAccessibilityElement?
         if let nsObj = element as? NSObject {
             let info = extractAccessibilityInfo(from: nsObj)
             let isContainer = nsObj is UICollectionViewCell || nsObj is UITableViewCell
@@ -277,10 +278,15 @@ extension ElementDiscoveryBridge {
             // force-descend to find the text content inside.
             if isContainer && info.isInteractive && (info.label ?? "").isEmpty {
                 selfIsUnlabeledContainer = true
+                unlabeledContainerInfo = info
             } else if info.hasContent || info.isInteractive {
                 results.append(info)
             }
         }
+
+        // Track result count before walking children — used to detect whether
+        // an unlabeled container produced any labeled content from its subtree.
+        let countBeforeChildren = results.count
 
         // Path 1: accessibilityElements array (SwiftUI often uses this)
         if let container = element as? NSObject,
@@ -311,7 +317,9 @@ extension ElementDiscoveryBridge {
                             into: &results)
                     }
                 }
-                return
+                if !selfIsUnlabeledContainer {
+                    return
+                }
             }
         }
 
@@ -323,6 +331,27 @@ extension ElementDiscoveryBridge {
                     element: subview, depth: depth + 1, maxDepth: maxDepth, includeUnlabeled: includeUnlabeled,
                     into: &results)
             }
+        }
+
+        // Fallback: Mirror-based text extraction for unlabeled containers (bug #504).
+        // When a cell's accessibility children yield no labeled content, walk the
+        // cell's SwiftUI hosting view body graph to extract Text strings directly.
+        if selfIsUnlabeledContainer, let info = unlabeledContainerInfo,
+            results.count == countBeforeChildren,
+            let view = element as? UIView,
+            let extractedText = extractTextFromView(view)
+        {
+            results.append(PepperAccessibilityElement(
+                label: extractedText,
+                value: info.value,
+                hint: info.hint,
+                identifier: info.identifier,
+                type: info.type,
+                traits: info.traits,
+                frame: info.frame,
+                isInteractive: info.isInteractive,
+                className: info.className
+            ))
         }
     }
 
