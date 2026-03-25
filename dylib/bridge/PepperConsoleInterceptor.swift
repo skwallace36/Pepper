@@ -25,6 +25,9 @@ final class PepperConsoleInterceptor {
     /// Total lines captured (including evicted).
     private(set) var totalCaptured: Int = 0
 
+    /// Total lines dropped due to buffer overflow.
+    private(set) var totalDropped: Int = 0
+
     /// Original file descriptors (saved before redirect).
     private var savedStderrFD: Int32 = -1
     private var savedStdoutFD: Int32 = -1
@@ -204,6 +207,7 @@ final class PepperConsoleInterceptor {
         queue.async(flags: .barrier) {
             if self.buffer.count >= self.bufferSize {
                 self.buffer.removeFirst()
+                self.totalDropped += 1
             }
             self.buffer.append(entry)
             self.totalCaptured += 1

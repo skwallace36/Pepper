@@ -26,12 +26,13 @@ final class PepperAccessibilityObserver {
 
     // Ring buffer
     private var events: [AccessibilityEvent] = []
-    private let maxEvents = 500
+    private(set) var maxEvents = 500
 
     // State
     private var isActive = false
     private var tokens: [NSObjectProtocol] = []
     private(set) var totalReceived = 0
+    private(set) var totalDropped = 0
 
     // Wake signal for wait_for integration — counting semaphore, signalled on each event.
     let changeSemaphore = DispatchSemaphore(value: 0)
@@ -144,7 +145,9 @@ final class PepperAccessibilityObserver {
             events.append(event)
             totalReceived += 1
             if events.count > maxEvents {
-                events.removeFirst(events.count - maxEvents)
+                let overflow = events.count - maxEvents
+                totalDropped += overflow
+                events.removeFirst(overflow)
             }
         }
         // Signal outside barrier so waiters don't re-enter the queue
@@ -171,6 +174,19 @@ final class PepperAccessibilityObserver {
                 if let label = event.elementLabel { dict["element_label"] = label }
                 if let text = event.announcement { dict["announcement"] = text }
                 return dict
+            }
+        }
+    }
+
+    /// Update buffer size. If shrinking, oldest events are evicted.
+    func setMaxEvents(_ size: Int) {
+        guard size > 0 else { return }
+        queue.async(flags: .barrier) { [self] in
+            maxEvents = size
+            if events.count > size {
+                let overflow = events.count - size
+                totalDropped += overflow
+                events.removeFirst(overflow)
             }
         }
     }

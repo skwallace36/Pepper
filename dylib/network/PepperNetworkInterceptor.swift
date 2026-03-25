@@ -35,6 +35,9 @@ final class PepperNetworkInterceptor {
     /// Total transactions recorded (including those evicted from buffer).
     private(set) var totalRecorded: Int = 0
 
+    /// Total transactions dropped due to buffer overflow.
+    private(set) var totalDropped: Int = 0
+
     /// Number of currently in-flight HTTP requests.
     /// Incremented in PepperNetworkProtocol.startLoading(), decremented on completion.
     /// Used by PepperIdleMonitor when `include_network: true`.
@@ -241,6 +244,7 @@ final class PepperNetworkInterceptor {
         queue.async(flags: .barrier) {
             if self.buffer.count >= self.bufferSize {
                 self.buffer.removeFirst()
+                self.totalDropped += 1
             }
             self.buffer.append(transaction)
             self.totalRecorded += 1

@@ -54,6 +54,7 @@ struct TimelineHandler: PepperHandler {
                     "buffer_size": AnyCodable(recorder.bufferSize),
                     "buffer_count": AnyCodable(recorder.entryCount),
                     "total_recorded": AnyCodable(recorder.totalRecorded),
+                    "total_dropped": AnyCodable(recorder.totalDropped),
                     "enabled_types": AnyCodable(recorder.enabledTypes.map { AnyCodable($0.rawValue) }),
                 ])
 
