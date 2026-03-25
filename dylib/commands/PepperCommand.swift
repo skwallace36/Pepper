@@ -18,7 +18,43 @@ struct PepperResponse: Codable {
         case error
     }
 
+    // MARK: - Raw OK (prefer typed factories below for new handlers)
+
     static func ok(id: String, data: [String: AnyCodable]? = nil) -> PepperResponse {
+        PepperResponse(id: id, status: .ok, data: data)
+    }
+
+    // MARK: - Typed Response Factories
+
+    /// List response — returns a named collection with count.
+    /// `key` should be a descriptive plural noun (e.g. "transactions", "elements", "lines").
+    static func list(
+        id: String, _ key: String, _ items: [AnyCodable],
+        extra: [String: AnyCodable] = [:]
+    ) -> PepperResponse {
+        var data: [String: AnyCodable] = [
+            key: AnyCodable(items),
+            "count": AnyCodable(items.count),
+        ]
+        for (k, v) in extra { data[k] = v }
+        return PepperResponse(id: id, status: .ok, data: data)
+    }
+
+    /// Action response — confirms what was done and to what.
+    static func action(
+        id: String, action: String, target: String,
+        extra: [String: AnyCodable] = [:]
+    ) -> PepperResponse {
+        var data: [String: AnyCodable] = [
+            "action": AnyCodable(action),
+            "target": AnyCodable(target),
+        ]
+        for (k, v) in extra { data[k] = v }
+        return PepperResponse(id: id, status: .ok, data: data)
+    }
+
+    /// Result response — returns a single object or status.
+    static func result(id: String, _ data: [String: AnyCodable]) -> PepperResponse {
         PepperResponse(id: id, status: .ok, data: data)
     }
 

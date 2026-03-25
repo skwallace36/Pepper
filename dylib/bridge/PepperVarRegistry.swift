@@ -114,11 +114,9 @@ final class PepperVarRegistry {
             }
         }
 
-        // Run heap-based @Observable discovery once on first viewDidAppear
-        if !didInitialHeapScan {
-            didInitialHeapScan = true
-            discoverFromHeap()
-        }
+        // Heap scan deferred to first vars_inspect call — it blocks the main
+        // thread for 30+ seconds on complex SwiftUI apps (Ice Cubes).
+        // See discoverFromHeapIfNeeded() which runs lazily on demand.
     }
 
     /// Force re-scan: discover from all visible VCs + heap scan for @Observable.
@@ -154,6 +152,15 @@ final class PepperVarRegistry {
 
     /// Scan the heap for live instances of @Observable classes.
     /// Uses ObjC runtime to find classes with `_$observationRegistrar` ivar,
+    /// Run heap scan lazily on first vars_inspect call, not at boot.
+    /// The scan blocks the main thread for 30+ seconds on complex SwiftUI apps.
+    func discoverFromHeapIfNeeded() {
+        guard !didInitialHeapScan else { return }
+        didInitialHeapScan = true
+        discoverFromHeap()
+    }
+
+    /// Scan the ObjC heap for @Observable instances. Uses class introspection first,
     /// then the C heap scanner to find live instances. Independent of SwiftUI view tree.
     func discoverFromHeap() {
         // Safe mode: skip heap scanning entirely. Set PEPPER_SAFE_MODE=1 in CI
