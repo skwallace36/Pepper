@@ -207,8 +207,8 @@ async def send_command(port: int, cmd: str, params: Optional[dict] = None,
         return {"status": "error", "error": err_str}
 
 
-async def resolve_and_send(simulator: Optional[str], cmd: str, params: Optional[dict] = None, timeout: float = 10) -> str:
-    """Resolve instance and send command. Returns JSON string. Auto-appends crash info on APP CRASHED.
+async def resolve_and_send(simulator: Optional[str], cmd: str, params: Optional[dict] = None, timeout: float = 10) -> dict:
+    """Resolve instance and send command. Returns response dict. Auto-appends crash info on APP CRASHED.
 
     The simulator parameter accepts any Pepper instance identifier — simulator UDID or device UDID.
     Discovery checks both simulator port files and device registrations.
@@ -218,16 +218,15 @@ async def resolve_and_send(simulator: Optional[str], cmd: str, params: Optional[
         host, port, udid = discover_instance(simulator)
     except RuntimeError as e:
         logger.warning("resolve_and_send cmd=%s discovery failed: %s", cmd, e)
-        return json.dumps({"status": "error", "error": str(e)}, indent=2)
+        return {"status": "error", "error": str(e)}
     resp = await send_command(port, cmd, params, timeout, host=host)
-    result = json.dumps(resp, indent=2)
     # Auto-fetch crash info when app crashes
     error = resp.get("error", "")
     if "APP CRASHED" in error:
         crash_info = await fetch_crash_info(udid)
         if crash_info:
-            result += crash_info
-    return result
+            resp["crash_info"] = crash_info
+    return resp
 
 
 async def _snapshot_counts(port: int, send_fn) -> dict:

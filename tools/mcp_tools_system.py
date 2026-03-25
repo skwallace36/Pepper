@@ -24,7 +24,7 @@ def register_system_tools(mcp, resolve_and_send, act_and_look):
 
     Args:
         mcp: FastMCP server instance.
-        resolve_and_send: async (simulator, cmd, params?, timeout?) -> str
+        resolve_and_send: async (simulator, cmd, params?, timeout?) -> dict
         act_and_look: async (simulator, cmd, params?, timeout?) -> str
     """
 
@@ -78,7 +78,7 @@ def register_system_tools(mcp, resolve_and_send, act_and_look):
             if memory_detail:
                 mem_params["action"] = "vm"
             mem_result = await resolve_and_send(simulator, CMD_MEMORY, mem_params)
-            result += f"\n\n--- Memory ---\n{mem_result}"
+            result["memory"] = mem_result.get("data", mem_result)
         return result
 
     @mcp.tool()

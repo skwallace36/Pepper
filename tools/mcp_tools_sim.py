@@ -17,7 +17,7 @@ def register_sim_tools(mcp, resolve_and_send, resolve_simulator):
 
     Args:
         mcp: FastMCP server instance.
-        resolve_and_send: async (simulator, cmd, params?, timeout?) -> str
+        resolve_and_send: async (simulator, cmd, params?, timeout?) -> dict
         resolve_simulator: (udid_or_none) -> str — resolve simulator UDID.
     """
 
