@@ -23,8 +23,10 @@ def register_element_tools(mcp, resolve_and_send, act_and_look):
         element: str = Field(description="Accessibility ID of the switch/segment to toggle"),
         value: int | None = Field(default=None, description="Target segment index (for segmented controls)"),
     ) -> str:
-        """Toggle a UISwitch or UISegmentedControl by accessibility ID.
-        For switches: flips on/off. For segments: advances to next or jumps to specified index.
+        """Use this when you need to flip a switch or change a segmented control.
+        Prefer this over tap for switches — toggle handles on/off state correctly, while tap may miss the hit target.
+        For switches: flips on/off. For segments: advances to next or jumps to specified index via value param.
+        Requires the element's accessibility ID (visible in look output).
         Shows screen state after toggling."""
         params: dict = {"element": element}
         if value is not None:
