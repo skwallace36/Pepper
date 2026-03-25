@@ -17,6 +17,7 @@ struct TimelineHandler: PepperHandler {
     func handle(_ command: PepperCommand) -> PepperResponse {
         let action = command.params?["action"]?.stringValue ?? "query"
         let recorder = PepperFlightRecorder.shared
+        recorder.ensureInstalled()
 
         switch action {
         case "query":

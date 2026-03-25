@@ -20,6 +20,7 @@ struct ConsoleHandler: PepperHandler {
             return .error(id: command.id, message: "Missing 'action' param. Available: start, stop, status, log, clear")
         }
 
+        PepperFlightRecorder.shared.ensureInstalled()
         let interceptor = PepperConsoleInterceptor.shared
 
         switch action {
