@@ -77,9 +77,9 @@
     {"name": "record", "category": "recording", "description": "Record a sequence of interactions"},
     {"name": "raw", "category": "simulator", "description": "Send a raw WebSocket command"},
     {"name": "simulator", "category": "simulator", "description": "Control simulator state (boot, shutdown, etc.)"},
-    {"name": "build", "category": "build", "description": "Build the app for simulator"},
-    {"name": "build_device", "category": "build", "description": "Build the app for a physical device"},
-    {"name": "deploy", "category": "build", "description": "Deploy and launch the app on simulator"},
+    {"name": "build_sim", "category": "build", "description": "Build the app for simulator"},
+    {"name": "build_hardware", "category": "build", "description": "Build the app for a physical device (USB/WiFi)"},
+    {"name": "deploy_sim", "category": "build", "description": "Deploy and launch the app on simulator"},
     {"name": "iterate", "category": "build", "description": "Build, deploy, and verify in one step"}
   ]
 }
