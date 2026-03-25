@@ -14,6 +14,7 @@ final class ElementDiscoveryBridge {
     static let shared = ElementDiscoveryBridge()
 
     private var accessibilityActivated = false
+    private var voiceOverNotificationPosted = false
 
     // MARK: - Cache
 
@@ -27,8 +28,8 @@ final class ElementDiscoveryBridge {
     var lastInteractiveTruncated = false
 
     var cachedAccessibility:
-        (gen: UInt64, elements: [PepperAccessibilityElement], truncated: Bool, time: CFAbsoluteTime)?
-    var cachedInteractive: (gen: UInt64, elements: [PepperInteractiveElement], truncated: Bool, time: CFAbsoluteTime)?
+        (gen: UInt64, rootID: ObjectIdentifier?, elements: [PepperAccessibilityElement], truncated: Bool, time: CFAbsoluteTime)?
+    var cachedInteractive: (gen: UInt64, rootID: ObjectIdentifier?, elements: [PepperInteractiveElement], truncated: Bool, time: CFAbsoluteTime)?
 
     /// Cached scroll view metadata for the current generation.
     var cachedScrollViews: (gen: UInt64, views: [(scrollView: UIScrollView, frameInWindow: CGRect, direction: String)])?
@@ -51,10 +52,38 @@ final class ElementDiscoveryBridge {
 
     /// Activate the accessibility engine so SwiftUI generates its accessibility tree.
     /// Without this, SwiftUI views don't expose accessibility elements in the simulator.
+    ///
+    /// On first call, also posts the VoiceOver status-change notification so SwiftUI
+    /// re-reads `accessibilityVoiceOverEnabled`. This triggers a re-render that can
+    /// take a few seconds on complex apps. We pay this cost here (inside `look`'s 30s
+    /// command timeout) rather than during boot where it blocks all commands.
     func ensureAccessibilityActive() {
         UIApplication.shared.accessibilityActivate()
         guard !accessibilityActivated else { return }
-        RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.1))
+
+        if !voiceOverNotificationPosted {
+            voiceOverNotificationPosted = true
+            PepperAccessibility.postVoiceOverNotification()
+        }
+
+        // Spin RunLoop to let SwiftUI process the notification and build the
+        // accessibility tree. Check every 100ms for content; cap at 5s.
+        let deadline = Date(timeIntervalSinceNow: 5.0)
+        while Date() < deadline {
+            RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.1))
+            if let window = UIWindow.pepper_keyWindow,
+                let rootVC = window.rootViewController
+            {
+                var vc = rootVC
+                while let presented = vc.presentedViewController { vc = presented }
+                if let view = vc.view,
+                    let elems = view.accessibilityElements,
+                    !elems.isEmpty
+                {
+                    break
+                }
+            }
+        }
         accessibilityActivated = true
     }
 

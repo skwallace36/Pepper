@@ -89,8 +89,12 @@ struct IntrospectHandler: PepperHandler {
             return nil  // Sheet — don't scope, collect from full window
         }()
 
-        // Phase 1: Collect all accessibility elements (labeled), depth-filtered
-        let accElements = bridge.annotateDepth(bridge.collectAccessibilityElements(from: modalRootView))
+        // Phase 1: Collect all accessibility elements (labeled), depth-filtered.
+        // When scoped to a modal root, pass alreadyScoped to skip re-collecting
+        // from the same VC inside annotateDepth (avoids a redundant tree walk).
+        let accElements = bridge.annotateDepth(
+            bridge.collectAccessibilityElements(from: modalRootView),
+            alreadyScoped: modalRootView != nil)
 
         // Phase 2: Collect all interactive elements (labeled + unlabeled, with hit-test)
         let interactiveElements = bridge.discoverInteractiveElements(

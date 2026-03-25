@@ -14,8 +14,10 @@ extension ElementDiscoveryBridge {
         -> [PepperInteractiveElement]
     {
         // Return cached result if no UI-mutating events have occurred and TTL hasn't expired.
-        // Only use cache when using default root (no scoping).
-        if rootView == nil, let cached = cachedInteractive, cached.gen == cacheGeneration,
+        // Caches both window-scope (rootView == nil) and scoped (modal root) calls.
+        let currentRootID = rootView.map(ObjectIdentifier.init)
+        if let cached = cachedInteractive, cached.gen == cacheGeneration,
+            cached.rootID == currentRootID,
             CFAbsoluteTimeGetCurrent() - cached.time < cacheTTL
         {
             lastInteractiveTruncated = cached.truncated
@@ -110,7 +112,13 @@ extension ElementDiscoveryBridge {
             // Dedup: ObjectIdentifier for views + frame overlap for other elements
             guard !dedup.isDuplicate(frame: viewFrame, view: view) else { continue }
 
-            let label = view.accessibilityLabel
+            var label = view.accessibilityLabel
+            // Fall back to placeholder for unlabeled text fields
+            if (label == nil || label?.isEmpty == true), let tf = view as? UITextField,
+                let placeholder = tf.placeholder, !placeholder.isEmpty
+            {
+                label = placeholder
+            }
             let labeled = label?.isEmpty == false
             let isControl = view is UIControl
             let controlType = classifyControlType(view)
@@ -188,13 +196,12 @@ extension ElementDiscoveryBridge {
 
         truncated = truncated || results.count >= maxElements
 
-        // Only cache for default-root calls
-        if rootView == nil {
-            lastInteractiveTruncated = truncated
-            cachedInteractive = (
-                gen: cacheGeneration, elements: results, truncated: truncated, time: CFAbsoluteTimeGetCurrent()
-            )
-        }
+        // Cache result for both window-scope and scoped calls
+        lastInteractiveTruncated = truncated
+        cachedInteractive = (
+            gen: cacheGeneration, rootID: currentRootID, elements: results, truncated: truncated,
+            time: CFAbsoluteTimeGetCurrent()
+        )
         return results
     }
 

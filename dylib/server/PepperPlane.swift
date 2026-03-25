@@ -150,10 +150,18 @@ public final class PepperPlane {
 
             logSwizzleHealth()
 
-            // Pre-build icon catalog asynchronously so first icon match doesn't
-            // block startup. Must run on main thread — UIImage(named:in:with:)
-            // requires it for asset catalog access on iOS 26+.
-            DispatchQueue.main.async {
+            // VoiceOver notification is NOT posted here — it triggers a 3-5s
+            // SwiftUI re-render that blocks the main thread. Instead, it's
+            // posted lazily during the first `look` call (inside
+            // ensureAccessibilityActive) where the 30s command timeout
+            // absorbs the cost. Boot stays fast, status always works.
+
+            // Pre-build icon catalog after a delay so it doesn't compete with the
+            // first `look` for main-thread time. Must run on main thread —
+            // UIImage(named:in:with:) requires it for asset catalog access on iOS 26+.
+            // The catalog is lazy (ensureBuilt guards on `built`), so first identify()
+            // will trigger it sooner if needed.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
                 PepperIconCatalog.shared.ensureBuilt()
             }
 
