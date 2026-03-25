@@ -47,6 +47,7 @@ START=""  # Set before agent launch; empty means pre-launch exit (no safety net 
 TRANSCRIPT=""
 CLAIMED_SIM=""
 SIMS_BEFORE=""
+CRASH_SNAPSHOT=""  # Epoch timestamp for crash detection (set before agent launch)
 
 emit() {
   local event="$1"; shift
@@ -303,6 +304,9 @@ export GIT_AUTHOR_EMAIL="pepper-${TYPE}-agent@noreply.pepper.dev"
 export GIT_COMMITTER_NAME="pepper-${TYPE}-agent"
 export GIT_COMMITTER_EMAIL="pepper-${TYPE}-agent@noreply.pepper.dev"
 
+# Snapshot time for crash detection — any .ips files newer than this are ours
+CRASH_SNAPSHOT=$(date +%s)
+
 # Snapshot booted sims before agent runs — shut down any new ones in cleanup
 SIMS_BEFORE=$(xcrun simctl list devices booted -j 2>/dev/null | python3 -c "
 import json, sys
@@ -406,6 +410,47 @@ fi
 
 # Extract cost from transcript
 COST=$(jq -r '.total_cost_usd // .cost_usd // 0' "$TRANSCRIPT" 2>/dev/null || echo 0)
+
+# Crash detection — check for new .ips crash reports created during this session
+CRASH_COUNT=0
+CRASH_DEDUPE_KEYS=""
+if [ -n "$CRASH_SNAPSHOT" ]; then
+  while IFS= read -r crash_json; do
+    [ -z "$crash_json" ] && continue
+    CRASH_COUNT=$((CRASH_COUNT + 1))
+    exc=$(echo "$crash_json" | jq -r '.exc_type' 2>/dev/null)
+    sig=$(echo "$crash_json" | jq -r '.signal' 2>/dev/null)
+    dedupe=$(echo "$crash_json" | jq -r '.dedupe_key' 2>/dev/null)
+    pepper=$(echo "$crash_json" | jq -r '.pepper_in_stack' 2>/dev/null)
+    frames=$(echo "$crash_json" | jq -r '.sig_frames[:3] | join(" → ")' 2>/dev/null)
+    top=$(echo "$crash_json" | jq -r '.top_frames[:5] | join(" → ")' 2>/dev/null)
+    CRASH_DEDUPE_KEYS="${CRASH_DEDUPE_KEYS}${dedupe} "
+
+    # Check how many times this dedupe key has appeared recently (last 1h)
+    REPEAT_COUNT=$(python3 -c "
+import json, sys
+from datetime import datetime, timezone, timedelta
+cutoff = (datetime.now(tz=timezone.utc) - timedelta(hours=1)).strftime('%Y-%m-%dT%H:%M:%SZ')
+count = 0
+try:
+    with open('$EVENTS') as f:
+        for line in f:
+            line = line.strip()
+            if not line: continue
+            try: e = json.loads(line)
+            except: continue
+            if e.get('event') == 'crash' and e.get('dedupe_key') == '$dedupe' and e.get('ts','') >= cutoff:
+                count += 1
+except: pass
+print(count)
+" 2>/dev/null || echo 0)
+
+    origin="app"
+    [ "$pepper" = "true" ] && origin="pepper"
+    detail_str="${exc} (${sig}) in ${frames}"
+    emit "crash" ",\"detail\":\"${detail_str}\",\"exc_type\":\"${exc}\",\"signal\":\"${sig}\",\"dedupe_key\":\"${dedupe}\",\"origin\":\"${origin}\",\"repeat_count\":${REPEAT_COUNT},\"top_frames\":\"${top}\""
+  done < <("$REPO_ROOT/scripts/agent-crash-collector.sh" "$CRASH_SNAPSHOT" 2>/dev/null || true)
+fi
 
 # Emit session-summary: aggregate stats from events emitted during this run
 python3 - "$EVENTS" "$TYPE" "$START" "$TRANSCRIPT" <<'SUMMARY_EOF'
@@ -536,18 +581,74 @@ if jq -r '.result // ""' "$TRANSCRIPT" 2>/dev/null | grep -q 'Not logged in'; th
   NOT_LOGGED_IN=true
 fi
 
+# Append crash count to final events if crashes were detected
+CRASH_SUFFIX=""
+[ "$CRASH_COUNT" -gt 0 ] && CRASH_SUFFIX=",\"crashes\":${CRASH_COUNT}"
+
 # Emit final event based on outcome
 if [ "$TIMED_OUT" = true ]; then
-  emit_final "timeout" ",\"detail\":\"killed after ${TIMEOUT_S}s\",\"cost_usd\":${COST},\"duration_s\":${DURATION},\"turns\":${TURNS}"
+  emit_final "timeout" ",\"detail\":\"killed after ${TIMEOUT_S}s\",\"cost_usd\":${COST},\"duration_s\":${DURATION},\"turns\":${TURNS}${CRASH_SUFFIX}"
 elif [ "$NOT_LOGGED_IN" = true ]; then
   # Emit as a warning, not a failure — prevents backoff escalation
   emit "auth-retry" ",\"detail\":\"Claude CLI session expired — will retry next cycle\",\"cost_usd\":${COST},\"duration_s\":${DURATION},\"turns\":${TURNS}"
 elif [ $EXIT_CODE -ne 0 ]; then
-  emit_final "failed" ",\"detail\":${EXIT_REASON},\"cost_usd\":${COST},\"duration_s\":${DURATION},\"turns\":${TURNS}"
+  emit_final "failed" ",\"detail\":${EXIT_REASON},\"cost_usd\":${COST},\"duration_s\":${DURATION},\"turns\":${TURNS}${CRASH_SUFFIX}"
 elif [ "$UNPRODUCTIVE" = true ]; then
-  emit_final "failed" ",\"detail\":\"unproductive run (${UNPRODUCTIVE_REASON})\",\"cost_usd\":${COST},\"duration_s\":${DURATION},\"turns\":${TURNS}"
+  emit_final "failed" ",\"detail\":\"unproductive run (${UNPRODUCTIVE_REASON})\",\"cost_usd\":${COST},\"duration_s\":${DURATION},\"turns\":${TURNS}${CRASH_SUFFIX}"
 else
-  emit_final "done" ",\"cost_usd\":${COST},\"duration_s\":${DURATION},\"turns\":${TURNS},\"exit_reason\":${EXIT_REASON}"
+  emit_final "done" ",\"cost_usd\":${COST},\"duration_s\":${DURATION},\"turns\":${TURNS},\"exit_reason\":${EXIT_REASON}${CRASH_SUFFIX}"
+fi
+
+# Crash-aware PR commenting: if 2+ crashes with the same signature,
+# comment on the agent's open PRs with the crash details.
+if [ "$CRASH_COUNT" -gt 0 ]; then
+  for dedupe in $CRASH_DEDUPE_KEYS; do
+    TOTAL_HITS=$(python3 -c "
+import json, sys
+from datetime import datetime, timezone, timedelta
+cutoff = (datetime.now(tz=timezone.utc) - timedelta(hours=1)).strftime('%Y-%m-%dT%H:%M:%SZ')
+count = 0
+try:
+    with open('$EVENTS') as f:
+        for line in f:
+            line = line.strip()
+            if not line: continue
+            try: e = json.loads(line)
+            except: continue
+            if e.get('event') == 'crash' and e.get('dedupe_key') == '$dedupe' and e.get('ts','') >= cutoff:
+                count += 1
+except: pass
+print(count)
+" 2>/dev/null || echo 0)
+    if [ "$TOTAL_HITS" -ge 2 ]; then
+      # Get the crash detail for this dedupe key
+      CRASH_DETAIL=$(grep -o "{[^}]*\"dedupe_key\":\"${dedupe}\"[^}]*}" "$EVENTS" 2>/dev/null | tail -1 | jq -r '.detail // "unknown crash"' 2>/dev/null || echo "unknown crash")
+      CRASH_FRAMES=$(grep -o "{[^}]*\"dedupe_key\":\"${dedupe}\"[^}]*}" "$EVENTS" 2>/dev/null | tail -1 | jq -r '.top_frames // ""' 2>/dev/null || echo "")
+
+      for pr_num in $(gh pr list --repo skwallace36/Pepper-private --state open --author "pepper-${TYPE}-agent" \
+        --json number --jq '.[].number' 2>/dev/null); do
+        gh pr comment "$pr_num" --repo skwallace36/Pepper-private --body "$(cat <<CRASH_EOF
+## ⚠️ Repeated Crash Detected
+
+This build has crashed **${TOTAL_HITS} times** in the last hour with the same signature:
+
+\`\`\`
+${CRASH_DETAIL}
+\`\`\`
+
+**Stack trace:**
+\`\`\`
+${CRASH_FRAMES}
+\`\`\`
+
+Verification marked as **FAILED** due to repeated crashes.
+
+— pepper-agent/builder
+CRASH_EOF
+)" 2>/dev/null || true
+      done
+    fi
+  done
 fi
 
 # Auto-label new PRs with awaiting:verifier (state machine entry point).
