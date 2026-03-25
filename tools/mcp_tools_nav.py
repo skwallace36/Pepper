@@ -11,6 +11,7 @@ import json
 
 from mcp.types import ImageContent, TextContent
 from mcp_screenshot import capture_screenshot, capture_screenshot_inprocess
+from pepper_ax import detect_dialog as _ax_detect_dialog
 from pepper_commands import (
     CMD_BACK,
     CMD_DEEPLINKS,
@@ -87,6 +88,27 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
         else:
             resp = await send_command(port, CMD_LOOK, look_params, host=host, timeout=20)
             screenshot_b64 = None
+
+        # SpringBoard dialog probe: if the dylib didn't detect a dialog
+        # (it can only see in-process UIAlertControllers), check via macOS
+        # Accessibility API for SpringBoard-rendered overlays (permission
+        # prompts, etc.). This ensures the agent sees what the user sees.
+        data = resp.get("data", resp)
+        if not data.get("system_dialog_blocking"):
+            try:
+                ax = await asyncio.get_event_loop().run_in_executor(None, _ax_detect_dialog)
+                if ax.get("detected"):
+                    data["system_dialog_blocking"] = {
+                        "warning": "\u26a0\ufe0f springboard_dialog_detected",
+                        "description": "A SpringBoard system dialog is overlaying the app. Use dialog dismiss_system to handle it.",
+                        "dialogs": [{"title": "System Dialog", "buttons": ax.get("buttons", [])}],
+                        "suggested_actions": [
+                            "dialog dismiss_system \u2014 detect and dismiss the system dialog",
+                            "dialog detect_system \u2014 get full details",
+                        ],
+                    }
+            except Exception:
+                pass  # AX unavailable — don't block look
 
         if raw:
             text = json.dumps(resp, indent=2)
