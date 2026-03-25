@@ -10,6 +10,14 @@
 
 set -uo pipefail
 
+# Become a process group leader so all children (runners, agents) share our PGID.
+# This lets `kill -TERM -$$` take down the entire tree on shutdown.
+if [ "${HEARTBEAT_IS_LEADER:-}" != "1" ]; then
+  export HEARTBEAT_IS_LEADER=1
+  # perl POSIX::setsid works on macOS where setsid(1) doesn't exist
+  exec perl -e 'use POSIX qw(setsid); setsid(); exec @ARGV' "$0" "$@"
+fi
+
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"
 
@@ -18,41 +26,40 @@ EVENTS="$REPO_ROOT/build/logs/events.jsonl"
 INTERVAL=420
 BACKOFF_THRESHOLD=3   # consecutive failures before backing off
 BACKOFF_CYCLES=5      # cycles to skip (5 * 120s = 10 min)
+LOCKFILE="build/logs/heartbeat.lock"
 
 mkdir -p build/logs
 
-# Prevent double-start using PID file with process validation.
-if [ -f "$PIDFILE" ]; then
-  OLD_PID=$(cat "$PIDFILE" 2>/dev/null)
-  # Check if OLD_PID is alive AND is actually a heartbeat (not PID reuse)
-  if [ -n "$OLD_PID" ] && kill -0 "$OLD_PID" 2>/dev/null; then
-    OLD_CMD=$(ps -o command= -p "$OLD_PID" 2>/dev/null || echo "")
-    if echo "$OLD_CMD" | grep -q 'agent-heartbeat'; then
-      echo "$(date +%H:%M) BLOCKED: heartbeat already running (PID $OLD_PID). My PID: $$" >> build/logs/heartbeat.log
-      exit 1
-    fi
-  fi
-  # Stale PID file — old process dead or not a heartbeat
-  rm -f "$PIDFILE"
+# Prevent double-start with lockf (macOS) or flock (Linux).
+# The lock is held for the lifetime of the heartbeat process via fd 9.
+exec 9>"$LOCKFILE"
+if command -v flock &>/dev/null; then
+  flock -n 9 || { echo "$(date +%H:%M) BLOCKED: another heartbeat holds the lock. My PID: $$" >> build/logs/heartbeat.log; exit 1; }
+else
+  # macOS: lockf -t0 = non-blocking lock on fd 9
+  lockf -s -t 0 9 || { echo "$(date +%H:%M) BLOCKED: another heartbeat holds the lock. My PID: $$" >> build/logs/heartbeat.log; exit 1; }
 fi
+# Lock acquired — write PID for kill script and monitoring
 echo $$ > "$PIDFILE"
 
-# Cleanup on exit — kill all agents and remove pidfile
+# Cleanup on exit — kill all children in our process group, then clean up files.
+# All children (runners, agents) inherit our PGID, so one signal kills everything.
 cleanup() {
-  echo "$(date +%H:%M) Heartbeat stopping — killing all agents..."
-  pgrep -f 'pepper-agent-' 2>/dev/null | while read pid; do
-    kill -TERM "$pid" 2>/dev/null
-  done
-  # Kill runner processes too
-  pgrep -f 'agent-runner.sh' 2>/dev/null | while read pid; do
-    [ "$pid" != "$$" ] && kill -TERM "$pid" 2>/dev/null
-  done
+  # Ignore signals during cleanup to prevent re-entrant trap
+  trap '' INT TERM EXIT
+  echo "$(date +%H:%M) Heartbeat stopping — killing process group..."
+  # Kill all processes in our process group except ourselves
+  local my_pid=$$
+  kill -TERM -"$my_pid" 2>/dev/null || true
+  # We just TERM'd ourselves too, but the trap is disabled so it's a no-op.
+  # Give children a moment to clean up, then force-kill.
+  sleep 2
+  kill -9 -"$my_pid" 2>/dev/null || true
   rm -f "$PIDFILE"
-  rm -rf build/logs/heartbeat.lock
   echo "$(date +%H:%M) Heartbeat stopped."
   exit 0
 }
-trap cleanup EXIT INT TERM
+trap cleanup INT TERM
 
 # Redirect all output to log file so nothing is lost when backgrounded
 exec >> build/logs/heartbeat.log 2>&1
@@ -124,9 +131,9 @@ launch_if_slots() {
   running=$(count_running "$type")
   if [ "$running" -eq 0 ]; then
     echo "$(date +%H:%M) Launching $type"
-    # Run in a subshell that ignores TERM — prevents runner timeout signals from killing heartbeat.
-    # No exec — exec would replace the subshell and lose the trap.
-    ( trap '' TERM; "$REPO_ROOT/scripts/agent-runner.sh" "$type" >> build/logs/heartbeat.log 2>&1 ) &
+    # Runner runs in the same process group as heartbeat — when heartbeat dies,
+    # the whole group gets killed. No orphans.
+    "$REPO_ROOT/scripts/agent-runner.sh" "$type" >> build/logs/heartbeat.log 2>&1 &
   fi
 }
 
