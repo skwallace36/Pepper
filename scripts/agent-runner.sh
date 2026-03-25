@@ -47,6 +47,7 @@ START=""  # Set before agent launch; empty means pre-launch exit (no safety net 
 TRANSCRIPT=""
 CLAIMED_SIM=""
 SIMS_BEFORE=""
+LOCKFILE=""  # Set after capacity check passes; empty means pre-launch exit
 
 emit() {
   local event="$1"; shift
@@ -185,6 +186,10 @@ for lf in build/logs/.lock-${TYPE}-*; do
   fi
 done
 
+if [ "$MAX_INSTANCES" -eq 0 ]; then
+  # Intentionally paused — exit silently, don't pollute events or trigger backoff
+  exit 0
+fi
 if [ "$RUNNING" -ge "$MAX_INSTANCES" ]; then
   emit "failed" ",\"detail\":\"${TYPE} at capacity (${RUNNING}/${MAX_INSTANCES})\""
   echo "Error: ${TYPE} at capacity (${RUNNING}/${MAX_INSTANCES}). Use 'make agent-cleanup' to force."
