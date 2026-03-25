@@ -68,5 +68,12 @@ final class PepperAppConfig {
     /// Registered into the dispatcher after built-in handlers.
     var additionalHandlers: [Any] = []  // [PepperHandler] — uses Any to avoid circular dep
 
+    /// The adapter type requested via PEPPER_ADAPTER env var. Set by the loader at boot.
+    var requestedAdapterType: String = "generic"
+
+    /// Whether an adapter's registerAdapter() was called successfully.
+    /// Adapters must set this to true during registration.
+    var adapterRegistered: Bool = false
+
     private init() {}
 }

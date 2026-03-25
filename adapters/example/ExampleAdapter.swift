@@ -17,6 +17,7 @@ final class ExampleAdapter {
     /// falls back to sensible defaults.
     static func registerAdapter() {
         let config = PepperAppConfig.shared
+        config.adapterRegistered = true
 
         // OSLog subsystem shown in Console.app and `make logs`.
         config.logSubsystem = "com.example.myapp.pepper"
