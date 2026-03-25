@@ -515,10 +515,11 @@ _CORE_INSTRUCTIONS = (
     "- Upload screenshots via `upload-screenshot` tool (release assets, always works).\n"
     "- See /validate-pr skill for the full browser upload workflow.\n\n"
     "LAUNCHING THE APP:\n"
-    "After building/installing the iOS app, ALWAYS use Pepper's `deploy_sim` tool to launch — NOT raw `simctl launch`.\n"
-    "`deploy_sim` handles: terminate, launch with dylib injection + env vars, wait for WebSocket server, auto-look.\n"
+    "After building the iOS app, ALWAYS use Pepper's `deploy_sim` tool to launch — NOT raw `simctl launch`.\n"
+    "`deploy_sim` handles: terminate, install, launch with dylib injection + env vars, wait for WebSocket server, auto-look.\n"
     "Raw `simctl launch` doesn't wait for Pepper — `look` will fail with connection refused.\n"
-    "Pattern: build_sim → simctl install → deploy_sim (not build → install → launch → look → fail → deploy).\n\n"
+    "Pattern: build_sim → deploy_sim (deploy handles install automatically).\n"
+    "`deploy_sim` requires workspace — always pass the .xcworkspace path.\n\n"
     "TIPS:\n"
     "- Always `look` before interacting to confirm screen state.\n"
     "- Action tools (tap, scroll, navigate) auto-include screen state in response — read it.\n"
@@ -760,22 +761,23 @@ async def iterate(
 
 @mcp.tool()
 async def deploy_sim(
+    workspace: str = Field(description="Path to the .xcworkspace or .xcodeproj (required — used to locate the built .app)"),
     simulator: Optional[str] = Field(default=None, description="Simulator UDID"),
     bundle_id: Optional[str] = Field(default=None, description="App bundle ID (default: from .env)"),
     dylib_path: Optional[str] = Field(default=None, description="Path to Pepper dylib (default: from .env)"),
     skip_privacy: bool = Field(default=False, description="Skip auto-granting privacy permissions (photos, camera, microphone, contacts, calendar, location)"),
 ) -> str:
-    """Restart the app on SIMULATOR with Pepper injected. Does NOT rebuild — the last-compiled binary is used.
+    """Terminate, install, and relaunch the app on SIMULATOR with Pepper injected.
 
-    This is for simulators only. Terminates the running app, grants common privacy permissions,
-    and relaunches with DYLD_INSERT_LIBRARIES.
+    Requires workspace so it can find the built .app in DerivedData and install it.
+    Does NOT rebuild — the last-compiled binary is used.
     Use after a crash or when you need a fresh app launch without recompiling.
     For build + restart, use iterate instead."""
     try:
         sim = _resolve_simulator(simulator)
     except RuntimeError as e:
         return str(e)
-    return await _deploy_app(sim, send_fn=send_command, bundle_id=bundle_id, dylib_path=dylib_path, skip_privacy=skip_privacy)
+    return await _deploy_app(sim, send_fn=send_command, bundle_id=bundle_id, dylib_path=dylib_path, workspace=workspace, skip_privacy=skip_privacy)
 
 
 @mcp.tool()
