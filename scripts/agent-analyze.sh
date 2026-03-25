@@ -72,6 +72,7 @@ for e in events:
             "duration": 0,
             "prs": [],
             "issue": None,
+            "crashes": [],
         }
     elif event in ("done", "failed", "timeout", "killed"):
         if agent in open_sessions:
@@ -94,6 +95,16 @@ for e in events:
                 "duration": e.get("duration_s", 0),
                 "prs": [],
                 "issue": None,
+            })
+    elif event == "crash":
+        if agent in open_sessions:
+            open_sessions[agent]["events"].append(e)
+            open_sessions[agent]["crashes"].append({
+                "exc_type": e.get("exc_type", "?"),
+                "signal": e.get("signal", "?"),
+                "origin": e.get("origin", "?"),
+                "dedupe_key": e.get("dedupe_key", "?"),
+                "detail": e.get("detail", "?"),
             })
     elif event == "pr":
         if agent in open_sessions:
@@ -230,6 +241,19 @@ for i, sess in enumerate(sessions):
     elif total_reads > 0:
         print(f"\n  {GREEN}No re-reads ({total_reads} unique file reads){NC}")
 
+    # Crashes
+    crashes = sess.get("crashes", [])
+    if crashes:
+        print(f"\n  {RED}Crashes: {len(crashes)}{NC}")
+        seen_keys = set()
+        for c in crashes:
+            dk = c["dedupe_key"]
+            dupe = " (repeat)" if dk in seen_keys else ""
+            seen_keys.add(dk)
+            origin_tag = f" [{c['origin'].upper()}]" if c.get("origin") else ""
+            print(f"    {c['exc_type']} ({c['signal']}){origin_tag}{dupe}")
+            print(f"      {DIM}{c['detail']}{NC}")
+
     # Top files by bytes
     if files_read:
         top = sorted(files_read.items(), key=lambda x: x[1]["bytes"], reverse=True)[:5]
@@ -254,6 +278,22 @@ if len(sessions) > 1:
         print(f" ({total_rereads_all/total_reads_all*100:.0f}% waste)")
     else:
         print()
+
+    # Crash summary across all sessions
+    all_crashes = []
+    for sess in sessions:
+        all_crashes.extend(sess.get("crashes", []))
+    if all_crashes:
+        crash_by_key = defaultdict(lambda: {"count": 0, "detail": "", "origin": ""})
+        for c in all_crashes:
+            entry = crash_by_key[c["dedupe_key"]]
+            entry["count"] += 1
+            entry["detail"] = c["detail"]
+            entry["origin"] = c.get("origin", "?")
+        print(f"\n  {RED}Crashes: {len(all_crashes)} total, {len(crash_by_key)} unique signatures{NC}")
+        for dk, info in sorted(crash_by_key.items(), key=lambda x: x[1]["count"], reverse=True):
+            origin_tag = f" [{info['origin'].upper()}]" if info.get("origin") else ""
+            print(f"    {info['count']}x{origin_tag} {info['detail'][:80]}")
 
     # Per-type summary
     type_stats = defaultdict(lambda: {"count": 0, "bytes": 0, "cost": 0, "duration": 0})
