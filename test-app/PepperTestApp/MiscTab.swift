@@ -362,6 +362,14 @@ struct MiscTab: View {
                     }
                 }
 
+                // MARK: - Runtime Introspection (for explore command)
+                GroupBox("Runtime Introspection") {
+                    NavigationLink("Runtime Introspection Screen") {
+                        RuntimeIntrospectionView()
+                    }
+                    .accessibilityIdentifier("runtime_introspection_link")
+                }
+
                 // MARK: - Snapshot / Diff Testing
                 GroupBox("Snapshot & Diff") {
                     NavigationLink("Snapshot Test Screen") {
