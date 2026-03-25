@@ -31,7 +31,7 @@ WIKI_BUNDLE_ID := org.wikimedia.wikipedia
 .PHONY: help build build-device xcframework deploy launch kill relaunch ping check lint lint-py fmt-py smoke typecheck \
         logs clean test-client pepper-ctl test-app demo coverage coverage-check commands commands-check unit-test py-test \
         docs setup ci smoke smoke-ice-cubes \
-        agent agent-monitor agent-status agent-trigger agents-install agents-uninstall agent-cleanup agents-start agents-stop agent-analyze groom pr-digest \
+        agent agent-monitor agent-status agent-trigger agents-install agents-uninstall agent-cleanup agents-start agents-stop agent-analyze groom pr-digest coordinator \
         fmt fmt-check ci-agents-install ci-agents-check \
         wikipedia-setup wikipedia-deploy wikipedia-smoke
 
@@ -98,12 +98,27 @@ launch:
 			xcrun simctl privacy "$(SIMULATOR_ID)" grant $$perm "$(BUNDLE_ID)" 2>/dev/null || true; \
 		done; \
 	fi
-	@SIMCTL_CHILD_DYLD_INSERT_LIBRARIES="$(DYLIB_PATH)" \
+	@LAUNCH_OUTPUT=$$(SIMCTL_CHILD_DYLD_INSERT_LIBRARIES="$(DYLIB_PATH)" \
 		SIMCTL_CHILD_PEPPER_PORT="$(PORT)" \
 		SIMCTL_CHILD_PEPPER_SIM_UDID="$(SIMULATOR_ID)" \
 		SIMCTL_CHILD_PEPPER_ADAPTER="$(ADAPTER_TYPE)" \
 		SIMCTL_CHILD_PEPPER_SKIP_PERMISSIONS="$${PEPPER_AGENT_TYPE:+1}" \
-		xcrun simctl launch "$(SIMULATOR_ID)" "$(BUNDLE_ID)"
+		xcrun simctl launch "$(SIMULATOR_ID)" "$(BUNDLE_ID)" 2>&1) || { \
+		if echo "$$LAUNCH_OUTPUT" | grep -qi "domain.*error\|unable to lookup.*application\|not found"; then \
+			echo "App not installed on $(SIMULATOR_ID). Auto-installing..."; \
+			$(MAKE) test-app SIMULATOR_ID="$(SIMULATOR_ID)" && \
+			LAUNCH_OUTPUT=$$(SIMCTL_CHILD_DYLD_INSERT_LIBRARIES="$(DYLIB_PATH)" \
+				SIMCTL_CHILD_PEPPER_PORT="$(PORT)" \
+				SIMCTL_CHILD_PEPPER_SIM_UDID="$(SIMULATOR_ID)" \
+				SIMCTL_CHILD_PEPPER_ADAPTER="$(ADAPTER_TYPE)" \
+				SIMCTL_CHILD_PEPPER_SKIP_PERMISSIONS="$${PEPPER_AGENT_TYPE:+1}" \
+				xcrun simctl launch "$(SIMULATOR_ID)" "$(BUNDLE_ID)" 2>&1) || { \
+				echo "$$LAUNCH_OUTPUT" >&2; exit 1; \
+			}; \
+		else \
+			echo "$$LAUNCH_OUTPUT" >&2; exit 1; \
+		fi; \
+	}; echo "$$LAUNCH_OUTPUT"
 	@echo "Launched with injection. Control plane at ws://localhost:$(PORT)"
 	@python3 -c "import sys, os, time; sys.path.insert(0, '$(TOOLS_DIR)'); \
 from pepper_sessions import quick_port_check, claim_simulator_with_port; \
@@ -287,6 +302,10 @@ agents-install:
 agents-uninstall:
 	@rm -f .git/hooks/post-merge .git/hooks/pre-push
 	@echo "Agent hooks uninstalled."
+
+## coordinator: Pre-provision sims for multi-agent work (e.g. make coordinator WORKERS=3)
+coordinator:
+	@./scripts/pepper-coordinator.sh --workers "$(or $(WORKERS),2)"
 
 ## agent-cleanup: Kill orphaned agent processes, worktrees, and extra sims
 agent-cleanup:

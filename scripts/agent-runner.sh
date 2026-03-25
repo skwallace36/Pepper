@@ -257,6 +257,10 @@ emit "started" ",\"detail\":\"picking work from queue (\$${TYPE_COST_TODAY} spen
 export PEPPER_EVENTS_LOG="$EVENTS"
 export PEPPER_AGENT_TYPE="$TYPE"
 
+# Session label — flows through to session files so `simulator action=list`
+# shows which agent owns which sim.
+export PEPPER_SESSION_LABEL="${PEPPER_SESSION_LABEL:-agent-${TYPE}}"
+
 # Disable auto-memory — agents don't need user preferences or project memories
 export CLAUDE_CODE_DISABLE_AUTO_MEMORY=1
 

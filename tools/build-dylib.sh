@@ -50,6 +50,20 @@ if [ -n "$CUSTOM_OUTPUT" ]; then
     FRAMEWORK_DIR="$CUSTOM_OUTPUT/Pepper.framework"
 fi
 
+# --- Build lock ---
+# Serialize concurrent builds sharing the same worktree to prevent
+# "input file was modified during the build" Swift compiler errors.
+# Uses perl flock since macOS doesn't ship flock(1).
+BUILD_LOCK="/tmp/pepper-build-$(echo "$WORKTREE_ROOT" | md5 -q).lock"
+exec 9>"$BUILD_LOCK"
+_try_lock() { perl -e 'use Fcntl qw(:flock); open(FH, ">&=9") or die; flock(FH, LOCK_EX|LOCK_NB) or exit 1' 2>/dev/null; }
+_wait_lock() { perl -e 'use Fcntl qw(:flock); open(FH, ">&=9") or die; flock(FH, LOCK_EX) or die' 2>/dev/null; }
+if ! _try_lock; then
+    info "Another build is running for this worktree — waiting for lock..."
+    _wait_lock
+fi
+# Lock is held until this script exits (fd 9 closes automatically).
+
 if [ -n "$CLEAN" ]; then
     info "Cleaning build directory..."
     rm -rf "$BUILD_DIR" "$FRAMEWORK_DIR"
