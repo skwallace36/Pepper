@@ -44,7 +44,7 @@ def register_renders_tools(mcp, resolve_and_send):
             description="Sub-action for signpost: install or drain",
         ),
     ) -> str:
-        """Track SwiftUI re-renders — detect and diagnose excessive rendering in SwiftUI views.
+        """Use this to track SwiftUI re-renders and diagnose excessive view body evaluations.
 
         Workflow:
         1. `renders start` — install swizzles on _UIHostingView to track renders
@@ -53,6 +53,8 @@ def register_renders_tools(mcp, resolve_and_send):
         4. `renders status` — quick check: active?, how many events?
         5. `renders stop` — uninstall swizzles (render counts stay until clear)
         6. `renders clear` — reset the event buffer
+
+        Example: `renders start` → scroll a list → `renders log` → find the hottest view → `renders stop`.
 
         Actions:
         - start:     Install render swizzles (updateRootView, didRender, setNeedsUpdate)

@@ -23,12 +23,14 @@ def register_perf_tools(mcp, resolve_and_send):
         duration_ms: int | None = Field(default=None, description="Sampling duration in ms (for fps/hitches; default: 2000/5000)"),
         threshold_ms: int | None = Field(default=None, description="Hitch threshold in ms (for hitches action; default: 16)"),
     ) -> str:
-        """Performance diagnostics: FPS measurement, main-thread hitch detection, expensive redraw identification.
+        """Use this to measure frame rate, detect main-thread hitches, and find expensive redraws.
 
         action=fps: measure frame rate using CADisplayLink. Returns avg/min/max FPS, dropped frames, per-second buckets.
         action=hitches: detect main-thread blocks via background watchdog. Returns hitch count, durations, and timestamps.
         action=redraws: scan the layer tree for expensive rendering: shadows without shadowPath, masks, rasterization,
-        oversized images, semi-transparent large layers. Returns issues sorted by severity."""
+        oversized images, semi-transparent large layers. Returns issues sorted by severity.
+
+        Example: `perf action=fps` while scrolling → check for drops → `perf action=redraws` to find the cause."""
         params: dict = {"action": action}
         if duration_ms is not None:
             params["duration_ms"] = duration_ms
@@ -43,9 +45,12 @@ def register_perf_tools(mcp, resolve_and_send):
         point: str | None = Field(default=None, description="Coordinates 'x,y' to trace (for trace action)"),
         speed: float | None = Field(default=None, description="Animation speed multiplier for action=speed: 0=disabled, 0.1=slow-mo, 1=normal, 10=turbo"),
     ) -> str:
-        """Scan active animations, trace view movement, or control animation speed.
+        """Use this to inspect running animations, trace view movement, or slow down/speed up animations.
+
         action=scan: find all active CAAnimations. action=trace: sample a view's position over time.
-        action=speed: set global animation speed (0=off, 1=normal, 10=turbo). Omit speed to query current."""
+        action=speed: set global animation speed (0=off, 1=normal, 10=turbo). Omit speed to query current.
+
+        Example: `animations action=scan` to see what's animating → `animations action=speed speed=0.1` to slow-mo debug."""
         if action == "speed":
             params: dict = {"action": "speed"}
             if speed is not None:
@@ -69,7 +74,7 @@ def register_perf_tools(mcp, resolve_and_send):
         min_growth: int | None = Field(default=None, description="Min instance growth to report in diff (default: 1)"),
         threshold: int | None = Field(default=None, description="Min instance growth to flag in check (default: 1)"),
     ) -> str:
-        """Find live objects, inspect state, and detect memory leaks.
+        """Use this to find live objects on the heap, inspect their state, and detect memory leaks.
 
         Discovery actions:
         - classes: search loaded ObjC classes by pattern (e.g. 'Manager', 'Service', 'MapView')
