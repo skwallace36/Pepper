@@ -54,9 +54,17 @@ public func pepperBootstrap() {
         object: nil,
         queue: .main
     ) { _ in
-        // NOTE: reinforceNotificationSwizzle disabled — the class enumeration
-        // crashes or hangs on iOS 26 when combined with the .current() swizzle.
-        // Notification dialogs are handled by AX dismiss from MCP side (BUG-307).
+        // Reinforce the notification authorization swizzle on every
+        // UNUserNotificationCenter subclass now that the runtime is fully
+        // initialized. The base-class swizzle (installed at constructor time)
+        // covers the common case, but private subclasses that override
+        // requestAuthorization need their own replacement. This was previously
+        // disabled (BUG-307) because it crashed when combined with the
+        // +currentNotificationCenter swizzle — that swizzle is permanently
+        // removed, so class enumeration alone is safe.
+        if ProcessInfo.processInfo.environment["PEPPER_SKIP_PERMISSIONS"] != "1" {
+            PepperDialogInterceptor.reinforceNotificationSwizzle()
+        }
 
         // Resolve port: PEPPER_PORT env var > PepperPort Info.plist key > auto-detect from UDID > default 8765
         let port: UInt16
