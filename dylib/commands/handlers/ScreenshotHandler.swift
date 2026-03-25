@@ -47,17 +47,15 @@ struct ScreenshotHandler: PepperHandler {
             return .error(id: command.id, message: "No key window")
         }
 
-        let bounds = window.bounds
-        let format = UIGraphicsImageRendererFormat()
-        format.scale = renderScale
-        let renderer = UIGraphicsImageRenderer(bounds: bounds, format: format)
-        let image = renderer.image { _ in
-            window.drawHierarchy(in: bounds, afterScreenUpdates: false)
+        guard let cgImage = PepperWindowCapture.captureWindow(window, scale: renderScale) else {
+            return .error(id: command.id, message: "Failed to render window")
         }
+
+        let image = UIImage(cgImage: cgImage, scale: renderScale, orientation: .up)
 
         return encodeResponse(
             image: image, command: command, jpegQuality: jpegQuality,
-            width: bounds.width, height: bounds.height, scope: "fullscreen"
+            width: window.bounds.width, height: window.bounds.height, scope: "fullscreen"
         )
     }
 
@@ -88,15 +86,7 @@ struct ScreenshotHandler: PepperHandler {
         // Render the full window then crop to the element's frame.
         // This is more reliable than rendering the view directly, because
         // drawHierarchy on a subview can miss overlays and transforms.
-        let windowBounds = window.bounds
-        let format = UIGraphicsImageRendererFormat()
-        format.scale = renderScale
-        let renderer = UIGraphicsImageRenderer(bounds: windowBounds, format: format)
-        let fullImage = renderer.image { _ in
-            window.drawHierarchy(in: windowBounds, afterScreenUpdates: false)
-        }
-
-        guard let cgFull = fullImage.cgImage else {
+        guard let cgFull = PepperWindowCapture.captureWindow(window, scale: renderScale) else {
             return .error(id: command.id, message: "Failed to render window")
         }
 
