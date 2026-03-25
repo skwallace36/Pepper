@@ -286,7 +286,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
             params: dict = {}
             if category:
                 params["category"] = category
-            return await resolve_and_send(simulator, CMD_DEEPLINKS, params)
+            return json.dumps(await resolve_and_send(simulator, CMD_DEEPLINKS, params), indent=2)
         params = {}
         if deeplink:
             params["deeplink"] = deeplink
@@ -334,10 +334,10 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
     @mcp.tool()
     async def screen(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
-    ) -> list:
+    ) -> str:
         """Use this when you need to identify which screen is currently displayed.
         Returns the screen name and view controller class. Lightweight — no element data."""
-        return await resolve_and_send(simulator, CMD_SCREEN)
+        return json.dumps(await resolve_and_send(simulator, CMD_SCREEN), indent=2)
 
     @mcp.tool()
     async def scroll_to(
@@ -378,12 +378,12 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
         Workflow: snapshot action=save name=baseline → perform actions → snapshot action=diff name=baseline.
         Returns semantic diff: added/removed/changed elements and text.
         Use assert_no_diff=true to fail if state changed (regression testing)."""
-        return await resolve_and_send(simulator, CMD_SNAPSHOT, {
+        return json.dumps(await resolve_and_send(simulator, CMD_SNAPSHOT, {
             "action": action,
             "name": name,
             "ignore_transient": ignore_transient,
             "assert_no_diff": assert_no_diff,
-        })
+        }), indent=2)
 
     @mcp.tool()
     async def diff(
@@ -395,4 +395,4 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
         Workflow: diff action=start → perform actions (tap, scroll, etc.) → diff action=show.
         Returns only added/removed/changed elements — much smaller than a full look call.
         Useful for verifying that an action actually changed the UI."""
-        return await resolve_and_send(simulator, CMD_DIFF, {"action": action})
+        return json.dumps(await resolve_and_send(simulator, CMD_DIFF, {"action": action}), indent=2)
