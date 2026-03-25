@@ -53,55 +53,38 @@ final class ElementDiscoveryBridge {
     /// Activate the accessibility engine so SwiftUI generates its accessibility tree.
     /// Without this, SwiftUI views don't expose accessibility elements in the simulator.
     ///
-    /// `pepper_activate_accessibility()` calls `_AXSApplicationAccessibilitySetEnabled(true)`
-    /// at dylib constructor time (before main). This sets the per-app accessibility flag
-    /// that UIHostingViewBase reads to gate its accessibility node tree. Since it's set
-    /// before SwiftUI builds its first view, the AX tree is built on initial render —
-    /// no notification, no RunLoop spin, no main-thread blocking.
-    ///
-    /// Falls back to the VoiceOver notification if the private API didn't work.
+    /// On first call, also posts the VoiceOver status-change notification so SwiftUI
+    /// re-reads `accessibilityVoiceOverEnabled`. This triggers a re-render that can
+    /// take a few seconds on complex apps. We pay this cost here (inside `look`'s 30s
+    /// command timeout) rather than during boot where it blocks all commands.
     func ensureAccessibilityActive() {
         UIApplication.shared.accessibilityActivate()
         guard !accessibilityActivated else { return }
 
-        let t0 = CFAbsoluteTimeGetCurrent()
-
-        // Check if early activation (constructor-time _AXSApplicationAccessibilitySetEnabled)
-        // already produced elements — no notification or spin needed.
-        if hasAccessibilityElements() {
-            let elapsed = (CFAbsoluteTimeGetCurrent() - t0) * 1000
-            NSLog("[pepper] ensureAccessibilityActive took %.0fms (early activation)", elapsed)
-            accessibilityActivated = true
-            return
-        }
-
-        // Fallback: post VoiceOver notification. This triggers a synchronous
-        // re-render on the main thread (~1.5s on complex apps).
         if !voiceOverNotificationPosted {
             voiceOverNotificationPosted = true
             PepperAccessibility.postVoiceOverNotification()
         }
 
+        // Spin RunLoop to let SwiftUI process the notification and build the
+        // accessibility tree. Check every 100ms for content; cap at 5s.
         let deadline = Date(timeIntervalSinceNow: 5.0)
         while Date() < deadline {
             RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.1))
-            if hasAccessibilityElements() { break }
+            if let window = UIWindow.pepper_keyWindow,
+                let rootVC = window.rootViewController
+            {
+                var vc = rootVC
+                while let presented = vc.presentedViewController { vc = presented }
+                if let view = vc.view,
+                    let elems = view.accessibilityElements,
+                    !elems.isEmpty
+                {
+                    break
+                }
+            }
         }
-        let elapsed = (CFAbsoluteTimeGetCurrent() - t0) * 1000
-        NSLog("[pepper] ensureAccessibilityActive took %.0fms (notification fallback)", elapsed)
         accessibilityActivated = true
-    }
-
-    /// Check if the current top-level view already has accessibility elements.
-    private func hasAccessibilityElements() -> Bool {
-        guard let window = UIWindow.pepper_keyWindow,
-              let rootVC = window.rootViewController else { return false }
-        var vc = rootVC
-        while let presented = vc.presentedViewController { vc = presented }
-        guard let view = vc.view,
-              let elems = view.accessibilityElements,
-              !elems.isEmpty else { return false }
-        return true
     }
 
     // MARK: - Scroll Context Detection
