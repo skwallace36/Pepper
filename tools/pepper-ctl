@@ -19,6 +19,8 @@ Usage:
   pepper-ctl batch --file commands.json
   pepper-ctl wait-for-server --wait-timeout 60
   pepper-ctl test-report --file tests.json --format junit --output results.xml
+  pepper-ctl ci-run                              # wait + smoke test + exit code
+  pepper-ctl ci-run --file custom.json -o results.xml
   pepper-ctl help
   pepper-ctl raw '{"cmd":"ping"}'
 
@@ -210,6 +212,8 @@ def build_parser():
   pepper-ctl wait-for-server                 Block until server is reachable
   pepper-ctl test-report -f tests.json       Run tests, output JUnit XML
   pepper-ctl test-report -f t.json --format json -o results.json
+  pepper-ctl ci-run                          Wait + smoke test + exit code
+  pepper-ctl ci-run -f custom.json -o r.xml  Custom tests, save results
   pepper-ctl help                            List server commands
 """,
     )
@@ -301,6 +305,16 @@ def build_parser():
     p.add_argument("--output", "-o", default=None, help="Output file (default: stdout)")
     p.add_argument("--continue-on-error", action="store_true", help="Continue running tests after failures")
     p.add_argument("--classname", default="pepper", help="JUnit classname prefix (default: pepper)")
+
+    # ci-run
+    p = sub.add_parser("ci-run", help="CI batch mode: wait for server, run tests, exit with pass/fail code")
+    p.add_argument("--file", "-f", default=None, help="JSON file with test definitions (default: scripts/smoke-tests.json)")
+    p.add_argument("--format", choices=["junit", "json"], default="junit", dest="report_format", help="Output format (default: junit)")
+    p.add_argument("--output", "-o", default=None, help="Output file (default: stdout)")
+    p.add_argument("--classname", default="pepper", help="JUnit classname prefix (default: pepper)")
+    p.add_argument("--wait-timeout", type=int, default=60, help="Max seconds to wait for server (default: 60)")
+    p.add_argument("--interval", type=float, default=1.0, help="Seconds between server retries (default: 1.0)")
+    p.add_argument("--stop-on-first-failure", action="store_true", help="Stop test run on first failure (default: run all)")
 
     # subscribe / wait
     p = sub.add_parser("wait", help="Subscribe to events and wait")
@@ -886,6 +900,203 @@ def _format_json_report(suite_name, results, suite_time):
     return json.dumps(report, indent=2)
 
 
+async def cmd_ci_run(args):
+    """CI batch mode: wait for server, run test suite, exit with pass/fail code.
+
+    Combines wait-for-server + test-report into a single CI-friendly command.
+    Defaults to scripts/smoke-tests.json and continue-on-error behavior.
+    """
+    # Resolve test file — default to scripts/smoke-tests.json relative to repo root
+    if args.file is None:
+        repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        args.file = os.path.join(repo_root, "scripts", "smoke-tests.json")
+
+    # --- Phase 1: Wait for server ---
+    if not args.raw_json:
+        print(bold("=== CI Run: Waiting for server ==="), file=sys.stderr)
+
+    deadline = time.monotonic() + args.wait_timeout
+    attempt = 0
+    server_ready = False
+    while True:
+        attempt += 1
+        try:
+            msg = make_command("ping")
+            url = f"ws://{args.host}:{args.port}"
+            async with websockets.connect(url, close_timeout=2) as ws:
+                await ws.send(json.dumps(msg))
+                raw = await asyncio.wait_for(ws.recv(), timeout=3)
+                resp = json.loads(raw)
+                if resp.get("status") == "ok":
+                    if not args.raw_json:
+                        print(green(f"Server ready (attempt {attempt})"), file=sys.stderr)
+                    server_ready = True
+                    break
+        except (ConnectionRefusedError, OSError, asyncio.TimeoutError,
+                websockets.ConnectionClosed,
+                websockets.ConnectionClosedError,
+                websockets.InvalidURI,
+                websockets.InvalidHandshake):
+            pass
+
+        if time.monotonic() >= deadline:
+            if not args.raw_json:
+                print(red(f"Timeout: server not reachable after {args.wait_timeout}s ({attempt} attempts)"), file=sys.stderr)
+            sys.exit(1)
+
+        if args.verbose:
+            print(dim(f"[attempt {attempt}] not ready, retrying in {args.interval}s..."), file=sys.stderr)
+        await asyncio.sleep(args.interval)
+
+    if not server_ready:
+        sys.exit(1)
+
+    # --- Phase 2: Load and run tests ---
+    if not args.raw_json:
+        print(bold(f"\n=== CI Run: Running tests from {os.path.basename(args.file)} ==="), file=sys.stderr)
+
+    try:
+        with open(args.file, "r") as f:
+            file_content = json.load(f)
+    except FileNotFoundError:
+        print(red(f"Error: Test file not found: {args.file}"), file=sys.stderr)
+        sys.exit(1)
+    except json.JSONDecodeError as e:
+        print(red(f"Error: Invalid JSON in {args.file}: {e}"), file=sys.stderr)
+        sys.exit(1)
+
+    if isinstance(file_content, list):
+        suite_name = os.path.splitext(os.path.basename(args.file))[0]
+        tests = file_content
+    elif isinstance(file_content, dict):
+        suite_name = file_content.get("suite", os.path.splitext(os.path.basename(args.file))[0])
+        tests = file_content.get("tests", [])
+    else:
+        print(red("Error: Test file must contain a JSON array or {\"tests\": [...]}"), file=sys.stderr)
+        sys.exit(1)
+
+    if not tests:
+        print(red("Error: No test cases found"), file=sys.stderr)
+        sys.exit(1)
+
+    continue_on_error = not args.stop_on_first_failure
+    results = []
+    suite_start = time.monotonic()
+    for i, test in enumerate(tests):
+        test_name = test.get("name", f"test_{i}")
+        cmd = test.get("cmd")
+        params = test.get("params")
+
+        if not cmd:
+            results.append({
+                "name": test_name,
+                "status": "error",
+                "time": 0.0,
+                "message": "Missing 'cmd' field in test definition",
+            })
+            if not continue_on_error:
+                break
+            continue
+
+        if not args.raw_json:
+            print(dim(f"  [{i+1}/{len(tests)}] {test_name} ..."), end="", flush=True, file=sys.stderr)
+
+        msg = make_command(cmd, params)
+        t0 = time.monotonic()
+        try:
+            resp = await ws_send_command(args.host, args.port, msg, timeout=args.timeout)
+            elapsed = time.monotonic() - t0
+            resp_status = resp.get("status", "unknown")
+            if resp_status == "ok":
+                results.append({
+                    "name": test_name,
+                    "status": "pass",
+                    "time": elapsed,
+                    "cmd": cmd,
+                })
+                if not args.raw_json:
+                    print(green(" pass") + dim(f" ({elapsed:.2f}s)"), file=sys.stderr)
+            else:
+                data = resp.get("data", {})
+                err_msg = data.get("message", resp_status) if isinstance(data, dict) else str(resp_status)
+                results.append({
+                    "name": test_name,
+                    "status": "fail",
+                    "time": elapsed,
+                    "cmd": cmd,
+                    "message": err_msg,
+                })
+                if not args.raw_json:
+                    print(red(f" FAIL") + dim(f" ({elapsed:.2f}s) {err_msg}"), file=sys.stderr)
+                if not continue_on_error:
+                    break
+        except ConnectionRefusedError:
+            elapsed = time.monotonic() - t0
+            results.append({
+                "name": test_name,
+                "status": "error",
+                "time": elapsed,
+                "cmd": cmd,
+                "message": "Connection refused — is the server running?",
+            })
+            if not continue_on_error:
+                break
+        except asyncio.TimeoutError:
+            elapsed = time.monotonic() - t0
+            results.append({
+                "name": test_name,
+                "status": "error",
+                "time": elapsed,
+                "cmd": cmd,
+                "message": f"Timeout after {args.timeout}s",
+            })
+            if not continue_on_error:
+                break
+        except CrashError as e:
+            elapsed = time.monotonic() - t0
+            results.append({
+                "name": test_name,
+                "status": "error",
+                "time": elapsed,
+                "cmd": cmd,
+                "message": str(e),
+            })
+            if not args.raw_json:
+                print(red(f" CRASH") + dim(f" ({elapsed:.2f}s)"), file=sys.stderr)
+            break
+
+    suite_time = time.monotonic() - suite_start
+    num_pass = sum(1 for r in results if r["status"] == "pass")
+    num_fail = sum(1 for r in results if r["status"] == "fail")
+    num_error = sum(1 for r in results if r["status"] == "error")
+
+    # --- Phase 3: Format and output results ---
+    if args.report_format == "junit":
+        output = _format_junit(suite_name, results, suite_time, args.classname)
+    else:
+        output = _format_json_report(suite_name, results, suite_time)
+
+    if args.output:
+        os.makedirs(os.path.dirname(os.path.abspath(args.output)), exist_ok=True)
+        with open(args.output, "w") as f:
+            f.write(output)
+        if not args.raw_json:
+            print(f"\nReport written to {args.output}", file=sys.stderr)
+    else:
+        print(output)
+
+    # Summary
+    if not args.raw_json:
+        total = len(results)
+        color = green if num_fail == 0 and num_error == 0 else red
+        result_word = "PASSED" if (num_fail == 0 and num_error == 0) else "FAILED"
+        print(bold(f"\n=== CI Run: {result_word} ==="), file=sys.stderr)
+        print(color(f"{total} tests: {num_pass} passed, {num_fail} failed, {num_error} errors ({suite_time:.2f}s)"), file=sys.stderr)
+
+    if num_fail > 0 or num_error > 0:
+        sys.exit(1)
+
+
 async def cmd_wait(args):
     await wait_for_events(args.host, args.port, args.events, args.wait_timeout)
 
@@ -1025,6 +1236,7 @@ def main():
         "help": cmd_help,
         "wait-for-server": cmd_wait_for_server,
         "test-report": cmd_test_report,
+        "ci-run": cmd_ci_run,
         "wait": cmd_wait,
         "raw": cmd_raw,
     }
