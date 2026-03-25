@@ -13,6 +13,7 @@ public func pepperBootstrap() {
     // Known adapters register here; "generic" or unset means no app-specific config.
     // The dashboard sets this env var at launch via SIMCTL_CHILD_PEPPER_ADAPTER.
     let adapterType = ProcessInfo.processInfo.environment["PEPPER_ADAPTER"] ?? "generic"
+    PepperAppConfig.shared.requestedAdapterType = adapterType
 
     // Register the app adapter. Each adapter sets preMainHook (early setup
     // like flag overrides) and appBootstrap (full configuration at start).
@@ -20,6 +21,17 @@ public func pepperBootstrap() {
     #if PEPPER_HAS_ADAPTER
         _PepperAdapterShim.register(adapterType: adapterType)
     #endif
+
+    // Validate adapter configuration at startup.
+    if adapterType != "generic" {
+        #if !PEPPER_HAS_ADAPTER
+            NSLog("[pepper] ⚠️ PEPPER_ADAPTER='%@' but no adapter was compiled in — build with ADAPTER_PATH set", adapterType)
+        #else
+            if !PepperAppConfig.shared.adapterRegistered {
+                NSLog("[pepper] ⚠️ PEPPER_ADAPTER='%@' did not match any compiled adapter — check APP_ADAPTER_TYPE in .env", adapterType)
+            }
+        #endif
+    }
 
     // Run pre-main hook immediately — this executes at dylib load time,
     // BEFORE main() and before the app's own initialization code runs.
