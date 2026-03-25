@@ -178,7 +178,14 @@ struct TapHandler: PepperHandler {
             let tabBar = UIWindow.pepper_tabBarController
         {
             let normalized = text.lowercased()
-            let knownTabs = PepperAppConfig.shared.tabBarProvider?.tabNames() ?? []
+            var knownTabs = PepperAppConfig.shared.tabBarProvider?.tabNames() ?? []
+            // Generic mode: derive tab names from standard UITabBarController
+            if knownTabs.isEmpty, let tabBarVC = tabBar as? UITabBarController {
+                knownTabs = (tabBarVC.viewControllers ?? []).compactMap { vc in
+                    (vc.tabBarItem.title ?? vc.title)?
+                        .lowercased().replacingOccurrences(of: " ", with: "_")
+                }
+            }
             if knownTabs.contains(normalized) {
                 if tabBar.pepper_selectTab(named: text) {
                     return .ok(

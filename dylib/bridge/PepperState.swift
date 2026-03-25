@@ -167,12 +167,11 @@ final class PepperState {
             data["can_go_back"] = AnyCodable(viewController.presentingViewController != nil)
         }
 
-        // Tab bar info — custom tab bar container (via TabBarProvider)
+        // Tab bar info
         if let customTabBar = viewController.pepper_tabBarController {
             data["tab"] = AnyCodable(customTabBar.pepper_selectedTabName)
-            data["tab_count"] = AnyCodable(PepperAppConfig.shared.tabBarProvider?.tabNames().count ?? 0)
+            data["tab_count"] = AnyCodable(customTabBar.pepper_tabInfo.count)
         } else if let tabBar = viewController.tabBarController {
-            // Fallback for standard UITabBarController
             data["tab_index"] = AnyCodable(tabBar.selectedIndex)
             data["tab_count"] = AnyCodable(tabBar.viewControllers?.count ?? 0)
         }

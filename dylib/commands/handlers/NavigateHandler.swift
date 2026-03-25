@@ -178,7 +178,19 @@ struct NavigateHandler: PepperHandler {
 
     /// Resolve a tab name to its index in the visible tab bar.
     private func resolveTabIndex(name: String) -> Int? {
-        return PepperAppConfig.shared.tabBarProvider?.resolveTabIndex(name)
+        // Adapter mode: delegate to custom tab bar provider
+        if let provider = PepperAppConfig.shared.tabBarProvider {
+            return provider.resolveTabIndex(name)
+        }
+        // Generic mode: match against standard UITabBarController tab titles
+        guard let tabBarVC = UIWindow.pepper_tabBarController as? UITabBarController,
+              let vcs = tabBarVC.viewControllers else { return nil }
+        let normalized = name.lowercased()
+        return vcs.firstIndex { vc in
+            let title = vc.tabBarItem.title ?? vc.title ?? ""
+            return title.lowercased() == normalized
+                || title.lowercased().replacingOccurrences(of: " ", with: "_") == normalized
+        }
     }
 
     /// Find tab bar buttons in the window view hierarchy.
