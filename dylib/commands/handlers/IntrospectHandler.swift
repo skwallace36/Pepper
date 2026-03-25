@@ -746,6 +746,36 @@ struct IntrospectHandler: PepperHandler {
                 mergedInteractive, nearestTo: point, direction: direction, count: count)
         }
 
+        // Phase 5½: OCR — capture window, run Vision text recognition, deduplicate
+        // against accessibility-sourced text, and collect survivors.
+        // Only runs when the caller passes ocr: true.
+        let ocrRequested = command.params?["ocr"]?.boolValue ?? false
+        var ocrSurvivors: [PepperOCR.TextObservation] = []
+        if ocrRequested {
+            if let cgImage = PepperWindowCapture.captureWindow() {
+                let imageSize = UIScreen.main.bounds.size
+                let observations = PepperOCR.recognizeText(in: cgImage, imageSize: imageSize)
+
+                // Build lookup of existing accessibility text for dedup
+                let existingText: [(label: String, center: CGPoint)] =
+                    (mergedInteractive.compactMap { elem -> (String, CGPoint)? in
+                        guard let label = elem.label else { return nil }
+                        return (label, elem.center)
+                    }) + (allDiscoveredText.compactMap { elem -> (String, CGPoint)? in
+                        guard let label = elem.label else { return nil }
+                        return (label, elem.center)
+                    })
+
+                ocrSurvivors = PepperOCRDedup.deduplicate(
+                    observations,
+                    existingText: existingText,
+                    coveredCenters: coveredCenters
+                )
+
+                logger.info("OCR: \(observations.count) observations, \(ocrSurvivors.count) survivors after dedup")
+            }
+        }
+
         // Phase 6: Sort interactive elements by Y, assign ordinal indices for
         // duplicate labels, then group into rows by Y-band
         mergedInteractive.sort { $0.center.y < $1.center.y }
@@ -829,6 +859,21 @@ struct IntrospectHandler: PepperHandler {
             "rows": AnyCodable(rows),
             "non_interactive": AnyCodable(nonInteractiveSerialized),
         ]
+        if !ocrSurvivors.isEmpty {
+            data["ocr_text"] = AnyCodable(ocrSurvivors.map { obs -> AnyCodable in
+                AnyCodable([
+                    "text": AnyCodable(obs.text),
+                    "center": AnyCodable([AnyCodable(Int(obs.center.x)), AnyCodable(Int(obs.center.y))]),
+                    "confidence": AnyCodable(Double(round(obs.confidence * 100) / 100)),
+                    "frame": AnyCodable([
+                        AnyCodable(Int(obs.boundingRect.origin.x)),
+                        AnyCodable(Int(obs.boundingRect.origin.y)),
+                        AnyCodable(Int(obs.boundingRect.width)),
+                        AnyCodable(Int(obs.boundingRect.height)),
+                    ]),
+                ] as [String: AnyCodable])
+            })
+        }
         if let title = navTitle, !title.isEmpty {
             data["nav_title"] = AnyCodable(title)
         }
