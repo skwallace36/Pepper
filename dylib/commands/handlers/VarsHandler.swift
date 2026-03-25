@@ -36,6 +36,7 @@ struct VarsHandler: PepperHandler {
     // MARK: - Actions
 
     private func handleList(_ command: PepperCommand) -> PepperResponse {
+        PepperVarRegistry.shared.discoverFromHeapIfNeeded()
         let instances = PepperVarRegistry.shared.listAll()
         return .ok(
             id: command.id,

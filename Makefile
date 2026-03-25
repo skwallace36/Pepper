@@ -286,8 +286,12 @@ agent-cleanup:
 
 ## agents-start: Start the heartbeat supervisor (launches + monitors all agents)
 agents-start:
-	@./scripts/agent-heartbeat.sh &
-	@echo "Heartbeat started. Agents launching. Monitor: make agent-monitor"
+	@nohup ./scripts/agent-heartbeat.sh >> build/logs/heartbeat.log 2>&1 & sleep 1; \
+	if [ -f build/logs/heartbeat.pid ] && kill -0 "$$(cat build/logs/heartbeat.pid 2>/dev/null)" 2>/dev/null; then \
+		echo "Heartbeat started. Agents launching. Monitor: make agent-monitor"; \
+	else \
+		echo "ERROR: Heartbeat failed to start. Check build/logs/heartbeat.log"; exit 1; \
+	fi
 
 ## agents-stop: Stop heartbeat + kill all running agents
 agents-stop:
