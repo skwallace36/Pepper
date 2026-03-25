@@ -21,6 +21,7 @@ look, tap, scroll, scroll_to, swipe, gesture, input_text, toggle, navigate, back
 - Extensions, not subclasses — all UIKit integration via extensions. Minimizes coupling.
 - All command handlers run on main thread (required for UIKit safety).
 - Adding a command: see `dylib/DYLIB.md`.
+- Response factories: use `.list(id:key:items:)` for collections, `.action(id:action:target:)` for mutations, `.result(id:data:)` for single values. Avoid raw `.ok(id:data:)` in new handlers.
 
 ## Writing Docs
 

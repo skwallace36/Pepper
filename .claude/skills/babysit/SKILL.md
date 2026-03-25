@@ -17,7 +17,7 @@ Run on a loop (use /loop). Default: 10 minutes.
 ### 1. Health check
 
 ```bash
-ps aux | grep 'agent-heartbeat' | grep -v grep | wc -l  # must be exactly 1
+pgrep -f 'bash.*agent-heartbeat\.sh' | wc -l             # must be exactly 1 (matches main process only, not subshells)
 ps aux | grep 'claude.*pepper-agent' | grep -v grep      # active agents
 tail -5 build/logs/events.jsonl | grep -E '"(failed|timeout|auth-retry)"'
 grep "$(date -u +%Y-%m-%d)" build/logs/events.jsonl | grep -oE '"cost_usd":[0-9.]+' | awk -F: '{s+=$2} END {printf "Budget: $%.2f\n", s}'
@@ -29,8 +29,8 @@ Do not report and wait. Do not say "will check next cycle." Fix it NOW.
 
 | Problem | Action |
 |---|---|
-| Heartbeat count = 0 | `rm -f build/logs/heartbeat.pid; rm -rf build/logs/heartbeat.lock; nohup ./scripts/agent-heartbeat.sh >> build/logs/heartbeat.log 2>&1 &` |
-| Heartbeat count > 1 | Keep newest PID, `kill -9` the rest |
+| Heartbeat count = 0 | `make agents-start` (do NOT delete the PID file manually — the script's own guard handles stale PIDs) |
+| Heartbeat count > 1 | `pgrep -f 'bash.*agent-heartbeat\.sh'` to get real PIDs. Keep newest, `kill -9` the rest. |
 | Same failure 2+ times | Read the code, find root cause, fix it, commit, restart. Do NOT just restart and hope. |
 | Empty transcripts | Check `build/logs/transcript-*.json` for 0-byte files. If pattern (same agent type), investigate the runner launch for that type. |
 | Auth failures ("Not logged in") | These are transient — the auth-retry fix handles them. Only escalate if >5 in a row. |
