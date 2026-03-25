@@ -25,6 +25,7 @@
 		A1000012 /* CoreDataStack.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000012; };
 		A1000013 /* PropertyEditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000013; };
 		A1000014 /* RuntimeIntrospectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000014; };
+		A1000016 /* AccessibilityActionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000016; };
 		A100000B /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = A200000B; };
 		A1000015 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A2000015; };
 /* End PBXBuildFile section */
@@ -51,6 +52,7 @@
 		A2000013 /* PropertyEditView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PropertyEditView.swift; sourceTree = "<group>"; };
 		A2000014 /* RuntimeIntrospectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RuntimeIntrospectionView.swift; sourceTree = "<group>"; };
 		A2000015 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A2000016 /* AccessibilityActionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityActionsView.swift; sourceTree = "<group>"; };
 		A3000001 /* PepperTestApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PepperTestApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -97,6 +99,7 @@
 				A2000013 /* PropertyEditView.swift */,
 				A2000014 /* RuntimeIntrospectionView.swift */,
 				A2000015 /* Assets.xcassets */,
+				A2000016 /* AccessibilityActionsView.swift */,
 			);
 			path = PepperTestApp;
 			sourceTree = "<group>";
@@ -192,6 +195,7 @@
 				A1000012 /* CoreDataStack.swift in Sources */,
 				A1000013 /* PropertyEditView.swift in Sources */,
 				A1000014 /* RuntimeIntrospectionView.swift in Sources */,
+				A1000016 /* AccessibilityActionsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
