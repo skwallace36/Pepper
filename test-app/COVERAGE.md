@@ -255,7 +255,7 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `perf` | stop | untested |  |  |
 | `perf` | mark | untested |  |  |
 | `perf` | status | untested |  |  |
-| `screenshot` | — | untested |  |  |
+| `screenshot` | — | untested | Any screen | In-process screen capture via UIGraphicsImageRenderer. Supports full-screen and per-element capture with configurable quality and scale. |
 | `storage` | summary | untested |  |  |
 | `storage` | coredata | untested |  |  |
 | `storage` | clear | untested |  |  |
