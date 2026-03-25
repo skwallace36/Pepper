@@ -650,8 +650,11 @@ async def build(
     scheme: Optional[str] = Field(default=None, description="Build scheme (default: from .env APP_SCHEME)"),
     simulator: Optional[str] = Field(default=None, description="Simulator UDID for -destination"),
 ) -> str:
-    """Build the iOS app for simulator. Returns success or structured error messages.
-    Workspace is required — no implicit fallback. Uses worktree-aware DerivedData isolation automatically."""
+    """Compile the iOS app for simulator. Build only — does not install or launch.
+
+    Use this to check if code compiles. To build AND restart the app, use iterate instead.
+    Returns structured error messages on failure. Workspace is required.
+    Uses worktree-aware DerivedData isolation automatically."""
     success, message = await _build_app(workspace, scheme, simulator)
     return message
 
@@ -664,9 +667,11 @@ async def build_device(
     install: bool = Field(default=True, description="Install on device after building"),
     launch: bool = Field(default=True, description="Launch app after installing"),
 ) -> str:
-    """Build the iOS app for a physical device, optionally install and launch.
-    NO dylib injection — plain device build for testing on real hardware.
-    Workspace is required — no implicit fallback. Uses worktree-aware DerivedData isolation."""
+    """Build the iOS app for a physical device, optionally install and launch it.
+
+    No Pepper dylib injection — this produces a clean device build for real-hardware testing.
+    Set install=false to compile only. Requires DEVICE_DEVICECTL_UUID in .env for install/launch.
+    Workspace is required. Uses worktree-aware DerivedData isolation."""
     cfg = get_config()
     devicectl_uuid = cfg["device_devicectl_uuid"]
 
@@ -713,10 +718,12 @@ async def iterate(
     simulator: Optional[str] = Field(default=None, description="Simulator UDID"),
     bundle_id: Optional[str] = Field(default=None, description="App bundle ID (default: from .env APP_BUNDLE_ID)"),
 ) -> str:
-    """The complete edit→build→deploy→verify loop in ONE call.
-    Builds the app, installs it on the simulator, launches with Pepper injected,
-    and returns the screen state. Use this after editing code to see your changes.
-    Workspace is required — no implicit fallback."""
+    """Build + deploy + verify in one call. The go-to tool after editing app source code.
+
+    Compiles the app, installs on simulator, launches with Pepper dylib injected,
+    and returns the current screen state so you can verify changes took effect.
+    Equivalent to calling build then deploy, but faster and returns screen state.
+    Workspace is required."""
     # Resolve sim first
     try:
         sim = _resolve_simulator(simulator)
@@ -743,10 +750,11 @@ async def deploy(
     dylib_path: Optional[str] = Field(default=None, description="Path to Pepper dylib (default: from .env)"),
     skip_privacy: bool = Field(default=False, description="Skip auto-granting privacy permissions (photos, camera, microphone, contacts, calendar, location)"),
 ) -> str:
-    """Terminate and relaunch the app with Pepper dylib injection.
-    Does NOT rebuild — use `build` or `iterate` for that.
-    Use this when you just need to restart the app (e.g. after a crash).
-    By default, grants common privacy permissions before launch (opt out with skip_privacy=true)."""
+    """Restart the app with Pepper injected. Does NOT rebuild — the last-compiled binary is used.
+
+    Terminates the running app, grants common privacy permissions, and relaunches with DYLD_INSERT_LIBRARIES.
+    Use after a crash or when you need a fresh app launch without recompiling.
+    For build + restart, use iterate instead. Set skip_privacy=true to skip auto-granting permissions."""
     try:
         sim = _resolve_simulator(simulator)
     except RuntimeError as e:
