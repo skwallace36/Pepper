@@ -596,6 +596,7 @@ extension IntrospectHandler {
             if let label = elem.label { dict["label"] = AnyCodable(label) }
             if let value = elem.value, !value.isEmpty { dict["value"] = AnyCodable(value) }
             if elem.visible >= 0 { dict["visible"] = AnyCodable(Double(round(elem.visible * 100) / 100)) }
+            if let ls = elem.labelSource { dict["label_source"] = AnyCodable(ls) }
             if volatileKeys.contains(Self.posKey(elem.center)) { dict["volatile"] = AnyCodable(true) }
             return AnyCodable(dict)
         }
