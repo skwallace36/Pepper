@@ -16,6 +16,14 @@ struct NavigateHandler: PepperHandler {
     private var logger: Logger { PepperLogger.logger(category: "navigate") }
 
     func handle(_ command: PepperCommand) -> PepperResponse {
+        do {
+            return try performNavigate(command)
+        } catch {
+            return .error(id: command.id, message: "[navigate] \(error.localizedDescription)")
+        }
+    }
+
+    private func performNavigate(_ command: PepperCommand) throws -> PepperResponse {
         let deeplink = command.params?["deeplink"]?.stringValue
         let screenID = command.params?["to"]?.stringValue
         let tabIndex = command.params?["tab"]?.intValue
@@ -28,10 +36,8 @@ struct NavigateHandler: PepperHandler {
         }
 
         guard deeplink != nil || screenID != nil || tabIndex != nil else {
-            return .error(
-                id: command.id,
-                message:
-                    "Missing required param: 'deeplink' (deep link path), 'to' (screen ID), 'tab' (tab index), or 'action' ('pop'/'dismiss')"
+            throw PepperHandlerError.missingParam(
+                "'deeplink' (deep link path), 'to' (screen ID), 'tab' (tab index), or 'action' ('pop'/'dismiss')"
             )
         }
 
@@ -41,7 +47,7 @@ struct NavigateHandler: PepperHandler {
         }
 
         guard let window = UIWindow.pepper_keyWindow else {
-            return .error(id: command.id, message: "No key window available")
+            throw PepperHandlerError.noKeyWindow
         }
 
         // Handle tab switching by index — tap the actual tab bar button

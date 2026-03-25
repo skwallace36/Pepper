@@ -45,8 +45,17 @@ final class DialogHandler: PepperHandler {
 
     // swiftlint:disable:next cyclomatic_complexity
     func handle(_ command: PepperCommand) -> PepperResponse {
+        do {
+            return try performDialog(command)
+        } catch {
+            return .error(id: command.id, message: "[dialog] \(error.localizedDescription)")
+        }
+    }
+
+    // swiftlint:disable:next cyclomatic_complexity
+    private func performDialog(_ command: PepperCommand) throws -> PepperResponse {
         guard let action = command.params?["action"]?.stringValue else {
-            return .error(id: command.id, message: "Missing 'action' param (list, current, dismiss)")
+            throw PepperHandlerError.missingParam("action (list, current, dismiss)")
         }
 
         let interceptor = PepperDialogInterceptor.shared
