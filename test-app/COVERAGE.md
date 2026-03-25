@@ -22,7 +22,6 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 |---------|---------|--------|-------------|-------|
 | `ping` | — | pass | Any state |  |
 | `help` | — | pass | Any state | Returns list of 50 available server commands. Tested via pepper-ctl and direct WebSocket. |
-| `look` | — | pass | Any screen | Alias for introspect map |
 | `tap` | text | pass | Tap Me button, tab bar items |  |
 | `tap` | element | pass | Buttons with a11y IDs | BUG-006 FIXED: PepperElementResolver now falls back to PepperSwiftUIBridge.collectAccessibilityElements() when UIView hierarchy lookup fails. SwiftUI .accessibilityIdentifier() elements (e.g. tap_button) are now discoverable via the accessibility tree. |
 | `tap` | point | pass | Tap Me button at (201,232) | Tapped Tap Me button by coordinate. Count incremented from 0 to 1. Strategy: point. |
@@ -269,9 +268,9 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 
 ## Summary
 
-**246 test points** across 68 commands.
+**245 test points** across 67 commands.
 
-- pass: 138
+- pass: 137
 - fail: 3
 - untested: 94
 
