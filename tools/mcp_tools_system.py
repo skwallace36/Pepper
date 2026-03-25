@@ -1,6 +1,6 @@
 """System and utility tool definitions for Pepper MCP.
 
-Tool definitions for: push, status, highlight, orientation, locale, gesture, hook, flags.
+Tools: push, status, highlight, orientation, locale, gesture, hook, flags.
 """
 from __future__ import annotations
 
@@ -38,8 +38,11 @@ def register_system_tools(mcp, resolve_and_send, act_and_look):
             default=None, description='JSON userInfo payload for deeplink routing (e.g. \'{"type":"order_detail"}\')'
         ),
     ) -> str:
-        """Simulate push notifications — deliver, list pending, or clear all.
-        Delivered notifications appear like real remote pushes. Include data payload to test deeplink routing."""
+        """Simulate push notifications in the running app.
+
+        Delivered notifications appear exactly like real APNs pushes — banner, sound, badge.
+        Include a data payload to test deeplink routing (the app receives it in userInfo).
+        Use action='pending' to list queued notifications, action='clear' to remove them all."""
         params: dict = {}
         if action:
             params["action"] = action
@@ -64,8 +67,11 @@ def register_system_tools(mcp, resolve_and_send, act_and_look):
             default=False, description="Include detailed VM breakdown (internal, compressed, purgeable)"
         ),
     ) -> str:
-        """Get device, app, and Pepper server info — bundle ID, version, port, connections, current screen.
-        Add memory=true for process memory stats, or memory_detail=true for full VM breakdown."""
+        """Check Pepper connection health and app identity.
+
+        Returns: bundle ID, app version, Pepper server port, active WebSocket connections, current screen name.
+        Call after deploy to confirm Pepper connected successfully, or anytime to identify the current screen.
+        Add memory=true for process memory (resident size, footprint), memory_detail=true for full VM breakdown."""
         result = await resolve_and_send(simulator, CMD_STATUS)
         if memory or memory_detail:
             mem_params: dict = {}
@@ -87,9 +93,10 @@ def register_system_tools(mcp, resolve_and_send, act_and_look):
         duration: float | None = Field(default=None, description="How long to show in seconds (default: 0.8)"),
         clear: bool = Field(default=False, description="Clear all highlights"),
     ) -> str:
-        """Draw a colored border around an element for visual debugging.
-        Highlights appear as real UIViews — visible in recordings.
-        Use clear=true to remove all highlights."""
+        """Draw a colored border around an element for visual debugging. Visible in screenshots and recordings.
+
+        Specify text to highlight by label, or frame for exact coordinates.
+        Highlights render as real UIViews overlaid on the app. Use clear=true to remove all."""
         params: dict = {}
         if clear:
             params["clear"] = True
@@ -117,7 +124,7 @@ def register_system_tools(mcp, resolve_and_send, act_and_look):
             description="Target orientation: portrait, landscape_left, landscape_right, portrait_upside_down",
         ),
     ) -> str:
-        """Get or set device orientation. Omit value to query current orientation."""
+        """Get or set device orientation. Omit value to query; set to rotate the device programmatically."""
         params: dict = {}
         if value:
             params["value"] = value
@@ -133,8 +140,10 @@ def register_system_tools(mcp, resolve_and_send, act_and_look):
         region: str | None = Field(default=None, description="Region code for set (e.g. 'JP', 'US')"),
         key: str | None = Field(default=None, description="Localization key to look up (for lookup action)"),
     ) -> str:
-        """Override app locale, look up localized strings, or list available languages.
-        Useful for testing localization without changing simulator settings."""
+        """Override app locale at runtime without changing simulator settings.
+
+        Actions: current (read locale), set (override language/region), reset (restore original),
+        lookup (find a localized string by key), languages (list available localizations)."""
         params: dict = {}
         if action:
             params["action"] = action
@@ -156,17 +165,14 @@ def register_system_tools(mcp, resolve_and_send, act_and_look):
         center_x: float | None = Field(default=None, description="Center X coordinate (defaults to screen center)"),
         center_y: float | None = Field(default=None, description="Center Y coordinate (defaults to screen center)"),
     ) -> str:
-        """Perform multi-touch gestures — pinch to zoom or rotate.
-        For pinch: start_distance > end_distance = zoom out, end_distance > start_distance = zoom in.
-        For rotate: specify angle in degrees.
-        Center defaults to screen center — set center_x/center_y to target a specific view.
+        """Perform multi-touch gestures — pinch to zoom or two-finger rotate. Shows screen state after.
 
-        Known limitation: pinch may not work on views with custom gesture recognizers
-        (e.g. Google Maps GMSMapView). If pinch doesn't change state, try alternative
-        approaches: defaults (set a debug zoom key), vars_inspect (mutate a ViewModel
-        property), or add a temporary debug bridge in app code.
+        Pinch: set start_distance and end_distance in points. Larger end = zoom in, smaller = zoom out.
+        Rotate: set angle in degrees.
+        Center defaults to screen center; override with center_x/center_y to target a specific view.
 
-        Shows screen state after the gesture."""
+        Pinch may not work on views with custom gesture recognizers (e.g. map SDKs).
+        If it doesn't take effect, try defaults or vars_inspect to change zoom state directly."""
         params: dict = {"type": type}
         if start_distance is not None:
             params["start_distance"] = start_distance
@@ -194,17 +200,15 @@ def register_system_tools(mcp, resolve_and_send, act_and_look):
         hook_id: str | None = Field(default=None, description="Hook ID (for remove, log, clear)"),
         limit: int | None = Field(default=None, description="Max log entries to return (default: 50)"),
     ) -> str:
-        """Hook ObjC methods at runtime to log invocations. Transparent — original method is called through.
+        """Hook ObjC methods at runtime to log every invocation. Non-destructive — the original method runs normally.
 
-        Examples:
-          hook action=install class_name=UIViewController method="viewDidAppear:"
-          hook action=log hook_id=hook_1 limit=20
-          hook action=list
-          hook action=remove hook_id=hook_1
+        install: attach a hook (class_name + method required). remove: detach by hook_id.
+        list: show active hooks. log: read captured invocations for a hook_id. clear: wipe log entries.
 
-        Supports: void/object/BOOL return × 0-3 object args, void + 1 BOOL arg.
-        Covers ~90% of useful targets: lifecycle, delegate, network, analytics methods.
-        """
+        Supports void/object/BOOL return types with 0-3 object args, plus void+BOOL.
+        Covers lifecycle, delegate, network, and analytics methods.
+
+        Example: hook action=install class_name=UIViewController method="viewDidAppear:" """
         params: dict = {"action": action}
         if class_name:
             params["class"] = class_name
@@ -225,22 +229,15 @@ def register_system_tools(mcp, resolve_and_send, act_and_look):
         key: str | None = Field(default=None, description="Feature flag key"),
         value: str | None = Field(default=None, description="Value to set (true/false for bools, or string/int)"),
     ) -> str:
-        """Override feature flags via network response interception. Set a flag, then deploy to apply.
+        """Override feature flags by intercepting the network response that delivers them.
 
-        Mechanism: Intercepts the network response that delivers feature flags and modifies the
-        payload before the app processes it. The app receives already-modified data and stores it
-        through its normal code path — no timing races, no ivar hacking.
-
-        Workflow:
-          1. flags action=set key="some_flag" value="true"
-          2. deploy  (restarts app — first flag fetch is intercepted with your override)
-          3. look visual=true screenshot_quality=high  (verify + capture)
-
+        The app receives modified flag data through its normal code path — no timing races.
         Overrides persist across deploys until explicitly cleared.
-        - list: show all active overrides + network override status
-        - get: read a specific flag's override and service value
-        - set: override a flag (intercepts server flag response on next deploy)
-        - clear: remove one override (key=...) or all overrides (no key)"""
+
+        Workflow: flags set key="flag" value="true" → deploy (restart) → look (verify).
+
+        Actions: list (show overrides + status), get (read one flag), set (override a flag),
+        clear (remove one override by key, or all if no key)."""
         params: dict = {"action": action}
         if key:
             params["key"] = key
