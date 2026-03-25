@@ -13,7 +13,7 @@ def register_element_tools(mcp, resolve_and_send, act_and_look):
 
     Args:
         mcp: FastMCP server instance.
-        resolve_and_send: async (simulator, cmd, params?, timeout?) -> str
+        resolve_and_send: async (simulator, cmd, params?, timeout?) -> dict
         act_and_look: async (simulator, cmd, params?, timeout?) -> str
     """
 
