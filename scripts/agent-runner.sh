@@ -168,8 +168,8 @@ if [ -n "$MISSING" ]; then
 fi
 # Max concurrent instances per agent type
 case "$TYPE" in
-  pr-verifier|verifier) MAX_INSTANCES=2 ;;
-  builder)              MAX_INSTANCES=1 ;;
+  pr-verifier|verifier) MAX_INSTANCES=3 ;;
+  builder)              MAX_INSTANCES=0 ;;  # paused — clear verification backlog first
   *)                    MAX_INSTANCES=1 ;;
 esac
 
