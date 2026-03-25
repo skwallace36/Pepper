@@ -59,10 +59,12 @@ struct GestureHandler: PepperHandler {
         )
 
         if success {
-            return .ok(
+            let zoomDir = endDist > startDist ? "zoom in" : "zoom out"
+            return .action(
                 id: command.id,
-                data: [
-                    "gesture": AnyCodable("pinch"),
+                action: "pinch",
+                target: zoomDir,
+                extra: [
                     "center": AnyCodable([
                         "x": AnyCodable(center.x),
                         "y": AnyCodable(center.y),
@@ -90,15 +92,15 @@ struct GestureHandler: PepperHandler {
         )
 
         if success {
-            return .ok(
+            return .action(
                 id: command.id,
-                data: [
-                    "gesture": AnyCodable("rotate"),
+                action: "rotate",
+                target: "\(angle)°",
+                extra: [
                     "center": AnyCodable([
                         "x": AnyCodable(center.x),
                         "y": AnyCodable(center.y),
                     ]),
-                    "angle": AnyCodable(angle),
                     "radius": AnyCodable(radius),
                 ])
         }

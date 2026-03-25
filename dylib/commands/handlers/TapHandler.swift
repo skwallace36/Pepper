@@ -143,11 +143,12 @@ struct TapHandler: PepperHandler {
             if let errorMsg = errorMsg, errorMsg.hasPrefix("__tab_selected__:") {
                 let idx = String(errorMsg.dropFirst("__tab_selected__:".count))
                 logger.warning("Tab \(idx) selected programmatically — no tab bar button found for touch synthesis")
-                return .ok(
+                return .action(
                     id: command.id,
-                    data: [
+                    action: "tap",
+                    target: "tab[\(idx)]",
+                    extra: [
                         "strategy": AnyCodable("tab_index"),
-                        "description": AnyCodable("tab[\(idx)]"),
                         "type": AnyCodable("tab"),
                         "programmatic": AnyCodable(true),
                         "warning": AnyCodable(
@@ -197,11 +198,12 @@ struct TapHandler: PepperHandler {
             }
             if knownTabs.contains(normalized) {
                 if tabBar.pepper_selectTab(named: text) {
-                    return .ok(
+                    return .action(
                         id: command.id,
-                        data: [
+                        action: "tap",
+                        target: "tab:\(text)",
+                        extra: [
                             "strategy": AnyCodable("tab_index"),
-                            "description": AnyCodable("tab:\(text)"),
                             "type": AnyCodable("programmatic_tab"),
                         ])
                 }
@@ -347,9 +349,8 @@ struct TapHandler: PepperHandler {
 
         if success {
             logger.info("Tapped \(description) via HID at (\(point.x), \(point.y))")
-            var data: [String: AnyCodable] = [
+            var extra: [String: AnyCodable] = [
                 "strategy": AnyCodable(strategy),
-                "description": AnyCodable(description),
                 "type": AnyCodable("hid_touch"),
                 "tap_point": AnyCodable([
                     "x": AnyCodable(Double(point.x)),
@@ -358,9 +359,9 @@ struct TapHandler: PepperHandler {
             ]
             if debug {
                 let windows = UIWindow.pepper_allVisibleWindows
-                data["tap_diagnostics"] = AnyCodable(buildTapDiagnostics(at: point, in: windows))
+                extra["tap_diagnostics"] = AnyCodable(buildTapDiagnostics(at: point, in: windows))
             }
-            return .ok(id: command.id, data: data)
+            return .action(id: command.id, action: "tap", target: description, extra: extra)
         } else {
             return .error(id: command.id, message: "HID tap synthesis failed at (\(point.x), \(point.y))")
         }

@@ -451,7 +451,10 @@ async def act_and_look(simulator: Optional[str], cmd: str, params: Optional[dict
 
     # Format: action result on top, then screen state, then telemetry
     action_data = action_resp.get("data", {})
-    action_summary = action_data.get("description", action_data.get("strategy", cmd))
+    # .action() factory uses "action" + "target"; legacy .ok() uses "description" or "strategy"
+    action_verb = action_data.get("action", cmd)
+    action_target = action_data.get("target", action_data.get("description", action_data.get("strategy", "")))
+    action_summary = f"{action_verb} '{action_target}'" if action_target else action_verb
 
     result = f"Action: {action_summary}\n--- Screen after {cmd} ---\n{screen_summary}"
     if telemetry:

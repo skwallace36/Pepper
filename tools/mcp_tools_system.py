@@ -158,12 +158,12 @@ def register_system_tools(mcp, resolve_and_send, act_and_look):
     @mcp.tool()
     async def gesture(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
-        type: str = Field(description="Gesture type: pinch or rotate"),
-        start_distance: int | None = Field(default=None, description="Starting pinch distance in points (for pinch)"),
-        end_distance: int | None = Field(default=None, description="Ending pinch distance in points (for pinch)"),
-        angle: float | None = Field(default=None, description="Rotation angle in degrees (for rotate)"),
-        center_x: float | None = Field(default=None, description="Center X coordinate (defaults to screen center)"),
-        center_y: float | None = Field(default=None, description="Center Y coordinate (defaults to screen center)"),
+        type: str = Field(description="Gesture type: 'pinch' (zoom in/out) or 'rotate' (turn content)"),
+        start_distance: int | None = Field(default=None, description="Pinch start distance in points (e.g. 200). Larger than end_distance = zoom out"),
+        end_distance: int | None = Field(default=None, description="Pinch end distance in points (e.g. 50). Larger than start_distance = zoom in"),
+        angle: float | None = Field(default=None, description="Rotation angle in degrees (e.g. 90 for quarter turn, -45 for counter-clockwise)"),
+        center_x: float | None = Field(default=None, description="Center X coordinate for the gesture (e.g. 200). Defaults to screen center"),
+        center_y: float | None = Field(default=None, description="Center Y coordinate for the gesture (e.g. 400). Defaults to screen center"),
     ) -> str:
         """Perform multi-touch gestures — pinch to zoom or two-finger rotate. Shows screen state after.
 

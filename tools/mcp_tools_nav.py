@@ -156,13 +156,13 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
     @mcp.tool()
     async def tap(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
-        text: str | None = Field(default=None, description="Tap element by visible text/label"),
-        icon: str | None = Field(default=None, description="Tap element by icon name (e.g. 'gift-fill-icon')"),
-        heuristic: str | None = Field(default=None, description="Tap element by heuristic (e.g. 'menu_button')"),
-        point: str | None = Field(default=None, description="Tap at coordinates 'x,y' (e.g. '200,400')"),
-        double: bool = Field(default=False, description="Double-tap (two rapid taps for zoom, like, etc.)"),
-        duration: float | None = Field(default=None, description="Hold duration in seconds. Use >0.5 for long press."),
-        debug: bool = Field(default=False, description="Include tap diagnostics: hit-test result, gesture recognizers, responder chain, and overlapping views. Use when a tap doesn't produce the expected result."),
+        text: str | None = Field(default=None, description="Visible text or label on the element (e.g. 'Save', 'Cancel', 'Settings')"),
+        icon: str | None = Field(default=None, description="SF Symbol or asset name shown on the element (e.g. 'gift-fill-icon', 'chevron.right')"),
+        heuristic: str | None = Field(default=None, description="Semantic role when text/icon aren't available (e.g. 'menu_button', 'close_button', 'back_button')"),
+        point: str | None = Field(default=None, description="Raw screen coordinates as 'x,y' — last resort when no text/icon/heuristic matches (e.g. '200,400')"),
+        double: bool = Field(default=False, description="Double-tap — two rapid taps for zoom, like, or select-word gestures"),
+        duration: float | None = Field(default=None, description="Hold duration in seconds (e.g. 1.0 for long press, 0.5 for peek)"),
+        debug: bool = Field(default=False, description="Include tap diagnostics when a tap doesn't work: hit-test result, gesture recognizers, responder chain, overlapping views"),
     ) -> list:
         """Use this when you need to tap a button, link, cell, or any interactive element.
         Specify exactly one of: text, icon, heuristic, or point.
@@ -197,8 +197,8 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
     @mcp.tool()
     async def scroll(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
-        direction: str = Field(description="Scroll direction: up, down, left, right"),
-        amount: int | None = Field(default=None, description="Scroll amount in points"),
+        direction: str = Field(description="Scroll direction: 'up', 'down', 'left', or 'right' (e.g. 'down' to reveal content below)"),
+        amount: int | None = Field(default=None, description="Distance in points (default ~300). Use larger values like 600 for fast scrolling, smaller like 100 for precise positioning"),
     ) -> list:
         """Use this when you need to reveal content above or below the visible area.
         Performs a slow drag (not a flick). Use swipe for fast flick gestures like dismissing or paging.
@@ -286,7 +286,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
     @mcp.tool()
     async def swipe(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
-        direction: str = Field(description="Swipe direction: up, down, left, right"),
+        direction: str = Field(description="Swipe direction: 'up', 'down', 'left', or 'right' (e.g. 'left' to go to next page, 'down' to dismiss a sheet)"),
     ) -> list:
         """Use this when you need a fast flick gesture — paging between screens, dismissing cards, or pull-to-refresh.
         Unlike scroll (slow drag to reveal content), swipe is a quick flick that triggers gesture recognizers.

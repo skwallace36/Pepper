@@ -275,10 +275,11 @@ struct ScrollHandler: PepperHandler {
         )
 
         if success {
-            return .ok(
+            return .action(
                 id: command.id,
-                data: [
-                    "direction": AnyCodable(direction),
+                action: "scroll",
+                target: direction,
+                extra: [
                     "amount": AnyCodable(Double(amount)),
                     "duration": AnyCodable(duration),
                     "gesture": AnyCodable([

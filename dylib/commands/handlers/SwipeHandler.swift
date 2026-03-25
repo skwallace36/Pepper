@@ -99,9 +99,12 @@ struct SwipeHandler: PepperHandler {
         )
 
         if success {
-            return .ok(
+            let dir = command.params?["direction"]?.stringValue ?? "custom"
+            return .action(
                 id: command.id,
-                data: [
+                action: "swipe",
+                target: dir,
+                extra: [
                     "from": AnyCodable(["x": AnyCodable(Double(from.x)), "y": AnyCodable(Double(from.y))]),
                     "to": AnyCodable(["x": AnyCodable(Double(to.x)), "y": AnyCodable(Double(to.y))]),
                     "duration": AnyCodable(duration),
