@@ -151,17 +151,21 @@ struct WebViewHandler: PepperHandler {
             return jsResponse
         }
 
-        if let data = resultStr.data(using: .utf8),
-            let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-        {
-            return .ok(
-                id: command.id,
-                data: [
-                    "url": AnyCodable(webView.url?.absoluteString ?? ""),
-                    "total": AnyCodable(json["total"] ?? 0),
-                    "shown": AnyCodable(json["shown"] ?? 0),
-                    "elements": AnyCodable(json["elements"] ?? []),
-                ])
+        if let data = resultStr.data(using: .utf8) {
+            do {
+                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                    return .ok(
+                        id: command.id,
+                        data: [
+                            "url": AnyCodable(webView.url?.absoluteString ?? ""),
+                            "total": AnyCodable(json["total"] ?? 0),
+                            "shown": AnyCodable(json["shown"] ?? 0),
+                            "elements": AnyCodable(json["elements"] ?? []),
+                        ])
+                }
+            } catch {
+                pepperLog.debug("Failed to parse WebView DOM snapshot JSON: \(error)", category: .commands)
+            }
         }
 
         return .ok(

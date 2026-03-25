@@ -66,11 +66,16 @@ struct SandboxHandler: PepperHandler {
             ("tmp", NSTemporaryDirectory()),
         ]
         for (name, dirPath) in dirs {
-            let contents = (try? fm.contentsOfDirectory(atPath: dirPath)) ?? []
+            var count = 0
+            do {
+                count = try fm.contentsOfDirectory(atPath: dirPath).count
+            } catch {
+                pepperLog.debug("contentsOfDirectory failed at \(dirPath): \(error)", category: .commands)
+            }
             info.append([
                 "name": AnyCodable(name),
                 "path": AnyCodable(dirPath),
-                "item_count": AnyCodable(contents.count),
+                "item_count": AnyCodable(count),
             ])
         }
 
@@ -97,10 +102,13 @@ struct SandboxHandler: PepperHandler {
         }
 
         let contents: [String]
-        if recursive {
-            contents = (try? fm.subpathsOfDirectory(atPath: path)) ?? []
-        } else {
-            contents = (try? fm.contentsOfDirectory(atPath: path)) ?? []
+        do {
+            contents = try recursive
+                ? fm.subpathsOfDirectory(atPath: path)
+                : fm.contentsOfDirectory(atPath: path)
+        } catch {
+            pepperLog.warning("Failed to list directory at \(path): \(error)", category: .commands)
+            contents = []
         }
 
         var entries: [[String: AnyCodable]] = []
@@ -114,13 +122,16 @@ struct SandboxHandler: PepperHandler {
                 "type": AnyCodable(itemIsDir.boolValue ? "directory" : "file"),
             ]
 
-            if let attrs = try? fm.attributesOfItem(atPath: fullPath) {
+            do {
+                let attrs = try fm.attributesOfItem(atPath: fullPath)
                 if let size = attrs[.size] as? UInt64 {
                     entry["size"] = AnyCodable(Int(size))
                 }
                 if let modified = attrs[.modificationDate] as? Date {
                     entry["modified"] = AnyCodable(ISO8601DateFormatter().string(from: modified))
                 }
+            } catch {
+                pepperLog.debug("attributesOfItem failed at \(fullPath): \(error)", category: .commands)
             }
 
             entries.append(entry)
@@ -151,27 +162,43 @@ struct SandboxHandler: PepperHandler {
         }
 
         // Plist → pretty JSON
-        if path.hasSuffix(".plist"),
-            let plist = try? PropertyListSerialization.propertyList(from: data, options: [], format: nil),
-            let json = try? JSONSerialization.data(withJSONObject: plist, options: [.prettyPrinted, .sortedKeys]),
-            let str = String(data: json, encoding: .utf8)
-        {
-            return .ok(id: command.id, data: [
-                "path": AnyCodable(path), "format": AnyCodable("plist"),
-                "content": AnyCodable(str), "size": AnyCodable(data.count),
-            ])
+        if path.hasSuffix(".plist") {
+            do {
+                let plist = try PropertyListSerialization.propertyList(from: data, options: [], format: nil)
+                do {
+                    let json = try JSONSerialization.data(withJSONObject: plist, options: [.prettyPrinted, .sortedKeys])
+                    if let str = String(data: json, encoding: .utf8) {
+                        return .ok(id: command.id, data: [
+                            "path": AnyCodable(path), "format": AnyCodable("plist"),
+                            "content": AnyCodable(str), "size": AnyCodable(data.count),
+                        ])
+                    }
+                } catch {
+                    pepperLog.debug("Failed to serialize plist to JSON at \(path): \(error) — falling through to text", category: .commands)
+                }
+            } catch {
+                pepperLog.debug("Failed to parse plist at \(path): \(error) — falling through to text", category: .commands)
+            }
         }
 
         // JSON → pretty-print
-        if path.hasSuffix(".json"),
-            let obj = try? JSONSerialization.jsonObject(with: data),
-            let pretty = try? JSONSerialization.data(withJSONObject: obj, options: [.prettyPrinted, .sortedKeys]),
-            let str = String(data: pretty, encoding: .utf8)
-        {
-            return .ok(id: command.id, data: [
-                "path": AnyCodable(path), "format": AnyCodable("json"),
-                "content": AnyCodable(str), "size": AnyCodable(data.count),
-            ])
+        if path.hasSuffix(".json") {
+            do {
+                let obj = try JSONSerialization.jsonObject(with: data)
+                do {
+                    let pretty = try JSONSerialization.data(withJSONObject: obj, options: [.prettyPrinted, .sortedKeys])
+                    if let str = String(data: pretty, encoding: .utf8) {
+                        return .ok(id: command.id, data: [
+                            "path": AnyCodable(path), "format": AnyCodable("json"),
+                            "content": AnyCodable(str), "size": AnyCodable(data.count),
+                        ])
+                    }
+                } catch {
+                    pepperLog.debug("Failed to re-serialize JSON at \(path): \(error) — falling through to text", category: .commands)
+                }
+            } catch {
+                pepperLog.debug("Failed to parse JSON at \(path): \(error) — falling through to text", category: .commands)
+            }
         }
 
         // Text
@@ -296,8 +323,11 @@ struct SandboxHandler: PepperHandler {
             return .error(id: command.id, message: "Not found: \(path)")
         }
 
-        guard let attrs = try? fm.attributesOfItem(atPath: path) else {
-            return .error(id: command.id, message: "Cannot read attributes: \(path)")
+        let attrs: [FileAttributeKey: Any]
+        do {
+            attrs = try fm.attributesOfItem(atPath: path)
+        } catch {
+            return .error(id: command.id, message: "Cannot read attributes: \(path): \(error.localizedDescription)")
         }
 
         let iso = ISO8601DateFormatter()
@@ -345,8 +375,13 @@ struct SandboxHandler: PepperHandler {
             ]
         } else {
             // List immediate subdirectories
-            let contents = (try? fm.contentsOfDirectory(atPath: path)) ?? []
-            dirs = contents.sorted().compactMap { name in
+            var rawContents: [String] = []
+            do {
+                rawContents = try fm.contentsOfDirectory(atPath: path)
+            } catch {
+                pepperLog.debug("contentsOfDirectory failed at \(path): \(error)", category: .commands)
+            }
+            dirs = rawContents.sorted().compactMap { name in
                 let full = (path as NSString).appendingPathComponent(name)
                 var sub: ObjCBool = false
                 if fm.fileExists(atPath: full, isDirectory: &sub), sub.boolValue {
@@ -362,7 +397,12 @@ struct SandboxHandler: PepperHandler {
         for (name, dirPath) in dirs {
             let size = directorySize(dirPath)
             totalSize += size
-            let itemCount = (try? fm.contentsOfDirectory(atPath: dirPath))?.count ?? 0
+            var itemCount = 0
+            do {
+                itemCount = try fm.contentsOfDirectory(atPath: dirPath).count
+            } catch {
+                pepperLog.debug("contentsOfDirectory failed at \(dirPath): \(error)", category: .commands)
+            }
             entries.append([
                 "name": AnyCodable(name),
                 "path": AnyCodable(dirPath),
@@ -424,10 +464,13 @@ struct SandboxHandler: PepperHandler {
         var total: UInt64 = 0
         while let file = enumerator.nextObject() as? String {
             let fullPath = (path as NSString).appendingPathComponent(file)
-            if let attrs = try? fm.attributesOfItem(atPath: fullPath),
-                let size = attrs[.size] as? UInt64
-            {
-                total += size
+            do {
+                let attrs = try fm.attributesOfItem(atPath: fullPath)
+                if let size = attrs[.size] as? UInt64 {
+                    total += size
+                }
+            } catch {
+                pepperLog.debug("attributesOfItem failed at \(fullPath): \(error)", category: .commands)
             }
         }
         return total

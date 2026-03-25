@@ -467,15 +467,18 @@ final class PepperNetworkInterceptor {
     /// and raw query format "query GetUser { ... }" / "mutation CreatePost { ... }"
     static func extractGraphQLOperationName(_ body: String) -> String? {
         // Try JSON format first (most common)
-        if let data = body.data(using: .utf8),
-            let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-        {
-            if let opName = json["operationName"] as? String, !opName.isEmpty {
-                return opName
-            }
-            // Try parsing from the query string
-            if let query = json["query"] as? String {
-                return parseOperationName(from: query)
+        if let data = body.data(using: .utf8) {
+            do {
+                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                    if let opName = json["operationName"] as? String, !opName.isEmpty {
+                        return opName
+                    }
+                    if let query = json["query"] as? String {
+                        return parseOperationName(from: query)
+                    }
+                }
+            } catch {
+                pepperLog.debug("extractGraphQLOperationName: JSON parse failed — trying raw format: \(error)", category: .server)
             }
         }
         // Try raw query format

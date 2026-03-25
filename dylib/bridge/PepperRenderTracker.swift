@@ -484,7 +484,13 @@ final class PepperRenderTracker {
 
     /// Parse the JSON data returned by `makeViewDebugData()` into a tree structure.
     private func parseViewDebugData(_ data: Data) -> ViewTreeNode? {
-        guard let json = try? JSONSerialization.jsonObject(with: data) else { return nil }
+        let json: Any
+        do {
+            json = try JSONSerialization.jsonObject(with: data)
+        } catch {
+            pepperLog.warning("Failed to parse view debug data: \(error)", category: .bridge)
+            return nil
+        }
 
         // The data can be a single node dict or an array of root nodes
         if let array = json as? [[String: Any]] {

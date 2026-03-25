@@ -154,7 +154,10 @@ final class PepperServer {
         // Check for binary payload attached by a handler (e.g. screenshot with binary mode).
         // Binary frame format: [4-byte big-endian header length][JSON header][raw binary payload]
         if let binaryPayload = PepperResponse.takeBinaryPayload(for: response.id) {
-            guard let headerData = try? encoder.encode(response) else { return }
+            guard let headerData = try? encoder.encode(response) else {
+                pepperLog.warning("Failed to encode binary response header id=\(response.id) — frame dropped", category: .server)
+                return
+            }
             var headerLen = UInt32(headerData.count).bigEndian
             var frame = Data(bytes: &headerLen, count: 4)
             frame.append(headerData)
