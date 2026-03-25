@@ -258,7 +258,11 @@ pepper-ctl:
 agent:
 	@./scripts/agent-runner.sh "$(TYPE)"
 
-## agent-monitor: Live tail of agent events
+## dashboard: TUI dashboard for agent monitoring (requires textual)
+dashboard:
+	@python3 scripts/agent-dashboard.py
+
+## agent-monitor: Live tail of agent events (bash fallback)
 agent-monitor:
 	@./scripts/agent-monitor.sh
 
