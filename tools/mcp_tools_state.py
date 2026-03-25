@@ -35,12 +35,19 @@ def register_state_tools(mcp, resolve_and_send):
         path: str | None = Field(default=None, description="Property path (for set, e.g. 'MyVM.flag')"),
         value: str | None = Field(default=None, description="Value to set (for set action)"),
     ) -> str:
-        """Check or change property values at runtime WITHOUT adding print statements or rebuilding.
+        """Check or change ViewModel @Published properties at runtime — no rebuild needed.
+        Use vars_inspect for SwiftUI/MVVM state. Use `heap` for arbitrary ObjC objects
+        and singletons. Use `read_element` for UI element values (text, toggle state).
+
+        Actions:
         - list: show all tracked ViewModels
-        - dump: show @Published properties (use this to check state instead of adding logs!)
-        - mirror: full property dump including private state
-        - set: mutate a property live (triggers SwiftUI re-render, great for testing theories)
-        - discover: re-scan for ViewModels"""
+        - dump: show @Published properties (check state instead of adding print statements)
+        - mirror: full property dump including private/internal state
+        - set: mutate a property live (triggers SwiftUI re-render — great for testing theories)
+        - discover: re-scan for ViewModels after navigation changes
+
+        Related tools: heap (any ObjC object), read_element (UI element value/state),
+        defaults (persisted key-value storage)."""
         params: dict = {"action": action}
         if class_name:
             params["class"] = class_name
@@ -89,9 +96,12 @@ def register_state_tools(mcp, resolve_and_send):
         action: str = Field(default="get", description="Action: get, set, clear"),
         value: str | None = Field(default=None, description="String to copy to clipboard (for set)"),
     ) -> str:
-        """Read or write the device clipboard (UIPasteboard).
-        - get: read current clipboard contents (string, URL, types)
-        - set: copy a string to clipboard
+        """Read or write the iOS simulator clipboard (UIPasteboard.general).
+        Useful for injecting test data into paste fields or verifying copy behavior.
+
+        Actions:
+        - get: read current clipboard contents (string, URL, detected types)
+        - set: copy a string to clipboard (appears in any app's paste action)
         - clear: empty the clipboard"""
         params: dict = {"action": action}
         if value is not None:
@@ -106,12 +116,17 @@ def register_state_tools(mcp, resolve_and_send):
         account: str | None = Field(default=None, description="Keychain account (for get/set/delete)"),
         value: str | None = Field(default=None, description="Value to store (for set)"),
     ) -> str:
-        """Inspect and modify Keychain items — stored credentials, tokens, secrets.
+        """Inspect and modify iOS Keychain items — stored credentials, auth tokens, API secrets.
+        Reads kSecClassGenericPassword items from the app's Keychain access group.
+
+        Actions:
         - list: show all keychain items (service, account, access group)
-        - get: read a specific item's value
+        - get: read a specific item's value by service + account
         - set: add or update an item
         - delete: remove an item by service (+ optional account)
-        - clear: delete ALL generic password items"""
+        - clear: delete ALL generic password items
+
+        Related tools: defaults (app preferences, not secrets), cookies (HTTP session tokens)."""
         params: dict = {"action": action}
         if service:
             params["service"] = service
@@ -128,11 +143,16 @@ def register_state_tools(mcp, resolve_and_send):
         domain: str | None = Field(default=None, description="Cookie domain filter"),
         name: str | None = Field(default=None, description="Cookie name (for delete)"),
     ) -> str:
-        """Inspect HTTP cookies from HTTPCookieStorage.
+        """Inspect HTTP cookies from HTTPCookieStorage.shared — session tokens, tracking IDs,
+        consent flags. Useful for debugging auth flows and verifying cookie-based sessions.
+
+        Actions:
         - list: show all cookies (optionally filtered by domain)
-        - get: get cookies for a specific domain
+        - get: get cookies for a specific domain with name, value, path, expiry
         - delete: remove a cookie by name + domain
-        - clear: delete all cookies"""
+        - clear: delete all cookies (useful for testing logged-out state)
+
+        Related tools: keychain (stored credentials), network (HTTP request/response inspection)."""
         params: dict = {"action": action}
         if domain:
             params["domain"] = domain
