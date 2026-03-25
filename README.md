@@ -4,6 +4,16 @@ MCP server for iOS Simulator apps. Injects a dylib via `DYLD_INSERT_LIBRARIES`, 
 
 ## Quick Start
 
+**Homebrew** (recommended):
+
+```bash
+brew install --HEAD skwallace36/pepper/pepper
+```
+
+Tap: [`skwallace36/homebrew-pepper`](https://github.com/skwallace36/homebrew-pepper)
+
+**From source:**
+
 ```bash
 git clone https://github.com/skwallace36/Pepper.git
 cd Pepper
