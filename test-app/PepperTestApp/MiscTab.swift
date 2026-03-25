@@ -349,6 +349,11 @@ struct MiscTab: View {
                             LayoutTestWrapper()
                         }
                         .accessibilityIdentifier("layout_test_link")
+
+                        NavigationLink("Property Edit Screen") {
+                            PropertyEditWrapper()
+                        }
+                        .accessibilityIdentifier("property_edit_link")
                     }
                 }
 
