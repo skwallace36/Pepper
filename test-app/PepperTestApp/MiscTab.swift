@@ -7,6 +7,9 @@ import os
 struct MiscTab: View {
     @Environment(AppState.self) private var state
     @State private var notificationStatus: String = "unknown"
+    @AppStorage("pepper_feature_new_ui") private var newUIFlag: Bool = false
+    @AppStorage("pepper_feature_beta") private var betaFlag: Bool = false
+    @State private var allFeatureFlags: String = "none"
 
     var body: some View {
         ScrollView {
@@ -89,6 +92,68 @@ struct MiscTab: View {
                         .padding(.vertical, 4)
                     }
                     .accessibilityIdentifier("horizontal_scroll")
+                }
+
+                // MARK: - Feature Flags (for defaults/flags/network testing)
+                GroupBox("Feature Flags") {
+                    VStack(alignment: .leading, spacing: 12) {
+                        // 1. Flag-gated banner (defaults set pepper_feature_new_ui true)
+                        if newUIFlag {
+                            HStack {
+                                Image(systemName: "sparkles")
+                                Text("New Feature Available!")
+                                    .fontWeight(.semibold)
+                            }
+                            .padding(10)
+                            .frame(maxWidth: .infinity)
+                            .background(.blue.opacity(0.15))
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                            .accessibilityIdentifier("feature_flag_banner")
+                        }
+
+                        // 2. Flag-gated beta button (defaults set pepper_feature_beta true)
+                        if betaFlag {
+                            Button("Beta Action") {
+                                print("[PepperTest] Beta action triggered")
+                            }
+                            .accessibilityIdentifier("beta_action_button")
+                        }
+
+                        // 3. Server-delivered flag (flags set / network mock)
+                        HStack {
+                            Text("server_feature:")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Text(state.serverFlagValue)
+                                .font(.caption)
+                                .accessibilityIdentifier("server_flag_label")
+                        }
+                        Button("Refresh Server Flag") {
+                            state.fetchServerFlag()
+                        }
+                        .font(.caption)
+                        .accessibilityIdentifier("refresh_server_flag_button")
+
+                        // 4. All pepper_feature_* UserDefaults values
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("pepper_feature_* defaults:")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Text(allFeatureFlags)
+                                .font(.caption2)
+                                .fontDesign(.monospaced)
+                                .accessibilityIdentifier("all_feature_flags_label")
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .onAppear {
+                    state.fetchServerFlag()
+                    refreshFeatureFlags()
+                }
+                .onReceive(Timer.publish(every: 1, on: .main, in: .common).autoconnect()) { _ in
+                    refreshFeatureFlags()
                 }
 
                 // MARK: - Timer (for wait_for)
@@ -322,6 +387,19 @@ struct MiscTab: View {
             .padding()
         }
         .navigationTitle("Misc")
+    }
+
+    // MARK: - Feature Flags
+
+    private func refreshFeatureFlags() {
+        let defaults = UserDefaults.standard
+        let all = defaults.dictionaryRepresentation()
+        let featureKeys = all.keys.filter { $0.hasPrefix("pepper_feature_") }.sorted()
+        if featureKeys.isEmpty {
+            allFeatureFlags = "none"
+        } else {
+            allFeatureFlags = featureKeys.map { "\($0)=\(all[$0] ?? "")" }.joined(separator: "\n")
+        }
     }
 
     // MARK: - Notification Permission

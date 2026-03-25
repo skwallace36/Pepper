@@ -52,6 +52,9 @@ final class AppState {
     @ObservationIgnored private var concurrencyTaskHandle: Task<Void, Never>?
     @ObservationIgnored private var actorTaskHandle: Task<Void, Never>?
 
+    // Feature Flags (server-delivered)
+    var serverFlagValue: String = "not fetched"
+
     // Nested object for vars_inspect depth testing
     var nested: NestedState = NestedState()
 
@@ -206,6 +209,32 @@ final class AppState {
         actorTaskHandle = nil
         actorStatus = "cancelled"
         print("[PepperTest] Tasks cancelled")
+    }
+
+    /// Fetches a server-delivered feature flag from a mock config endpoint.
+    /// Checks `pepper.flags.overrides["server_feature"]` in UserDefaults first,
+    /// so `flags set server_feature <value>` takes effect immediately without a network call.
+    func fetchServerFlag() {
+        if let overrides = UserDefaults.standard.dictionary(forKey: "pepper.flags.overrides"),
+           let override = overrides["server_feature"] {
+            serverFlagValue = String(describing: override)
+            print("[PepperTest] Server flag (override): \(serverFlagValue)")
+            return
+        }
+        guard let url = URL(string: "https://config.peppertest.example/flags") else { return }
+        URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
+            DispatchQueue.main.async {
+                if let data,
+                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                   let value = json["server_feature"] {
+                    self?.serverFlagValue = String(describing: value)
+                    print("[PepperTest] Server flag: \(self?.serverFlagValue ?? "")")
+                } else {
+                    self?.serverFlagValue = "fetch failed"
+                    print("[PepperTest] Server flag fetch failed: \(error?.localizedDescription ?? "no data")")
+                }
+            }
+        }.resume()
     }
 
     func fetchHTTP() {
