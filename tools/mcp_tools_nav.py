@@ -68,7 +68,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
             # Try fast in-process capture first; fall back to simctl if unavailable.
             quality = screenshot_quality if screenshot_quality in ("standard", "high") else "standard"
             introspect_task = asyncio.create_task(
-                send_command(port, CMD_LOOK, {}, host=host)
+                send_command(port, CMD_LOOK, {}, host=host, timeout=20)
             )
             screenshot_task = asyncio.create_task(
                 capture_screenshot_inprocess(send_command, port, quality, host=host)
@@ -78,7 +78,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
             if screenshot_b64 is None:
                 screenshot_b64 = await capture_screenshot(udid, quality=quality)
         else:
-            resp = await send_command(port, CMD_LOOK, {}, host=host)
+            resp = await send_command(port, CMD_LOOK, {}, host=host, timeout=20)
             screenshot_b64 = None
 
         if raw:
