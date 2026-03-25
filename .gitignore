@@ -26,6 +26,8 @@ __pycache__/
 
 # Screenshots (never track)
 *.png
+# But allow asset catalog icons
+!test-app/PepperTestApp/Assets.xcassets/**/*.png
 
 # External
 .playwright-mcp/

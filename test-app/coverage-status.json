@@ -76,9 +76,9 @@
     "notes": "Tapped Tap Me button by coordinate. Count incremented from 0 to 1. Strategy: point."
   },
   "tap.icon_name": {
-    "status": "blocked",
-    "surface": "SF Symbol icon-only buttons",
-    "notes": "icon_name matching uses perceptual hashing against app-bundled icon assets. Test app only uses SF Symbols (system icons), not custom icon assets. Cannot test without adding custom icon assets to test app."
+    "status": "untested",
+    "surface": "Custom icon asset buttons (pepper-home, pepper-camera, pepper-search)",
+    "notes": "Custom icon assets added to test app asset catalog. Icon-only buttons displayed on Controls tab. Ready for testing with tap icon_name=pepper-home."
   },
   "tap.tab": {
     "status": "pass",

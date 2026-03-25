@@ -52,6 +52,33 @@ struct ControlsView: View {
                             .accessibilityIdentifier("share_button")
                         }
                         .font(.title2)
+
+                        // Custom icon asset buttons (for tap.icon_name)
+                        HStack(spacing: 20) {
+                            Button(action: { state.incrementTap() }) {
+                                Image("pepper-home")
+                                    .renderingMode(.template)
+                                    .resizable()
+                                    .frame(width: 28, height: 28)
+                            }
+                            .accessibilityIdentifier("home_icon_button")
+
+                            Button(action: { state.incrementTap() }) {
+                                Image("pepper-camera")
+                                    .renderingMode(.template)
+                                    .resizable()
+                                    .frame(width: 28, height: 28)
+                            }
+                            .accessibilityIdentifier("camera_icon_button")
+
+                            Button(action: { state.incrementTap() }) {
+                                Image("pepper-search")
+                                    .renderingMode(.template)
+                                    .resizable()
+                                    .frame(width: 28, height: 28)
+                            }
+                            .accessibilityIdentifier("search_icon_button")
+                        }
                     }
                 }
 
