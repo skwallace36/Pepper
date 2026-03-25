@@ -77,7 +77,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
         # Always run the AX probe in parallel with the dylib command.
         # It checks for SpringBoard dialogs (permission prompts, etc.) that
         # the in-process dylib cannot see.
-        ax_task = asyncio.create_task(
+        ax_task = asyncio.ensure_future(
             asyncio.get_event_loop().run_in_executor(None, _ax_detect)
         )
 
