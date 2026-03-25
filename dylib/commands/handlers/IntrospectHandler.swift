@@ -269,19 +269,52 @@ struct IntrospectHandler: PepperHandler {
         }
 
         let tabBarProvider = PepperAppConfig.shared.tabBarProvider
-        let tabTitles = tabBarProvider?.visibleTabTitles() ?? []
-        let tabNamesList = tabBarProvider?.tabNames() ?? []
-        let selectedTab = tabBarProvider?.selectedTabName()
+        var tabTitles = tabBarProvider?.visibleTabTitles() ?? []
+        var tabNamesList = tabBarProvider?.tabNames() ?? []
+        var selectedTab = tabBarProvider?.selectedTabName()
+
+        // Generic mode fallback: derive tab info from standard UITabBarController
+        if tabTitles.isEmpty, tabBarProvider == nil,
+           let tabBarVC = UIWindow.pepper_tabBarController as? UITabBarController,
+           let vcs = tabBarVC.viewControllers, !vcs.isEmpty
+        {
+            tabTitles = vcs.enumerated().map { i, vc in
+                vc.tabBarItem.title ?? vc.title ?? "Tab \(i)"
+            }
+            tabNamesList = tabTitles.map {
+                $0.lowercased().replacingOccurrences(of: " ", with: "_")
+            }
+            if let sel = tabBarVC.selectedViewController {
+                selectedTab = (sel.tabBarItem.title ?? sel.title)?
+                    .lowercased().replacingOccurrences(of: " ", with: "_")
+            }
+        }
         let screenH = screenBounds.height
         let screenW = screenBounds.width
         let tabBarMinY: CGFloat = screenH - 60  // Tab bar is always in the bottom ~60pt
 
-        // Phase 4a: Label tab bar items from tab bar provider.
+        // Phase 4a: Label tab bar items from tab bar provider or UITabBarController.
         // UITabBarButton labels aren't in the accessibility tree; use tab item titles.
         // Strategy: use provider's tabItemFrames for authoritative positions, then
         // match to discovered elements or create synthetic ones for occluded tabs.
         if !tabTitles.isEmpty, let window = UIWindow.pepper_keyWindow {
-            let providerFrames = tabBarProvider?.tabItemFrames(in: window) ?? []
+            let providerFrames: [(center: CGPoint, frame: CGRect)]
+            if let provider = tabBarProvider {
+                providerFrames = provider.tabItemFrames(in: window)
+            } else if let tabBar = (UIWindow.pepper_tabBarController as? UITabBarController)?.tabBar {
+                // Generic mode: extract frames from standard UITabBar buttons
+                providerFrames = tabBar.subviews
+                    .filter { String(describing: type(of: $0)).contains("TabBarButton") }
+                    .sorted { $0.frame.origin.x < $1.frame.origin.x }
+                    .map { button in
+                        let center = button.convert(
+                            CGPoint(x: button.bounds.midX, y: button.bounds.midY), to: window)
+                        let frame = button.convert(button.bounds, to: window)
+                        return (center: center, frame: frame)
+                    }
+            } else {
+                providerFrames = []
+            }
 
             if providerFrames.count == tabTitles.count {
                 // Provider knows exact tab positions — match or create elements.
