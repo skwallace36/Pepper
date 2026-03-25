@@ -102,6 +102,7 @@ today_events = [e for e in events if e.get('ts','').startswith(today)]
 started = len([e for e in today_events if e.get('event') == 'started'])
 done = len([e for e in today_events if e.get('event') == 'done'])
 failed = len([e for e in today_events if e.get('event') in ('failed','timeout')])
+crashes = len([e for e in today_events if e.get('event') == 'crash'])
 total_cost = sum(float(e.get('cost_usd', 0)) for e in today_events if e.get('event') in ('done','failed','timeout','killed'))
 prs = len([e for e in today_events if e.get('event') == 'pr'])
 commits = len([e for e in today_events if e.get('event') == 'commit'])
@@ -117,7 +118,8 @@ all_started = len([e for e in events if e.get('event') == 'started'])
 all_prs = len([e for e in events if e.get('event') == 'pr'])
 all_cost = sum(float(e.get('cost_usd', 0)) for e in events if e.get('event') in ('done','failed','timeout','killed'))
 
-print(f'  \033[1mtoday\033[0m  {started} runs ({done} ok, {failed} fail) · {commits} commits · {prs} PRs · \${total_cost:.2f}', end='')
+crash_str = f' · \033[31m{crashes} crashes\033[0m' if crashes else ''
+print(f'  \033[1mtoday\033[0m  {started} runs ({done} ok, {failed} fail) · {commits} commits · {prs} PRs · \${total_cost:.2f}{crash_str}', end='')
 if total_bytes > 0:
     print(f' · {fmt_bytes(total_bytes)} context')
 else:
@@ -246,11 +248,14 @@ format_line() {
         fi
         turns=$(echo "$line" | jq -r '.turns // empty' 2>/dev/null)
         exit_reason=$(echo "$line" | jq -r '.exit_reason // empty' 2>/dev/null)
+        crash_count=$(echo "$line" | jq -r '.crashes // empty' 2>/dev/null)
         turns_info=""
         [ -n "$turns" ] && [ "$turns" != "null" ] && turns_info=" · ${turns}t"
         reason_info=""
         [ -n "$exit_reason" ] && [ "$exit_reason" != "null" ] && [ ${#exit_reason} -lt 80 ] && reason_info=" · ${exit_reason}"
-        printf "%s  \033[${acol}m[%s]\033[0m %-12s \033[1;32m%-9s\033[0m \$%s · %s%s%s%s\n" "$ts_local" "$icon" "$agent" "DONE" "$cost" "$dur_fmt" "$turns_info" "$ctx_info" "$reason_info"
+        crash_info=""
+        [ -n "$crash_count" ] && [ "$crash_count" != "null" ] && [ "$crash_count" != "0" ] && crash_info=" · \033[31m${crash_count} crash(es)\033[0m"
+        printf "%s  \033[${acol}m[%s]\033[0m %-12s \033[1;32m%-9s\033[0m \$%s · %s%s%s%s%s\n" "$ts_local" "$icon" "$agent" "DONE" "$cost" "$dur_fmt" "$turns_info" "$ctx_info" "$reason_info" "$crash_info"
         session_bytes[$agent]=0 2>/dev/null || true
         session_reads[$agent]=0 2>/dev/null || true
         ;;
@@ -294,6 +299,15 @@ format_line() {
         ;;
       build-fail)
         printf "%s  \033[${acol}m[%s]\033[0m %-12s \033[1;31m%-9s\033[0m %s\n" "$ts_local" "$icon" "$agent" "BUILD X" "$detail"
+        ;;
+      crash)
+        origin=$(echo "$line" | jq -r '.origin // "?"' 2>/dev/null)
+        repeats=$(echo "$line" | jq -r '.repeat_count // 0' 2>/dev/null)
+        repeat_info=""
+        [ "$repeats" -gt 0 ] && repeat_info=" (×$((repeats + 1)) in 1h)"
+        origin_tag=""
+        [ "$origin" = "pepper" ] && origin_tag=" [PEPPER]"
+        printf "%s  \033[${acol}m[%s]\033[0m %-12s \033[1;31;7m%-9s\033[0m %s%s%s\n" "$ts_local" "$icon" "$agent" " CRASH " "$detail" "$origin_tag" "$repeat_info"
         ;;
       guardrail-block)
         tool_blocked=$(echo "$line" | jq -r '.tool // empty' 2>/dev/null)
