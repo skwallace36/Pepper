@@ -363,10 +363,16 @@ struct RendersHandler: PepperHandler {
                 "path": AnyCodable(path),
                 "status": AnyCodable("dumped"),
             ]
-            if let data = try? Data(contentsOf: URL(fileURLWithPath: path)),
-               let json = try? JSONSerialization.jsonObject(with: data)
-            {
-                result["graph"] = AnyCodable(json)
+            do {
+                let data = try Data(contentsOf: URL(fileURLWithPath: path))
+                do {
+                    let json = try JSONSerialization.jsonObject(with: data)
+                    result["graph"] = AnyCodable(json)
+                } catch {
+                    pepperLog.debug("Failed to parse AG dump JSON at \(path): \(error)", category: .commands)
+                }
+            } catch {
+                pepperLog.debug("Failed to read AG dump at \(path): \(error)", category: .commands)
             }
             return .ok(id: command.id, data: ["ag_dump": AnyCodable(result)])
         }
