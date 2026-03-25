@@ -10,7 +10,7 @@ Source of truth for dylib code is `dylib/`. Config via `.env` (see `.env.example
 
 Tools defined in `.mcp.json`. Docstrings and parameters live in `tools/pepper-mcp`. `look` is the primary observation tool — it's an MCP tool (and also available via `pepper-ctl look` on the CLI). Under the hood it's an alias for `introspect map`.
 
-look, tap, scroll, scroll_to, swipe, gesture, input_text, toggle, navigate, back, dismiss, dismiss_keyboard, dialog, screen, vars_inspect, heap, layers, console, network, timeline, crash_log, animations, lifecycle, find, read_element, tree, highlight, hook, defaults, clipboard, keychain, cookies, locale, flags, push, orientation, status, wait_for, wait_idle, record, raw, simulator, build, build_device, deploy, iterate, constraints
+look, tap, scroll, scroll_to, swipe, gesture, input_text, toggle, navigate, back, dismiss, dismiss_keyboard, dialog, screen, vars_inspect, heap, layers, console, network, timeline, crash_log, animations, lifecycle, find, read_element, tree, highlight, hook, defaults, clipboard, keychain, cookies, locale, flags, push, orientation, status, wait_for, wait_idle, record, raw, simulator, build_sim, build_hardware, deploy_sim, iterate, constraints
 
 ## Conventions
 
