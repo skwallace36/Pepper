@@ -5,12 +5,14 @@
 #   ./scripts/ci.sh                    # run full cycle
 #   ./scripts/ci.sh --keep-sim         # don't delete simulator on exit
 #   ./scripts/ci.sh --simulator UDID   # use existing booted simulator
+#   ./scripts/ci.sh --suite FILE       # use alternate smoke test suite
 #
 # Environment:
 #   CI_DEVICE       Simulator device type (default: "iPhone 16")
 #   CI_RUNTIME      Simulator runtime (default: "iOS-18-2")
 #   CI_PORT         Pepper port (default: 8765)
 #   CI_TIMEOUT      Server wait timeout in seconds (default: 30)
+#   CI_SUITE        Smoke test suite file (default: scripts/smoke-tests.json)
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -39,6 +41,7 @@ CI_TIMEOUT="${CI_TIMEOUT:-30}"
 TEST_APP_BUNDLE="com.pepper.testapp"
 RESULTS_DIR="$PROJECT_DIR/build/ci-results"
 
+CI_SUITE="${CI_SUITE:-}"
 KEEP_SIM=0
 USE_EXISTING_SIM=""
 SIM_UDID=""
@@ -64,6 +67,7 @@ while [[ $# -gt 0 ]]; do
         --simulator)      USE_EXISTING_SIM="$2"; shift 2 ;;
         --port)           CI_PORT="$2"; shift 2 ;;
         --timeout)        CI_TIMEOUT="$2"; shift 2 ;;
+        --suite)          CI_SUITE="$2"; shift 2 ;;
         *)                echo "Unknown option: $1" >&2; exit 1 ;;
     esac
 done
@@ -197,8 +201,16 @@ fi
 pass "Server ready"
 
 # --- Step 7: Smoke tests ---
-step "Running smoke tests"
-SMOKE_FILE="$PROJECT_DIR/scripts/smoke-tests.json"
+step "Running smoke tests${CI_SUITE:+ (suite: $CI_SUITE)}"
+if [ -n "$CI_SUITE" ]; then
+    if [[ "$CI_SUITE" = /* ]]; then
+        SMOKE_FILE="$CI_SUITE"
+    else
+        SMOKE_FILE="$PROJECT_DIR/$CI_SUITE"
+    fi
+else
+    SMOKE_FILE="$PROJECT_DIR/scripts/smoke-tests.json"
+fi
 if [ ! -f "$SMOKE_FILE" ]; then
     fail "Smoke test file not found: $SMOKE_FILE"
     exit 1

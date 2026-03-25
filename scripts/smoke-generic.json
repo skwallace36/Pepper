@@ -1,0 +1,21 @@
+{
+  "suite": "pepper-generic-mode",
+  "description": "Interactive commands in generic mode (no adapter). Catches adapter assumptions leaking into core code paths.",
+  "tests": [
+    {"name": "look returns screen map", "cmd": "look", "expect": {"has_keys": ["screen", "element_count"]}},
+    {"name": "tap button by text", "cmd": "tap", "params": {"text": "Tap Me"}, "expect": {"has_keys": ["action"]}},
+    {"name": "wait_for text after tap", "cmd": "wait_for", "params": {"until": {"text": "Count: 1"}, "timeout_ms": 3000}},
+    {"name": "toggle switch by id", "cmd": "toggle", "params": {"element": "notifications_toggle"}, "expect": {"has_keys": ["action"]}},
+    {"name": "scroll down", "cmd": "scroll", "params": {"direction": "down", "distance": 200}, "expect": {"has_keys": ["action"]}},
+    {"name": "scroll to top", "cmd": "scroll", "params": {"position": "top"}, "expect": {"has_keys": ["action"]}},
+    {"name": "navigate to list tab", "cmd": "navigate", "params": {"tab": 1}},
+    {"name": "wait_for list content", "cmd": "wait_for", "params": {"until": {"text": "Item"}, "timeout_ms": 3000}},
+    {"name": "scroll list down", "cmd": "scroll", "params": {"direction": "down", "distance": 300}, "expect": {"has_keys": ["action"]}},
+    {"name": "navigate back to controls", "cmd": "navigate", "params": {"tab": 0}},
+    {"name": "tap show sheet", "cmd": "tap", "params": {"text": "Show Sheet"}, "expect": {"has_keys": ["action"]}},
+    {"name": "wait for sheet animation", "cmd": "wait_idle", "params": {"timeout_ms": 3000}},
+    {"name": "dismiss sheet", "cmd": "dismiss", "expect": {"has_keys": ["action"]}},
+    {"name": "wait_for controls after dismiss", "cmd": "wait_for", "params": {"until": {"text": "Controls"}, "timeout_ms": 3000}},
+    {"name": "wait_idle completes", "cmd": "wait_idle", "params": {"timeout_ms": 5000}}
+  ]
+}
