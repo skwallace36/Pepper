@@ -45,8 +45,8 @@ final class PepperDispatcher {
     }
 
     /// Register a closure-based handler for simple commands.
-    func register(_ command: String, handler: @escaping (PepperCommand) -> PepperResponse) {
-        register(ClosureHandler(commandName: command, closure: handler))
+    func register(_ command: String, timeout: TimeInterval = 10.0, handler: @escaping (PepperCommand) -> PepperResponse) {
+        register(ClosureHandler(commandName: command, closure: handler, timeout: timeout))
     }
 
     /// Dispatch a command to its handler.
@@ -278,7 +278,7 @@ final class PepperDispatcher {
         }
 
         // Look — alias for introspect mode:map (primary observation command)
-        register("look") { [weak self] cmd in
+        register("look", timeout: 30.0) { [weak self] cmd in
             var params = cmd.params ?? [:]
             params["mode"] = AnyCodable("map")
             let introspectCmd = PepperCommand(id: cmd.id, cmd: "introspect", params: params)
@@ -362,6 +362,7 @@ final class PepperDispatcher {
 private struct ClosureHandler: PepperHandler {
     let commandName: String
     let closure: (PepperCommand) -> PepperResponse
+    var timeout: TimeInterval
 
     func handle(_ command: PepperCommand) -> PepperResponse {
         closure(command)
