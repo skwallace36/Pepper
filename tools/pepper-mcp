@@ -420,12 +420,21 @@ async def act_and_look(simulator: Optional[str], cmd: str, params: Optional[dict
 
         return [TextContent(type="text", text=json.dumps(action_resp, indent=2))]
 
-    # Brief pause for UI to settle after interaction
-    await asyncio.sleep(0.3)
+    # Brief pause for UI to settle after interaction.
+    # Navigation commands (dismiss, back, navigate) need more time for
+    # VC transitions + SwiftUI re-layout to complete. Dismiss is the
+    # heaviest — modal teardown + underlying view re-render.
+    if cmd == "dismiss":
+        settle = 1.5
+    elif cmd in ("back", "navigate", "dismiss_keyboard"):
+        settle = 0.8
+    else:
+        settle = 0.3
+    await asyncio.sleep(settle)
 
     # Auto-look + telemetry in parallel
     look_task = asyncio.create_task(
-        bound_fn(port, "look", {}, timeout=5)
+        bound_fn(port, "look", {}, timeout=8)
     )
     telemetry_task = asyncio.create_task(
         _gather_telemetry(port, pre_counts, bound_fn)

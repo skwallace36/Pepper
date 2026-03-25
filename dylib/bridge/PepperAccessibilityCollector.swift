@@ -16,8 +16,10 @@ extension ElementDiscoveryBridge {
     func collectAccessibilityElements(from rootView: UIView? = nil) -> [PepperAccessibilityElement] {
         // Return cached result if no UI-mutating events have occurred since last call
         // AND the cache hasn't expired (TTL prevents stale results from async UI updates).
-        // Only cache when using the default root (key window) — sub-view calls bypass.
-        if rootView == nil, let cached = cachedAccessibility, cached.gen == cacheGeneration,
+        // Caches both window-scope (rootView == nil) and scoped (modal root) calls.
+        let currentRootID = rootView.map(ObjectIdentifier.init)
+        if let cached = cachedAccessibility, cached.gen == cacheGeneration,
+            cached.rootID == currentRootID,
             CFAbsoluteTimeGetCurrent() - cached.time < cacheTTL
         {
             lastAccessibilityTruncated = cached.truncated
@@ -84,13 +86,12 @@ extension ElementDiscoveryBridge {
             return true
         }
 
-        // Cache for default-root calls
-        if rootView == nil {
-            lastAccessibilityTruncated = wasTruncated
-            cachedAccessibility = (
-                gen: cacheGeneration, elements: filtered, truncated: wasTruncated, time: CFAbsoluteTimeGetCurrent()
-            )
-        }
+        // Cache result for both window-scope and scoped calls
+        lastAccessibilityTruncated = wasTruncated
+        cachedAccessibility = (
+            gen: cacheGeneration, rootID: currentRootID, elements: filtered, truncated: wasTruncated,
+            time: CFAbsoluteTimeGetCurrent()
+        )
 
         return filtered
     }
@@ -104,7 +105,10 @@ extension ElementDiscoveryBridge {
     /// This handles SwiftUI's virtual accessibility elements correctly — they exist as
     /// UIAccessibilityElement objects attached to hosting views, not actual UIViews,
     /// so traditional hit-testing doesn't work for them.
-    func annotateDepth(_ elements: [PepperAccessibilityElement]) -> [PepperAccessibilityElement] {
+    /// - Parameter alreadyScoped: When true, the input elements are already collected from the
+    ///   topmost presented VC (e.g. handleMap scoped to modalRootView). Skips the redundant
+    ///   re-collection that would otherwise walk the same accessibility tree a second time.
+    func annotateDepth(_ elements: [PepperAccessibilityElement], alreadyScoped: Bool = false) -> [PepperAccessibilityElement] {
         let screenBounds = UIScreen.main.bounds
 
         // Build the reachable set from the topmost presented VC's view subtree.
@@ -114,7 +118,12 @@ extension ElementDiscoveryBridge {
         // that covers the background tab content.
         let topmostElements: Set<ElementFingerprint>?
         let topmostVC: UIViewController?
-        if let rootVC = UIWindow.pepper_keyWindow?.rootViewController {
+        if alreadyScoped {
+            // Caller already scoped collection to the topmost VC — the input elements
+            // ARE the reachable set. Build fingerprints directly, skip re-collection.
+            topmostVC = nil
+            topmostElements = Set(elements.compactMap { ElementFingerprint(from: $0) })
+        } else if let rootVC = UIWindow.pepper_keyWindow?.rootViewController {
             var vc: UIViewController = rootVC
             while let presented = vc.presentedViewController {
                 vc = presented
@@ -330,7 +339,14 @@ extension ElementDiscoveryBridge {
 
     /// Extract accessibility info from an NSObject.
     func extractAccessibilityInfo(from element: NSObject) -> PepperAccessibilityElement {
-        let label = stripSFSymbols(element.accessibilityLabel)
+        var label = stripSFSymbols(element.accessibilityLabel)
+        // Fall back to placeholder text for unlabeled text fields — common in
+        // SwiftUI apps that set .textFieldStyle but not .accessibilityLabel.
+        if (label == nil || label?.isEmpty == true), let tf = element as? UITextField,
+            let placeholder = tf.placeholder, !placeholder.isEmpty
+        {
+            label = placeholder
+        }
         let value = element.accessibilityValue
         let hint = element.accessibilityHint
         let identifier = (element as? UIAccessibilityIdentification)?.accessibilityIdentifier
