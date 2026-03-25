@@ -43,19 +43,9 @@ final class PepperDialogInterceptor {
         let items: [String]
     }
 
-    /// Auto-dismiss mode: if set, automatically tap the matching button.
-    /// e.g. "Allow", "OK", "Open" — first match wins.
-    var autoDismissButtons: [String] = []
-
-    /// Whether auto-dismiss is enabled.
-    var autoDismissEnabled: Bool = false
-
     /// Set by `PepperWindowMonitor` when the app's key window resigns key
     /// and no app-side modal is pending — indicates a system dialog is likely blocking.
     var systemDialogSuspected: Bool = false
-
-    /// Delay before auto-dismiss (gives time for broadcast).
-    var autoDismissDelay: TimeInterval = 0.3
 
     private var pendingDialogs: [PendingDialog] = []
     private var pendingShareSheets: [PendingShareSheet] = []
@@ -344,9 +334,10 @@ final class PepperDialogInterceptor {
             category: .commands)
 
         // Auto-dismiss if enabled
-        if autoDismissEnabled, !autoDismissButtons.isEmpty {
-            DispatchQueue.main.asyncAfter(deadline: .now() + autoDismissDelay) { [weak self] in
-                self?.tryAutoDismiss(dialogId: dialog.id)
+        let dismisser = DialogAutoDismisser.shared
+        if dismisser.enabled, !dismisser.buttons.isEmpty {
+            DispatchQueue.main.asyncAfter(deadline: .now() + dismisser.delay) {
+                dismisser.tryAutoDismiss(dialogId: dialog.id)
             }
         }
     }
@@ -485,20 +476,8 @@ final class PepperDialogInterceptor {
 
         guard let action = targetAction else { return false }
 
-        // Trigger the action's handler via KVC and dismiss
-        // UIAlertAction stores its handler in a private "handler" property.
-        // We trigger it by performing the action, then dismissing the alert.
-        typealias ActionHandler = @convention(block) (UIAlertAction) -> Void
-
-        // Dismiss the alert controller
-        dialog.alert.dismiss(animated: false) {
-            // Invoke the action handler after dismissal
-            // Access the handler block via valueForKey (private API, but fine for debug/test builds)
-            if let handler = action.value(forKey: "handler") {
-                let block = unsafeBitCast(handler as AnyObject, to: ActionHandler.self)
-                block(action)
-            }
-        }
+        // Dismiss the alert and invoke the action handler via the shared code path
+        DialogAutoDismisser.performDismiss(alert: dialog.alert, action: action)
 
         // Remove from pending
         lock.lock()
@@ -517,24 +496,6 @@ final class PepperDialogInterceptor {
 
         pepperLog.info("Dialog dismissed: \(dialog.title ?? "untitled") → \(action.title ?? "?")", category: .commands)
         return true
-    }
-
-    // MARK: - Auto-dismiss
-
-    private func tryAutoDismiss(dialogId: String) {
-        lock.lock()
-        guard let dialog = pendingDialogs.first(where: { $0.id == dialogId }) else {
-            lock.unlock()
-            return
-        }
-        lock.unlock()
-
-        for buttonText in autoDismissButtons {
-            if dialog.actions.contains(where: { $0.title?.lowercased() == buttonText.lowercased() }) {
-                dismiss(dialogId: dialogId, buttonTitle: buttonText)
-                return
-            }
-        }
     }
 
     // MARK: - Helpers
