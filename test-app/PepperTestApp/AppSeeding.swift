@@ -10,6 +10,7 @@ enum AppSeeding {
         seedSandboxFiles()
         seedSQLiteDatabase()
         CoreDataStack.seedIfNeeded()
+        IntrospectionSingleton.shared.initialize()
         if ProcessInfo.processInfo.environment["PEPPER_SKIP_PERMISSIONS"] != "1" {
             requestNotificationPermission()
         }

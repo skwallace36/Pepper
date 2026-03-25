@@ -205,7 +205,7 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `undo` | status | untested |  |  |
 | `undo` | undo | untested |  |  |
 | `undo` | redo | untested |  |  |
-| `accessibility_audit` | — | ready | Misc tab > Accessibility Test Screen | Surface added (TASK-311). AccessibilityTestView on Misc tab via accessibility_test_link. 5 intentional violations: tiny 30x30pt button (touch_target), unlabeled icon button (missing_label), #CCCCCC-on-white label (contrast), fixed .systemFont(ofSize:14) label (dynamic_type), button+link traits (redundant_trait). Good example element passes all checks. |
+| `accessibility_audit` | — | untested | Any state |  |
 | `accessibility_action` | list | untested |  |  |
 | `accessibility_action` | invoke | untested |  |  |
 | `accessibility_action` | escape | untested |  |  |
@@ -255,7 +255,7 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `perf` | stop | untested |  |  |
 | `perf` | mark | untested |  |  |
 | `perf` | status | untested |  |  |
-| `screenshot` | — | untested | Any screen | In-process screen capture via UIGraphicsImageRenderer. Supports full-screen and per-element capture with configurable quality and scale. |
+| `screenshot` | — | untested |  |  |
 | `storage` | summary | untested |  |  |
 | `storage` | coredata | untested |  |  |
 | `storage` | clear | untested |  |  |
@@ -272,5 +272,5 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 
 - pass: 137
 - fail: 3
-- untested: 93
+- untested: 94
 
