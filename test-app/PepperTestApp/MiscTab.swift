@@ -381,6 +381,14 @@ struct MiscTab: View {
                     .accessibilityIdentifier("undo_demo_link")
                 }
 
+                // MARK: - Accessibility Audit Testing
+                GroupBox("Accessibility") {
+                    NavigationLink("Accessibility Test Screen") {
+                        AccessibilityTestWrapper()
+                    }
+                    .accessibilityIdentifier("accessibility_test_link")
+                }
+
                 // MARK: - Context Menu
                 GroupBox("Context Menu") {
                     Text("Long press me")
