@@ -274,6 +274,11 @@ struct MiscTab: View {
                 // MARK: - Network
                 GroupBox("Network") {
                     VStack(spacing: 8) {
+                        NavigationLink("cURL Export Requests") {
+                            NetworkRequestsView()
+                        }
+                        .accessibilityIdentifier("curl_requests_link")
+
                         Button("Fetch HTTP") {
                             state.fetchHTTP()
                         }
