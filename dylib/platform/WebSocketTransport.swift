@@ -41,6 +41,12 @@ protocol WebSocketTransport {
     /// Delegate that receives connection lifecycle and message events.
     var delegate: TransportDelegate? { get set }
 
+    /// Called when the transport is ready to accept connections.
+    var onReady: (() -> Void)? { get set }
+
+    /// Called when the transport fails after being ready.
+    var onFailed: (() -> Void)? { get set }
+
     /// Start listening for incoming connections.
     func start()
 
