@@ -152,6 +152,10 @@ fmt-py:
 	@ruff format tools/ scripts/gen-coverage.py scripts/gen-pepper-commands.py
 	@ruff check --fix tools/ scripts/gen-coverage.py scripts/gen-pepper-commands.py
 
+## check-tools: Verify every MCP tool has a matching dylib handler
+check-tools:
+	@bash "$(PROJECT_DIR)/scripts/check-tool-coverage.sh"
+
 ## check: Run all pre-commit checks (build, syntax, MCP, paths)
 check:
 	@bash "$(PROJECT_DIR)/scripts/pre-commit"

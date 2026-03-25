@@ -45,6 +45,9 @@ jobs:
           pip install ruff --quiet
           ruff check tools/ scripts/gen-coverage.py
 
+      - name: Check MCP tool coverage
+        run: make check-tools
+
       - name: Verify no hardcoded paths
         run: |
           if grep -rn '/Users/' dylib/ tools/ scripts/ --include='*.swift' --include='*.py' --include='*.sh' 2>/dev/null | grep -v '.env.example' | grep -v 'test-client' | grep -v 'pepper_sessions' | head -5 | grep -q .; then
