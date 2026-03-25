@@ -54,3 +54,22 @@ jobs:
             echo "Hardcoded paths found!"
             exit 1
           fi
+
+  smoke-generic:
+    runs-on: macos-15
+    timeout-minutes: 15
+    needs: build
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generic-mode smoke tests
+        run: ./scripts/ci.sh --suite scripts/smoke-generic.json
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: generic-smoke-results
+          path: build/ci-results/
