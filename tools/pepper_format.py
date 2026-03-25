@@ -344,8 +344,12 @@ def format_look_slim(resp: dict) -> str:
     if dialog_data:
         for d in dialog_data.get("dialogs", []):
             title = d.get("title", "")
-            btn_str = ", ".join(str(b) for b in d.get("buttons", []))
-            lines.append(f"  !! DIALOG: {title} [{btn_str}]")
+            buttons = d.get("buttons", [])
+            btn_str = ", ".join(str(b) for b in buttons)
+            lines.append(f"  !! SYSTEM DIALOG: {title} [{btn_str}]")
+            for btn in buttons:
+                lines.append(f"       → dialog dismiss button=\"{btn}\"")
+        lines.append("       → dialog dismiss_system (auto-detect and dismiss)")
         lines.append("")
 
     # Interactive elements — flat list, no y-range headers
@@ -635,7 +639,10 @@ def format_look_compact(resp: dict) -> str:
             title = d.get("title", "")
             buttons = d.get("buttons", [])
             btn_str = ", ".join(str(b) for b in buttons) if buttons else ""
-            lines.append(f"  !! DIALOG: {title} [{btn_str}]")
+            lines.append(f"  !! SYSTEM DIALOG: {title} [{btn_str}]")
+            for btn in buttons:
+                lines.append(f"       → dialog dismiss button=\"{btn}\"")
+        lines.append("       → dialog dismiss_system (auto-detect and dismiss)")
 
     # Interactive elements
     if screen_changed or not prev_fp:
