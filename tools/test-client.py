@@ -218,7 +218,7 @@ class PepperClient:
                     data = json.loads(msg)
                     if "event" in data:
                         print(f"\n  [event] {data['event']}: {pretty_json(data.get('data', {}))}")
-                        print("fi> ", end="", flush=True)
+                        print("pepper> ", end="", flush=True)
                 except TimeoutError:
                     continue
                 except websockets.exceptions.ConnectionClosed:
@@ -248,7 +248,7 @@ class PepperClient:
         while self.running:
             try:
                 # Read input in executor to not block event loop
-                line = await loop.run_in_executor(None, lambda: input("fi> "))
+                line = await loop.run_in_executor(None, lambda: input("pepper> "))
             except (EOFError, KeyboardInterrupt):
                 print("\n  Goodbye.")
                 break
