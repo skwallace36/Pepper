@@ -43,6 +43,23 @@ struct StatusHandler: PepperHandler {
             ]),
         ]
 
+        // Adapter info
+        let adapterConfig = PepperAppConfig.shared
+        var adapterData: [String: AnyCodable] = [
+            "type": AnyCodable(adapterConfig.requestedAdapterType),
+            "registered": AnyCodable(adapterConfig.adapterRegistered),
+        ]
+        if adapterConfig.requestedAdapterType != "generic" && !adapterConfig.adapterRegistered {
+            adapterData["warning"] = AnyCodable("adapter type '\(adapterConfig.requestedAdapterType)' was requested but not registered")
+        }
+        if adapterConfig.adapterRegistered {
+            adapterData["has_pre_main_hook"] = AnyCodable(adapterConfig.preMainHook != nil)
+            adapterData["has_app_bootstrap"] = AnyCodable(adapterConfig.appBootstrap != nil)
+            adapterData["has_tab_bar_provider"] = AnyCodable(adapterConfig.tabBarProvider != nil)
+            adapterData["custom_handlers"] = AnyCodable(adapterConfig.additionalHandlers.count)
+        }
+        data["adapter"] = AnyCodable(adapterData)
+
         // Current screen
         if let rootVC = UIWindow.pepper_rootViewController {
             let topVC = rootVC.pepper_topMostViewController
