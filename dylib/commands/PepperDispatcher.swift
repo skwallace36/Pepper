@@ -27,16 +27,28 @@ extension PepperHandler {
 
 /// Routes incoming commands to registered handlers.
 /// Thread-safe: registration and dispatch are serialized on an internal queue.
+///
+/// Built-in handlers use lazy registration: only a factory closure is stored at init time.
+/// The actual handler is instantiated on first dispatch, avoiding upfront allocation of
+/// ~60 handler objects that may never be used.
 final class PepperDispatcher {
     private var logger: Logger { PepperLogger.logger(category: "dispatcher") }
     private let queue = DispatchQueue(label: "com.pepper.control.dispatcher", attributes: .concurrent)
     private var handlers: [String: PepperHandler] = [:]
+    private var factories: [String: () -> PepperHandler] = [:]
+
+    /// Time spent in registerBuiltins(), in milliseconds.
+    private(set) var registrationTimeMs: Double = 0
 
     init() {
+        let start = CACurrentMediaTime()
         registerBuiltins()
+        let elapsed = (CACurrentMediaTime() - start) * 1000
+        registrationTimeMs = elapsed
+        pepperLog.info("registerBuiltins: \(String(format: "%.2f", elapsed))ms (\(factories.count) lazy, \(handlers.count) eager)", category: .lifecycle)
     }
 
-    /// Register a handler. Thread-safe (barrier write).
+    /// Register a handler eagerly. Thread-safe (barrier write).
     func register(_ handler: PepperHandler) {
         queue.async(flags: .barrier) { [weak self] in
             self?.handlers[handler.commandName] = handler
@@ -44,9 +56,28 @@ final class PepperDispatcher {
         }
     }
 
-    /// Register a closure-based handler for simple commands.
+    /// Register a closure-based handler for simple commands (eager).
     func register(_ command: String, timeout: TimeInterval = 10.0, handler: @escaping (PepperCommand) -> PepperResponse) {
         register(ClosureHandler(commandName: command, closure: handler, timeout: timeout))
+    }
+
+    /// Register a handler factory for lazy instantiation.
+    /// The handler is created on first dispatch, avoiding upfront allocation.
+    private func registerLazy(_ name: String, factory: @escaping () -> PepperHandler) {
+        factories[name] = factory
+    }
+
+    /// Resolve a handler by name. Checks eager handlers first, then lazy factories.
+    /// Promotes factory-created handlers to the eager dictionary for future lookups.
+    /// Must be called within a barrier block (mutates state on factory resolution).
+    private func resolve(_ name: String) -> PepperHandler? {
+        if let h = handlers[name] { return h }
+        guard let factory = factories[name] else { return nil }
+        let h = factory()
+        handlers[name] = h
+        factories.removeValue(forKey: name)
+        logger.debug("Lazy-resolved handler: \(name)")
+        return h
     }
 
     /// Dispatch a command to its handler.
@@ -62,8 +93,8 @@ final class PepperDispatcher {
     ) {
         logger.info("Dispatching command: \(command.cmd) [id: \(command.id)]")
 
-        let handler: PepperHandler? = queue.sync {
-            handlers[command.cmd]
+        let handler: PepperHandler? = queue.sync(flags: .barrier) {
+            resolve(command.cmd)
         }
 
         guard let handler = handler else {
@@ -97,8 +128,8 @@ final class PepperDispatcher {
     func dispatch(_ command: PepperCommand) -> PepperResponse {
         logger.info("Dispatching command: \(command.cmd) [id: \(command.id)]")
 
-        let handler: PepperHandler? = queue.sync {
-            handlers[command.cmd]
+        let handler: PepperHandler? = queue.sync(flags: .barrier) {
+            resolve(command.cmd)
         }
 
         guard let handler = handler else {
@@ -232,14 +263,15 @@ final class PepperDispatcher {
     }
 
     /// Get the timeout for a specific command.
+    /// Resolves lazy handlers to read their timeout.
     func timeout(for command: String) -> TimeInterval {
-        let handler: PepperHandler? = queue.sync { handlers[command] }
+        let handler: PepperHandler? = queue.sync(flags: .barrier) { resolve(command) }
         return handler?.timeout ?? 10.0
     }
 
-    /// List all registered command names.
+    /// List all registered command names (both eager and lazy).
     var registeredCommands: [String] {
-        queue.sync { Array(handlers.keys).sorted() }
+        queue.sync { Array(Set(handlers.keys).union(factories.keys)).sorted() }
     }
 
     /// Build a compact string from command params for timeline summaries.
@@ -266,6 +298,8 @@ final class PepperDispatcher {
     // MARK: - Built-in handlers
 
     private func registerBuiltins() {
+        // Closure-based handlers are registered eagerly (already minimal cost)
+
         // Ping — basic connectivity check
         register("ping") { cmd in
             .ok(id: cmd.id, data: ["pong": AnyCodable(true)])
@@ -285,74 +319,75 @@ final class PepperDispatcher {
             return self?.dispatch(introspectCmd) ?? .error(id: cmd.id, message: "Dispatcher unavailable")
         }
 
-        // Register all built-in command handlers
-        register(TapHandler())
-        register(InputHandler())
-        register(ToggleHandler())
-        register(ScrollHandler())
-        register(TreeHandler())
-        register(ReadHandler())
+        // Class-based handlers are registered lazily — instantiated on first dispatch.
+        // [unowned self] is safe here: factories are owned by self and cannot outlive it.
+        registerLazy("tap") { TapHandler() }
+        registerLazy("input") { InputHandler() }
+        registerLazy("toggle") { ToggleHandler() }
+        registerLazy("scroll") { ScrollHandler() }
+        registerLazy("tree") { TreeHandler() }
+        registerLazy("read") { ReadHandler() }
 
-        register(WaitHandler())
-        register(BatchHandler(dispatcher: self))
-        register(NavigateHandler())
-        register(DeeplinkHandler())
-        register(BackHandler())
-        register(CurrentScreenHandler())
-        register(IntrospectHandler())
-        register(SwipeHandler())
-        register(WatchHandler())
-        register(UnwatchHandler())
+        registerLazy("wait_for") { WaitHandler() }
+        registerLazy("batch") { [unowned self] in BatchHandler(dispatcher: self) }
+        registerLazy("navigate") { NavigateHandler() }
+        registerLazy("deeplinks") { DeeplinkHandler() }
+        registerLazy("back") { BackHandler() }
+        registerLazy("screen") { CurrentScreenHandler() }
+        registerLazy("introspect") { IntrospectHandler() }
+        registerLazy("swipe") { SwipeHandler() }
+        registerLazy("watch") { WatchHandler() }
+        registerLazy("unwatch") { UnwatchHandler() }
 
-        register(NetworkHandler())
-        register(TestHandler())
-        register(DialogHandler())
-        register(DismissHandler())
-        register(StatusHandler())
-        register(HighlightHandler())
-        register(IdentifySelectedHandler())
-        register(IdentifyIconsHandler())
-        register(IdleWaitHandler())
-        register(ScrollUntilVisibleHandler())
-        register(DismissKeyboardHandler())
-        register(GestureHandler())
-        register(MemoryHandler())
-        register(OrientationHandler())
-        register(LifecycleHandler())
-        register(PushHandler())
-        register(LocaleHandler())
-        register(VarsHandler())
-        register(LayersHandler())
-        register(ConsoleHandler())
-        register(AnimationsHandler())
-        register(HeapHandler())
-        register(HeapSnapshotHandler())
-        register(DefaultsHandler())
-        register(ClipboardHandler())
-        register(CookieHandler())
-        register(KeychainHandler())
-        register(FindHandler())
-        register(FlagsHandler())
-        register(HookHandler())
-        register(TimelineHandler())
-        register(ResponderChainHandler())
-        register(NotificationsHandler())
-        register(SnapshotHandler())
-        register(DiffHandler())
-        register(UndoHandler())
-        register(AccessibilityAuditHandler())
-        register(AccessibilityActionHandler())
-        register(AccessibilityEventsHandler())
-        register(RendersHandler())
-        register(ConstraintsHandler())
-        register(SandboxHandler())
-        register(ConcurrencyHandler())
-        register(TimersHandler())
-        register(PerfHandler())
-        register(ScreenshotHandler())
-        register(StorageHandler())
-        register(CoreDataHandler())
-        register(WebViewHandler())
+        registerLazy("network") { NetworkHandler() }
+        registerLazy("test") { TestHandler() }
+        registerLazy("dialog") { DialogHandler() }
+        registerLazy("dismiss") { DismissHandler() }
+        registerLazy("status") { StatusHandler() }
+        registerLazy("highlight") { HighlightHandler() }
+        registerLazy("identify_selected") { IdentifySelectedHandler() }
+        registerLazy("identify_icons") { IdentifyIconsHandler() }
+        registerLazy("wait_idle") { IdleWaitHandler() }
+        registerLazy("scroll_to") { ScrollUntilVisibleHandler() }
+        registerLazy("dismiss_keyboard") { DismissKeyboardHandler() }
+        registerLazy("gesture") { GestureHandler() }
+        registerLazy("memory") { MemoryHandler() }
+        registerLazy("orientation") { OrientationHandler() }
+        registerLazy("lifecycle") { LifecycleHandler() }
+        registerLazy("push") { PushHandler() }
+        registerLazy("locale") { LocaleHandler() }
+        registerLazy("vars") { VarsHandler() }
+        registerLazy("layers") { LayersHandler() }
+        registerLazy("console") { ConsoleHandler() }
+        registerLazy("animations") { AnimationsHandler() }
+        registerLazy("heap") { HeapHandler() }
+        registerLazy("heap_snapshot") { HeapSnapshotHandler() }
+        registerLazy("defaults") { DefaultsHandler() }
+        registerLazy("clipboard") { ClipboardHandler() }
+        registerLazy("cookies") { CookieHandler() }
+        registerLazy("keychain") { KeychainHandler() }
+        registerLazy("find") { FindHandler() }
+        registerLazy("flags") { FlagsHandler() }
+        registerLazy("hook") { HookHandler() }
+        registerLazy("timeline") { TimelineHandler() }
+        registerLazy("responder_chain") { ResponderChainHandler() }
+        registerLazy("notifications") { NotificationsHandler() }
+        registerLazy("snapshot") { SnapshotHandler() }
+        registerLazy("diff") { DiffHandler() }
+        registerLazy("undo") { UndoHandler() }
+        registerLazy("accessibility_audit") { AccessibilityAuditHandler() }
+        registerLazy("accessibility_action") { AccessibilityActionHandler() }
+        registerLazy("accessibility_events") { AccessibilityEventsHandler() }
+        registerLazy("renders") { RendersHandler() }
+        registerLazy("constraints") { ConstraintsHandler() }
+        registerLazy("sandbox") { SandboxHandler() }
+        registerLazy("concurrency") { ConcurrencyHandler() }
+        registerLazy("timers") { TimersHandler() }
+        registerLazy("perf") { PerfHandler() }
+        registerLazy("screenshot") { ScreenshotHandler() }
+        registerLazy("storage") { StorageHandler() }
+        registerLazy("coredata") { CoreDataHandler() }
+        registerLazy("webview") { WebViewHandler() }
     }
 }
 
