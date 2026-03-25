@@ -48,6 +48,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
         raw: bool = Field(default=False, description="Return raw JSON instead of formatted summary"),
         slim: bool = Field(default=False, description="Slim output for agent sessions: flat element list with tap commands, no y-coordinates or group headers. Stateless (always full screen). Use when you need tap commands but want reduced context."),
         compact: bool = Field(default=False, description="Diff output for agent sessions: omits coordinates/frames and tap commands, shows only changed elements vs previous call, reduces context by ~60-70%"),
+        ocr: bool = Field(default=False, description="Run OCR on the screen to find text not in the accessibility tree. Adds ~60-120ms. OCR-only results shown in a separate section."),
         visual: bool = Field(default=False, description="Include a simulator screenshot alongside the structured data"),
         screenshot_quality: str = Field(default="standard", description="Screenshot quality: 'standard' (70% JPEG) or 'high' (95% JPEG, for PR validation)"),
         save_screenshot: str | None = Field(default=None, description="Save screenshot to this file path (in addition to returning it)"),
@@ -56,6 +57,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
         This is your primary observation tool. Call it before acting to know what's available.
         Use slim=true for agent sessions — flat list, no y-coords, tap commands preserved, stateless.
         Use compact=true for minimal diffs — omits tap commands, only shows changes since last call.
+        Use ocr=true to find text via pixel analysis (slower, but catches text missing from accessibility tree).
         Use raw=true when you need coordinates, frames, or scroll context.
         Use visual=true to include a screenshot for visual validation.
         Use screenshot_quality='high' + save_screenshot='/tmp/foo.jpg' for PR validation screenshots."""
@@ -64,12 +66,16 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
         except RuntimeError as e:
             return [TextContent(type="text", text=str(e))]
 
+        look_params: dict = {}
+        if ocr:
+            look_params["ocr"] = True
+
         if visual or save_screenshot:
             # Run introspect and screenshot in parallel.
             # Try fast in-process capture first; fall back to simctl if unavailable.
             quality = screenshot_quality if screenshot_quality in ("standard", "high") else "standard"
             introspect_task = asyncio.create_task(
-                send_command(port, CMD_LOOK, {}, host=host, timeout=20)
+                send_command(port, CMD_LOOK, look_params, host=host, timeout=20)
             )
             screenshot_task = asyncio.create_task(
                 capture_screenshot_inprocess(send_command, port, quality, host=host)
@@ -79,7 +85,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
             if screenshot_b64 is None:
                 screenshot_b64 = await capture_screenshot(udid, quality=quality)
         else:
-            resp = await send_command(port, CMD_LOOK, {}, host=host, timeout=20)
+            resp = await send_command(port, CMD_LOOK, look_params, host=host, timeout=20)
             screenshot_b64 = None
 
         if raw:
