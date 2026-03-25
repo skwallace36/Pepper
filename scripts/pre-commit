@@ -156,7 +156,7 @@ if echo "$STAGED_FILES" | grep -q "dylib/commands/handlers/.*Handler\.swift"; th
 fi
 
 # 6. CLAUDE.md tool list must match mcp-registry.json
-if python3 - <<'PYEOF' 2>&1; then
+if python3 - <<PYEOF 2>&1; then
 import json, re, sys
 
 registry_path = '$REPO_DIR/tools/mcp-registry.json'

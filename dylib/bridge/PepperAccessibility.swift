@@ -31,24 +31,27 @@ final class PepperAccessibility {
     /// Post the status-change notification so SwiftUI re-reads the (now-true) value.
     /// Fire immediately AND after a delay to catch both early and late readers.
     static func installVoiceOverSwizzle() {
-        // Immediate — catches anything reading during didFinishLaunching
+        // The DYLD_INTERPOSE in accessibility_hook.c makes
+        // UIAccessibilityIsVoiceOverRunning() return true from dylib load.
+        // That covers direct function calls. SwiftUI's
+        // @Environment(\.accessibilityVoiceOverEnabled) additionally needs
+        // a notification to re-read the value.
+        //
+        // We DON'T post the notification here (pre-main) — it triggers a full
+        // SwiftUI re-render that blocks the main thread for seconds on complex
+        // apps like Ice Cubes. Instead, PepperPlane.start() posts it after
+        // didFinishLaunching, when the app has settled and the re-render
+        // won't compete with initialization.
+    }
+
+    /// Post the VoiceOver status-change notification so SwiftUI re-reads
+    /// accessibilityVoiceOverEnabled. Call from PepperPlane.start() after
+    /// the app has finished launching — NOT during pre-main bootstrap.
+    static func postVoiceOverNotification() {
         NotificationCenter.default.post(
             name: UIAccessibility.voiceOverStatusDidChangeNotification,
             object: nil
         )
-        // Delayed — catches SwiftUI environment updates after first render
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            NotificationCenter.default.post(
-                name: UIAccessibility.voiceOverStatusDidChangeNotification,
-                object: nil
-            )
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            NotificationCenter.default.post(
-                name: UIAccessibility.voiceOverStatusDidChangeNotification,
-                object: nil
-            )
-        }
     }
 
     // MARK: - Tagging

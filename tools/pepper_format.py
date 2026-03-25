@@ -209,10 +209,13 @@ def format_look(resp: dict) -> str:
             if tap_cmd == "text" and label:
                 if idx:
                     tap = f'tap text:"{label}" index:{idx}'
-                elif len(label) <= 40:
+                elif len(label) <= 50:
                     tap = f'tap text:"{label}"'
                 else:
-                    tap = f'tap point:{e["center"][0]},{e["center"][1]}'
+                    # Use truncated prefix — tap handler uses substring matching
+                    # (localizedCaseInsensitiveContains) so a prefix is enough.
+                    prefix = label[:47] + "..."
+                    tap = f'tap text:"{prefix}"'
             elif tap_cmd == "icon_name" and (icon or suggested):
                 tap = f"tap icon:{icon or suggested}"
             elif tap_cmd == "heuristic" and (heuristic or suggested):

@@ -29,8 +29,8 @@ final class PepperSwiftUIBridge {
         discovery.collectAccessibilityElements(from: rootView)
     }
 
-    func annotateDepth(_ elements: [PepperAccessibilityElement]) -> [PepperAccessibilityElement] {
-        discovery.annotateDepth(elements)
+    func annotateDepth(_ elements: [PepperAccessibilityElement], alreadyScoped: Bool = false) -> [PepperAccessibilityElement] {
+        discovery.annotateDepth(elements, alreadyScoped: alreadyScoped)
     }
 
     func discoverInteractiveElements(
