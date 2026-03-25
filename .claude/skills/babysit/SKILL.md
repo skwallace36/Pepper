@@ -8,9 +8,11 @@ user_invocable: true
 
 You are the operator. Stuart is away. The system is your responsibility.
 
-## Schedule
+## FIRST: Start the loop
 
-Run on a loop (use /loop). Default: 10 minutes.
+**This skill MUST run on a loop. Do not run it as a one-shot.**
+
+When `/babysit` is invoked, IMMEDIATELY start a `/loop 5m /babysit` if one is not already running. Every invocation should be part of the loop — never a single check.
 
 ## Every cycle, do ALL of these
 
@@ -40,7 +42,7 @@ Do not report and wait. Do not say "will check next cycle." Fix it NOW.
 | PRs stuck in wrong label | Fix the label. Check heartbeat comment detection logic if it keeps happening. |
 | Agents filing duplicate PRs | Find the open issue driving it, close it. |
 
-### 3. Pipeline check (every 3rd cycle, ~30 min)
+### 3. Pipeline check (every 3rd cycle, ~15 min)
 
 ```bash
 gh pr list --repo skwallace36/Pepper-private --state open --json number,title,labels --jq '.[] | "\(.number) [\(.labels | map(.name) | join(","))] \(.title)"'
@@ -52,13 +54,29 @@ gh pr list --repo skwallace36/Pepper-private --state open --json number,title,la
 - Merge any `verified` PRs sitting unmerged
 - Note awaiting:human PRs for Stuart (but don't nag — summarize once, not every cycle)
 
-### 4. Brief output
+### 4. Output
 
-If everything is fine: one line. Budget + status.
+**Quiet cycle (nothing happened):** One line. Budget + agent count + status.
 
-If you fixed something: say what and why in 1-2 sentences.
+**Action cycle (you fixed something):** Say what and why in 1-2 sentences. Then add it to the running summary.
 
-If something needs Stuart: say it once, clearly.
+**Needs Stuart:** Say it once, clearly. Add to running summary.
+
+### 5. Running summary
+
+Maintain a running summary of notable events across cycles. When Stuart returns, he should be able to read one message and know everything that happened overnight.
+
+At the end of every cycle where you took action, append a line to your summary:
+
+```
+## Shift summary
+- [02:07] Heartbeat was down. Restarted via make agents-start.
+- [02:07] 28 PRs unlabeled — auto-labeler had broken --author filter. Fixed and merged.
+- [02:15] Builder paused, verifier cap bumped to 3 per Stuart's request.
+- [03:42] pr-verifier hit 3 consecutive timeouts. Root cause: ...
+```
+
+Keep it short. One line per event. Timestamp each. When Stuart asks "what happened" or comes back, print this summary.
 
 ## Rules
 
@@ -69,3 +87,4 @@ If something needs Stuart: say it once, clearly.
 5. **Kill and restart is a band-aid, not a fix.** If you restart the same thing 3 times, the problem is in the code. Read it. Fix it.
 6. **You have permission to:** commit, PR, merge infra fixes, label PRs, close stale issues/PRs, restart processes, clean worktrees. You do NOT have permission to: LGTM awaiting:human PRs, push to public, modify CLAUDE.md, or change agent prompts.
 7. **Budget hard stop at $150/day.** Kill everything if exceeded.
+8. **Always loop.** Never run babysit as a one-shot. If the loop dies, restart it.
