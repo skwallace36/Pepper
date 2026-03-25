@@ -287,14 +287,22 @@ public final class PepperPlane {
 
     private func writePortFile(port: UInt16) {
         guard let path = portFilePath else { return }
-        try? FileManager.default.createDirectory(atPath: Self.portDir, withIntermediateDirectories: true)
-        try? "\(port)".write(toFile: path, atomically: true, encoding: .utf8)
-        pepperLog.debug("Wrote port file: \(path) → \(port)", category: .lifecycle)
+        do {
+            try FileManager.default.createDirectory(atPath: Self.portDir, withIntermediateDirectories: true)
+            try "\(port)".write(toFile: path, atomically: true, encoding: .utf8)
+            pepperLog.debug("Wrote port file: \(path) → \(port)", category: .lifecycle)
+        } catch {
+            pepperLog.warning("Failed to write port file \(path): \(error)", category: .lifecycle)
+        }
     }
 
     private func removePortFile() {
         guard let path = portFilePath else { return }
-        try? FileManager.default.removeItem(atPath: path)
+        do {
+            try FileManager.default.removeItem(atPath: path)
+        } catch {
+            pepperLog.debug("Failed to remove port file \(path): \(error)", category: .lifecycle)
+        }
     }
 
     // MARK: - Readiness Sentinel (CI diagnostics)
@@ -310,13 +318,21 @@ public final class PepperPlane {
 
     private func writeReadinessSentinel(port: UInt16) {
         guard let path = sentinelPath else { return }
-        try? FileManager.default.createDirectory(atPath: Self.sentinelDir, withIntermediateDirectories: true)
         let info = "port=\(port)\npid=\(ProcessInfo.processInfo.processIdentifier)\ntime=\(Date())\n"
-        try? info.write(toFile: path, atomically: true, encoding: .utf8)
+        do {
+            try FileManager.default.createDirectory(atPath: Self.sentinelDir, withIntermediateDirectories: true)
+            try info.write(toFile: path, atomically: true, encoding: .utf8)
+        } catch {
+            pepperLog.warning("Failed to write readiness sentinel \(path): \(error)", category: .lifecycle)
+        }
     }
 
     private func removeReadinessSentinel() {
         guard let path = sentinelPath else { return }
-        try? FileManager.default.removeItem(atPath: path)
+        do {
+            try FileManager.default.removeItem(atPath: path)
+        } catch {
+            pepperLog.debug("Failed to remove readiness sentinel \(path): \(error)", category: .lifecycle)
+        }
     }
 }

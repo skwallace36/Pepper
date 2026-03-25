@@ -155,7 +155,10 @@ final class PepperConnectionManager {
 
     /// Send an encodable value to a specific connection.
     func send<T: Encodable>(_ value: T, to connectionID: String) {
-        guard let data = try? encoder.encode(value) else { return }
+        guard let data = try? encoder.encode(value) else {
+            pepperLog.warning("Failed to encode \(T.self) for send to \(connectionID) — message dropped", category: .server)
+            return
+        }
         send(data: data, to: connectionID)
     }
 
@@ -180,13 +183,19 @@ final class PepperConnectionManager {
 
     /// Broadcast an encodable value to all connected clients.
     func broadcast<T: Encodable>(_ value: T) {
-        guard let data = try? encoder.encode(value) else { return }
+        guard let data = try? encoder.encode(value) else {
+            pepperLog.warning("Failed to encode \(T.self) for broadcast — message dropped", category: .server)
+            return
+        }
         broadcast(data: data)
     }
 
     /// Broadcast an event to connections subscribed to its event type.
     func broadcast(event: PepperEvent) {
-        guard let data = try? encoder.encode(event) else { return }
+        guard let data = try? encoder.encode(event) else {
+            pepperLog.warning("Failed to encode event '\(event.event)' for broadcast — event dropped", category: .server)
+            return
+        }
         let snapshot = queue.sync { Array(connections.values) }
         for info in snapshot where info.isSubscribed(to: event.event) {
             info.send(data)
