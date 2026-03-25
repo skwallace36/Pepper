@@ -20,11 +20,15 @@ struct AccessibilityEventsHandler: PepperHandler {
 
         switch action {
         case "start":
+            if let size = command.params?["buffer_size"]?.intValue {
+                observer.setMaxEvents(size)
+            }
             observer.start()
             return .ok(
                 id: command.id,
                 data: [
-                    "active": AnyCodable(true)
+                    "active": AnyCodable(true),
+                    "buffer_size": AnyCodable(observer.maxEvents),
                 ])
 
         case "stop":
@@ -41,8 +45,10 @@ struct AccessibilityEventsHandler: PepperHandler {
                 id: command.id,
                 data: [
                     "active": AnyCodable(observer.isRunning),
+                    "buffer_size": AnyCodable(observer.maxEvents),
                     "event_count": AnyCodable(observer.eventCount),
                     "total_received": AnyCodable(observer.totalReceived),
+                    "total_dropped": AnyCodable(observer.totalDropped),
                 ])
 
         case "events":

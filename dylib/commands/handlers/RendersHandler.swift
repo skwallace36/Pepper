@@ -82,6 +82,9 @@ struct RendersHandler: PepperHandler {
     // MARK: - Start / Stop / Status / Log / Clear
 
     private func handleStart(_ command: PepperCommand) -> PepperResponse {
+        if let size = command.params?["buffer_size"]?.intValue {
+            PepperRenderTracker.shared.setMaxEvents(size)
+        }
         let report = PepperRenderTracker.shared.start()
         let status = report["status"] as? String ?? "unknown"
 
@@ -136,7 +139,9 @@ struct RendersHandler: PepperHandler {
         let tracker = PepperRenderTracker.shared
         return .ok(id: command.id, data: [
             "active": AnyCodable(tracker.spikeActive),
+            "buffer_size": AnyCodable(tracker.maxEvents),
             "event_count": AnyCodable(tracker.totalEventCount),
+            "total_dropped": AnyCodable(tracker.totalDropped),
             "render_counts": AnyCodable(tracker.currentCounts.mapValues { AnyCodable($0) }),
         ])
     }

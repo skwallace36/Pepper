@@ -22,6 +22,9 @@ final class PepperFlightRecorder {
     /// Total events recorded (including evicted from buffer).
     private(set) var totalRecorded: Int = 0
 
+    /// Total events dropped due to buffer overflow.
+    private(set) var totalDropped: Int = 0
+
     /// Whether recording is active (default: true — always on).
     private(set) var isRecording: Bool = true
 
@@ -78,6 +81,7 @@ final class PepperFlightRecorder {
         queue.async(flags: .barrier) {
             if self.buffer.count >= self.bufferSize {
                 self.buffer.removeFirst()
+                self.totalDropped += 1
             }
             self.buffer.append(event)
             self.totalRecorded += 1
@@ -117,8 +121,10 @@ final class PepperFlightRecorder {
         guard size > 0 else { return }
         queue.async(flags: .barrier) {
             self.bufferSize = size
-            while self.buffer.count > size {
-                self.buffer.removeFirst()
+            if self.buffer.count > size {
+                let overflow = self.buffer.count - size
+                self.totalDropped += overflow
+                self.buffer.removeFirst(overflow)
             }
         }
     }

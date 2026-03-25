@@ -122,6 +122,7 @@ struct NetworkHandler: PepperHandler {
             "buffer_size": AnyCodable(interceptor.bufferSize),
             "buffer_count": AnyCodable(interceptor.transactionCount),
             "total_recorded": AnyCodable(interceptor.totalRecorded),
+            "total_dropped": AnyCodable(interceptor.totalDropped),
             "conditions_count": AnyCodable(conditions.count),
             "mocks_count": AnyCodable(mocks.count),
         ]
