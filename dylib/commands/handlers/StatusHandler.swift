@@ -75,6 +75,19 @@ struct StatusHandler: PepperHandler {
             data["tab"] = AnyCodable(tabBar.pepper_selectedTabName)
         }
 
+        // Known limitations for the current OS version
+        var limitations: [AnyCodable] = []
+        if #available(iOS 26, *) {
+            limitations.append(AnyCodable(
+                "iOS 26+: UNUserNotificationCenter .current() swizzle disabled (BUG-307). "
+                + "Notification permission auto-grant uses class enumeration fallback; "
+                + "if a dialog still appears, use AX dismiss from the MCP side."
+            ))
+        }
+        if !limitations.isEmpty {
+            data["known_limitations"] = AnyCodable(limitations)
+        }
+
         return .ok(id: command.id, data: data)
     }
 }
