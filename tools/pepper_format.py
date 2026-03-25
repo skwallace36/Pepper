@@ -82,6 +82,15 @@ _HEURISTIC_BADGES = {
 }
 
 
+def _format_ocr_line(item: dict) -> str:
+    """Render one OCR result: ocr  "text"  point:x,y  conf:0.92"""
+    text = item.get("text", "")
+    disp = text if len(text) <= 50 else text[:47] + "..."
+    cx, cy = item.get("center", [0, 0])
+    conf = item.get("confidence", 0.0)
+    return f'  {"ocr":>6s}  "{disp}"  point:{cx},{cy}  conf:{conf:.2f}'
+
+
 def format_look(resp: dict) -> str:
     """Format introspect mode:map response as compact readable summary.
 
@@ -233,6 +242,13 @@ def format_look(resp: dict) -> str:
             label = _strip_sf_symbols(e.get("label", ""))
             if label:
                 lines.append(f"  {dim(label)}")
+
+    # OCR-only text
+    ocr_results = data.get("ocr_results", [])
+    if ocr_results:
+        lines.append(dim("── ocr-only text ──"))
+        for item in ocr_results:
+            lines.append(_format_ocr_line(item))
 
     # Leak warnings
     leaks = data.get("leaks", [])
@@ -400,6 +416,18 @@ def format_look_slim(resp: dict) -> str:
             if label:
                 lines.append(f"  {dim(label)}")
 
+    # OCR-only text
+    ocr_results = data.get("ocr_results", [])
+    if ocr_results:
+        lines.append("")
+        lines.append(dim("── ocr-only text ──"))
+        for item in ocr_results:
+            text = item.get("text", "")
+            disp = text if len(text) <= 50 else text[:47] + "..."
+            cx, cy = item.get("center", [0, 0])
+            conf = item.get("confidence", 0.0)
+            lines.append(f'  [ocr]  "{disp}"  point:{cx},{cy}  conf:{conf:.2f}')
+
     # Leak warnings
     leaks = data.get("leaks", [])
     if leaks:
@@ -421,6 +449,7 @@ def format_look_slim(resp: dict) -> str:
 _prev_compact_fingerprints: dict[str, str] = {}  # element_key -> state_fingerprint
 _prev_compact_screen: str = ""
 _prev_compact_text: set[str] = set()
+_prev_compact_ocr: set[str] = set()  # OCR text strings from previous call
 
 
 def _element_key(e: dict) -> str:
@@ -501,7 +530,7 @@ def format_look_compact(resp: dict) -> str:
     - Diffs against previous call — only shows changed/new/removed elements
     - Reduces context consumption by 60-70%
     """
-    global _prev_compact_fingerprints, _prev_compact_screen, _prev_compact_text
+    global _prev_compact_fingerprints, _prev_compact_screen, _prev_compact_text, _prev_compact_ocr
     import json
 
     if resp.get("status") != "ok":
@@ -554,12 +583,17 @@ def format_look_compact(resp: dict) -> str:
 
     cur_text = {e.get("label", "") for e in ni if e.get("label")}
 
+    # OCR results
+    ocr_results = data.get("ocr_results", [])
+    cur_ocr = {item.get("text", "") for item in ocr_results if item.get("text")}
+
     # Determine if screen changed (full reset on screen change)
     screen_changed = (screen != _prev_compact_screen)
 
     # Diff interactive elements
     prev_fp = _prev_compact_fingerprints if not screen_changed else {}
     prev_text = _prev_compact_text if not screen_changed else set()
+    prev_ocr = _prev_compact_ocr if not screen_changed else set()
 
     added_keys = set(cur_fingerprints) - set(prev_fp)
     removed_keys = set(prev_fp) - set(cur_fingerprints)
@@ -573,10 +607,15 @@ def format_look_compact(resp: dict) -> str:
     removed_text = prev_text - cur_text
     unchanged_text_count = len(cur_text) - len(new_text)
 
+    new_ocr = cur_ocr - prev_ocr
+    removed_ocr = prev_ocr - cur_ocr
+    unchanged_ocr_count = len(cur_ocr) - len(new_ocr)
+
     # Update stored state
     _prev_compact_fingerprints = cur_fingerprints
     _prev_compact_screen = screen
     _prev_compact_text = cur_text
+    _prev_compact_ocr = cur_ocr
 
     # Build output
     interactive_count = len(all_interactive)
@@ -650,6 +689,25 @@ def format_look_compact(resp: dict) -> str:
                 lines.append(f"  - {dim(t)}")
         else:
             lines.append(dim("  (no text changes)"))
+
+    # OCR-only text
+    if ocr_results:
+        if screen_changed or not prev_ocr:
+            lines.append("")
+            lines.append(dim("── ocr-only text ──"))
+            for item in ocr_results:
+                lines.append(_format_ocr_line(item))
+        else:
+            ocr_changes = new_ocr | removed_ocr
+            if ocr_changes:
+                lines.append("")
+                lines.append(
+                    dim(f"── ocr: {len(new_ocr)} new, {len(removed_ocr)} gone, {unchanged_ocr_count} unchanged ──")
+                )
+                for t in sorted(new_ocr):
+                    lines.append(f"  + [ocr] {dim(t)}")
+                for t in sorted(removed_ocr):
+                    lines.append(f"  - [ocr] {dim(t)}")
 
     # Leaks (always show)
     leaks = data.get("leaks", [])

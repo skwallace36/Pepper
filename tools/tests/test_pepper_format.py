@@ -289,3 +289,107 @@ class TestElementHelpers:
     def test_element_state_disabled(self):
         e = _make_element(traits=["notEnabled"])
         assert "disabled" in pf._element_state(e)
+
+
+# ---------------------------------------------------------------------------
+# OCR formatting
+# ---------------------------------------------------------------------------
+
+def _make_ocr_item(text="Hello World", center=(150, 300), confidence=0.92):
+    return {"text": text, "center": list(center), "confidence": confidence}
+
+
+class TestFormatLookOCR:
+    def setup_method(self):
+        pf.USE_COLOR = False
+
+    def test_ocr_section_shown(self):
+        resp = _make_response(ocr_results=[_make_ocr_item()])
+        result = pf.format_look(resp)
+        assert "ocr-only text" in result
+        assert "Hello World" in result
+
+    def test_ocr_format_includes_point_and_conf(self):
+        resp = _make_response(ocr_results=[_make_ocr_item(center=(150, 300), confidence=0.95)])
+        result = pf.format_look(resp)
+        assert "point:150,300" in result
+        assert "conf:0.95" in result
+
+    def test_no_ocr_section_when_empty(self):
+        resp = _make_response()
+        result = pf.format_look(resp)
+        assert "ocr-only text" not in result
+
+    def test_ocr_long_text_truncated(self):
+        long_text = "A" * 60
+        resp = _make_response(ocr_results=[_make_ocr_item(text=long_text)])
+        result = pf.format_look(resp)
+        assert "..." in result
+        assert long_text not in result
+
+
+class TestFormatLookSlimOCR:
+    def setup_method(self):
+        pf.USE_COLOR = False
+
+    def test_ocr_tagged_in_slim(self):
+        resp = _make_response(ocr_results=[_make_ocr_item(text="Pixel Text")])
+        result = pf.format_look_slim(resp)
+        assert "[ocr]" in result
+        assert "Pixel Text" in result
+
+    def test_ocr_point_and_conf_in_slim(self):
+        resp = _make_response(ocr_results=[_make_ocr_item(center=(42, 99), confidence=0.88)])
+        result = pf.format_look_slim(resp)
+        assert "point:42,99" in result
+        assert "conf:0.88" in result
+
+
+class TestFormatLookCompactOCR:
+    def setup_method(self):
+        pf.USE_COLOR = False
+        pf._prev_compact_fingerprints = {}
+        pf._prev_compact_screen = ""
+        pf._prev_compact_text = set()
+        pf._prev_compact_ocr = set()
+
+    def test_first_call_shows_all_ocr(self):
+        resp = _make_response(ocr_results=[_make_ocr_item(text="OCR Text")])
+        result = pf.format_look_compact(resp)
+        assert "ocr-only text" in result
+        assert "OCR Text" in result
+
+    def test_second_call_same_ocr_no_section(self):
+        resp = _make_response(ocr_results=[_make_ocr_item(text="Stable")])
+        pf.format_look_compact(resp)
+        result = pf.format_look_compact(resp)
+        # No OCR changes, no OCR section shown
+        assert "ocr-only text" not in result
+        assert "ocr:" not in result
+
+    def test_new_ocr_text_shown_as_added(self):
+        resp1 = _make_response(ocr_results=[_make_ocr_item(text="First")])
+        pf.format_look_compact(resp1)
+        resp2 = _make_response(ocr_results=[
+            _make_ocr_item(text="First"),
+            _make_ocr_item(text="Second"),
+        ])
+        result = pf.format_look_compact(resp2)
+        assert "1 new" in result
+        assert "Second" in result
+
+    def test_removed_ocr_text_shown(self):
+        resp1 = _make_response(ocr_results=[_make_ocr_item(text="Gone")])
+        pf.format_look_compact(resp1)
+        resp2 = _make_response(ocr_results=[])
+        pf.format_look_compact(resp2)
+        assert pf._prev_compact_ocr == set()
+
+    def test_screen_change_resets_ocr_diff(self):
+        resp1 = _make_response(screen="ScreenA", ocr_results=[_make_ocr_item(text="Old")])
+        pf.format_look_compact(resp1)
+        resp2 = _make_response(screen="ScreenB", ocr_results=[_make_ocr_item(text="New")])
+        result = pf.format_look_compact(resp2)
+        # Screen changed → full OCR list shown, not diff
+        assert "ocr-only text" in result
+        assert "New" in result
