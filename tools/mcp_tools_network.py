@@ -81,6 +81,8 @@ def register_network_tools(mcp, resolve_and_send):
             params["url"] = url
         if method:
             params["method"] = method
+        if condition_id and mock_id:
+            return "Error: condition_id and mock_id are mutually exclusive — use condition_id for simulate/remove_condition, mock_id for mock/remove_mock."
         if condition_id:
             params["id"] = condition_id
         if mock_status is not None:
