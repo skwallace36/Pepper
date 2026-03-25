@@ -20,6 +20,9 @@ final class NWListenerTransport: WebSocketTransport {
     /// Counter for generating unique connection IDs.
     private var nextConnectionID: Int = 0
 
+    /// Timestamp captured at `start()` for measuring ready latency.
+    private var startTimestamp: CFAbsoluteTime = 0
+
     /// Active connections keyed by connection ID, for broadcast and cleanup.
     private var connections: [String: NWTransportConnection] = [:]
 
@@ -52,6 +55,7 @@ final class NWListenerTransport: WebSocketTransport {
             self?.handleNewConnection(nwConnection)
         }
 
+        startTimestamp = CFAbsoluteTimeGetCurrent()
         listener?.start(queue: queue)
         pepperLog.info("Transport starting on port \(port)", category: .server)
     }
@@ -78,6 +82,8 @@ final class NWListenerTransport: WebSocketTransport {
     private func handleListenerState(_ state: NWListener.State) {
         switch state {
         case .ready:
+            let readyMs = Int((CFAbsoluteTimeGetCurrent() - startTimestamp) * 1000)
+            pepperLog.info("[timing] NWListener ready (port=\(port)) after \(readyMs)ms", category: .lifecycle)
             pepperLog.info("Transport ready on port \(port)", category: .server)
         case .failed(let error):
             pepperLog.error("Transport failed: \(error)", category: .server)
