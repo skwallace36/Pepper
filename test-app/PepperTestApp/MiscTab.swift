@@ -373,6 +373,14 @@ struct MiscTab: View {
                     .accessibilityIdentifier("file_manager_link")
                 }
 
+                // MARK: - Undo Demo (for undo_manager testing)
+                GroupBox("Undo Manager") {
+                    NavigationLink("Undo Demo Screen") {
+                        UndoDemoView()
+                    }
+                    .accessibilityIdentifier("undo_demo_link")
+                }
+
                 // MARK: - Context Menu
                 GroupBox("Context Menu") {
                     Text("Long press me")
