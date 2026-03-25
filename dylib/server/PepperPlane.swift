@@ -144,8 +144,9 @@ public final class PepperPlane {
             // to auto-refresh builder highlights when scrolling stops.
             installTracked("PepperInlineOverlay") { PepperInlineOverlay.shared.install() }
 
-            // Install flight recorder — always-on timeline of network, console, screen,
-            // and command events. Auto-starts network + console capture.
+            // Install flight recorder — always-on ring buffer for command events.
+            // Network, console, and render interceptors are deferred until first
+            // timeline/network/console query (see ensureInstalled).
             installTracked("PepperFlightRecorder") { PepperFlightRecorder.shared.install() }
 
             logSwizzleHealth()

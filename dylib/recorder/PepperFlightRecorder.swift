@@ -31,27 +31,35 @@ final class PepperFlightRecorder {
     /// Whether install() has been called.
     private var installed = false
 
+    /// Whether interceptors have been lazily installed via ensureInstalled().
+    private var interceptorsInstalled = false
+
     private init() {}
 
     // MARK: - Lifecycle
 
-    /// Install the flight recorder and auto-start network + console capture.
+    /// Lightweight install — starts the ring buffer but defers interceptors.
     /// Called once from PepperPlane.start(). Idempotent.
     func install() {
         guard !installed else { return }
         installed = true
 
-        // Auto-start network interception (lightweight — URLProtocol canInit is a bool check)
+        record(type: .command, summary: "Flight recorder started (buffer: \(bufferSize))")
+        pepperLog.info("Flight recorder installed (buffer: \(bufferSize), interceptors deferred)", category: .lifecycle)
+    }
+
+    /// Install network, console, and render interceptors on first use.
+    /// Called lazily from timeline/network handlers. Idempotent.
+    func ensureInstalled() {
+        guard !interceptorsInstalled else { return }
+        interceptorsInstalled = true
+
         PepperNetworkInterceptor.shared.install()
-
-        // Auto-start console capture (tees to original fd, minimal overhead)
         PepperConsoleInterceptor.shared.install()
-
-        // Auto-start render tracking (swizzles _UIHostingView.layoutSubviews)
         PepperRenderTracker.shared.install()
 
-        record(type: .command, summary: "Flight recorder started (buffer: \(bufferSize))")
-        pepperLog.info("Flight recorder installed (buffer: \(bufferSize))", category: .lifecycle)
+        record(type: .command, summary: "Flight recorder interceptors activated (deferred install)")
+        pepperLog.info("Flight recorder interceptors activated", category: .lifecycle)
     }
 
     // MARK: - Recording
