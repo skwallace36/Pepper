@@ -143,20 +143,18 @@ final class DialogHandler: PepperHandler {
             //   → Auto-dismiss with custom button list (first match wins)
             // {"cmd":"dialog","params":{"action":"auto_dismiss","enabled":false}}
             //   → Disable auto-dismiss
+            let dismisser = DialogAutoDismisser.shared
             let enabled = command.params?["enabled"]?.boolValue ?? true
-            interceptor.autoDismissEnabled = enabled
+            dismisser.enabled = enabled
 
             if enabled {
                 if let buttons = command.params?["buttons"]?.arrayValue {
-                    interceptor.autoDismissButtons = buttons.compactMap { $0.stringValue }
-                } else if interceptor.autoDismissButtons.isEmpty {
-                    // Default permission buttons — covers location, notifications, camera, microphone
-                    interceptor.autoDismissButtons = [
-                        "Allow While Using App", "Allow Once", "Allow", "OK",
-                    ]
+                    dismisser.buttons = buttons.compactMap { $0.stringValue }
+                } else if dismisser.buttons.isEmpty {
+                    dismisser.buttons = DialogAutoDismisser.defaultButtons
                 }
                 if let delay = command.params?["delay"]?.doubleValue {
-                    interceptor.autoDismissDelay = delay
+                    dismisser.delay = delay
                 }
             }
 
@@ -164,8 +162,8 @@ final class DialogHandler: PepperHandler {
                 id: command.id,
                 data: [
                     "auto_dismiss": AnyCodable(enabled),
-                    "buttons": AnyCodable(interceptor.autoDismissButtons.map { AnyCodable($0) }),
-                    "delay": AnyCodable(interceptor.autoDismissDelay),
+                    "buttons": AnyCodable(dismisser.buttons.map { AnyCodable($0) }),
+                    "delay": AnyCodable(dismisser.delay),
                 ])
 
         default:
