@@ -72,7 +72,8 @@ struct VarsHandler: PepperHandler {
             return .error(id: command.id, message: "Missing 'value' param.")
         }
 
-        let (newValue, error) = PepperVarRegistry.shared.setValue(path: path, jsonValue: value)
+        let (newValue, changes, renders, error) = PepperVarRegistry.shared.setValueWithChangeTracking(
+            path: path, jsonValue: value)
 
         if let error = error {
             return .error(id: command.id, message: error)
@@ -81,9 +82,13 @@ struct VarsHandler: PepperHandler {
         var data: [String: AnyCodable] = [
             "path": AnyCodable(path),
             "ok": AnyCodable(true),
+            "changes": AnyCodable(changes.map { AnyCodable($0.toDict()) }),
         ]
         if let newValue = newValue {
             data["value"] = newValue
+        }
+        if !renders.isEmpty {
+            data["renders"] = AnyCodable(renders)
         }
         return .ok(id: command.id, data: data)
     }
