@@ -1,10 +1,6 @@
 # Pepper
 
-Pepper is an MCP server that gives AI coding assistants the ability to see, interact with, and debug iOS Simulator apps.
-
-It works by injecting a dylib into the target app via `DYLD_INSERT_LIBRARIES`. The dylib starts a WebSocket server inside the app process. Your MCP client connects to that server and gets access to 60+ tools — everything from reading the view hierarchy to tapping buttons to intercepting network traffic.
-
-The target app doesn't need any modifications. If it runs in the simulator, Pepper works with it.
+MCP server for iOS Simulator apps. Injects a dylib via `DYLD_INSERT_LIBRARIES`, starts a WebSocket server inside the app process, and exposes 50+ tools — view hierarchy, touch input, network interception, heap inspection.
 
 ## Quick Start
 
@@ -31,35 +27,17 @@ Then ask your agent to `look` at the screen.
 
 ## How It Works
 
-```
-AI Agent  →  pepper-mcp  →  WebSocket  →  Pepper Dylib (inside app process)
-(Claude Code,   (MCP server,     (localhost)     (UIKit, Accessibility,
- Cursor, etc.)   Python)                          HID, Network, Heap)
-```
-
-The MCP server translates tool calls into WebSocket commands. The dylib receives them on the main thread and operates directly on the app's runtime — UIKit, SwiftUI, accessibility, networking.
-
-Touch input goes through IOHIDEvent injection — `tap`, `scroll`, `swipe`, and `gesture` work identically for UIKit and SwiftUI.
+All touch input goes through IOHIDEvent injection — the same path real fingers take. `tap`, `scroll`, `swipe`, and `gesture` work identically for UIKit and SwiftUI without knowing which framework rendered the view.
 
 ## Tools
 
-60+ tools across five categories:
+`look` · `tap` · `scroll` · `scroll_to` · `swipe` · `gesture` · `input_text` · `toggle` · `navigate` · `back` · `dismiss` · `dismiss_keyboard` · `dialog` · `screen` · `find` · `read_element` · `tree` · `layers` · `highlight` · `vars_inspect` · `heap` · `console` · `network` · `crash_log` · `timeline` · `animations` · `lifecycle` · `concurrency` · `constraints` · `responder_chain` · `timers` · `defaults` · `clipboard` · `keychain` · `cookies` · `storage` · `sandbox` · `locale` · `flags` · `push` · `orientation` · `status` · `wait_for` · `wait_idle` · `record` · `deploy` · `build` · `build_device` · `iterate` · `snapshot` · `diff` · `screenshot` · `hook` · `raw`
 
-**Observe** — `look` · `screen` · `find` · `tree` · `layers` · `highlight` · `read_element`
-
-**Interact** — `tap` · `scroll` · `scroll_to` · `swipe` · `gesture` · `input_text` · `toggle` · `navigate` · `back` · `dismiss` · `dialog`
-
-**Debug** — `vars_inspect` · `heap` · `console` · `network` · `crash_log` · `timeline` · `animations` · `lifecycle` · `concurrency` · `constraints` · `responder_chain` · `timers`
-
-**App State** — `defaults` · `clipboard` · `keychain` · `cookies` · `storage` · `sandbox` · `locale` · `flags` · `push` · `orientation`
-
-**Automation** — `deploy` · `build` · `wait_for` · `wait_idle` · `record` · `iterate` · `snapshot` · `diff` · `screenshot`
-
-Each tool has built-in documentation — your MCP client will show parameter descriptions and usage examples.
+Parameter docs are built into each tool — your MCP client surfaces them automatically.
 
 ## Adapters
 
-Pepper works with any app out of the box. For app-specific behavior — deep link catalogs, icon mappings, custom tab bar detection — you can write an adapter. Set `APP_ADAPTER_TYPE` and `ADAPTER_PATH` in `.env`. See `.env.example`.
+Optional app-specific modules for deep link routes, icon mappings, custom tab bar detection. Set `APP_ADAPTER_TYPE` and `ADAPTER_PATH` in `.env`. Without an adapter, Pepper runs in generic mode.
 
 ## Development
 
