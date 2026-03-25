@@ -11,8 +11,16 @@ struct BackHandler: PepperHandler {
     let commandName = "back"
 
     func handle(_ command: PepperCommand) -> PepperResponse {
+        do {
+            return try performBack(command)
+        } catch {
+            return .error(id: command.id, message: "[back] \(error.localizedDescription)")
+        }
+    }
+
+    private func performBack(_ command: PepperCommand) throws -> PepperResponse {
         guard let topVC = UIWindow.pepper_topViewController else {
-            return .error(id: command.id, message: "No visible view controller")
+            throw PepperHandlerError.noViewController
         }
 
         let previousScreen = topVC.pepperScreenID

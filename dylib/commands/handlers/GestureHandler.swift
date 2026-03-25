@@ -11,12 +11,20 @@ struct GestureHandler: PepperHandler {
     let commandName = "gesture"
 
     func handle(_ command: PepperCommand) -> PepperResponse {
+        do {
+            return try performGesture(command)
+        } catch {
+            return .error(id: command.id, message: "[gesture] \(error.localizedDescription)")
+        }
+    }
+
+    private func performGesture(_ command: PepperCommand) throws -> PepperResponse {
         guard let typeStr = command.params?["type"]?.stringValue else {
-            return .error(id: command.id, message: "Missing required param 'type' (pinch|rotate)")
+            throw PepperHandlerError.missingParam("type (pinch|rotate)")
         }
 
         guard let window = UIWindow.pepper_keyWindow else {
-            return .error(id: command.id, message: "No key window available")
+            throw PepperHandlerError.noKeyWindow
         }
 
         // Parse optional center point (defaults to screen center)

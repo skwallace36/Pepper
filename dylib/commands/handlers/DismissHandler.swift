@@ -11,8 +11,16 @@ struct DismissHandler: PepperHandler {
     let commandName = "dismiss"
 
     func handle(_ command: PepperCommand) -> PepperResponse {
+        do {
+            return try performDismiss(command)
+        } catch {
+            return .error(id: command.id, message: "[dismiss] \(error.localizedDescription)")
+        }
+    }
+
+    private func performDismiss(_ command: PepperCommand) throws -> PepperResponse {
         guard let root = UIWindow.pepper_rootViewController else {
-            return .error(id: command.id, message: "No root view controller")
+            throw PepperHandlerError.noViewController
         }
 
         // Walk the presentation chain and collect all levels
