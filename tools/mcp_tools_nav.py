@@ -8,10 +8,11 @@ from __future__ import annotations
 import asyncio
 import base64
 import json
+import logging
 
 from mcp.types import ImageContent, TextContent
 from mcp_screenshot import capture_screenshot, capture_screenshot_inprocess
-from pepper_ax import detect_dialog as _ax_detect_dialog
+from pepper_ax import detect_dialog as _ax_detect
 from pepper_commands import (
     CMD_BACK,
     CMD_DEEPLINKS,
@@ -31,6 +32,8 @@ from pepper_commands import (
 from pepper_common import discover_instance
 from pepper_format import format_look, format_look_compact, format_look_slim
 from pydantic import Field
+
+_logger = logging.getLogger(__name__)
 
 
 def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
@@ -71,6 +74,13 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
         if ocr:
             look_params["ocr"] = True
 
+        # Always run the AX probe in parallel with the dylib command.
+        # It checks for SpringBoard dialogs (permission prompts, etc.) that
+        # the in-process dylib cannot see.
+        ax_task = asyncio.create_task(
+            asyncio.get_event_loop().run_in_executor(None, _ax_detect)
+        )
+
         if visual or save_screenshot:
             # Run introspect and screenshot in parallel.
             # Try fast in-process capture first; fall back to simctl if unavailable.
@@ -89,26 +99,31 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
             resp = await send_command(port, CMD_LOOK, look_params, host=host, timeout=20)
             screenshot_b64 = None
 
-        # SpringBoard dialog probe: if the dylib didn't detect a dialog
-        # (it can only see in-process UIAlertControllers), check via macOS
-        # Accessibility API for SpringBoard-rendered overlays (permission
-        # prompts, etc.). This ensures the agent sees what the user sees.
+        # Collect AX probe result (fast — should already be done).
+        try:
+            ax_result = await asyncio.wait_for(ax_task, timeout=0.3)
+        except (asyncio.TimeoutError, Exception) as exc:
+            _logger.debug("AX probe skipped: %s", exc)
+            ax_result = None
+
+        # Inject SpringBoard dialog into the response so all formatters
+        # (format_look, format_look_slim, format_look_compact) surface it
+        # through existing system_dialog_blocking handling.
         data = resp.get("data", resp)
-        if not data.get("system_dialog_blocking"):
-            try:
-                ax = await asyncio.get_event_loop().run_in_executor(None, _ax_detect_dialog)
-                if ax.get("detected"):
-                    data["system_dialog_blocking"] = {
-                        "warning": "\u26a0\ufe0f springboard_dialog_detected",
-                        "description": "A SpringBoard system dialog is overlaying the app. Use dialog dismiss_system to handle it.",
-                        "dialogs": [{"title": "System Dialog", "buttons": ax.get("buttons", [])}],
-                        "suggested_actions": [
-                            "dialog dismiss_system \u2014 detect and dismiss the system dialog",
-                            "dialog detect_system \u2014 get full details",
-                        ],
-                    }
-            except Exception:
-                pass  # AX unavailable — don't block look
+        if (
+            ax_result
+            and ax_result.get("detected")
+            and not data.get("system_dialog_blocking")
+        ):
+            data["system_dialog_blocking"] = {
+                "warning": "springboard_dialog_detected",
+                "description": "A SpringBoard system dialog is overlaying the app. Use dialog dismiss_system to handle it.",
+                "dialogs": [{"title": "System Dialog", "buttons": ax_result.get("buttons", [])}],
+                "suggested_actions": [
+                    "dialog dismiss_system",
+                    "dialog detect_system",
+                ],
+            }
 
         if raw:
             text = json.dumps(resp, indent=2)
