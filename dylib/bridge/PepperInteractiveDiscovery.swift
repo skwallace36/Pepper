@@ -16,9 +16,9 @@ extension ElementDiscoveryBridge {
         // Return cached result if no UI-mutating events have occurred and TTL hasn't expired.
         // Caches both window-scope (rootView == nil) and scoped (modal root) calls.
         let currentRootID = rootView.map(ObjectIdentifier.init)
-        if let cached = cachedInteractive, cached.gen == cacheGeneration,
+        if let cached = cache.interactive, cached.gen == cache.generation,
             cached.rootID == currentRootID,
-            CFAbsoluteTimeGetCurrent() - cached.time < cacheTTL
+            CFAbsoluteTimeGetCurrent() - cached.time < cache.ttl
         {
             lastInteractiveTruncated = cached.truncated
             return cached.elements
@@ -198,8 +198,8 @@ extension ElementDiscoveryBridge {
 
         // Cache result for both window-scope and scoped calls
         lastInteractiveTruncated = truncated
-        cachedInteractive = (
-            gen: cacheGeneration, rootID: currentRootID, elements: results, truncated: truncated,
+        cache.interactive = (
+            gen: cache.generation, rootID: currentRootID, elements: results, truncated: truncated,
             time: CFAbsoluteTimeGetCurrent()
         )
         return results
