@@ -40,6 +40,7 @@ struct NetworkHandler: PepperHandler {
             return .error(id: command.id, message: "Missing 'action' param. Available: start, stop, status, log, clear, simulate, conditions, remove_condition, clear_conditions, mock, mocks, remove_mock, clear_mocks")
         }
 
+        PepperFlightRecorder.shared.ensureInstalled()
         let interceptor = PepperNetworkInterceptor.shared
 
         switch action {
