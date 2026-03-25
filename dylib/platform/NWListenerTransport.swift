@@ -10,6 +10,8 @@ final class NWListenerTransport: WebSocketTransport {
 
     let port: UInt16
     weak var delegate: TransportDelegate?
+    var onReady: (() -> Void)?
+    var onFailed: (() -> Void)?
 
     /// The underlying Network.framework listener.
     private var listener: NWListener?
@@ -85,8 +87,10 @@ final class NWListenerTransport: WebSocketTransport {
             let readyMs = Int((CFAbsoluteTimeGetCurrent() - startTimestamp) * 1000)
             pepperLog.info("[timing] NWListener ready (port=\(port)) after \(readyMs)ms", category: .lifecycle)
             pepperLog.info("Transport ready on port \(port)", category: .server)
+            onReady?()
         case .failed(let error):
             pepperLog.error("Transport failed: \(error)", category: .server)
+            onFailed?()
             // Attempt restart after a short delay
             queue.asyncAfter(deadline: .now() + 2) { [weak self] in
                 self?.listener?.cancel()
