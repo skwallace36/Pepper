@@ -26,6 +26,7 @@
 		A1000013 /* PropertyEditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000013; };
 		A1000014 /* RuntimeIntrospectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000014; };
 		A100000B /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = A200000B; };
+		A1000015 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A2000015; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -49,6 +50,7 @@
 		A2000012 /* CoreDataStack.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreDataStack.swift; sourceTree = "<group>"; };
 		A2000013 /* PropertyEditView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PropertyEditView.swift; sourceTree = "<group>"; };
 		A2000014 /* RuntimeIntrospectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RuntimeIntrospectionView.swift; sourceTree = "<group>"; };
+		A2000015 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A3000001 /* PepperTestApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PepperTestApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -94,6 +96,7 @@
 				A2000012 /* CoreDataStack.swift */,
 				A2000013 /* PropertyEditView.swift */,
 				A2000014 /* RuntimeIntrospectionView.swift */,
+				A2000015 /* Assets.xcassets */,
 			);
 			path = PepperTestApp;
 			sourceTree = "<group>";
@@ -160,6 +163,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A100000B /* Localizable.strings in Resources */,
+				A1000015 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
