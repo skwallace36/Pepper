@@ -38,7 +38,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
     Args:
         mcp: FastMCP server instance.
         send_command: async (port, cmd, params?, timeout?) -> dict
-        resolve_and_send: async (simulator, cmd, params?, timeout?) -> str
+        resolve_and_send: async (simulator, cmd, params?, timeout?) -> dict
         act_and_look: async (simulator, cmd, params?, timeout?) -> str
     """
 

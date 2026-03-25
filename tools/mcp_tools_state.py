@@ -24,7 +24,7 @@ def register_state_tools(mcp, resolve_and_send):
 
     Args:
         mcp: FastMCP server instance.
-        resolve_and_send: async (simulator, cmd, params?, timeout?) -> str
+        resolve_and_send: async (simulator, cmd, params?, timeout?) -> dict
     """
 
     @mcp.tool()
