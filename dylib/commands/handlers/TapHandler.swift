@@ -28,9 +28,18 @@ struct TapHandler: PepperHandler {
 
     // swiftlint:disable:next cyclomatic_complexity
     func handle(_ command: PepperCommand) -> PepperResponse {
+        do {
+            return try performTap(command)
+        } catch {
+            return .error(id: command.id, message: "[tap] \(error.localizedDescription)")
+        }
+    }
+
+    // swiftlint:disable:next cyclomatic_complexity
+    private func performTap(_ command: PepperCommand) throws -> PepperResponse {
         let windows = UIWindow.pepper_allVisibleWindows
         guard let keyWindow = UIWindow.pepper_keyWindow else {
-            return .error(id: command.id, message: "No key window available")
+            throw PepperHandlerError.noKeyWindow
         }
 
         // Icon name taps: discover interactive elements, match by icon asset name.

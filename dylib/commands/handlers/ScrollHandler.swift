@@ -11,8 +11,16 @@ struct ScrollHandler: PepperHandler {
     private var logger: Logger { PepperLogger.logger(category: "scroll") }
 
     func handle(_ command: PepperCommand) -> PepperResponse {
+        do {
+            return try performScroll(command)
+        } catch {
+            return .error(id: command.id, message: "[scroll] \(error.localizedDescription)")
+        }
+    }
+
+    private func performScroll(_ command: PepperCommand) throws -> PepperResponse {
         guard let window = UIWindow.pepper_keyWindow else {
-            return .error(id: command.id, message: "No key window available")
+            throw PepperHandlerError.noKeyWindow
         }
 
         // Mode 1: Scroll to position (top/bottom)
@@ -44,7 +52,7 @@ struct ScrollHandler: PepperHandler {
                 command: command)
         }
 
-        return .error(id: command.id, message: "Missing required param: position, element, or direction")
+        throw PepperHandlerError.missingParam("position, element, or direction")
     }
 
     // MARK: - Scroll to position

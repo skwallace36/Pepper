@@ -22,8 +22,16 @@ struct SwipeHandler: PepperHandler {
     private static let defaultDuration: TimeInterval = 0.3
 
     func handle(_ command: PepperCommand) -> PepperResponse {
+        do {
+            return try performSwipe(command)
+        } catch {
+            return .error(id: command.id, message: "[swipe] \(error.localizedDescription)")
+        }
+    }
+
+    private func performSwipe(_ command: PepperCommand) throws -> PepperResponse {
         guard let window = UIWindow.pepper_keyWindow else {
-            return .error(id: command.id, message: "No key window available")
+            throw PepperHandlerError.noKeyWindow
         }
 
         let duration =
@@ -78,7 +86,7 @@ struct SwipeHandler: PepperHandler {
                 return .error(id: command.id, message: "Invalid direction: \(direction). Use up/down/left/right")
             }
         } else {
-            return .error(id: command.id, message: "Missing required params: from+to, or direction")
+            throw PepperHandlerError.missingParam("from+to, or direction")
         }
 
         logger.info("Swipe from (\(from.x),\(from.y)) to (\(to.x),\(to.y)) duration=\(duration)s")

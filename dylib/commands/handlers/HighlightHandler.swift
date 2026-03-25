@@ -14,8 +14,9 @@ struct HighlightHandler: PepperHandler {
     let commandName = "highlight"
 
     // Named color presets
+    private static let defaultColor = UIColor(red: 0.231, green: 0.510, blue: 0.965, alpha: 1)  // #3b82f6
     private static let colors: [String: UIColor] = [
-        "blue": UIColor(red: 0.231, green: 0.510, blue: 0.965, alpha: 1),  // #3b82f6
+        "blue": defaultColor,
         "green": UIColor(red: 0.133, green: 0.773, blue: 0.369, alpha: 1),  // #22c55e
         "red": UIColor(red: 0.937, green: 0.267, blue: 0.267, alpha: 1),  // #ef4444
         "yellow": UIColor(red: 0.980, green: 0.749, blue: 0.141, alpha: 1),  // #fabe24
@@ -35,6 +36,14 @@ struct HighlightHandler: PepperHandler {
     }
 
     func handle(_ command: PepperCommand) -> PepperResponse {
+        do {
+            return try performHighlight(command)
+        } catch {
+            return .error(id: command.id, message: "[highlight] \(error.localizedDescription)")
+        }
+    }
+
+    private func performHighlight(_ command: PepperCommand) throws -> PepperResponse {
         let inline = command.params?["inline"]?.boolValue ?? false
 
         // Clear all highlights
@@ -64,8 +73,7 @@ struct HighlightHandler: PepperHandler {
                         let h = frameDict["height"]?.doubleValue
                     else { continue }
                     let colorStr = dict["color"]?.stringValue ?? "blue"
-                    // swiftlint:disable:next force_unwrapping
-                    let color = Self.colorFromHex(colorStr) ?? Self.colors[colorStr] ?? Self.colors["blue"]!
+                    let color = Self.colorFromHex(colorStr) ?? Self.colors[colorStr] ?? Self.defaultColor
                     inlineItems.append((CGRect(x: x, y: y, width: w, height: h), color, 2))
                     results.append(["highlighted": AnyCodable(true), "strategy": AnyCodable("inline")])
                 }
@@ -122,8 +130,7 @@ struct HighlightHandler: PepperHandler {
     /// Render a single highlight from params. Returns result dict (or "error" key on failure).
     private func showSingleHighlight(_ params: [String: AnyCodable]) -> [String: AnyCodable] {
         let colorStr = params["color"]?.stringValue ?? "blue"
-        // swiftlint:disable:next force_unwrapping
-        let color = Self.colorFromHex(colorStr) ?? Self.colors[colorStr] ?? Self.colors["blue"]!
+        let color = Self.colorFromHex(colorStr) ?? Self.colors[colorStr] ?? Self.defaultColor
         let label = params["label"]?.stringValue
         let labelInside = params["labelInside"]?.boolValue ?? false
         let labelColorStr = params["labelColor"]?.stringValue
