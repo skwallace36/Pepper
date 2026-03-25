@@ -193,7 +193,7 @@
   "snapshot.list":       { "status": "untested",  "surface": "MiscTab > Snapshot Test Screen",            "notes": "New command. Lists all saved snapshot names." },
   "snapshot.delete":     { "status": "untested",  "surface": "MiscTab > Snapshot Test Screen (after save)", "notes": "New command. Deletes a saved snapshot by name." },
   "snapshot.clear":      { "status": "untested",  "surface": "MiscTab > Snapshot Test Screen (after save)", "notes": "New command. Deletes all saved snapshots." },
-  "undo":                { "status": "untested",  "surface": "Any state",                                 "notes": "New command. NSUndoManager inspector — list undo managers, query undo/redo stack state, trigger undo/redo programmatically." },
+  "undo":                { "status": "ready",     "surface": "Misc tab — Undo Demo screen",               "notes": "Surface added (TASK-312). UndoDemoView on Misc tab via undo_demo_link. Add Item registers NSUndoManager undo; swipe-to-delete also registered. Undo/Redo buttons available. undo_status_label shows canUndo/canRedo/action names." },
   "accessibility_audit": { "status": "untested",  "surface": "Any state",                                "notes": "" },
   "accessibility_events": { "status": "untested", "surface": "Any app",                                  "notes": "New command. Subscribes to UIAccessibility notifications (announcements, focus changes) and VC lifecycle events. Ring buffer of 500 events. Enables event-driven wait_for." },
   "renders":             { "status": "untested",  "surface": "SwiftUI app",                               "notes": "New command. SwiftUI view tree snapshots via makeViewDebugData() and snapshot diffing." },
