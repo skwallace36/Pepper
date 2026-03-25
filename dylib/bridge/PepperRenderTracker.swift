@@ -45,15 +45,30 @@ final class PepperRenderTracker {
 
     /// Ring buffer of recent render events. Capped at maxEvents.
     private var ringBuffer: [RenderEvent] = []
-    private let maxEvents = 500
+    private(set) var maxEvents = 500
+    private(set) var totalDropped = 0
 
     /// Append an event to the ring buffer (barrier write).
     private func appendEvent(_ event: RenderEvent) {
         renderQueue.async(flags: .barrier) { [self] in
             if ringBuffer.count >= maxEvents {
                 ringBuffer.removeFirst()
+                totalDropped += 1
             }
             ringBuffer.append(event)
+        }
+    }
+
+    /// Update buffer size. If shrinking, oldest events are evicted.
+    func setMaxEvents(_ size: Int) {
+        guard size > 0 else { return }
+        renderQueue.async(flags: .barrier) { [self] in
+            maxEvents = size
+            if ringBuffer.count > size {
+                let overflow = ringBuffer.count - size
+                totalDropped += overflow
+                ringBuffer.removeFirst(overflow)
+            }
         }
     }
 
