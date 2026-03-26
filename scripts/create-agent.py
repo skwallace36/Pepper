@@ -47,43 +47,28 @@ def github_signup(page, email: str, password: str, username: str):
         page.wait_for_load_state("networkidle")
         time.sleep(2)
 
-    # Step through the signup form — try each field with fallbacks
-    # Email
-    for selector in ["input#email", "input[name='email']", "input[type='email']"]:
-        el = page.locator(selector)
-        if el.count() > 0 and not el.input_value():
-            el.fill(email)
-            page.locator("button:has-text('Continue')").click()
-            time.sleep(1)
-            break
+    # GitHub signup auto-advances between fields. Fill and press Enter.
+    def fill_and_submit(selectors, value):
+        for selector in selectors:
+            el = page.locator(selector)
+            if el.count() > 0:
+                el.first.fill(value)
+                page.keyboard.press("Enter")
+                time.sleep(2)
+                return True
+        return False
 
-    # Password
-    for selector in ["input#password", "input[name='password']", "input[type='password']"]:
-        el = page.locator(selector)
-        if el.count() > 0:
-            el.first.fill(password)
-            page.locator("button:has-text('Continue')").click()
-            time.sleep(1)
-            break
+    fill_and_submit(["input#email", "input[name='email']", "input[type='email']"], email)
+    fill_and_submit(["input#password", "input[name='password']", "input[type='password']"], password)
+    fill_and_submit(["input#login", "input#username", "input[name='login']", "input[name='username']"], username)
 
-    # Username
-    for selector in ["input#login", "input#username", "input[name='login']", "input[name='username']"]:
-        el = page.locator(selector)
-        if el.count() > 0:
-            el.first.fill(username)
-            page.locator("button:has-text('Continue')").click()
-            time.sleep(1)
-            break
-
-    # Email preferences (try to uncheck)
+    # Email preferences (try to uncheck, then submit)
     try:
         page.locator("input[type='checkbox']").first.uncheck(timeout=3000)
     except Exception:
         pass
-    try:
-        page.locator("button:has-text('Continue')").click(timeout=3000)
-    except Exception:
-        pass
+    page.keyboard.press("Enter")
+    time.sleep(1)
 
     # Puzzle / captcha
     print("\n>>> If there's a puzzle or captcha, solve it in the browser now.")
