@@ -169,9 +169,13 @@ if [ -n "$MISSING" ]; then
 fi
 # Max concurrent instances per agent type
 case "$TYPE" in
-  pr-verifier|verifier) MAX_INSTANCES=3 ;;
-  builder)              MAX_INSTANCES=0 ;;  # paused — clear verification backlog first
-  *)                    MAX_INSTANCES=1 ;;
+  bugfix)                MAX_INSTANCES=1 ;;  # testing machine user identity
+  pr-verifier|verifier)  MAX_INSTANCES=0 ;;  # paused
+  builder)               MAX_INSTANCES=0 ;;  # paused
+  pr-responder)          MAX_INSTANCES=0 ;;  # paused
+  tester)                MAX_INSTANCES=0 ;;  # paused
+  conflict-resolver)     MAX_INSTANCES=0 ;;  # paused
+  *)                     MAX_INSTANCES=0 ;;
 esac
 
 # Count running instances of this type (PID-scoped lockfiles)
@@ -306,11 +310,61 @@ if [ -n "$CLAIMED_SIM" ]; then
   xcrun simctl privacy "$CLAIMED_SIM" grant all "$BUNDLE_ID" 2>/dev/null || true
 fi
 
-# Agent git identity — agents commit as themselves, not as the user
-export GIT_AUTHOR_NAME="pepper-${TYPE}-agent"
-export GIT_AUTHOR_EMAIL="pepper-${TYPE}-agent@noreply.pepper.dev"
-export GIT_COMMITTER_NAME="pepper-${TYPE}-agent"
-export GIT_COMMITTER_EMAIL="pepper-${TYPE}-agent@noreply.pepper.dev"
+# Agent GitHub identity — each agent type maps to a machine user account.
+# Concurrent instances of the same type share the same identity.
+# The .env file has AGENT{N}_GITHUB_USERNAME, _EMAIL, _PAT for each.
+source_env() {
+  [ -f "$REPO_ROOT/.env" ] || return
+  while IFS='=' read -r key value; do
+    [[ "$key" =~ ^#.*$ || -z "$key" ]] && continue
+    export "$key"="$value"
+  done < "$REPO_ROOT/.env"
+}
+source_env
+
+# Map agent type → machine user number (1-indexed)
+case "$TYPE" in
+  bugfix)            AGENT_NUM=1 ;;
+  builder)           AGENT_NUM=2 ;;
+  pr-verifier)       AGENT_NUM=3 ;;  # instances 2,3 get AGENT_NUM 4,5
+  pr-responder)      AGENT_NUM=6 ;;
+  tester)            AGENT_NUM=7 ;;
+  conflict-resolver) AGENT_NUM=8 ;;
+  *)                 AGENT_NUM=9 ;;  # spare
+esac
+
+# For multi-instance types, offset by instance count so each gets a unique identity
+if [ "$MAX_INSTANCES" -gt 1 ] && [ "$RUNNING" -gt 0 ]; then
+  AGENT_NUM=$((AGENT_NUM + RUNNING))
+fi
+
+# Resolve credentials from env
+AGENT_USER_VAR="AGENT${AGENT_NUM}_GITHUB_USERNAME"
+AGENT_EMAIL_VAR="AGENT${AGENT_NUM}_GITHUB_EMAIL"
+AGENT_PAT_VAR="AGENT${AGENT_NUM}_GITHUB_PAT"
+
+AGENT_USERNAME="${!AGENT_USER_VAR:-}"
+AGENT_EMAIL="${!AGENT_EMAIL_VAR:-}"
+AGENT_PAT="${!AGENT_PAT_VAR:-}"
+
+if [ -n "$AGENT_USERNAME" ]; then
+  export GIT_AUTHOR_NAME="$AGENT_USERNAME"
+  export GIT_AUTHOR_EMAIL="$AGENT_EMAIL"
+  export GIT_COMMITTER_NAME="$AGENT_USERNAME"
+  export GIT_COMMITTER_EMAIL="$AGENT_EMAIL"
+  # Set GH_TOKEN so gh CLI operations (PRs, comments) use the machine user
+  export GH_TOKEN="$AGENT_PAT"
+  # Configure git credential for pushes
+  git config --global credential.https://github.com.helper \
+    "!f() { echo username=$AGENT_USERNAME; echo password=$AGENT_PAT; }; f"
+  emit "identity" ",\"agent_num\":${AGENT_NUM},\"username\":\"${AGENT_USERNAME}\""
+else
+  # Fallback to generic identity if no machine user configured
+  export GIT_AUTHOR_NAME="pepper-${TYPE}-agent"
+  export GIT_AUTHOR_EMAIL="pepper-${TYPE}-agent@noreply.pepper.dev"
+  export GIT_COMMITTER_NAME="pepper-${TYPE}-agent"
+  export GIT_COMMITTER_EMAIL="pepper-${TYPE}-agent@noreply.pepper.dev"
+fi
 
 # Snapshot booted sims before agent runs — shut down any new ones in cleanup
 SIMS_BEFORE=$(xcrun simctl list devices booted -j 2>/dev/null | python3 -c "
