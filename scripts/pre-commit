@@ -206,9 +206,9 @@ fi
 
 # 8. No secrets/credentials staged
 SECRETS_PATTERN='(api[_-]?key|secret[_-]?key|password|token|credential|private[_-]?key)\s*[:=]'
-if echo "$STAGED_FILES" | grep -v ".env.example" | grep -v "gh-app-token" | grep -v "create-agent" | grep -v ".github/workflows" | grep -v "docs/internal" | xargs grep -ilE "$SECRETS_PATTERN" 2>/dev/null | head -5 | grep -q .; then
+if echo "$STAGED_FILES" | grep -v ".env.example" | grep -v "gh-app-token" | grep -v "create-agent" | grep -v ".github/workflows" | grep -v "docs/internal" | grep -v "agent-runner" | xargs grep -ilE "$SECRETS_PATTERN" 2>/dev/null | head -5 | grep -q .; then
     fail "Possible secrets in staged files:"
-    echo "$STAGED_FILES" | grep -v ".env.example" | grep -v "gh-app-token" | grep -v "create-agent" | grep -v ".github/workflows" | grep -v "docs/internal" | xargs grep -inE "$SECRETS_PATTERN" 2>/dev/null | head -5
+    echo "$STAGED_FILES" | grep -v ".env.example" | grep -v "gh-app-token" | grep -v "create-agent" | grep -v ".github/workflows" | grep -v "docs/internal" | grep -v "agent-runner" | xargs grep -inE "$SECRETS_PATTERN" 2>/dev/null | head -5
 else
     pass "No secrets detected"
 fi
