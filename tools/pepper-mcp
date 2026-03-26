@@ -384,6 +384,15 @@ async def _gather_telemetry(port: int, pre_counts: dict, send_fn) -> str:
     return "\n--- telemetry ---\n" + "\n".join(lines)
 
 
+def _ax_detect_safe() -> dict | None:
+    """Run AX probe for SpringBoard dialog detection, returning None on failure."""
+    try:
+        from pepper_ax import detect_dialog
+        return detect_dialog()
+    except Exception:
+        return None
+
+
 async def act_and_look(simulator: Optional[str], cmd: str, params: Optional[dict] = None, timeout: float = 10) -> str:
     """Send a command, then automatically run look to show screen state after the action.
     Returns: action result + screen summary + telemetry. Forces the check-act-verify loop."""
@@ -445,17 +454,43 @@ async def act_and_look(simulator: Optional[str], cmd: str, params: Optional[dict
         settle = 0.3
     await asyncio.sleep(settle)
 
-    # Auto-look + telemetry in parallel
+    # Auto-look + telemetry + AX probe in parallel
     look_task = asyncio.create_task(
         bound_fn(port, "look", {}, timeout=8)
     )
     telemetry_task = asyncio.create_task(
         _gather_telemetry(port, pre_counts, bound_fn)
     )
+    ax_task = asyncio.ensure_future(
+        asyncio.get_event_loop().run_in_executor(None, _ax_detect_safe)
+    )
 
     look_resp, telemetry = await asyncio.gather(look_task, telemetry_task, return_exceptions=True)
 
+    # Collect AX probe result for SpringBoard dialog detection
+    try:
+        ax_result = await asyncio.wait_for(ax_task, timeout=0.3)
+    except (asyncio.TimeoutError, Exception):
+        ax_result = None
+
+    # Inject SpringBoard dialog into look response if AX detected one
+    # and the dylib didn't already include system_dialog_blocking.
     if isinstance(look_resp, dict):
+        look_data = look_resp.get("data", look_resp)
+        if (
+            ax_result
+            and ax_result.get("detected")
+            and not look_data.get("system_dialog_blocking")
+        ):
+            look_data["system_dialog_blocking"] = {
+                "warning": "springboard_dialog_detected",
+                "description": "A SpringBoard system dialog is overlaying the app. Use dialog dismiss_system to handle it.",
+                "dialogs": [{"title": "System Dialog", "buttons": ax_result.get("buttons", [])}],
+                "suggested_actions": [
+                    "dialog dismiss_system",
+                    "dialog detect_system",
+                ],
+            }
         screen_summary = format_look(look_resp) if look_resp.get("status") == "ok" else "(look failed)"
     else:
         screen_summary = "(look failed)"
