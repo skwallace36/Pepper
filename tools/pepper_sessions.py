@@ -195,15 +195,17 @@ def _is_session_live(session: dict) -> bool:
 
 
 def claim_simulator(udid: str, bundle_id: str = "", port: int = 0,
-                    label: str | None = None) -> bool:
+                    label: str | None = None, pid: int | None = None) -> bool:
     """Attempt to exclusively claim a simulator for this process.
 
     Returns True if claim succeeded. Returns False if another live session owns it.
-    Cleans up stale claims automatically.
+    Cleans up stale claims automatically. Pass `pid` to claim on behalf of a parent
+    process (e.g. agent-runner calling from a subprocess).
     """
+    owner_pid = pid or os.getpid()
     existing = _read_session(udid)
     if existing:
-        if existing.get("pid") == os.getpid():
+        if existing.get("pid") == owner_pid:
             # We already own it — update
             heartbeat(udid, bundle_id=bundle_id, port=port)
             return True
@@ -216,7 +218,7 @@ def claim_simulator(udid: str, bundle_id: str = "", port: int = 0,
     now = datetime.now(UTC).isoformat()
     data = {
         "udid": udid,
-        "pid": os.getpid(),
+        "pid": owner_pid,
         "claimed_at": now,
         "heartbeat": now,
         "bundle_id": bundle_id,
@@ -335,10 +337,14 @@ def claim_simulator_with_port(udid: str, bundle_id: str = "", port: int = 0,
         return False
 
 
-def release_simulator(udid: str):
-    """Release our claim on a simulator. Only removes if we own it (PID match)."""
+def release_simulator(udid: str, pid: int | None = None):
+    """Release our claim on a simulator. Only removes if we own it (PID match).
+
+    Pass `pid` to release on behalf of a parent process.
+    """
+    owner_pid = pid or os.getpid()
     session = _read_session(udid)
-    if session and session.get("pid") == os.getpid():
+    if session and session.get("pid") == owner_pid:
         _remove_session(udid)
 
 

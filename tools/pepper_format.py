@@ -163,6 +163,19 @@ def format_look(resp: dict) -> str:
         header += f"  [{mem:.0f}MB]"
     lines = [header]
 
+    # System dialog warning
+    dialog_data = data.get("system_dialog_blocking")
+    if dialog_data:
+        for d in dialog_data.get("dialogs", []):
+            title = d.get("title", "")
+            buttons = d.get("buttons", [])
+            btn_str = ", ".join(str(b) for b in buttons)
+            lines.append(f"  !! SYSTEM DIALOG: {title} [{btn_str}]")
+            for btn in buttons:
+                lines.append(f"       → dialog dismiss button=\"{btn}\"")
+        lines.append("       → dialog dismiss_system (auto-detect and dismiss)")
+        lines.append("")
+
     # Interactive rows
     prev_y_max = -1
     for row in rows:
