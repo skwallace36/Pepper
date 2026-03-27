@@ -2,8 +2,8 @@
 
 **Bugs are tracked as GitHub Issues.** This file is kept as a historical log only.
 
-File new bugs: `gh issue create --repo skwallace36/Pepper --label bug --title "BUG-NNN: description"`
-View open bugs: `gh issue list --repo skwallace36/Pepper --label bug --state open`
+File new bugs: [Open an issue](https://github.com/skwallace36/Pepper/issues/new?labels=bug)
+View open bugs: [Bug list](https://github.com/skwallace36/Pepper/issues?q=is%3Aopen+label%3Abug)
 
 ## Fixed (all merged)
 

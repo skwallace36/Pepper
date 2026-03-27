@@ -378,15 +378,8 @@ else
   export GIT_COMMITTER_EMAIL="pepper-${TYPE}-agent@noreply.pepper.dev"
 fi
 
-# Route agent pushes to the private repo.
-# origin points to the public mirror — override pushurl so `git push origin`
-# transparently targets the private repo. GH_REPO ensures gh CLI (PRs, issues)
-# also targets private. Agents never need to know about the remote topology.
-PRIVATE_REMOTE_URL=$(git remote get-url private 2>/dev/null || echo "git@github.com:skwallace36/Pepper-private.git")
-export GIT_CONFIG_COUNT="${GIT_CONFIG_COUNT:-0}"
-export GIT_CONFIG_KEY_${GIT_CONFIG_COUNT}="remote.origin.pushurl"
-export GIT_CONFIG_VALUE_${GIT_CONFIG_COUNT}="$PRIVATE_REMOTE_URL"
-export GIT_CONFIG_COUNT=$(( GIT_CONFIG_COUNT + 1 ))
+# Ensure agent pushes and gh CLI target the private repo.
+# origin should already point to Pepper-private, but GH_REPO is explicit.
 export GH_REPO="skwallace36/Pepper-private"
 
 # Snapshot booted sims before agent runs — shut down any new ones in cleanup
