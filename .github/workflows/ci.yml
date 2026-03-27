@@ -14,22 +14,14 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
-    runs-on: macos-15
-    timeout-minutes: 5
+  # --- Free Linux runner: Python checks, linting, tool coverage ---
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
 
     steps:
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-
-      - name: Install SwiftLint
-        run: brew install swiftlint
-
-      - name: SwiftLint
-        run: make lint
-
-      - name: Build dylib
-        run: make build
 
       - name: Check Python syntax
         run: |
@@ -48,7 +40,7 @@ jobs:
           ruff check tools/ scripts/gen-coverage.py scripts/gen-pepper-commands.py
 
       - name: Check MCP tool coverage
-        run: make check-tools
+        run: bash scripts/check-tool-coverage.sh
 
       - name: Verify no hardcoded paths
         run: |
@@ -57,10 +49,29 @@ jobs:
             exit 1
           fi
 
+  # --- macOS runner: Swift compile + SwiftLint (10x multiplier) ---
+  build:
+    runs-on: macos-15
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Install SwiftLint
+        run: brew install swiftlint
+
+      - name: SwiftLint
+        run: make lint
+
+      - name: Build dylib
+        run: make build
+
+  # --- macOS runner: smoke tests (requires simulator) ---
   smoke-generic:
     runs-on: macos-15
     timeout-minutes: 15
-    needs: build
+    needs: [lint, build]
 
     steps:
       - name: Checkout
