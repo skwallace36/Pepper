@@ -50,8 +50,8 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
     async def look(
         simulator: str | None = Field(default=None, description="Simulator UDID (optional if only one sim running)"),
         raw: bool = Field(default=False, description="Return raw JSON instead of formatted summary"),
-        slim: bool = Field(default=False, description="Slim output for agent sessions: flat element list with tap commands, no y-coordinates or group headers. Stateless (always full screen). Use when you need tap commands but want reduced context."),
-        compact: bool = Field(default=False, description="Diff output for agent sessions: omits coordinates/frames and tap commands, shows only changed elements vs previous call, reduces context by ~60-70%"),
+        slim: bool = Field(default=False, description="Stateless flat list: every call returns all elements with tap commands, no y-coordinates or group headers. Best for one-shot observation when you need the full picture."),
+        compact: bool = Field(default=False, description="Stateful diff: first call returns all elements with tap commands; subsequent calls show only added/changed/removed elements. Best for monitoring — call repeatedly and only see what changed. Resets on screen change."),
         ocr: bool = Field(default=False, description="Run OCR on the screen to find text not in the accessibility tree. Adds ~60-120ms. OCR-only results shown in a separate section."),
         visual: bool = Field(default=False, description="Include a simulator screenshot alongside the structured data"),
         screenshot_quality: str = Field(default="standard", description="Screenshot quality: 'standard' (70% JPEG) or 'high' (95% JPEG, for PR validation)"),
@@ -59,8 +59,8 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
     ) -> list:
         """Use this when you need to see what's on screen — returns all interactive elements with tap commands, plus visible text.
         This is your primary observation tool. Call it before acting to know what's available.
-        Use slim=true for agent sessions — flat list, no y-coords, tap commands preserved, stateless.
-        Use compact=true for minimal diffs — omits tap commands, only shows changes since last call.
+        Use slim=true for a stateless flat list — every call returns the full screen with tap commands, no y-coords.
+        Use compact=true for stateful diffs — first call returns full screen, subsequent calls show only changes (added/changed/removed). Includes tap commands. Resets when the screen changes.
         Use ocr=true to find text via pixel analysis (slower, but catches text missing from accessibility tree).
         Use raw=true when you need coordinates, frames, or scroll context.
         Use visual=true to include a screenshot for visual validation.

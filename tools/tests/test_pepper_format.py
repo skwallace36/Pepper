@@ -255,6 +255,52 @@ class TestFormatLookCompact:
         result = pf.format_look_compact(_make_response(rows=[row2]))
         assert "on" in result or "~" in result
 
+    def test_compact_includes_tap_command(self):
+        e = _make_element(label="Submit", tap_cmd="text")
+        row = {"y_range": [0, 50], "elements": [e]}
+        result = pf.format_look_compact(_make_response(rows=[row]))
+        assert 'tap text:"Submit"' in result
+
+    def test_hex_address_in_screen_name_does_not_break_diff(self):
+        """Screen names with memory addresses should be normalized so the
+        diff engages on the second call even when the address differs."""
+        e = _make_element(label="OK", tap_cmd="text")
+        row = {"y_range": [0, 50], "elements": [e]}
+        pf.format_look_compact(
+            _make_response(screen="<UINavController: 0xaaa>", rows=[row])
+        )
+        result = pf.format_look_compact(
+            _make_response(screen="<UINavController: 0xbbb>", rows=[row])
+        )
+        assert "no interactive changes" in result
+
+    def test_compact_uses_short_flags(self):
+        e = _make_element(label="X", tap_cmd="text", selected=True,
+                          traits=["selected"])
+        row = {"y_range": [0, 50], "elements": [e]}
+        result = pf.format_look_compact(_make_response(rows=[row]))
+        assert "[sel]" in result
+
+
+# ---------------------------------------------------------------------------
+# _normalize_screen
+# ---------------------------------------------------------------------------
+
+class TestNormalizeScreen:
+    def test_strips_hex_address(self):
+        assert pf._normalize_screen("<UINavController: 0x7fb5a2d>") == "UINavController"
+
+    def test_extracts_private_view_name(self):
+        assert pf._normalize_screen("_custom_view stuff") == "_custom_view"
+
+    def test_truncates_long_names(self):
+        long_name = "A" * 80
+        result = pf._normalize_screen(long_name)
+        assert len(result) <= 60
+
+    def test_passes_through_short_names(self):
+        assert pf._normalize_screen("HomeVC") == "HomeVC"
+
 
 # ---------------------------------------------------------------------------
 # _element_key / _element_state (internal helpers)
