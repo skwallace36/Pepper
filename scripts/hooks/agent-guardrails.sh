@@ -70,6 +70,16 @@ if [ "$TOOL" = "Bash" ]; then
     fi
   fi
 
+  # Block outbound network commands (exfiltration prevention)
+  if echo "$CMD" | grep -qE '\b(curl|wget|nc|ncat|netcat)\b'; then
+    deny "agents cannot use outbound network tools (curl, wget, nc). No external requests allowed."
+  fi
+
+  # Block git config changes
+  if echo "$CMD" | grep -qE 'git config'; then
+    deny "agents cannot modify git config."
+  fi
+
   # Block PR merge when diff touches protected paths
   if echo "$CMD" | grep -qE 'gh pr merge'; then
     PR_NUM=$(echo "$CMD" | grep -oE '[0-9]+' | head -1)
@@ -80,6 +90,19 @@ if [ "$TOOL" = "Bash" ]; then
       fi
     fi
   fi
+fi
+
+# --- Read tool guardrails: block reading secrets ---
+if [ "$TOOL" = "Read" ]; then
+  FILE=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty' 2>/dev/null)
+  case "$FILE" in
+    */.env|*/.env.*)
+      deny "agents cannot read $FILE (contains credentials)."
+      ;;
+    */.claude/settings.json|*/.claude/settings.local.json)
+      deny "agents cannot read $FILE (contains permissions and hooks config)."
+      ;;
+  esac
 fi
 
 # --- Write/Edit tool guardrails: file scope enforcement ---
@@ -121,6 +144,27 @@ if [ "$TOOL" = "Write" ] || [ "$TOOL" = "Edit" ]; then
         */test-app/coverage-status.json) ;; # allowed
         *) deny "tester agent cannot modify $FILE. Allowed: test-app/coverage-status.json" ;;
       esac
+      ;;
+    builder)
+      case "$FILE" in
+        */dylib/*|*/tools/*|*/scripts/*|*/test-app/*|*/Makefile) ;; # allowed
+        *) deny "builder agent cannot modify $FILE. Allowed: dylib/, tools/, scripts/, test-app/, Makefile" ;;
+      esac
+      ;;
+    pr-verifier|verifier)
+      deny "pr-verifier agent cannot modify files. Read-only + GitHub interaction only."
+      ;;
+    conflict-resolver)
+      # Conflict resolver can only modify files during rebase — same as pr-responder logic
+      PR_FILES=$(git diff origin/main...HEAD --name-only 2>/dev/null || true)
+      if [ -z "$PR_FILES" ]; then
+        deny "conflict-resolver cannot determine branch diff. Cannot modify $FILE"
+      fi
+      REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
+      REL_FILE="${FILE#$REPO_ROOT/}"
+      if ! echo "$PR_FILES" | grep -qxF "$REL_FILE"; then
+        deny "conflict-resolver can only modify files on the PR branch. $REL_FILE is not in the diff."
+      fi
       ;;
     pr-responder)
       # PR responder can only modify files already in the PR diff.
