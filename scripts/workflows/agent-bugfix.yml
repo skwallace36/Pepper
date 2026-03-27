@@ -16,7 +16,7 @@ on:
     types: [opened, labeled]
 
 concurrency:
-  group: bugfix-${{ github.event.issue.number }}
+  group: bugfix-agent
   cancel-in-progress: false
 
 jobs:
