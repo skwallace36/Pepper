@@ -1,7 +1,7 @@
 {
   "name": "pepper",
   "display_name": "Pepper",
-  "description": "Runtime control for iOS simulator apps. Dylib injected at launch — no source modifications needed. 47 MCP tools for navigation, debugging, state inspection, and automation.",
+  "description": "Runtime control for iOS simulator apps. Dylib injected at launch — no source modifications needed. 64 MCP tools for navigation, debugging, state inspection, and automation.",
   "repository": "https://github.com/skwallace36/Pepper",
   "homepage": "https://github.com/skwallace36/Pepper",
   "license": "MIT",
@@ -80,6 +80,23 @@
     {"name": "build_sim", "category": "build", "description": "Build the app for simulator"},
     {"name": "build_hardware", "category": "build", "description": "Build the app for a physical device (USB/WiFi)"},
     {"name": "deploy_sim", "category": "build", "description": "Deploy and launch the app on simulator"},
-    {"name": "iterate", "category": "build", "description": "Build, deploy, and verify in one step"}
+    {"name": "iterate", "category": "build", "description": "Build, deploy, and verify in one step"},
+    {"name": "screenshot", "category": "navigation", "description": "Capture a simulator screenshot"},
+    {"name": "snapshot", "category": "navigation", "description": "Capture screen state as a named snapshot for diffing"},
+    {"name": "diff", "category": "navigation", "description": "Quick view hierarchy diff between two look snapshots"},
+    {"name": "accessibility_action", "category": "accessibility", "description": "Perform accessibility actions on elements"},
+    {"name": "accessibility_audit", "category": "accessibility", "description": "Run accessibility audit on the current screen"},
+    {"name": "accessibility_events", "category": "accessibility", "description": "Monitor accessibility notification events"},
+    {"name": "concurrency", "category": "debug", "description": "Inspect Swift concurrency state (tasks, actors)"},
+    {"name": "coredata", "category": "state", "description": "Inspect Core Data persistent stores and entities"},
+    {"name": "notifications", "category": "debug", "description": "Monitor NSNotificationCenter activity"},
+    {"name": "perf", "category": "debug", "description": "Measure performance metrics (CPU, FPS, hangs)"},
+    {"name": "renders", "category": "debug", "description": "Track view render counts and off-screen renders"},
+    {"name": "responder_chain", "category": "debug", "description": "Dump the UIResponder chain"},
+    {"name": "sandbox", "category": "state", "description": "Browse the app sandbox filesystem"},
+    {"name": "storage", "category": "state", "description": "Inspect app storage (files, databases, caches)"},
+    {"name": "timers", "category": "debug", "description": "Inspect active NSTimer and DispatchSourceTimer instances"},
+    {"name": "undo_manager", "category": "state", "description": "Inspect NSUndoManager state and actions"},
+    {"name": "webview", "category": "debug", "description": "Inspect and interact with WKWebView content"}
   ]
 }

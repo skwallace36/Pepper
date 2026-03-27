@@ -78,7 +78,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
         # It checks for SpringBoard dialogs (permission prompts, etc.) that
         # the in-process dylib cannot see.
         ax_task = asyncio.ensure_future(
-            asyncio.get_event_loop().run_in_executor(None, _ax_detect)
+            asyncio.get_running_loop().run_in_executor(None, _ax_detect)
         )
 
         if visual or save_screenshot:

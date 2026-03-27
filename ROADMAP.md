@@ -81,7 +81,7 @@ Not pursuing. Focus is iOS quality and packaging first.
 - [x] Pepper builds and injects into test app in generic mode *(2026-03-21)*
 - [x] First test run — look, tap, scroll, heap, screen, console all work *(2026-03-21)*
 - [x] Agent system operational — 8 agent types, heartbeat supervisor *(2026-03-22)*
-- [x] All known bugs fixed (BUG-001 through BUG-011, heap SIGSEGV, dismiss race, etc.) *(2026-03-23)*
+- [x] All known bugs fixed (BUG-001 through BUG-010, heap SIGSEGV, dismiss race, etc.) *(2026-03-23)*
 - [x] 128 PRs merged via autonomous agent pipeline *(2026-03-23)*
 - [x] Agent auto-merge with guardrails (LGTM flow, needs-approval gate) *(2026-03-23)*
 - [x] Agent self-improvement: retry backoff, sim health check, conflict resolver, stale claim cleanup *(2026-03-23)*

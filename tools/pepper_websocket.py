@@ -67,6 +67,6 @@ async def send_command(host, port, msg, timeout=10, on_event=None, close_timeout
     Raises ``ConnectionRefusedError`` if the server is unreachable.
     Raises ``asyncio.TimeoutError`` if no response within *timeout*.
     """
-    return await asyncio.get_event_loop().run_in_executor(
+    return await asyncio.get_running_loop().run_in_executor(
         None, lambda: _send_command_sync(host, port, msg, timeout, on_event)
     )

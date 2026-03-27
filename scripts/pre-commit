@@ -242,6 +242,21 @@ if [ ! -f "$REPO_DIR/.env" ]; then
     warn "No .env file — copy from .env.example"
 fi
 
+# 11. Mirror exclusion sync: .public-exclude must match mirror-code.yml filter-repo args
+if [ -f "$REPO_DIR/.public-exclude" ] && [ -f "$REPO_DIR/.github/workflows/mirror-code.yml" ]; then
+    # Extract paths from .public-exclude (skip comments, blank lines)
+    EXCLUDE_PATHS=$(grep -v '^\s*#' "$REPO_DIR/.public-exclude" | grep -v '^\s*$' | sort)
+    # Extract --path and --path-glob args from mirror-code.yml
+    WORKFLOW_PATHS=$(grep -E "^\s+--path(-glob)?\s+" "$REPO_DIR/.github/workflows/mirror-code.yml" \
+        | sed "s/.*--path-glob //" | sed "s/.*--path //" | sed "s/ \\\\//" | tr -d "'" | sort)
+    if [ "$EXCLUDE_PATHS" != "$WORKFLOW_PATHS" ]; then
+        fail ".public-exclude and mirror-code.yml filter-repo args are out of sync"
+        diff <(echo "$EXCLUDE_PATHS") <(echo "$WORKFLOW_PATHS") || true
+    else
+        pass "Mirror exclusions in sync"
+    fi
+fi
+
 echo ""
 if [ $FAILED -ne 0 ]; then
     echo -e "${RED}Pre-commit checks failed.${NC}"

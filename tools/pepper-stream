@@ -245,7 +245,7 @@ class Stats:
 async def stream_events(host, port, event_filter, raw_json, max_events=0, duration=0):
     url = f"ws://{host}:{port}"
     stats = Stats()
-    deadline = (asyncio.get_event_loop().time() + duration) if duration > 0 else None
+    deadline = (asyncio.get_running_loop().time() + duration) if duration > 0 else None
 
     try:
         async with websockets.connect(url, ping_interval=20, ping_timeout=10, compression=None) as ws:
@@ -272,7 +272,7 @@ async def stream_events(host, port, event_filter, raw_json, max_events=0, durati
                 print(dim(f"Streaming from {url}{filter_note} — Ctrl+C to stop\n"))
 
             while True:
-                if deadline and asyncio.get_event_loop().time() >= deadline:
+                if deadline and asyncio.get_running_loop().time() >= deadline:
                     if not raw_json:
                         print(dim(f"\nDuration limit reached ({duration}s)."))
                     break

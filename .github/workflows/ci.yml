@@ -20,7 +20,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Install SwiftLint
         run: brew install swiftlint
@@ -33,12 +33,11 @@ jobs:
 
       - name: Check Python syntax
         run: |
+          find tools/ -name '*.py' -exec python3 -m py_compile {} +
           python3 -m py_compile tools/pepper-mcp
           python3 -m py_compile tools/pepper-ctl
           python3 -m py_compile tools/pepper-stream
-          python3 -m py_compile tools/pepper_common.py
-          python3 -m py_compile tools/pepper_websocket.py
-          python3 -m py_compile tools/pepper_ws_raw.py
+          python3 -m py_compile tools/pepper-context
 
       - name: Type check Python (pyright)
         run: npx --yes pyright
@@ -46,7 +45,7 @@ jobs:
       - name: Lint Python (ruff)
         run: |
           pip install ruff --quiet
-          ruff check tools/ scripts/gen-coverage.py
+          ruff check tools/ scripts/gen-coverage.py scripts/gen-pepper-commands.py
 
       - name: Check MCP tool coverage
         run: make check-tools
@@ -65,14 +64,14 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Generic-mode smoke tests
         run: ./scripts/ci.sh --suite scripts/smoke-generic.json
 
       - name: Upload results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: generic-smoke-results
           path: build/ci-results/

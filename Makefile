@@ -33,7 +33,8 @@ WIKI_BUNDLE_ID := org.wikimedia.wikipedia
         docs setup ci smoke smoke-ice-cubes \
         agent agent-monitor agent-status agent-trigger agents-install agents-uninstall agent-cleanup agents-start agents-stop agent-analyze groom pr-digest coordinator \
         fmt fmt-check ci-agents-install ci-agents-check \
-        wikipedia-setup wikipedia-deploy wikipedia-smoke
+        wikipedia-setup wikipedia-deploy wikipedia-smoke \
+        dashboard
 
 # ============================================================
 # Help
