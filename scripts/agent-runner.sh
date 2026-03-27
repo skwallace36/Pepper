@@ -48,6 +48,7 @@ TRANSCRIPT=""
 CLAIMED_SIM=""
 SIMS_BEFORE=""
 LOCKFILE=""  # Set after capacity check passes; empty means pre-launch exit
+CLAIMED_ISSUE=""  # Issue number claimed by this agent (for cleanup on timeout)
 
 emit() {
   local event="$1"; shift
@@ -76,6 +77,15 @@ cleanup() {
   # Worktree cleanup — only remove OUR worktree, not sibling agents'
   if [ -n "$OUR_WORKTREE" ]; then
     git worktree remove --force "$OUR_WORKTREE" 2>/dev/null || true
+  fi
+
+  # Release claimed issue — remove in-progress label if agent didn't open a PR
+  if [ -n "$CLAIMED_ISSUE" ]; then
+    OPEN_PR=$(gh pr list --repo skwallace36/Pepper-private --state open --search "Fixes #$CLAIMED_ISSUE" \
+      --json number --jq 'length' 2>/dev/null || echo 0)
+    if [ "$OPEN_PR" = "0" ]; then
+      gh issue edit "$CLAIMED_ISSUE" --repo skwallace36/Pepper-private --remove-label "in-progress" 2>/dev/null || true
+    fi
   fi
 
   # Release claimed simulator — terminate app first so the port-based
@@ -172,9 +182,9 @@ if [ -n "$MISSING" ]; then
 fi
 # Max concurrent instances per agent type
 case "$TYPE" in
-  bugfix)                MAX_INSTANCES=1 ;;  # testing machine user identity
-  pr-verifier|verifier)  MAX_INSTANCES=0 ;;  # paused
-  builder)               MAX_INSTANCES=0 ;;  # paused
+  bugfix)                MAX_INSTANCES=1 ;;
+  pr-verifier|verifier)  MAX_INSTANCES=1 ;;
+  builder)               MAX_INSTANCES=0 ;;  # paused — enable after bugfix+verifier prove stable
   pr-responder)          MAX_INSTANCES=0 ;;  # paused
   tester)                MAX_INSTANCES=0 ;;  # paused
   conflict-resolver)     MAX_INSTANCES=0 ;;  # paused
@@ -476,6 +486,22 @@ AGENT_PID=""  # Clear so cleanup doesn't try to kill again
 END=$(date +%s)
 DURATION=$((END - START))
 
+# Extract claimed issue number from events (for cleanup on timeout/failure)
+CLAIMED_ISSUE=$(python3 -c "
+import json
+start_ts = '$(date -u -r $START +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -d @$START +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || echo '')'
+try:
+    with open('$EVENTS') as f:
+        for line in f:
+            try:
+                e = json.loads(line.strip())
+                if e.get('agent') == '$TYPE' and e.get('event') == 'task-claimed' and e.get('ts','') >= start_ts:
+                    print(e.get('detail','').split()[0].lstrip('#'))
+                    break
+            except: pass
+except: pass
+" 2>/dev/null || true)
+
 # Handle empty transcripts — CLI crashed before writing output
 if [ ! -s "$TRANSCRIPT" ]; then
   emit "auth-retry" ",\"detail\":\"empty transcript — CLI may have crashed or session expired\",\"duration_s\":$((END - START))"
@@ -640,25 +666,8 @@ if [ "$TYPE" != "pr-verifier" ] && [ "$TYPE" != "pr-responder" ]; then
   done
 fi
 
-# Auto-chain: if this agent opened a PR, launch the verifier next.
-# Only chains if heartbeat is alive (prevents zombie chains after kill).
-if [ "$TYPE" != "pr-verifier" ] && [ "$TYPE" != "pr-responder" ]; then
-  HB_PID=$(cat "$REPO_ROOT/build/logs/heartbeat.pid" 2>/dev/null)
-  if [ -n "$HB_PID" ] && kill -0 "$HB_PID" 2>/dev/null; then
-    VERIFIER_LOCK="build/logs/.lock-pr-verifier"
-    VERIFIER_RUNNING=false
-    for lf in ${VERIFIER_LOCK}-*; do
-      [ -f "$lf" ] && kill -0 "$(cat "$lf" 2>/dev/null)" 2>/dev/null && VERIFIER_RUNNING=true && break
-    done
-    if [ "$VERIFIER_RUNNING" = false ]; then
-      AWAITING_VERIFY=$(gh pr list --repo skwallace36/Pepper-private --state open --label "awaiting:verifier" \
-        --json number --jq 'length' 2>/dev/null || echo 0)
-      if [ "$AWAITING_VERIFY" -gt 0 ]; then
-        echo "$AWAITING_VERIFY PR(s) awaiting verification — chaining pr-verifier..."
-        nohup "$REPO_ROOT/scripts/agent-runner.sh" pr-verifier >> build/logs/chain.log 2>&1 &
-      fi
-    fi
-  fi
-fi
+# Auto-chaining disabled — let heartbeat control the pace.
+# Heartbeat already launches pr-verifier when awaiting:verifier PRs exist.
+# Re-enable once agent system is running smoothly at higher throughput.
 
 echo "Done. Transcript: $TRANSCRIPT"

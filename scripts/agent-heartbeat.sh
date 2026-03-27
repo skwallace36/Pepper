@@ -23,9 +23,9 @@ cd "$REPO_ROOT"
 
 PIDFILE="build/logs/heartbeat.pid"
 EVENTS="$REPO_ROOT/build/logs/events.jsonl"
-INTERVAL=420
+INTERVAL=1800         # 30 min between cycles — conservative, loosen as confidence builds
 BACKOFF_THRESHOLD=3   # consecutive failures before backing off
-BACKOFF_CYCLES=5      # cycles to skip (5 * 120s = 10 min)
+BACKOFF_CYCLES=5      # cycles to skip (5 * 1800s = 2.5 hours)
 LOCKFILE="build/logs/heartbeat.lock"
 
 mkdir -p build/logs
@@ -259,7 +259,7 @@ while true; do
     fi
   done
 
-  # Groom backlog — twice per day max
+  # Groom backlog — once per day max
   GROOMER_RUNS_TODAY=$(python3 -c "
 import json
 today = '$(date -u +%Y-%m-%d)'
@@ -275,7 +275,7 @@ try:
 except FileNotFoundError: pass
 print(count)
 " 2>/dev/null || echo "0")
-  if [ "$GROOMER_RUNS_TODAY" -lt 2 ] 2>/dev/null; then
+  if [ "$GROOMER_RUNS_TODAY" -lt 1 ] 2>/dev/null; then
     if should_backoff groomer; then
       echo "$(date +%H:%M) groomer in backoff (${BACKOFF_THRESHOLD}+ consecutive failures) — skipping"
     else
