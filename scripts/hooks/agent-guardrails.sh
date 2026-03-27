@@ -54,6 +54,22 @@ if [ "$TOOL" = "Bash" ]; then
     deny "agents must use agent/{type}/* branch names. Got: $(echo "$CMD" | grep -oE '(-b|-c) [^ ]+' | tail -1)"
   fi
 
+  # Block gh comments/PR bodies that might leak secrets
+  if echo "$CMD" | grep -qE 'gh (issue|pr) (comment|create|edit)'; then
+    # Extract the body/message content from the command
+    BODY=$(echo "$CMD" | grep -oE "(--body|--message|-m|-b) ['\"].*" | head -1 || true)
+    if [ -n "$BODY" ]; then
+      # Check for secret patterns
+      if echo "$BODY" | grep -qiE '(ghp_[a-zA-Z0-9]{36}|gho_[a-zA-Z0-9]{36}|ghs_[a-zA-Z0-9]{36}|ANTHROPIC_API_KEY|sk-ant-|xoxb-|xoxp-)'; then
+        deny "comment/PR body contains what looks like a secret or API key. Never include credentials in GitHub comments."
+      fi
+      # Check for .env file content patterns
+      if echo "$BODY" | grep -qE '(AGENT[0-9]+_GITHUB_PAT|AGENT[0-9]+_PASSWORD|GITHUB_APP_INSTALLATION_ID)'; then
+        deny "comment/PR body contains .env variable names that could leak credentials."
+      fi
+    fi
+  fi
+
   # Block PR merge when diff touches protected paths
   if echo "$CMD" | grep -qE 'gh pr merge'; then
     PR_NUM=$(echo "$CMD" | grep -oE '[0-9]+' | head -1)
