@@ -179,9 +179,9 @@ class PepperClient:
         try:
             assert self.ws is not None
             await self.ws.send(raw)
-            deadline = asyncio.get_event_loop().time() + 10.0
+            deadline = asyncio.get_running_loop().time() + 10.0
             while True:
-                remaining = deadline - asyncio.get_event_loop().time()
+                remaining = deadline - asyncio.get_running_loop().time()
                 if remaining <= 0:
                     print("  Timeout waiting for response.")
                     return None
@@ -243,7 +243,7 @@ class PepperClient:
         print_help()
         print("  Ready. Type a command or 'help'.\n")
 
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
 
         while self.running:
             try:

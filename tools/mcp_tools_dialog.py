@@ -129,7 +129,7 @@ async def _dismiss_system_dialog(simulator, resolve_and_send, resolve_simulator)
     # Step 6: Fall back to macOS Accessibility API (AXUIElement) — clicks buttons
     # directly in the Simulator window, works for SpringBoard-rendered dialogs
     # that the in-process interceptor can't reach.
-    ax_result = await asyncio.get_event_loop().run_in_executor(None, _ax_dismiss)
+    ax_result = await asyncio.get_running_loop().run_in_executor(None, _ax_dismiss)
     if ax_result.get("dismissed"):
         return {
             "status": "ok",
@@ -205,7 +205,7 @@ def register_dialog_tools(mcp, resolve_and_send, resolve_simulator=None):
 
             ax_result = {"detected": False, "buttons": [], "pids": []}
             try:
-                ax_result = await asyncio.get_event_loop().run_in_executor(None, _ax_detect)
+                ax_result = await asyncio.get_running_loop().run_in_executor(None, _ax_detect)
             except Exception:
                 pass
 

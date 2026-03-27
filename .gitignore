@@ -29,5 +29,11 @@ __pycache__/
 # But allow asset catalog icons
 !test-app/PepperTestApp/Assets.xcassets/**/*.png
 
+# Secrets / certificates
+*.pem
+*.key
+*.p12
+*.pfx
+
 # External
 .playwright-mcp/

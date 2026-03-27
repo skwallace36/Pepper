@@ -25,9 +25,9 @@ METADATA="$REPO_ROOT/tools/mcp-registry.json"
 
 # ── Descriptions used across submissions ──────────────────────────────────────
 
-SHORT_DESC="Runtime control for iOS simulator apps via MCP. 47 tools for navigation, debugging, state inspection, and automation — no source modifications needed."
+SHORT_DESC="Runtime control for iOS simulator apps via MCP. 64 tools for navigation, debugging, state inspection, and automation — no source modifications needed."
 
-LONG_DESC="Pepper is a dylib injected into iOS simulator apps at launch via DYLD_INSERT_LIBRARIES. It starts a WebSocket server inside the app process and exposes 47 MCP tools for:
+LONG_DESC="Pepper is a dylib injected into iOS simulator apps at launch via DYLD_INSERT_LIBRARIES. It starts a WebSocket server inside the app process and exposes 64 MCP tools for:
 
 - **Navigation**: tap, scroll, swipe, input text, navigate, dismiss
 - **Observation**: look (full UI hierarchy), screen capture, find, tree
@@ -38,7 +38,7 @@ LONG_DESC="Pepper is a dylib injected into iOS simulator apps at launch via DYLD
 
 No source patches required. Works with any iOS simulator app. Supports both SwiftUI and UIKit via a single HID injection pipeline."
 
-AWESOME_ENTRY="- [Pepper](https://github.com/skwallace36/Pepper) - Runtime control for iOS simulator apps. 47 MCP tools for navigation, debugging, state inspection, and automation via dylib injection."
+AWESOME_ENTRY="- [Pepper](https://github.com/skwallace36/Pepper) - Runtime control for iOS simulator apps. 64 MCP tools for navigation, debugging, state inspection, and automation via dylib injection."
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -105,11 +105,11 @@ submit_awesome_wong2() {
             --body "$(cat <<'PREOF'
 ## What is Pepper?
 
-Pepper is a dylib injected into iOS simulator apps at launch. It starts a WebSocket server inside the app process and exposes 47 MCP tools for navigation, debugging, state inspection, and automation — no source modifications needed.
+Pepper is a dylib injected into iOS simulator apps at launch. It starts a WebSocket server inside the app process and exposes 64 MCP tools for navigation, debugging, state inspection, and automation — no source modifications needed.
 
 **Repository**: https://github.com/skwallace36/Pepper
 
-### Tool categories (47 tools)
+### Tool categories (64 tools)
 - **Navigation**: look, tap, scroll, swipe, input_text, navigate, back, dismiss
 - **Debugging**: console, network, heap, crash_log, layers, animations, lifecycle
 - **State**: vars_inspect, defaults, clipboard, keychain, cookies, flags
@@ -172,11 +172,11 @@ submit_awesome_punkpeye() {
             --body "$(cat <<'PREOF'
 ## What is Pepper?
 
-Pepper is a dylib injected into iOS simulator apps at launch. It starts a WebSocket server inside the app process and exposes 47 MCP tools for navigation, debugging, state inspection, and automation — no source modifications needed.
+Pepper is a dylib injected into iOS simulator apps at launch. It starts a WebSocket server inside the app process and exposes 64 MCP tools for navigation, debugging, state inspection, and automation — no source modifications needed.
 
 **Repository**: https://github.com/skwallace36/Pepper
 
-### Tool categories (47 tools)
+### Tool categories (64 tools)
 - **Navigation**: look, tap, scroll, swipe, input_text, navigate, back, dismiss
 - **Debugging**: console, network, heap, crash_log, layers, animations, lifecycle
 - **State**: vars_inspect, defaults, clipboard, keychain, cookies, flags
@@ -217,7 +217,7 @@ submit_mcp_registry() {
 **Language**: Python
 
 ### Description
-Pepper is a dylib injected into iOS simulator apps at launch via DYLD_INSERT_LIBRARIES. It starts a WebSocket server inside the app process and exposes 47 MCP tools for navigation, debugging, state inspection, and automation — no source modifications needed.
+Pepper is a dylib injected into iOS simulator apps at launch via DYLD_INSERT_LIBRARIES. It starts a WebSocket server inside the app process and exposes 64 MCP tools for navigation, debugging, state inspection, and automation — no source modifications needed.
 
 ### Installation
 ```bash
