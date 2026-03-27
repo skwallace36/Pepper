@@ -80,7 +80,7 @@ jobs:
             6. Open a PR:
                - Title: brief description of the change (no prefix)
                - Body: Include Fixes #${{ steps.claim.outputs.number }}
-               - Reviewer: skwallace36
+               - Label: awaiting:verifier
             7. If stuck after 3 attempts, comment on the issue.
 
             SCOPE: You may modify files in dylib/, tools/, scripts/, test-app/, Makefile.
