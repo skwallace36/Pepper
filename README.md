@@ -2,6 +2,8 @@
 
 MCP server for iOS Simulator apps. Injects a dylib via `DYLD_INSERT_LIBRARIES`, starts a WebSocket server inside the app process, and exposes 50+ tools — view hierarchy, touch input, network interception, heap inspection.
 
+> **How to use this project:** Clone it, rip it apart, and make it work for you. The value is in giving agents access to all the runtime information they need to work on complex apps. Fork it, gut what you don't need, adapt the rest to your app and workflow.
+
 ## Quick Start
 
 **Homebrew** (recommended):
