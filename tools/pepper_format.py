@@ -325,12 +325,7 @@ def format_look_slim(resp: dict) -> str:
                 all_interactive.append(e)
     ni = [e for e in ni if in_viewport(e)]
 
-    # Simplify screen name
-    m = re.search(r'<(_\w+_view)', screen)
-    if m:
-        screen = m.group(1)
-    elif len(screen) > 60:
-        screen = screen[:57] + "..."
+    screen = _normalize_screen(screen)
 
     nav_title = data.get("nav_title", "")
     mem = data.get("memory_mb")
@@ -459,7 +454,38 @@ def format_look_slim(resp: dict) -> str:
 
 
 # ---------------------------------------------------------------------------
-# format_look_compact — slim output for agent sessions (omits coords, diffs)
+# Screen name normalization (shared by slim + compact formatters)
+# ---------------------------------------------------------------------------
+
+# Hex memory addresses embedded in UIKit class descriptions (e.g.,
+# "<UINavigationController: 0x7fb5a2d0c3e0>").  These change between calls
+# even when the screen hasn't actually changed.
+_HEX_ADDR_RE = re.compile(r':?\s*0x[0-9a-fA-F]+')
+
+
+def _normalize_screen(screen: str) -> str:
+    """Normalize a screen name for stable display and comparison.
+
+    Strips memory addresses and other dynamic content so the same logical
+    screen produces the same string across calls.
+    """
+    # Strip hex memory addresses
+    screen = _HEX_ADDR_RE.sub('', screen)
+    # Extract class name from angle-bracket descriptions (<ClassName ...>)
+    m = re.search(r'<(\w+)', screen)
+    if m:
+        return m.group(1)
+    # Extract private view names (_foo_view)
+    m = re.search(r'(_\w+_view)', screen)
+    if m:
+        return m.group(1)
+    if len(screen) > 60:
+        return screen[:57] + "..."
+    return screen.strip()
+
+
+# ---------------------------------------------------------------------------
+# format_look_compact — diff output for agent sessions
 # ---------------------------------------------------------------------------
 
 # Module-level state for diffing across compact look calls.
@@ -497,7 +523,7 @@ def _element_state(e: dict) -> str:
 
 
 def _compact_element_line(e: dict, prefix_char: str = " ") -> str:
-    """Render one interactive element as a minimal line (no coords, no tap cmd)."""
+    """Render one interactive element as a compact line with tap command."""
     etype = e.get("type", "?")
     label = e.get("label", "")
     icon = e.get("icon_name", "")
@@ -505,15 +531,15 @@ def _compact_element_line(e: dict, prefix_char: str = " ") -> str:
     badge = _HEURISTIC_BADGES.get(heuristic, "")
     traits = e.get("traits", [])
 
-    # Status flags
+    # Status flags (short form, matching slim)
     flags = ""
     if e.get("selected") or "selected" in traits:
-        flags += " [selected]"
+        flags += " [sel]"
     toggle_state = e.get("toggle_state", "")
     if toggle_state:
         flags += f" [{toggle_state}]"
     if "notEnabled" in traits:
-        flags += " [disabled]"
+        flags += " [dis]"
     if not e.get("hit_reachable", True):
         flags += " [blocked]"
 
@@ -535,17 +561,40 @@ def _compact_element_line(e: dict, prefix_char: str = " ") -> str:
         desc = f"({heuristic or etype})"
 
     type_abbrev = badge if badge else _TYPE_ABBREV.get(etype, etype[:4])
-    return f"{prefix_char} {type_abbrev:>6s}  {desc}{flags}"
+
+    # Tap command — prefer coordinate-free forms
+    tap_cmd = e.get("tap_cmd", "")
+    suggested = e.get("suggested_tap", "")
+    if tap_cmd == "text" and label:
+        lbl = label if len(label) <= 40 else label[:40] + "..."
+        tap = f'tap text:"{lbl}"' + (f" index:{idx}" if idx else "")
+    elif tap_cmd == "icon_name" and (icon or suggested):
+        tap = f"tap icon:{icon or suggested}"
+    elif tap_cmd == "heuristic" and (heuristic or suggested):
+        tap = f"tap heuristic:{suggested or heuristic}"
+    elif label:
+        lbl = label if len(label) <= 40 else label[:40] + "..."
+        tap = f'tap text:"{lbl}"' + (f" index:{idx}" if idx else "")
+    elif icon:
+        tap = f"tap icon:{icon}"
+    elif heuristic or suggested:
+        tap = f"tap heuristic:{suggested or heuristic}"
+    else:
+        cx, cy = e.get("center", [0, 0])
+        tap = f"tap point:{cx},{cy}"
+
+    return f"{prefix_char} {type_abbrev:>6s}  {desc}{flags}  → {tap}"
 
 
 def format_look_compact(resp: dict) -> str:
-    """Format introspect mode:map response as a slim diff for agent sessions.
+    """Format introspect mode:map response as a diff for agent sessions.
 
     Compared to format_look:
     - Omits y-coordinates and frame/center data
-    - Omits tap commands (agents use ``tap text:"..."`` directly)
+    - Includes tap commands (agents can act on what they see)
     - Diffs against previous call — only shows changed/new/removed elements
-    - Reduces context consumption by 60-70%
+    - First call (or screen change) shows full element list
+    - Subsequent calls show only what changed (added/changed/removed)
     """
     global _prev_compact_fingerprints, _prev_compact_screen, _prev_compact_text, _prev_compact_ocr
     import json
@@ -580,12 +629,7 @@ def format_look_compact(resp: dict) -> str:
                 all_interactive.append(e)
     ni = [e for e in ni if in_viewport(e)]
 
-    # Simplify screen name
-    m = re.search(r'<(_\w+_view)', screen)
-    if m:
-        screen = m.group(1)
-    elif len(screen) > 60:
-        screen = screen[:57] + "..."
+    screen = _normalize_screen(screen)
 
     nav_title = data.get("nav_title", "")
     mem = data.get("memory_mb")
