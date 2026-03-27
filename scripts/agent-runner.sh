@@ -86,7 +86,7 @@ cleanup() {
     python3 -c "
 import sys; sys.path.insert(0, '$REPO_ROOT/tools')
 from pepper_sessions import release_simulator
-release_simulator('$CLAIMED_SIM')
+release_simulator('$CLAIMED_SIM', pid=$$)
 " 2>/dev/null || true
   fi
 
@@ -251,7 +251,7 @@ if [ "$(echo "$TYPE_COST_TODAY > 150" | bc)" = "1" ]; then
 fi
 if [ "$(echo "$TOTAL_COST_TODAY > 500" | bc)" = "1" ]; then
   emit "failed" ",\"detail\":\"total daily budget exceeded: \$${TOTAL_COST_TODAY}\""
-  echo "Total daily budget exceeded: \$${TOTAL_COST_TODAY}/\$300. Skipping."
+  echo "Total daily budget exceeded: \$${TOTAL_COST_TODAY}/\$500. Skipping."
   exit 0
 fi
 
@@ -275,7 +275,7 @@ import sys, signal; sys.path.insert(0, '$REPO_ROOT/tools')
 signal.alarm(30)
 from pepper_sessions import find_available_simulator, claim_simulator
 udid = find_available_simulator()
-claim_simulator(udid, label='agent-${TYPE}')
+claim_simulator(udid, label='agent-${TYPE}', pid=$$)
 print(udid)
 " 2>/dev/null || true)
 if [ -n "$CLAIMED_SIM" ]; then
@@ -365,6 +365,17 @@ else
   export GIT_COMMITTER_NAME="pepper-${TYPE}-agent"
   export GIT_COMMITTER_EMAIL="pepper-${TYPE}-agent@noreply.pepper.dev"
 fi
+
+# Route agent pushes to the private repo.
+# origin points to the public mirror — override pushurl so `git push origin`
+# transparently targets the private repo. GH_REPO ensures gh CLI (PRs, issues)
+# also targets private. Agents never need to know about the remote topology.
+PRIVATE_REMOTE_URL=$(git remote get-url private 2>/dev/null || echo "git@github.com:skwallace36/Pepper-private.git")
+export GIT_CONFIG_COUNT="${GIT_CONFIG_COUNT:-0}"
+export GIT_CONFIG_KEY_${GIT_CONFIG_COUNT}="remote.origin.pushurl"
+export GIT_CONFIG_VALUE_${GIT_CONFIG_COUNT}="$PRIVATE_REMOTE_URL"
+export GIT_CONFIG_COUNT=$(( GIT_CONFIG_COUNT + 1 ))
+export GH_REPO="skwallace36/Pepper-private"
 
 # Snapshot booted sims before agent runs — shut down any new ones in cleanup
 SIMS_BEFORE=$(xcrun simctl list devices booted -j 2>/dev/null | python3 -c "

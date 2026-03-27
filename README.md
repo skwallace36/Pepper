@@ -60,4 +60,4 @@ make smoke         # run smoke tests
 make demo          # interactive demo walkthrough
 ```
 
-Architecture guide: [`dylib/DYLIB.md`](dylib/DYLIB.md) · Tool reference: [`tools/TOOLS.md`](tools/TOOLS.md) · Troubleshooting: [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md)
+Architecture guide: [`dylib/DYLIB.md`](dylib/DYLIB.md) · Tool reference: [`tools/TOOLS.md`](tools/TOOLS.md) · Troubleshooting: [`TROUBLESHOOTING.md`](TROUBLESHOOTING.md)
