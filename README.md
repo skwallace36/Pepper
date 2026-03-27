@@ -41,7 +41,7 @@ All touch input goes through IOHIDEvent injection — the same path real fingers
 
 ## Tools
 
-`look` · `tap` · `scroll` · `scroll_to` · `swipe` · `gesture` · `input_text` · `toggle` · `navigate` · `back` · `dismiss` · `dismiss_keyboard` · `dialog` · `screen` · `find` · `read_element` · `tree` · `layers` · `highlight` · `vars_inspect` · `heap` · `console` · `network` · `crash_log` · `timeline` · `animations` · `lifecycle` · `concurrency` · `constraints` · `responder_chain` · `timers` · `defaults` · `clipboard` · `keychain` · `cookies` · `storage` · `sandbox` · `locale` · `flags` · `push` · `orientation` · `status` · `wait_for` · `wait_idle` · `record` · `deploy` · `build` · `build_device` · `iterate` · `snapshot` · `diff` · `screenshot` · `hook` · `raw`
+`look` · `tap` · `scroll` · `scroll_to` · `swipe` · `gesture` · `input_text` · `toggle` · `navigate` · `back` · `dismiss` · `dismiss_keyboard` · `dialog` · `screen` · `screenshot` · `snapshot` · `diff` · `find` · `read_element` · `tree` · `layers` · `highlight` · `vars_inspect` · `heap` · `console` · `network` · `crash_log` · `timeline` · `animations` · `lifecycle` · `concurrency` · `constraints` · `responder_chain` · `notifications` · `timers` · `defaults` · `clipboard` · `keychain` · `cookies` · `coredata` · `storage` · `sandbox` · `undo_manager` · `locale` · `flags` · `push` · `orientation` · `status` · `wait_for` · `wait_idle` · `record` · `deploy_sim` · `build_sim` · `build_hardware` · `iterate` · `simulator` · `raw` · `hook` · `perf` · `renders` · `accessibility_action` · `accessibility_audit` · `accessibility_events` · `webview`
 
 Parameter docs are built into each tool — your MCP client surfaces them automatically.
 

@@ -128,9 +128,9 @@ async def wait_for_events(host, port, events, timeout=30):
             await ws.send(json.dumps(sub))
             await asyncio.wait_for(ws.recv(), timeout=5)
             print(f"Listening for events: {', '.join(events)} (timeout: {timeout}s)", file=sys.stderr)
-            deadline = asyncio.get_event_loop().time() + timeout
-            while asyncio.get_event_loop().time() < deadline:
-                remaining = deadline - asyncio.get_event_loop().time()
+            deadline = asyncio.get_running_loop().time() + timeout
+            while asyncio.get_running_loop().time() < deadline:
+                remaining = deadline - asyncio.get_running_loop().time()
                 try:
                     raw = await asyncio.wait_for(ws.recv(), timeout=min(remaining, 1.0))
                     data = json.loads(raw)

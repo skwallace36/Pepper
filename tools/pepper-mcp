@@ -462,7 +462,7 @@ async def act_and_look(simulator: Optional[str], cmd: str, params: Optional[dict
         _gather_telemetry(port, pre_counts, bound_fn)
     )
     ax_task = asyncio.ensure_future(
-        asyncio.get_event_loop().run_in_executor(None, _ax_detect_safe)
+        asyncio.get_running_loop().run_in_executor(None, _ax_detect_safe)
     )
 
     look_resp, telemetry = await asyncio.gather(look_task, telemetry_task, return_exceptions=True)

@@ -105,6 +105,9 @@ print(' '.join(d['udid'] for r in devs.values() for d in r if d['state'] == 'Boo
   fi
   git worktree prune 2>/dev/null || true
 
+  # Clean up per-agent credential script
+  rm -f "/tmp/pepper-askpass-$$.sh"
+
   # Ensure primary worktree is back on main — agents sometimes leave it on a branch
   local current_branch
   current_branch=$(git -C "$REPO_ROOT" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")
@@ -354,9 +357,18 @@ if [ -n "$AGENT_USERNAME" ]; then
   export GIT_COMMITTER_EMAIL="$AGENT_EMAIL"
   # Set GH_TOKEN so gh CLI operations (PRs, comments) use the machine user
   export GH_TOKEN="$AGENT_PAT"
-  # Configure git credential for pushes
-  git config --global credential.https://github.com.helper \
-    "!f() { echo username=$AGENT_USERNAME; echo password=$AGENT_PAT; }; f"
+  # Per-agent credential script (avoids global git config race between concurrent agents)
+  ASKPASS_SCRIPT="/tmp/pepper-askpass-$$.sh"
+  cat > "$ASKPASS_SCRIPT" <<ASKEOF
+#!/bin/sh
+case "\$1" in
+  Username*) echo "$AGENT_USERNAME" ;;
+  Password*) echo "$AGENT_PAT" ;;
+esac
+ASKEOF
+  chmod +x "$ASKPASS_SCRIPT"
+  export GIT_ASKPASS="$ASKPASS_SCRIPT"
+  export GIT_TERMINAL_PROMPT=0
   emit "identity" ",\"agent_num\":${AGENT_NUM},\"username\":\"${AGENT_USERNAME}\""
 else
   # Fallback to generic identity if no machine user configured
