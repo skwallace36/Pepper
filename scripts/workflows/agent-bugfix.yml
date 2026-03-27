@@ -70,7 +70,7 @@ jobs:
             6. Open a PR:
                - Title: brief description of the fix (no prefix)
                - Body: Include Fixes #${{ github.event.issue.number }}
-               - Reviewer: skwallace36
+               - Label: awaiting:verifier
             7. If stuck after 3 attempts, comment on the issue with what you tried.
 
             SCOPE: You may modify files in dylib/, tools/, scripts/.
