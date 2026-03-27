@@ -4,6 +4,8 @@ Tools: push, status, highlight, orientation, locale, gesture, hook, flags.
 """
 from __future__ import annotations
 
+import json
+
 from pepper_commands import (
     CMD_FLAGS,
     CMD_GESTURE,
@@ -78,7 +80,12 @@ def register_system_tools(mcp, resolve_and_send, act_and_look):
             if memory_detail:
                 mem_params["action"] = "vm"
             mem_result = await resolve_and_send(simulator, CMD_MEMORY, mem_params)
+            if isinstance(result, str):
+                result = json.loads(result)
+            if isinstance(mem_result, str):
+                mem_result = json.loads(mem_result)
             result["memory"] = mem_result.get("data", mem_result)
+            return json.dumps(result, indent=2)
         return result
 
     @mcp.tool()

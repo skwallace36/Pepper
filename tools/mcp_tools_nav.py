@@ -275,7 +275,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
         tab: int | str | None = Field(default=None, description="Tab index (0-based) or tab name to switch to"),
         list_deeplinks: bool = Field(default=False, description="List all available deep link destinations"),
         category: str | None = Field(default=None, description="Filter deep link list by category"),
-    ) -> list:
+    ) -> list | str:
         """Use this when you need to jump to a specific screen or switch tabs.
         Goes directly to the destination — skips intermediate screens unlike repeated back/tap.
         Use deeplink for named destinations (e.g. 'home', 'settings'). Use tab for tab bar switching.
@@ -372,7 +372,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
         name: str = Field(default="default", description="Snapshot name for save/diff/delete"),
         ignore_transient: bool = Field(default=False, description="Ignore volatile/transient text elements (timestamps, animation frames) in diffs"),
         assert_no_diff: bool = Field(default=False, description="Return error if any diff is detected (for regression testing)"),
-    ) -> list:
+    ) -> str:
         """Capture screen state as a named snapshot, then diff against it after actions.
 
         Workflow: snapshot action=save name=baseline → perform actions → snapshot action=diff name=baseline.
@@ -389,7 +389,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
     async def diff(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
         action: str = Field(default="start", description="Action: 'start' (capture baseline), 'show' (compare to baseline), 'clear' (discard baseline)"),
-    ) -> list:
+    ) -> str:
         """Quick view hierarchy diff — show what changed between two look snapshots.
 
         Workflow: diff action=start → perform actions (tap, scroll, etc.) → diff action=show.

@@ -212,9 +212,13 @@ def accept_invite_via_api(pat: str, repo: str):
 
 def test_access(username: str, pat: str, repo: str) -> bool:
     """Verify the PAT works against the repo."""
+    env = os.environ.copy()
+    env["GIT_ASKPASS"] = "/bin/echo"
+    env["GIT_TERMINAL_PROMPT"] = "0"
     result = subprocess.run(
-        ["git", "ls-remote", f"https://{username}:{pat}@github.com/{repo}.git", "HEAD"],
-        capture_output=True, text=True,
+        ["git", "-c", f"credential.helper=!f() {{ echo username={username}; echo password={pat}; }}; f",
+         "ls-remote", f"https://github.com/{repo}.git", "HEAD"],
+        capture_output=True, text=True, env=env,
     )
     if result.returncode == 0:
         print(f">>> Access confirmed: {username} can reach {repo}")
@@ -285,7 +289,7 @@ def main():
         print(f"\n=== agent-{n} is ready! ===\n")
     else:
         print(f"\n=== Access failed — credentials NOT saved. Debug and retry. ===\n")
-        print(f"PAT was: {pat}")
+        print(f"PAT was: {pat[:8]}...{pat[-4:]}")
         sys.exit(1)
 
 
