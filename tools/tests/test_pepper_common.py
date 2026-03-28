@@ -273,6 +273,7 @@ class TestDeviceRegistration:
         monkeypatch.setattr(pc, "DEVICE_DIR", str(tmp_path / "devices"))
         pc.register_device("MY-UDID", "192.168.1.1", 8765, name="iPhone", via="iproxy")
         data = pc._read_device_file("MY-UDID")
+        assert data is not None
         assert data["name"] == "iPhone"
         assert data["via"] == "iproxy"
 

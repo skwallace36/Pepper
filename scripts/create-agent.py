@@ -8,6 +8,7 @@ Usage (run in a separate terminal for interactive prompts):
 """
 
 import argparse
+import os
 import subprocess
 import sys
 import time
