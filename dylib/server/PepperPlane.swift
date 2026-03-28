@@ -146,6 +146,10 @@ public final class PepperPlane {
             // that our present() swizzle can't intercept.
             installTracked("PepperWindowMonitor") { PepperWindowMonitor.shared.install() }
 
+            // Install keyboard monitor — tracks keyboard show/hide so `look` can
+            // warn agents when the keyboard covers the lower screen.
+            installTracked("PepperKeyboardMonitor") { PepperKeyboardMonitor.shared.install() }
+
             // Install inline overlay scroll observer — swizzles UIScrollView.setContentOffset
             // to auto-refresh builder highlights when scrolling stops.
             installTracked("PepperInlineOverlay") { PepperInlineOverlay.shared.install() }
