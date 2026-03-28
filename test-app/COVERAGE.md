@@ -82,6 +82,9 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `network` | mocks | untested | After network.mock | List active mocks. Verify entry for https://pepper.test/mock. |
 | `network` | remove_mock | untested | After network.mock | Remove mock by URL, confirm 'Mock Test' button returns error or real response. |
 | `network` | clear_mocks | untested | After network.mock | Clear all mocks, confirm subsequent 'Mock Test' is unaffected. |
+| `network` | ws_log | untested |  |  |
+| `network` | ws_status | untested |  |  |
+| `network` | ws_clear | untested |  |  |
 | `network` | simulate.fail_error | untested | Error Request button (MiscTab Network) | Tap 'Error Request' with network simulate fail_error active. Status label shows NSError domain/code. |
 | `network` | simulate.fail_status | untested | Error Request button (MiscTab Network) | Tap 'Error Request' with network simulate fail_status 500. Status label shows injected status code. |
 | `network` | simulate.latency | untested | Slow Request button (MiscTab Network) | Tap 'Slow Request', then use network simulate latency <ms>. Status label shows elapsed time. |
@@ -270,9 +273,9 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 
 ## Summary
 
-**247 test points** across 68 commands.
+**250 test points** across 68 commands.
 
 - pass: 137
 - fail: 3
-- untested: 96
+- untested: 99
 
