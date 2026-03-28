@@ -192,7 +192,8 @@ case "$TYPE" in
   pr-verifier|verifier)  MAX_INSTANCES=1 ;;
   builder)               MAX_INSTANCES=2 ;;
   pr-responder)          MAX_INSTANCES=1 ;;
-  tester)                MAX_INSTANCES=0 ;;  # paused
+  tester)                MAX_INSTANCES=0 ;;  # paused — use regression-tester instead
+  regression-tester)     MAX_INSTANCES=1 ;;
   conflict-resolver)     MAX_INSTANCES=1 ;;
   *)                     MAX_INSTANCES=0 ;;
 esac
@@ -396,7 +397,7 @@ case "$TYPE" in
   builder)           AGENT_NUM=2 ;;
   pr-verifier)       AGENT_NUM=3 ;;  # instances 2,3 get AGENT_NUM 4,5
   pr-responder)      AGENT_NUM=6 ;;
-  tester)            AGENT_NUM=7 ;;
+  tester|regression-tester) AGENT_NUM=7 ;;
   conflict-resolver) AGENT_NUM=8 ;;
   *)                 AGENT_NUM=9 ;;  # spare
 esac
@@ -463,7 +464,7 @@ PROMPT=$(cat "$PROMPT_FILE")
 # Per-agent budget (Opus agents get more headroom since it costs more per token)
 case "$TYPE" in
   verifier|pr-verifier) BUDGET=5.00 ;;
-  tester)   BUDGET=5.00 ;;
+  tester|regression-tester) BUDGET=5.00 ;;
   bugfix)   BUDGET=5.00 ;;
   builder)  BUDGET=5.00 ;;
   pr-responder) BUDGET=5.00 ;;
@@ -475,8 +476,8 @@ esac
 
 # Model routing — Opus for reasoning-heavy work, Sonnet for mechanical/scripted tasks
 case "$TYPE" in
-  bugfix|builder|researcher|pr-verifier|pr-responder) MODEL="opus" ;;
-  tester|groomer|conflict-resolver|verifier)          MODEL="sonnet" ;;
+  bugfix|builder|researcher|pr-verifier|pr-responder|regression-tester) MODEL="opus" ;;
+  tester|groomer|conflict-resolver|verifier)                           MODEL="sonnet" ;;
   *)                                                  MODEL="sonnet" ;;
 esac
 

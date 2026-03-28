@@ -1,0 +1,219 @@
+# Pepper Regression Test Plan
+# Run by the regression-tester agent after N commits.
+# Each test: steps to execute, then verification.
+# Tests are ordered by priority — run top-down, stop at budget.
+
+# ── Core: if these fail, Pepper is broken ──
+
+- name: pepper connects
+  priority: critical
+  steps:
+    - tool: status
+  verify: status returns bundle_id and websocket connected
+
+- name: look returns elements
+  priority: critical
+  steps:
+    - tool: look
+  verify: output contains at least 3 interactive elements
+
+- name: tap by text
+  priority: critical
+  steps:
+    - tool: look
+    - tool: tap
+      params: { text: "Settings" }  # adapt to test app
+  verify: screen state changed after tap
+
+- name: tap by point
+  priority: critical
+  steps:
+    - tool: look
+    - note: pick center coordinates of any visible element
+    - tool: tap
+      params: { point: "<from look>" }
+  verify: tap acknowledged, screen may change
+
+- name: back navigation
+  priority: critical
+  steps:
+    - tool: back
+  verify: returned to previous screen
+
+# ── Input ──
+
+- name: input text into field
+  priority: high
+  steps:
+    - note: navigate to a screen with a text field
+    - tool: tap
+      params: { text: "<text field label>" }
+    - tool: input_text
+      params: { value: "test input 123" }
+    - tool: look
+  verify: text field contains "test input 123"
+
+- name: dismiss keyboard
+  priority: high
+  steps:
+    - tool: dismiss_keyboard
+    - tool: look
+  verify: keyboard no longer visible (if keyboard indicator exists)
+
+# ── Scrolling ──
+
+- name: scroll down
+  priority: high
+  steps:
+    - note: navigate to a scrollable screen
+    - tool: look
+    - tool: scroll
+      params: { direction: "down" }
+  verify: screen content shifted, new elements visible
+
+- name: scroll to element
+  priority: high
+  steps:
+    - tool: scroll_to
+      params: { text: "<off-screen element>", direction: "down" }
+  verify: target element now visible in look output
+
+# ── Observation ──
+
+- name: look scope filtering
+  priority: high
+  steps:
+    - tool: look
+      params: { scope: "<container label>" }
+  verify: output only contains elements within that container
+
+- name: look compact mode
+  priority: high
+  steps:
+    - tool: look
+      params: { compact: true }
+    - tool: look
+      params: { compact: true }
+  verify: second call returns diff, not full output
+
+- name: find by predicate
+  priority: high
+  steps:
+    - tool: find
+      params: { predicate: "type == 'button'" }
+  verify: returns only button elements
+
+- name: read element properties
+  priority: medium
+  steps:
+    - tool: look
+    - tool: read_element
+      params: { element: "<element from look>" }
+  verify: returns detailed properties (frame, traits, value, etc.)
+
+# ── Screen management ──
+
+- name: screen name
+  priority: medium
+  steps:
+    - tool: screen
+  verify: returns current screen/VC name
+
+- name: appearance toggle
+  priority: medium
+  steps:
+    - tool: appearance
+      params: { mode: "dark" }
+    - tool: look
+    - tool: appearance
+      params: { mode: "light" }
+  verify: no crash, mode switches cleanly
+
+# ── Monitoring ──
+
+- name: network monitoring
+  priority: medium
+  steps:
+    - tool: network
+      params: { action: "start" }
+    - note: trigger a network request (navigate to a screen that loads data)
+    - tool: network
+      params: { action: "log" }
+    - tool: network
+      params: { action: "stop" }
+  verify: at least 1 request captured with URL and status
+
+- name: console capture
+  priority: medium
+  steps:
+    - tool: console
+      params: { action: "start" }
+    - note: trigger some app activity
+    - tool: console
+      params: { action: "log" }
+    - tool: console
+      params: { action: "stop" }
+  verify: captured log lines from the app
+
+- name: timeline flight recorder
+  priority: medium
+  steps:
+    - tool: timeline
+      params: { action: "query", last_seconds: 30 }
+  verify: returns recent events (screen transitions, commands)
+
+# ── State inspection ──
+
+- name: vars inspect
+  priority: medium
+  steps:
+    - tool: vars_inspect
+      params: { action: "list" }
+  verify: returns registered var bindings (may be empty in generic mode)
+
+- name: defaults read
+  priority: medium
+  steps:
+    - tool: defaults
+      params: { action: "list" }
+  verify: returns UserDefaults keys
+
+- name: snapshot save and diff
+  priority: medium
+  steps:
+    - tool: snapshot
+      params: { action: "save", name: "regression_baseline" }
+    - note: make a small UI change
+    - tool: snapshot
+      params: { action: "diff", name: "regression_baseline" }
+  verify: diff shows the change
+
+# ── Accessibility ──
+
+- name: accessibility audit
+  priority: low
+  steps:
+    - tool: accessibility_audit
+  verify: returns audit results (may have issues, that's ok — just shouldn't crash)
+
+- name: tree dump
+  priority: low
+  steps:
+    - tool: tree
+  verify: returns view hierarchy
+
+# ── Edge cases ──
+
+- name: look on empty screen
+  priority: low
+  steps:
+    - note: if possible, navigate to a minimal screen
+    - tool: look
+  verify: returns without error, even if few elements
+
+- name: tap nonexistent element
+  priority: low
+  steps:
+    - tool: tap
+      params: { text: "THIS_ELEMENT_DOES_NOT_EXIST_12345" }
+  verify: returns clear "not found" error, not a crash

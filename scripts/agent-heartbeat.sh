@@ -341,5 +341,30 @@ print(count)
     fi
   fi
 
+  # ── Regression tester: run after every N commits to main ──
+  LAST_TESTED_SHA=$(cat build/logs/last-tested-sha 2>/dev/null || echo "")
+  if [ -n "$LAST_TESTED_SHA" ]; then
+    COMMITS_SINCE=$(git rev-list --count "$LAST_TESTED_SHA"..HEAD 2>/dev/null || echo 0)
+  else
+    COMMITS_SINCE=999  # first run — always test
+  fi
+  REGRESSION_THRESHOLD=5  # run tests after every 5 commits
+  if [ "$COMMITS_SINCE" -ge "$REGRESSION_THRESHOLD" ]; then
+    # Check if a sim is booted (tester needs a running sim)
+    BOOTED_SIMS=$(xcrun simctl list devices booted -j 2>/dev/null | python3 -c "
+import json, sys
+devs = json.load(sys.stdin)['devices']
+print(sum(1 for r in devs.values() for d in r if d['state'] == 'Booted'))
+" 2>/dev/null || echo 0)
+    if [ "$BOOTED_SIMS" -gt 0 ]; then
+      if should_backoff regression-tester; then
+        echo "$(date +%H:%M) regression-tester in backoff — skipping"
+      else
+        echo "$(date +%H:%M) $COMMITS_SINCE commits since last test — launching regression-tester"
+        launch_if_slots regression-tester
+      fi
+    fi
+  fi
+
   sleep "$INTERVAL"
 done
