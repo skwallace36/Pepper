@@ -182,6 +182,83 @@ def _render_grouped_text(ordered_groups, grouped, ungrouped, dim_fn):
     return lines
 
 
+def _scroll_indicator_lines(
+    data: dict,
+    total_interactive: int,
+    visible_interactive: int,
+    total_ni: int,
+    visible_ni: int,
+) -> list[str]:
+    """Build scroll indicator lines when off-screen elements exist.
+
+    Returns a list of formatted lines (may be empty if nothing is scrollable).
+    """
+    hidden_interactive = total_interactive - visible_interactive
+    hidden_ni = total_ni - visible_ni
+    hidden_total = hidden_interactive + hidden_ni
+    if hidden_total == 0:
+        return []
+
+    containers = data.get("scroll_containers", [])
+    if not containers:
+        # No container metadata — just report hidden count
+        parts = []
+        if hidden_interactive:
+            parts.append(f"{hidden_interactive} interactive")
+        if hidden_ni:
+            parts.append(f"{hidden_ni} text")
+        return [dim(f"  >> {' + '.join(parts)} off-screen — scroll to reveal")]
+
+    # Use the largest (primary) scroll container for position info
+    primary = max(containers, key=lambda c: (
+        c.get("visible_size", {}).get("w", 0)
+        * c.get("visible_size", {}).get("h", 0)
+    ))
+    direction = primary.get("direction", "vertical")
+    content = primary.get("content_size", {})
+    visible = primary.get("visible_size", {})
+    offset = primary.get("offset", {})
+
+    # Compute scroll position for the primary axis
+    hints = []
+    if direction in ("vertical", "both"):
+        content_h = content.get("h", 0)
+        visible_h = visible.get("h", 0)
+        offset_y = offset.get("y", 0)
+        scrollable = content_h - visible_h
+        if scrollable > 0:
+            if offset_y < 10:
+                hints.append("more content below")
+            elif scrollable - offset_y < 10:
+                hints.append("more content above")
+            else:
+                pct = int(100 * offset_y / scrollable)
+                hints.append(f"scrolled {pct}% — content above & below")
+    if direction in ("horizontal", "both"):
+        content_w = content.get("w", 0)
+        visible_w = visible.get("w", 0)
+        offset_x = offset.get("x", 0)
+        scrollable = content_w - visible_w
+        if scrollable > 0:
+            if offset_x < 10:
+                hints.append("more content right")
+            elif scrollable - offset_x < 10:
+                hints.append("more content left")
+            else:
+                pct = int(100 * offset_x / scrollable)
+                hints.append(f"scrolled {pct}% horizontally")
+
+    parts = []
+    if hidden_interactive:
+        parts.append(f"{hidden_interactive} interactive")
+    if hidden_ni:
+        parts.append(f"{hidden_ni} text")
+    hidden_str = f"{' + '.join(parts)} off-screen"
+    hint_str = f" ({'; '.join(hints)})" if hints else ""
+
+    return [dim(f"  >> {hidden_str}{hint_str} — scroll to reveal")]
+
+
 def format_look(resp: dict) -> str:
     """Format introspect mode:map response as compact readable summary.
 
@@ -210,6 +287,10 @@ def format_look(resp: dict) -> str:
             return False
         sc = element.get("scroll_context", {})
         return not (sc and sc.get("visible_in_viewport") is False)
+
+    # Count totals before filtering (for scroll indicators)
+    total_interactive = sum(len(r.get("elements", [])) for r in rows)
+    total_ni = len(ni)
 
     # Filter to viewport-visible elements
     filtered_rows = []
@@ -369,6 +450,11 @@ def format_look(resp: dict) -> str:
                 suffix = f" (growing for {streak} observations)"
             lines.append(f"  {cls}: {before} → {after} (+{delta}){suffix}")
 
+    # Scroll indicators — surface hidden off-screen content
+    visible_interactive = sum(len(r.get("elements", [])) for r in rows)
+    lines.extend(_scroll_indicator_lines(
+        data, total_interactive, visible_interactive, total_ni, len(ni)))
+
     return "\n".join(lines)
 
 
@@ -411,6 +497,10 @@ def format_look_slim(resp: dict) -> str:
             return False
         sc = element.get("scroll_context", {})
         return not (sc and sc.get("visible_in_viewport") is False)
+
+    # Count totals before filtering (for scroll indicators)
+    total_interactive = sum(len(r.get("elements", [])) for r in rows)
+    total_ni = len(ni)
 
     # Flatten rows to a single ordered list, viewport-filtered
     all_interactive = []
@@ -544,6 +634,10 @@ def format_look_slim(resp: dict) -> str:
             delta = leak.get("delta", 0)
             suffix = " (sustained)" if leak.get("sustained") else ""
             lines.append(f"  {cls} (+{delta}){suffix}")
+
+    # Scroll indicators — surface hidden off-screen content
+    lines.extend(_scroll_indicator_lines(
+        data, total_interactive, len(all_interactive), total_ni, len(ni)))
 
     return "\n".join(lines)
 
@@ -712,6 +806,10 @@ def format_look_compact(resp: dict) -> str:
         sc = element.get("scroll_context", {})
         return not (sc and sc.get("visible_in_viewport") is False)
 
+    # Count totals before filtering (for scroll indicators)
+    total_interactive = sum(len(r.get("elements", [])) for r in rows)
+    total_ni = len(ni)
+
     # Flatten interactive elements from rows, filter viewport
     all_interactive = []
     for row in rows:
@@ -868,5 +966,9 @@ def format_look_compact(resp: dict) -> str:
             delta = leak.get("delta", 0)
             suffix = " (sustained)" if leak.get("sustained") else ""
             lines.append(f"  {cls} (+{delta}){suffix}")
+
+    # Scroll indicators — surface hidden off-screen content
+    lines.extend(_scroll_indicator_lines(
+        data, total_interactive, len(all_interactive), total_ni, len(ni)))
 
     return "\n".join(lines)

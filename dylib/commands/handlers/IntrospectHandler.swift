@@ -858,6 +858,43 @@ struct IntrospectHandler: PepperHandler {
                 "w": AnyCodable(Int(screenSize.width)),
                 "h": AnyCodable(Int(screenSize.height)),
             ])
+
+            // Scroll container summaries: content size, offset, and visible area
+            // so formatters can indicate scrollable content and position.
+            let scrollViews = ElementDiscoveryBridge.shared.collectScrollViews()
+            if !scrollViews.isEmpty {
+                let containers: [[String: AnyCodable]] = scrollViews.compactMap { info in
+                    let sv = info.scrollView
+                    let contentW = Int(sv.contentSize.width)
+                    let contentH = Int(sv.contentSize.height)
+                    let boundsW = Int(sv.bounds.width)
+                    let boundsH = Int(sv.bounds.height)
+                    // Skip scroll views that aren't actually scrollable
+                    guard contentW > boundsW + 1 || contentH > boundsH + 1 else { return nil }
+                    return [
+                        "direction": AnyCodable(info.direction),
+                        "content_size": AnyCodable([
+                            "w": AnyCodable(contentW), "h": AnyCodable(contentH),
+                        ] as [String: AnyCodable]),
+                        "visible_size": AnyCodable([
+                            "w": AnyCodable(boundsW), "h": AnyCodable(boundsH),
+                        ] as [String: AnyCodable]),
+                        "offset": AnyCodable([
+                            "x": AnyCodable(Int(sv.contentOffset.x)),
+                            "y": AnyCodable(Int(sv.contentOffset.y)),
+                        ] as [String: AnyCodable]),
+                        "frame": AnyCodable([
+                            AnyCodable(Int(info.frameInWindow.origin.x)),
+                            AnyCodable(Int(info.frameInWindow.origin.y)),
+                            AnyCodable(Int(info.frameInWindow.width)),
+                            AnyCodable(Int(info.frameInWindow.height)),
+                        ]),
+                    ]
+                }
+                if !containers.isEmpty {
+                    data["scroll_containers"] = AnyCodable(containers.map { AnyCodable($0) })
+                }
+            }
         }
         if let title = navTitle, !title.isEmpty {
             data["nav_title"] = AnyCodable(title)
