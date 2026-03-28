@@ -35,6 +35,21 @@ def try_parse_json(value):
         return value
 
 
+_PEPPER_DEBUG = os.environ.get("PEPPER_DEBUG")
+
+# Compact JSON kwargs — no whitespace.  Used for MCP tool responses.
+_COMPACT: dict = {"separators": (",", ":")}
+# Pretty JSON kwargs — indented for readability when PEPPER_DEBUG is set.
+_PRETTY: dict = {"indent": 2}
+
+_DUMPS_KW: dict = _PRETTY if _PEPPER_DEBUG else _COMPACT
+
+
+def json_dumps(obj: object) -> str:
+    """Serialize *obj* to JSON.  Compact by default; indented when PEPPER_DEBUG is set."""
+    return json.dumps(obj, **_DUMPS_KW)
+
+
 def require_parse_json(value, field_name="value"):
     """Parse a string as JSON, raising ValueError with a descriptive message on failure."""
     try:

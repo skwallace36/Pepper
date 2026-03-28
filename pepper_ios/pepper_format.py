@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import re
 
+from .pepper_common import json_dumps
+
 # SF Symbol private-use-area characters (U+100000–U+100FFF) that appear in
 # combined accessibility labels. Strip them to keep output readable.
 _SF_SYMBOL_RE = re.compile(r"[\U00100000-\U00100FFF]+")
@@ -264,10 +266,8 @@ def format_look(resp: dict) -> str:
 
     Respects the module-level USE_COLOR flag for ANSI color output.
     """
-    import json
-
     if resp.get("status") != "ok":
-        return json.dumps(resp, indent=2)
+        return json_dumps(resp)
 
     data = resp.get("data", {})
     screen = data.get("screen", "unknown")
@@ -475,10 +475,8 @@ def format_look_slim(resp: dict) -> str:
     Unlike compact mode, tap commands are always included and there is no
     diffing state — every call returns the full current screen.
     """
-    import json
-
     if resp.get("status") != "ok":
-        return json.dumps(resp, indent=2)
+        return json_dumps(resp)
 
     data = resp.get("data", {})
     screen = data.get("screen", "unknown")
@@ -782,10 +780,9 @@ def format_look_compact(resp: dict) -> str:
     - Subsequent calls show only what changed (added/changed/removed)
     """
     global _prev_compact_fingerprints, _prev_compact_screen, _prev_compact_text, _prev_compact_ocr
-    import json
 
     if resp.get("status") != "ok":
-        return json.dumps(resp, indent=2)
+        return json_dumps(resp)
 
     data = resp.get("data", {})
     screen = data.get("screen", "unknown")
