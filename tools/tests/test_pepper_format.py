@@ -446,3 +446,121 @@ class TestFormatLookCompactOCR:
         # Screen changed → full OCR list shown, not diff
         assert "ocr-only text" in result
         assert "New" in result
+
+
+# ---------------------------------------------------------------------------
+# Text grouping under parent containers
+# ---------------------------------------------------------------------------
+
+
+class TestGroupTextByContainer:
+    def test_groups_text_under_containing_element(self):
+        interactive = [
+            {"label": "Steps", "frame": [10, 100, 180, 200]},
+        ]
+        ni = [
+            {"label": "1,932", "center": [100, 150]},
+            {"label": "16% of goal", "center": [100, 180]},
+        ]
+        ordered, grouped, ungrouped = pf._group_text_by_container(interactive, ni)
+        assert ordered == ["Steps"]
+        assert grouped["Steps"] == ["1,932", "16% of goal"]
+        assert ungrouped == []
+
+    def test_ungrouped_text_when_outside_containers(self):
+        interactive = [{"label": "Card", "frame": [10, 10, 100, 100]}]
+        ni = [{"label": "outside", "center": [300, 300]}]
+        ordered, grouped, ungrouped = pf._group_text_by_container(interactive, ni)
+        assert ordered == []
+        assert ungrouped == ["outside"]
+
+    def test_skips_text_matching_container_label(self):
+        interactive = [{"label": "Steps", "frame": [10, 100, 180, 200]}]
+        ni = [
+            {"label": "Steps", "center": [100, 150]},
+            {"label": "1,932", "center": [100, 180]},
+        ]
+        ordered, grouped, ungrouped = pf._group_text_by_container(interactive, ni)
+        assert grouped["Steps"] == ["1,932"]
+        assert "Steps" in ungrouped
+
+    def test_smallest_container_wins(self):
+        interactive = [
+            {"label": "Outer", "frame": [0, 0, 300, 300]},
+            {"label": "Inner", "frame": [10, 10, 100, 100]},
+        ]
+        ni = [{"label": "deep", "center": [50, 50]}]
+        ordered, grouped, ungrouped = pf._group_text_by_container(interactive, ni)
+        assert ordered == ["Inner"]
+        assert grouped["Inner"] == ["deep"]
+
+    def test_skips_fullscreen_containers(self):
+        interactive = [{"label": "Root", "frame": [0, 0, 400, 800]}]
+        ni = [{"label": "text", "center": [200, 400]}]
+        ordered, grouped, ungrouped = pf._group_text_by_container(
+            interactive, ni, screen_size={"w": 400, "h": 800})
+        assert ordered == []
+        assert ungrouped == ["text"]
+
+    def test_empty_ni_returns_empty(self):
+        ordered, grouped, ungrouped = pf._group_text_by_container([{"label": "X", "frame": [0, 0, 100, 100]}], [])
+        assert ordered == []
+        assert grouped == {}
+        assert ungrouped == []
+
+    def test_no_containers_returns_all_ungrouped(self):
+        ni = [{"label": "hello", "center": [0, 0]}]
+        ordered, grouped, ungrouped = pf._group_text_by_container([], ni)
+        assert ungrouped == ["hello"]
+
+
+class TestRenderGroupedText:
+    def test_renders_groups_then_ungrouped(self):
+        lines = pf._render_grouped_text(
+            ["Card"], {"Card": ["val1", "val2"]}, ["loose"], lambda x: x)
+        assert lines == ["  Card:", "    val1", "    val2", "  loose"]
+
+    def test_empty_groups(self):
+        lines = pf._render_grouped_text([], {}, ["a", "b"], lambda x: x)
+        assert lines == ["  a", "  b"]
+
+
+class TestFormatLookGroupedText:
+    def setup_method(self):
+        pf.USE_COLOR = False
+
+    def test_format_look_groups_text(self):
+        card = _make_element(label="Steps", frame=[10, 100, 180, 200])
+        row = {"y_range": [100, 300], "elements": [card]}
+        ni = [
+            {"label": "1,932", "center": [100, 150]},
+            {"label": "16%", "center": [100, 180]},
+        ]
+        result = pf.format_look(_make_response(rows=[row], ni=ni))
+        assert "Steps:" in result
+        assert "1,932" in result
+        assert "16%" in result
+
+    def test_format_look_slim_groups_text(self):
+        card = _make_element(label="Steps", frame=[10, 100, 180, 200])
+        row = {"y_range": [100, 300], "elements": [card]}
+        ni = [
+            {"label": "1,932", "center": [100, 150]},
+        ]
+        result = pf.format_look_slim(_make_response(rows=[row], ni=ni))
+        assert "Steps:" in result
+        assert "1,932" in result
+
+    def test_format_look_compact_groups_text(self):
+        pf._prev_compact_fingerprints = {}
+        pf._prev_compact_screen = None
+        pf._prev_compact_text = set()
+        pf._prev_compact_ocr = set()
+        card = _make_element(label="Steps", frame=[10, 100, 180, 200])
+        row = {"y_range": [100, 300], "elements": [card]}
+        ni = [
+            {"label": "1,932", "center": [100, 150]},
+        ]
+        result = pf.format_look_compact(_make_response(rows=[row], ni=ni))
+        assert "Steps:" in result
+        assert "1,932" in result
