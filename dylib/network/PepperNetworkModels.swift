@@ -7,6 +7,8 @@ struct NetworkTransaction: Codable {
     var response: NetworkResponseInfo?
     var timing: NetworkTiming
     var error: String?
+    /// GraphQL operation names parsed from the request body (empty if not a GraphQL request).
+    var graphqlOperations: [String]?
 
     func toDictionary(maxBody: Int? = nil) -> [String: AnyCodable] {
         var dict: [String: AnyCodable] = [
@@ -19,6 +21,13 @@ struct NetworkTransaction: Codable {
         }
         if let error = error {
             dict["error"] = AnyCodable(error)
+        }
+        if let ops = graphqlOperations, !ops.isEmpty {
+            if ops.count == 1 {
+                dict["graphql_operation"] = AnyCodable(ops[0])
+            } else {
+                dict["graphql_operations"] = AnyCodable(ops)
+            }
         }
         return dict
     }
