@@ -233,14 +233,96 @@ final class PepperConsoleInterceptor {
         }
     }
 
+    // MARK: - Noise Filtering
+
+    /// Known system framework log prefixes and substrings that are rarely useful to app developers.
+    /// Matched as case-insensitive substrings against each log line.
+    static let noisePatterns: [String] = [
+        // Networking internals
+        "[BoringSSL]",
+        "[CFNetwork",
+        "nw_protocol_",
+        "nw_connection_",
+        "nw_endpoint_",
+        "nw_socket_",
+        "nw_path_",
+        "nw_listener_",
+        "nw_resolver_",
+        "NSURLSession/NSURLConnection HTTP load failed",
+        "TCP Conn",
+        "TIC ",
+        // Metal / GPU
+        "[Metal]",
+        "Metal GPU Frame Capture",
+        "Compiler failed",
+        "shader compilation",
+        // AutoLayout
+        "Unable to simultaneously satisfy constraints",
+        "Will attempt to recover by breaking constraint",
+        "Make a symbolic breakpoint at UIViewAlertForUnsatisfiableConstraints",
+        // CoreData
+        "CoreData: sql:",
+        "CoreData: annotation:",
+        "CoreData: debug:",
+        // UIKit internals
+        "[UIFocus]",
+        "[Accessibility]",
+        "[AXMediaCommon]",
+        "[AXRuntime]",
+        "[LayoutConstraints]",
+        // System services
+        "[BackgroundTask]",
+        "[RunningBoardServices]",
+        "[LaunchServices]",
+        "[MobileGestalt]",
+        "[TCC]",
+        "[SystemGroup]",
+        "[PerformanceData]",
+        "[GCController]",
+        "[CoreBluetooth]",
+        "[libnetwork",
+        // Audio
+        "AVAudioSession",
+        "AURemoteIO",
+        // Process lifecycle
+        "[ProcessSuspend]",
+        "[FBSSystemService]",
+        "[assertion]",
+    ]
+
+    /// Check whether a log message matches any known noise pattern.
+    static func isNoise(_ message: String) -> Bool {
+        let lower = message.lowercased()
+        return noisePatterns.contains { lower.contains($0.lowercased()) }
+    }
+
     // MARK: - Query
 
-    /// Get recent console lines, optionally filtered by substring.
-    func recentLines(limit: Int = 50, filter: String? = nil, sinceMs: Int64? = nil) -> [[String: AnyCodable]] {
+    /// Get recent console lines, optionally filtered.
+    /// - Parameters:
+    ///   - limit: Maximum number of lines to return.
+    ///   - filter: Include-only substring (case-insensitive).
+    ///   - sinceMs: Only lines after this epoch-ms timestamp.
+    ///   - hideNoise: When true, excludes known system framework noise (default: true).
+    ///   - exclude: Additional substrings to exclude (case-insensitive).
+    func recentLines(
+        limit: Int = 50, filter: String? = nil, sinceMs: Int64? = nil,
+        hideNoise: Bool = true, exclude: [String]? = nil
+    ) -> [[String: AnyCodable]] {
         queue.sync {
             var results = buffer
             if let sinceMs = sinceMs {
                 results = results.filter { $0.timestampMs >= sinceMs }
+            }
+            if hideNoise {
+                results = results.filter { !PepperConsoleInterceptor.isNoise($0.message) }
+            }
+            if let exclude = exclude, !exclude.isEmpty {
+                let lowerExclude = exclude.map { $0.lowercased() }
+                results = results.filter { entry in
+                    let lower = entry.message.lowercased()
+                    return !lowerExclude.contains { lower.contains($0) }
+                }
             }
             if let filter = filter, !filter.isEmpty {
                 results = results.filter { $0.message.localizedCaseInsensitiveContains(filter) }
