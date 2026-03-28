@@ -14,6 +14,11 @@
     "status": "untested",
     "surface": "Any app"
   },
+  "appearance": {
+    "notes": "New command. Toggles light/dark mode via overrideUserInterfaceStyle on all visible windows.",
+    "status": "untested",
+    "surface": "Any state"
+  },
   "animations.scan": {
     "notes": "BUG-009 fix (icon catalog background thread crash) was unrelated to this failure. 'Response lost in transit' issue persists \u2014 server logs success but client never receives response. trace and speed actions work fine. New issue: #267.",
     "status": "fail",

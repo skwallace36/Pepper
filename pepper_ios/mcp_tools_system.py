@@ -1,6 +1,6 @@
 """System and utility tool definitions for Pepper MCP.
 
-Tools: push, status, highlight, orientation, locale, gesture, hook, flags.
+Tools: push, status, highlight, orientation, locale, gesture, hook, flags, appearance.
 """
 
 from __future__ import annotations
@@ -10,6 +10,7 @@ import json
 from pydantic import Field
 
 from .pepper_commands import (
+    CMD_APPEARANCE,
     CMD_FLAGS,
     CMD_GESTURE,
     CMD_HIGHLIGHT,
@@ -253,3 +254,20 @@ def register_system_tools(mcp, resolve_and_send, act_and_look):
         if value is not None:
             params["value"] = try_parse_json(value)
         return await resolve_and_send(simulator, CMD_FLAGS, params)
+
+    @mcp.tool()
+    async def appearance(
+        simulator: str | None = Field(default=None, description="Simulator UDID"),
+        mode: str | None = Field(
+            default=None,
+            description="Appearance mode: dark, light, system. Omit to query current mode.",
+        ),
+    ) -> str:
+        """Toggle light/dark mode at runtime without changing simulator settings.
+
+        Sets overrideUserInterfaceStyle on all app windows. Use mode='system' to restore
+        the simulator's default appearance. Omit mode to query the current appearance."""
+        params: dict = {}
+        if mode:
+            params["mode"] = mode
+        return await resolve_and_send(simulator, CMD_APPEARANCE, params)

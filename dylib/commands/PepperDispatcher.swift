@@ -356,6 +356,7 @@ final class PepperDispatcher {
         register(StorageHandler())
         register(CoreDataHandler())
         register(WebViewHandler())
+        register(AppearanceHandler())
     }
 }
 
