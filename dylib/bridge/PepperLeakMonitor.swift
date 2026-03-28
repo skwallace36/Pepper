@@ -9,6 +9,13 @@ import Foundation
 /// 3. If returning to a previously-seen screen, diffs and reports growing classes
 /// 4. Saves the current snapshot
 ///
+/// Significance filtering: minor per-frame jitter (e.g., CString +5) is suppressed.
+/// A class is reported only when:
+/// - Single-observation spike: delta >= 20
+/// - Sustained growth: positive delta on 3+ consecutive observations for the same screen
+///
+/// All data is still collected — only the reporting is filtered.
+///
 /// The element fingerprint solves the type-erased screen problem:
 /// when multiple screens share the same VC class (common in SwiftUI),
 /// the fingerprint distinguishes them by their content.
@@ -22,6 +29,15 @@ final class PepperLeakMonitor {
 
     /// Per-screen snapshots: screen_key → (class_name → instance_count)
     private var screenSnapshots: [String: [String: Int]] = [:]
+
+    /// Consecutive growth counter: (screen_key, class_name) → count of consecutive positive deltas
+    private var growthStreaks: [String: Int] = [:]
+
+    /// Minimum delta for a single-observation spike to be reported
+    private let spikeThreshold = 20
+
+    /// Number of consecutive positive-delta observations before sustained growth is reported
+    private let sustainedGrowthCount = 3
 
     /// Accumulated leak warnings (ring buffer, newest first)
     private var warnings: [LeakWarning] = []
@@ -63,7 +79,7 @@ final class PepperLeakMonitor {
     }
 
     /// Run a heap scan and diff against the previous snapshot for this screen key.
-    /// Returns any growing classes as leak warnings.
+    /// Returns only significant growing classes — minor jitter is suppressed.
     func scanAndDiff(screenKey: String) -> [[String: AnyCodable]] {
         // Run heap scan outside lock — it's CPU-bound (~10-50ms)
         let current = runHeapScan()
@@ -76,25 +92,42 @@ final class PepperLeakMonitor {
                 for (cls, currentCount) in current {
                     let prevCount = previous[cls] ?? 0
                     let delta = currentCount - prevCount
-                    if delta >= 2 {
-                        leaks.append([
-                            "class": AnyCodable(cls),
-                            "before": AnyCodable(prevCount),
-                            "after": AnyCodable(currentCount),
-                            "delta": AnyCodable(delta),
-                        ])
+                    let streakKey = "\(screenKey)|\(cls)"
 
-                        let warning = LeakWarning(
-                            screenKey: screenKey,
-                            className: cls,
-                            before: prevCount,
-                            after: currentCount,
-                            timestamp: Date()
-                        )
-                        warnings.insert(warning, at: 0)
-                        if warnings.count > maxWarnings {
-                            warnings.removeLast()
-                        }
+                    // Track consecutive growth streaks
+                    if delta > 0 {
+                        growthStreaks[streakKey, default: 0] += 1
+                    } else {
+                        growthStreaks[streakKey] = 0
+                    }
+
+                    // Report if: large single spike OR sustained growth over multiple observations
+                    let isSpike = delta >= spikeThreshold
+                    let isSustained = (growthStreaks[streakKey] ?? 0) >= sustainedGrowthCount && delta > 0
+                    guard isSpike || isSustained else { continue }
+
+                    var entry: [String: AnyCodable] = [
+                        "class": AnyCodable(cls),
+                        "before": AnyCodable(prevCount),
+                        "after": AnyCodable(currentCount),
+                        "delta": AnyCodable(delta),
+                    ]
+                    if isSustained && !isSpike {
+                        entry["sustained"] = AnyCodable(true)
+                        entry["streak"] = AnyCodable(growthStreaks[streakKey] ?? 0)
+                    }
+                    leaks.append(entry)
+
+                    let warning = LeakWarning(
+                        screenKey: screenKey,
+                        className: cls,
+                        before: prevCount,
+                        after: currentCount,
+                        timestamp: Date()
+                    )
+                    warnings.insert(warning, at: 0)
+                    if warnings.count > maxWarnings {
+                        warnings.removeLast()
                     }
                 }
 
@@ -129,6 +162,7 @@ final class PepperLeakMonitor {
     func reset() {
         queue.sync {
             screenSnapshots.removeAll()
+            growthStreaks.removeAll()
             warnings.removeAll()
         }
     }

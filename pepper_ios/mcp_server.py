@@ -353,7 +353,7 @@ async def _gather_telemetry(port: int, pre_counts: dict, send_fn) -> str:
                 if len(entries) > 3:
                     lines.append(f"  ... +{len(entries) - 3} more")
 
-    # Idle state
+    # Idle state — only surface when something is actively blocking or many requests in-flight
     if isinstance(idle_resp, dict) and idle_resp.get("status") == "ok":
         data = idle_resp.get("data", {})
         is_idle = data.get("is_idle", True)
@@ -368,24 +368,19 @@ async def _gather_telemetry(port: int, pre_counts: dict, send_fn) -> str:
                 blockers.append(f"{data['pending_dispatches']} pending dispatch(es)")
             if blockers:
                 lines.append(f"settling: {', '.join(blockers)}")
-        else:
-            active_net = data.get("active_requests", 0)
-            if active_net > 0:
-                lines.append(f"idle (ui), {active_net} request(s) in-flight")
 
-    # Memory delta — always show if we have data
+    # Memory delta — only show when significant (>= 5MB change or >= 50MB spike warning)
     if isinstance(mem_resp, dict) and mem_resp.get("status") == "ok":
         current_mb = mem_resp.get("data", {}).get("resident_mb", 0.0)
         pre_mb = pre_counts.get("mem_mb", 0.0)
-        if current_mb > 0:
-            delta_mb = current_mb - pre_mb if pre_mb > 0 else 0
-            mem_str = f"memory: {current_mb:.0f}MB"
-            if abs(delta_mb) >= 1:
+        if current_mb > 0 and pre_mb > 0:
+            delta_mb = current_mb - pre_mb
+            if abs(delta_mb) >= 5:
                 sign = "+" if delta_mb > 0 else ""
-                mem_str += f" ({sign}{delta_mb:.0f}MB)"
+                mem_str = f"memory: {current_mb:.0f}MB ({sign}{delta_mb:.0f}MB)"
                 if delta_mb >= 50:
                     mem_str += " \u26a0"
-            lines.append(mem_str)
+                lines.append(mem_str)
 
     if not lines:
         return ""

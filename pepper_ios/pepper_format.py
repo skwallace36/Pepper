@@ -354,7 +354,7 @@ def format_look(resp: dict) -> str:
         for item in ocr_results:
             lines.append(_format_ocr_line(item))
 
-    # Leak warnings
+    # Leak warnings (only significant — minor jitter is filtered at the dylib level)
     leaks = data.get("leaks", [])
     if leaks:
         lines.append("--- leaks detected ---")
@@ -363,7 +363,11 @@ def format_look(resp: dict) -> str:
             before = leak.get("before", 0)
             after = leak.get("after", 0)
             delta = leak.get("delta", after - before)
-            lines.append(f"  {cls}: {before} → {after} (+{delta})")
+            suffix = ""
+            if leak.get("sustained"):
+                streak = leak.get("streak", 0)
+                suffix = f" (growing for {streak} observations)"
+            lines.append(f"  {cls}: {before} → {after} (+{delta}){suffix}")
 
     return "\n".join(lines)
 
@@ -530,7 +534,7 @@ def format_look_slim(resp: dict) -> str:
             conf = item.get("confidence", 0.0)
             lines.append(f'  [ocr]  "{disp}"  point:{cx},{cy}  conf:{conf:.2f}')
 
-    # Leak warnings
+    # Leak warnings (only significant — minor jitter filtered at dylib level)
     leaks = data.get("leaks", [])
     if leaks:
         lines.append("")
@@ -538,7 +542,8 @@ def format_look_slim(resp: dict) -> str:
         for leak in leaks[:5]:
             cls = leak.get("class", "?")
             delta = leak.get("delta", 0)
-            lines.append(f"  {cls} (+{delta})")
+            suffix = " (sustained)" if leak.get("sustained") else ""
+            lines.append(f"  {cls} (+{delta}){suffix}")
 
     return "\n".join(lines)
 
@@ -853,7 +858,7 @@ def format_look_compact(resp: dict) -> str:
                 for t in sorted(removed_ocr):
                     lines.append(f"  - [ocr] {dim(t)}")
 
-    # Leaks (always show)
+    # Leaks (only significant — minor jitter filtered at dylib level)
     leaks = data.get("leaks", [])
     if leaks:
         lines.append("")
@@ -861,6 +866,7 @@ def format_look_compact(resp: dict) -> str:
         for leak in leaks[:5]:
             cls = leak.get("class", "?")
             delta = leak.get("delta", 0)
-            lines.append(f"  {cls} (+{delta})")
+            suffix = " (sustained)" if leak.get("sustained") else ""
+            lines.append(f"  {cls} (+{delta}){suffix}")
 
     return "\n".join(lines)
