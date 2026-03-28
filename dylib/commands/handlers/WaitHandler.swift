@@ -166,17 +166,24 @@ struct WaitHandler: PepperHandler {
 
         switch condition {
         case .elementVisible(let id):
-            if let view = window.pepper_findElement(id: id) {
-                return !view.isHidden && view.alpha > 0 && view.window != nil
+            if let result = PepperElementResolver.resolveByID(id, in: window) {
+                if result.tapPoint != nil {
+                    // SwiftUI element found via accessibility tree — visible by definition
+                    return true
+                }
+                return !result.view.isHidden && result.view.alpha > 0 && result.view.window != nil
             }
             return false
 
         case .elementExists(let id):
-            return window.pepper_findElement(id: id) != nil
+            return PepperElementResolver.resolveByID(id, in: window) != nil
 
         case .elementHasValue(let id, let expected):
-            guard let view = window.pepper_findElement(id: id) else { return false }
-            return currentValue(of: view) == expected
+            guard let result = PepperElementResolver.resolveByID(id, in: window) else { return false }
+            if result.tapPoint != nil {
+                return swiftUIAccessibilityValue(id: id) == expected
+            }
+            return currentValue(of: result.view) == expected
 
         case .screenIs(let screenID):
             guard let topVC = Self.topViewController else { return false }
@@ -202,6 +209,12 @@ struct WaitHandler: PepperHandler {
     }
 
     // MARK: - Helpers
+
+    /// Read a SwiftUI element's value from the accessibility tree by identifier.
+    private func swiftUIAccessibilityValue(id: String) -> String? {
+        let accElements = PepperSwiftUIBridge.shared.collectAccessibilityElements()
+        return accElements.first(where: { $0.identifier == id })?.value
+    }
 
     private func currentValue(of view: UIView) -> String? {
         switch view {

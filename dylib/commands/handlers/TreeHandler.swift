@@ -25,10 +25,13 @@ struct TreeHandler: PepperHandler {
         // Optionally scope to a specific element's subtree
         let rootView: UIView
         if let elementID = command.params?["element"]?.value as? String {
-            guard let element = window.pepper_findElement(id: elementID) else {
+            guard let result = PepperElementResolver.resolveByID(elementID, in: window) else {
                 return .error(id: command.id, message: "Element not found: \(elementID)")
             }
-            rootView = element
+            if result.tapPoint != nil {
+                return .error(id: command.id, message: "Element \(elementID) is a SwiftUI element without a UIView — tree not available")
+            }
+            rootView = result.view
         } else {
             rootView = window
         }

@@ -8,6 +8,9 @@ import UIKit
 extension UIView {
 
     /// Find a subview by its accessibility identifier, recursively.
+    /// **Handlers: do NOT call this directly** — use `PepperElementResolver.resolve()` or
+    /// `PepperElementResolver.resolveByID()` instead, which includes SwiftUI accessibility
+    /// fallback. Direct calls miss SwiftUI elements (see #410, BUG-006).
     func pepper_findElement(id: String) -> UIView? {
         if accessibilityIdentifier == id { return self }
         for subview in subviews {
