@@ -182,7 +182,8 @@ struct NetworkHandler: PepperHandler {
 
     private func handleLog(_ command: PepperCommand) -> PepperResponse {
         let interceptor = PepperNetworkInterceptor.shared
-        let limit = command.params?["limit"]?.intValue ?? 50
+        let limit = command.params?["limit"]?.intValue ?? 10
+        let offset = command.params?["offset"]?.intValue ?? 0
         let filter = command.params?["filter"]?.stringValue
         let includeHeaders = command.params?["include_headers"]?.boolValue ?? false
         let includeBody = command.params?["include_body"]?.boolValue ?? false
@@ -210,11 +211,14 @@ struct NetworkHandler: PepperHandler {
         let sinceMs: Int64? =
             (command.params?["since_ms"]?.value as? Int).map { Int64($0) }
             ?? (command.params?["since_ms"]?.value as? Int64)
-        let transactions = interceptor.recentTransactions(
-            limit: limit, filter: filter, sinceMs: sinceMs, hideNoise: hideNoise, exclude: exclude)
+        let (transactions, total) = interceptor.recentTransactions(
+            limit: limit, offset: offset, filter: filter, sinceMs: sinceMs, hideNoise: hideNoise, exclude: exclude)
 
         var data: [String: AnyCodable] = [
             "count": AnyCodable(transactions.count),
+            "total": AnyCodable(total),
+            "offset": AnyCodable(offset),
+            "has_more": AnyCodable(offset + transactions.count < total),
             "transactions": AnyCodable(
                 transactions.map {
                     AnyCodable($0.toDictionary(maxBody: maxBody, includeHeaders: includeHeaders))

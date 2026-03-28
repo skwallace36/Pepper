@@ -57,7 +57,8 @@ struct ConsoleHandler: PepperHandler {
                 ])
 
         case "log":
-            let limit = command.params?["limit"]?.intValue ?? 50
+            let limit = command.params?["limit"]?.intValue ?? 20
+            let offset = command.params?["offset"]?.intValue ?? 0
             let filter = command.params?["filter"]?.stringValue
             let sinceMs: Int64? =
                 (command.params?["since_ms"]?.value as? Int).map { Int64($0) }
@@ -70,11 +71,14 @@ struct ConsoleHandler: PepperHandler {
                 .map { $0.trimmingCharacters(in: .whitespaces) }
                 .filter { !$0.isEmpty }
 
-            let lines = interceptor.recentLines(
-                limit: limit, filter: filter, sinceMs: sinceMs,
+            let (lines, total) = interceptor.recentLines(
+                limit: limit, offset: offset, filter: filter, sinceMs: sinceMs,
                 hideNoise: hideNoise, exclude: exclude)
             var data: [String: AnyCodable] = [
                 "count": AnyCodable(lines.count),
+                "total": AnyCodable(total),
+                "offset": AnyCodable(offset),
+                "has_more": AnyCodable(offset + lines.count < total),
                 "lines": AnyCodable(lines.map { AnyCodable($0) }),
             ]
             if hideNoise {

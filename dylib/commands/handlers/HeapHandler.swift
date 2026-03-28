@@ -141,7 +141,8 @@ struct HeapHandler: PepperHandler {
 
     private func handleClasses(_ command: PepperCommand) -> PepperResponse {
         let pattern = command.params?["pattern"]?.stringValue
-        let limit = command.params?["limit"]?.intValue ?? 100
+        let limit = command.params?["limit"]?.intValue ?? 20
+        let offset = command.params?["offset"]?.intValue ?? 0
 
         guard let pattern = pattern, !pattern.isEmpty else {
             return .error(
@@ -170,17 +171,17 @@ struct HeapHandler: PepperHandler {
 
         matches.sort()
         let total = matches.count
-        if matches.count > limit {
-            matches = Array(matches.prefix(limit))
-        }
+        let page = Array(matches.dropFirst(min(offset, matches.count)).prefix(limit))
 
         return .ok(
             id: command.id,
             data: [
                 "pattern": AnyCodable(pattern),
                 "total": AnyCodable(total),
-                "showing": AnyCodable(matches.count),
-                "classes": AnyCodable(matches),
+                "offset": AnyCodable(offset),
+                "showing": AnyCodable(page.count),
+                "has_more": AnyCodable(offset + page.count < total),
+                "classes": AnyCodable(page),
             ])
     }
 
@@ -190,6 +191,9 @@ struct HeapHandler: PepperHandler {
         guard let window = UIWindow.pepper_keyWindow else {
             return .error(id: command.id, message: "No key window found.")
         }
+
+        let limit = command.params?["limit"]?.intValue ?? 20
+        let offset = command.params?["offset"]?.intValue ?? 0
 
         var controllers: [[String: AnyCodable]] = []
         func walk(_ vc: UIViewController, depth: Int) {
@@ -221,11 +225,17 @@ struct HeapHandler: PepperHandler {
             walk(rootVC, depth: 0)
         }
 
+        let total = controllers.count
+        let page = Array(controllers.dropFirst(min(offset, controllers.count)).prefix(limit))
+
         return .ok(
             id: command.id,
             data: [
-                "count": AnyCodable(controllers.count),
-                "controllers": AnyCodable(controllers),
+                "count": AnyCodable(page.count),
+                "total": AnyCodable(total),
+                "offset": AnyCodable(offset),
+                "has_more": AnyCodable(offset + page.count < total),
+                "controllers": AnyCodable(page),
             ])
     }
 
