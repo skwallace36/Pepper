@@ -529,45 +529,91 @@ _CORE_INSTRUCTIONS = (
     "- To check API traffic: use `network` start + log, NOT print statements.\n"
     "- To capture app logs (print + NSLog): use `console` start + log.\n"
     "- If a command returns APP CRASHED: investigate the crash, do NOT just redeploy.\n"
-    "- If an element isn't found: the screen state is in the error. Read it before retrying.\n\n"
-    "PR TEST PLAN VALIDATION:\n"
-    "When asked to validate a PR, use this workflow:\n"
-    "1. Read the PR: `gh pr view NNNN --repo owner/repo` for description, `gh pr diff NNNN --repo owner/repo` for changes.\n"
-    "2. Parse the test plan — each checkbox is a validation item.\n"
-    "3. For each item:\n"
-    "   a. Navigate to the relevant screen (deeplink or tap sequence).\n"
-    "   b. Perform the interaction described in the test item.\n"
-    "   c. Verify the expected outcome with `look` (check text, elements, state).\n"
-    "   d. Capture screenshot: `look visual=true screenshot_quality=high save_screenshot=/tmp/pr-NNNN-item.jpg`\n"
-    "4. Upload all screenshots: `python3 <PEPPER_DIR>/tools/upload-screenshot --repo owner/repo --prefix pr-NNNN --markdown /tmp/pr-NNNN-*.jpg`\n"
-    "5. Update PR description: `gh pr edit NNNN --repo owner/repo --body '...'` — check off validated items.\n"
-    "   Add a `### Screenshots` section (not 'Evidence'). Use HTML img tags with width=200 for thumbnails.\n"
-    "   Label each screenshot with a bold caption above it. Example:\n"
-    '   `**Flag off** <img src="URL" width=200> **Flag on** <img src="URL" width=200>`\n\n'
-    "SCREEN RECORDING:\n"
-    "For test items that need interaction sequences (toggle persistence, navigation flows):\n"
-    "- `record action=start` → do interactions → `record action=stop output=/tmp/clip.mp4`\n"
-    "- For tight clips: explore first with `look`, then chain taps with animation delays (0.3-0.7s per action).\n"
-    "- Upload videos via Playwright MCP (browser automation) to get user-attachments URLs that autoplay in PRs.\n"
-    "- Upload screenshots via `upload-screenshot` tool (release assets, always works).\n"
-    "- See /validate-pr skill for the full browser upload workflow.\n\n"
-    "LAUNCHING THE APP:\n"
-    "After building the iOS app, ALWAYS use Pepper's `deploy_sim` tool to launch — NOT raw `simctl launch`.\n"
-    "`deploy_sim` handles: terminate, install, launch with dylib injection + env vars, wait for WebSocket server, auto-look.\n"
-    "Raw `simctl launch` doesn't wait for Pepper — `look` will fail with connection refused.\n"
-    "Pattern: build_sim → deploy_sim (deploy handles install automatically).\n"
-    "`deploy_sim` requires workspace — always pass the .xcworkspace path.\n\n"
+    "- If an element isn't found: the screen state is in the error. Read it before retrying.\n"
+    "- After building, use `deploy_sim` to launch — NOT raw `simctl launch`.\n\n"
     "TIPS:\n"
     "- Always `look` before interacting to confirm screen state.\n"
     "- Action tools (tap, scroll, navigate) auto-include screen state in response — read it.\n"
     "- For recordings, use `pepper-ctl tap --point x,y` for fast chained actions (no look overhead).\n"
-    "- Screenshots go to the repo where the PR lives, not pepper's repo."
+    "- Screenshots go to the repo where the PR lives, not pepper's repo.\n\n"
+    "WORKFLOW GUIDES (read the resource when you need it):\n"
+    "- pepper://guides/pr-validation — PR test plan validation workflow\n"
+    "- pepper://guides/screen-recording — screen recording and upload workflow\n"
+    "- pepper://guides/launching — app build and launch workflow"
 )
 
 _adapter_preamble = load_adapter_preamble()
 _instructions = _CORE_INSTRUCTIONS + ("\n\n" + _adapter_preamble if _adapter_preamble else "")
 
 mcp = FastMCP("pepper", instructions=_instructions)
+
+
+# ---------------------------------------------------------------------------
+# Workflow guide resources (on-demand, not in every session's instructions)
+# ---------------------------------------------------------------------------
+
+_PR_VALIDATION_GUIDE = (
+    "PR TEST PLAN VALIDATION:\n"
+    "When asked to validate a PR, use this workflow:\n"
+    "1. Read the PR: `gh pr view NNNN --repo owner/repo` for description, "
+    "`gh pr diff NNNN --repo owner/repo` for changes.\n"
+    "2. Parse the test plan — each checkbox is a validation item.\n"
+    "3. For each item:\n"
+    "   a. Navigate to the relevant screen (deeplink or tap sequence).\n"
+    "   b. Perform the interaction described in the test item.\n"
+    "   c. Verify the expected outcome with `look` (check text, elements, state).\n"
+    "   d. Capture screenshot: `look visual=true screenshot_quality=high "
+    "save_screenshot=/tmp/pr-NNNN-item.jpg`\n"
+    "4. Upload all screenshots: `python3 <PEPPER_DIR>/tools/upload-screenshot "
+    "--repo owner/repo --prefix pr-NNNN --markdown /tmp/pr-NNNN-*.jpg`\n"
+    "5. Update PR description: `gh pr edit NNNN --repo owner/repo --body '...'` "
+    "— check off validated items.\n"
+    "   Add a `### Screenshots` section (not 'Evidence'). Use HTML img tags with "
+    "width=200 for thumbnails.\n"
+    "   Label each screenshot with a bold caption above it. Example:\n"
+    '   `**Flag off** <img src="URL" width=200> **Flag on** <img src="URL" width=200>`'
+)
+
+_SCREEN_RECORDING_GUIDE = (
+    "SCREEN RECORDING:\n"
+    "For test items that need interaction sequences (toggle persistence, navigation flows):\n"
+    "- `record action=start` → do interactions → `record action=stop output=/tmp/clip.mp4`\n"
+    "- For tight clips: explore first with `look`, then chain taps with animation "
+    "delays (0.3-0.7s per action).\n"
+    "- Upload videos via Playwright MCP (browser automation) to get user-attachments "
+    "URLs that autoplay in PRs.\n"
+    "- Upload screenshots via `upload-screenshot` tool (release assets, always works).\n"
+    "- See /validate-pr skill for the full browser upload workflow."
+)
+
+_LAUNCHING_GUIDE = (
+    "LAUNCHING THE APP:\n"
+    "After building the iOS app, ALWAYS use Pepper's `deploy_sim` tool to launch "
+    "— NOT raw `simctl launch`.\n"
+    "`deploy_sim` handles: terminate, install, launch with dylib injection + env vars, "
+    "wait for WebSocket server, auto-look.\n"
+    "Raw `simctl launch` doesn't wait for Pepper — `look` will fail with connection refused.\n"
+    "Pattern: build_sim → deploy_sim (deploy handles install automatically).\n"
+    "`deploy_sim` requires workspace — always pass the .xcworkspace path."
+)
+
+
+@mcp.resource("pepper://guides/pr-validation")
+def pr_validation_guide() -> str:
+    """PR test plan validation workflow: read PR, validate each checkbox, capture screenshots, update PR."""
+    return _PR_VALIDATION_GUIDE
+
+
+@mcp.resource("pepper://guides/screen-recording")
+def screen_recording_guide() -> str:
+    """Screen recording and video upload workflow for PR evidence."""
+    return _SCREEN_RECORDING_GUIDE
+
+
+@mcp.resource("pepper://guides/launching")
+def launching_guide() -> str:
+    """App build and launch workflow using deploy_sim."""
+    return _LAUNCHING_GUIDE
 
 
 # ---------------------------------------------------------------------------
