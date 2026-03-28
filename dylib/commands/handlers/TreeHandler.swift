@@ -19,7 +19,10 @@ struct TreeHandler: PepperHandler {
             return .error(id: command.id, message: "No key window available")
         }
 
-        let requestedDepth = (command.params?["depth"]?.value as? Int) ?? Self.maxDepth
+        let detailMode = (command.params?["detail"]?.value as? String) ?? "summary"
+        let isSummary = detailMode != "full"
+        let defaultDepth = isSummary ? 2 : Self.maxDepth
+        let requestedDepth = (command.params?["depth"]?.value as? Int) ?? defaultDepth
         let depthLimit = min(requestedDepth, Self.maxDepth)
 
         // Optionally scope to a specific element's subtree
@@ -39,7 +42,7 @@ struct TreeHandler: PepperHandler {
         }
 
         var nodeCount = 0
-        let tree = buildNode(view: rootView, depth: 0, maxDepth: depthLimit, nodeCount: &nodeCount)
+        let tree = buildNode(view: rootView, depth: 0, maxDepth: depthLimit, summary: isSummary, nodeCount: &nodeCount)
 
         logger.info("Tree captured \(nodeCount) nodes (depth limit: \(depthLimit))")
 
@@ -54,18 +57,23 @@ struct TreeHandler: PepperHandler {
 
     // MARK: - Tree Building
 
-    private func buildNode(view: UIView, depth: Int, maxDepth: Int, nodeCount: inout Int) -> [String: AnyCodable] {
+    private func buildNode(view: UIView, depth: Int, maxDepth: Int, summary: Bool, nodeCount: inout Int)
+        -> [String: AnyCodable]
+    {
         nodeCount += 1
 
         var node: [String: AnyCodable] = [
             "class": AnyCodable(String(describing: type(of: view))),
-            "frame": AnyCodable([
+        ]
+
+        if !summary {
+            node["frame"] = AnyCodable([
                 "x": AnyCodable(Double(view.frame.origin.x)),
                 "y": AnyCodable(Double(view.frame.origin.y)),
                 "width": AnyCodable(Double(view.frame.size.width)),
                 "height": AnyCodable(Double(view.frame.size.height)),
-            ]),
-        ]
+            ])
+        }
 
         if let id = view.accessibilityIdentifier, !id.isEmpty {
             node["id"] = AnyCodable(id)
@@ -75,19 +83,22 @@ struct TreeHandler: PepperHandler {
             node["label"] = AnyCodable(label)
         }
 
-        if let extra = interactiveInfo(for: view) {
-            node["info"] = AnyCodable(extra)
+        if !summary {
+            if let extra = interactiveInfo(for: view) {
+                node["info"] = AnyCodable(extra)
+            }
+            node["hidden"] = AnyCodable(view.isHidden)
+            node["alpha"] = AnyCodable(Double(view.alpha))
+            node["userInteraction"] = AnyCodable(view.isUserInteractionEnabled)
         }
-
-        node["hidden"] = AnyCodable(view.isHidden)
-        node["alpha"] = AnyCodable(Double(view.alpha))
-        node["userInteraction"] = AnyCodable(view.isUserInteractionEnabled)
 
         if depth < maxDepth && nodeCount < Self.maxNodes && !view.subviews.isEmpty {
             var children: [[String: AnyCodable]] = []
             for subview in view.subviews {
                 if nodeCount >= Self.maxNodes { break }
-                children.append(buildNode(view: subview, depth: depth + 1, maxDepth: maxDepth, nodeCount: &nodeCount))
+                children.append(
+                    buildNode(view: subview, depth: depth + 1, maxDepth: maxDepth, summary: summary,
+                              nodeCount: &nodeCount))
             }
             node["children"] = AnyCodable(children)
         } else if !view.subviews.isEmpty {

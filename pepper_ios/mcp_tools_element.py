@@ -47,16 +47,23 @@ def register_element_tools(mcp, resolve_and_send, act_and_look):
     @mcp.tool()
     async def tree(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
-        depth: int | None = Field(default=None, description="Max tree depth (default: 50, max: 50)"),
+        depth: int | None = Field(default=None, description="Max tree depth (default: 2 in summary, 50 in full mode; max: 50)"),
         element: str | None = Field(default=None, description="Scope to subtree of this accessibility ID"),
+        detail: str = Field(
+            default="summary",
+            description="Detail level: 'summary' (default) shows 2 levels deep with class/id/label only. 'full' shows everything with frames and interactive info.",
+        ),
     ) -> str:
-        """Dump UIView hierarchy for deep debugging. Full view tree with class, frame, accessibility info.
-        Warning: view tree can be large — use depth limit or scope to a subtree."""
+        """Dump UIView hierarchy for debugging. Use detail='full' for the complete view tree with frames and interactive info.
+        Default summary mode shows 2 levels deep with class names, IDs, and labels — enough to understand structure.
+        Warning: full view tree can be large — use depth limit or scope to a subtree."""
         params: dict = {}
         if depth is not None:
             params["depth"] = depth
         if element:
             params["element"] = element
+        if detail == "full":
+            params["detail"] = "full"
         return await resolve_and_send(simulator, CMD_TREE, params)
 
     @mcp.tool()
