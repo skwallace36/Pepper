@@ -23,9 +23,9 @@ cd "$REPO_ROOT"
 
 PIDFILE="build/logs/heartbeat.pid"
 EVENTS="$REPO_ROOT/build/logs/events.jsonl"
-INTERVAL=1800         # 30 min between cycles — conservative, loosen as confidence builds
+INTERVAL=300          # 5 min between cycles — each cycle is ~60s of actual work, rest is sleep
 BACKOFF_THRESHOLD=3   # consecutive failures before backing off
-BACKOFF_CYCLES=5      # cycles to skip (5 * 1800s = 2.5 hours)
+BACKOFF_CYCLES=5      # cycles to skip (5 * 300s = 25 min)
 LOCKFILE="build/logs/heartbeat.lock"
 
 mkdir -p build/logs
