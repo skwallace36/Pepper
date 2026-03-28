@@ -21,7 +21,7 @@ struct TreeHandler: PepperHandler {
 
         let detailMode = (command.params?["detail"]?.value as? String) ?? "summary"
         let isSummary = detailMode != "full"
-        let defaultDepth = isSummary ? 2 : Self.maxDepth
+        let defaultDepth = isSummary ? 3 : Self.maxDepth
         let requestedDepth = (command.params?["depth"]?.value as? Int) ?? defaultDepth
         let depthLimit = min(requestedDepth, Self.maxDepth)
 

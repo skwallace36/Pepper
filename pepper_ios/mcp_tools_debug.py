@@ -59,7 +59,8 @@ def register_debug_tools(mcp, resolve_and_send):
             default=None,
             description="Comma-separated substrings to exclude from log (e.g. 'CoreData,Metal')",
         ),
-        limit: int | None = Field(default=None, description="Max lines to return (for log action)"),
+        limit: int | None = Field(default=None, description="Max lines to return (for log action, default: 20)"),
+        offset: int | None = Field(default=None, description="Skip this many recent lines for pagination (for log action, default: 0)"),
     ) -> str:
         """Capture and read app console output — both print() (stdout) and os_log/NSLog (stderr). Start, then log to read. System framework noise is filtered by default."""
         params: dict = {"action": action}
@@ -71,6 +72,8 @@ def register_debug_tools(mcp, resolve_and_send):
             params["exclude"] = exclude
         if limit is not None:
             params["limit"] = limit
+        if offset is not None:
+            params["offset"] = offset
         return await resolve_and_send(simulator, CMD_CONSOLE, params)
 
     @mcp.tool()

@@ -71,7 +71,8 @@ def register_perf_tools(mcp, resolve_and_send):
         key_path: str | None = Field(
             default=None, description="KVC key path to read (for 'read' action, e.g. 'camera.zoom')"
         ),
-        limit: int | None = Field(default=None, description="Max results to return"),
+        limit: int | None = Field(default=None, description="Max results to return (default: 20 for classes/controllers)"),
+        offset: int | None = Field(default=None, description="Skip this many results for pagination (default: 0)"),
         min_growth: int | None = Field(default=None, description="Min instance growth to report in diff (default: 1)"),
         threshold: int | None = Field(default=None, description="Min instance growth to flag in check (default: 1)"),
     ) -> str:
@@ -101,4 +102,6 @@ def register_perf_tools(mcp, resolve_and_send):
             params["key_path"] = key_path
         if limit is not None:
             params["limit"] = limit
+        if offset is not None:
+            params["offset"] = offset
         return await resolve_and_send(simulator, CMD_HEAP, params)

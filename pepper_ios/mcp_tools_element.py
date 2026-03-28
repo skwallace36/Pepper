@@ -43,14 +43,14 @@ def register_element_tools(mcp, resolve_and_send, act_and_look):
     @mcp.tool()
     async def tree(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
-        depth: int | None = Field(default=None, description="Max tree depth (default: 2 in summary, 50 in full mode; max: 50)"),
+        depth: int | None = Field(default=None, description="Max tree depth (default: 3 in summary, 50 in full mode; max: 50)"),
         element: str | None = Field(default=None, description="Scope to subtree of this accessibility ID"),
         detail: str = Field(
             default="summary",
-            description="Detail level: 'summary' (default) shows 2 levels deep with class/id/label only. 'full' shows everything with frames and interactive info.",
+            description="Detail level: 'summary' (default) shows 3 levels deep with class/id/label only. 'full' shows everything with frames and interactive info.",
         ),
     ) -> str:
-        """Dump UIView hierarchy. Default summary mode shows 2 levels; use detail='full' for complete tree with frames."""
+        """Dump UIView hierarchy. Default summary mode shows 3 levels; use detail='full' for complete tree with frames."""
         params: dict = {}
         if depth is not None:
             params["depth"] = depth

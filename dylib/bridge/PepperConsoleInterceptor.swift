@@ -306,9 +306,9 @@ final class PepperConsoleInterceptor {
     ///   - hideNoise: When true, excludes known system framework noise (default: true).
     ///   - exclude: Additional substrings to exclude (case-insensitive).
     func recentLines(
-        limit: Int = 50, filter: String? = nil, sinceMs: Int64? = nil,
+        limit: Int = 20, offset: Int = 0, filter: String? = nil, sinceMs: Int64? = nil,
         hideNoise: Bool = true, exclude: [String]? = nil
-    ) -> [[String: AnyCodable]] {
+    ) -> (lines: [[String: AnyCodable]], total: Int) {
         queue.sync {
             var results = buffer
             if let sinceMs = sinceMs {
@@ -327,13 +327,16 @@ final class PepperConsoleInterceptor {
             if let filter = filter, !filter.isEmpty {
                 results = results.filter { $0.message.localizedCaseInsensitiveContains(filter) }
             }
-            return Array(results.suffix(limit)).map { entry in
+            let total = results.count
+            let afterOffset = results.dropLast(min(offset, results.count))
+            let page = Array(afterOffset.suffix(limit)).map { entry in
                 [
                     "timestamp_ms": AnyCodable(entry.timestampMs),
                     "message": AnyCodable(entry.message),
                     "source": AnyCodable(entry.source),
                 ]
             }
+            return (page, total)
         }
     }
 

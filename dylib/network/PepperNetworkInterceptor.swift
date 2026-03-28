@@ -432,12 +432,13 @@ final class PepperNetworkInterceptor {
     ///   - hideNoise: When true, excludes known Apple/system telemetry domains (default: true).
     ///   - exclude: Additional URL substrings to exclude (case-insensitive).
     func recentTransactions(
-        limit: Int = 50,
+        limit: Int = 10,
+        offset: Int = 0,
         filter: String? = nil,
         sinceMs: Int64? = nil,
         hideNoise: Bool = true,
         exclude: [String]? = nil
-    ) -> [NetworkTransaction] {
+    ) -> (transactions: [NetworkTransaction], total: Int) {
         queue.sync {
             var results = buffer
             if let sinceMs = sinceMs {
@@ -454,7 +455,9 @@ final class PepperNetworkInterceptor {
                     !exclude.contains { tx.request.url.localizedCaseInsensitiveContains($0) }
                 }
             }
-            return Array(results.suffix(limit))
+            let total = results.count
+            let afterOffset = results.dropLast(min(offset, results.count))
+            return (Array(afterOffset.suffix(limit)), total)
         }
     }
 

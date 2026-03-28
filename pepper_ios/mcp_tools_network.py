@@ -35,7 +35,8 @@ def register_network_tools(mcp, resolve_and_send):
             default=None,
             description="Comma-separated URL patterns to exclude from log (e.g. 'analytics.example.com,tracker.io')",
         ),
-        limit: int | None = Field(default=None, description="Max entries to return (for log action)"),
+        limit: int | None = Field(default=None, description="Max entries to return (for log action, default: 10)"),
+        offset: int | None = Field(default=None, description="Skip this many recent entries for pagination (for log action, default: 0)"),
         include_headers: bool | None = Field(
             default=None,
             description="Include request/response headers in log output (default: false)",
@@ -84,6 +85,8 @@ def register_network_tools(mcp, resolve_and_send):
             params["exclude"] = exclude
         if limit is not None:
             params["limit"] = limit
+        if offset is not None:
+            params["offset"] = offset
         if include_headers is not None:
             params["include_headers"] = include_headers
         if include_body is not None:
