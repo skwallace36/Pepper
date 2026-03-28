@@ -31,7 +31,9 @@ struct ConstraintsHandler: PepperHandler {
                 return .error(id: command.id, message: "Element not found: \(elementID)")
             }
             if result.tapPoint != nil {
-                return .error(id: command.id, message: "Element \(elementID) is a SwiftUI element without a UIView — constraints not available")
+                return .error(
+                    id: command.id,
+                    message: "Element \(elementID) is a SwiftUI element without a UIView — constraints not available")
             }
             rootView = result.view
         } else {

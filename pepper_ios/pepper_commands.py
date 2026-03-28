@@ -10,6 +10,7 @@ Import these instead of bare strings to get typo-safety and IDE completion::
     return await act_and_look(simulator, CMD_TAP, params)
 """
 
+
 CMD_ACCESSIBILITY_ACTION = "accessibility_action"
 CMD_ACCESSIBILITY_AUDIT = "accessibility_audit"
 CMD_ACCESSIBILITY_EVENTS = "accessibility_events"

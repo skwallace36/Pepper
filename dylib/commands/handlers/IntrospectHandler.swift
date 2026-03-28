@@ -146,10 +146,11 @@ struct IntrospectHandler: PepperHandler {
                 guard !coveredCenters.contains(x: elem.center.x, y: elem.center.y) else { continue }
             }
             // Try to find accessibility value for this element
-            var accValue: String? = pepperSanitizeLabel(accElements.first(where: { acc in
-                guard let accLabel = acc.label, accLabel == elem.label else { return false }
-                return abs(acc.frame.midX - elem.center.x) < 15 && abs(acc.frame.midY - elem.center.y) < 15
-            })?.value)
+            var accValue: String? = pepperSanitizeLabel(
+                accElements.first(where: { acc in
+                    guard let accLabel = acc.label, accLabel == elem.label else { return false }
+                    return abs(acc.frame.midX - elem.center.x) < 15 && abs(acc.frame.midY - elem.center.y) < 15
+                })?.value)
 
             // For text fields/views, read the actual .text value from the UIKit view.
             // Accessibility value may not reflect the typed content; this gives us
