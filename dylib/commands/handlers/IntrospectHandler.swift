@@ -63,6 +63,8 @@ struct IntrospectHandler: PepperHandler {
 
         let bridge = PepperSwiftUIBridge.shared
         let bandSize: CGFloat = CGFloat(command.params?["band"]?.intValue ?? 40)
+        let detailMode = command.params?["detail"]?.stringValue ?? "summary"
+        let isSummary = detailMode != "full"
 
         // Detect topmost presented modal/sheet. For full-screen modals, scope
         // element collection to that VC's view subtree. For sheets (half-height
@@ -773,7 +775,7 @@ struct IntrospectHandler: PepperHandler {
         // duplicate labels, then group into rows by Y-band
         mergedInteractive.sort { $0.center.y < $1.center.y }
         assignOrdinalIndices(&mergedInteractive)
-        let rows = groupIntoRows(mergedInteractive, bandSize: bandSize)
+        let rows = groupIntoRows(mergedInteractive, bandSize: bandSize, summary: isSummary)
 
         // Phase 7a: Extract screen info + nav bar title (needed before text serialization)
         let screenID: String
@@ -824,7 +826,7 @@ struct IntrospectHandler: PepperHandler {
         }
         textForOutput.sort { $0.center.y < $1.center.y }
         let volatileKeys = Self.trackVolatileText(&textForOutput)
-        let nonInteractiveSerialized = serializeNonInteractive(textForOutput, volatileKeys: volatileKeys)
+        let nonInteractiveSerialized = serializeNonInteractive(textForOutput, volatileKeys: volatileKeys, summary: isSummary)
         let screenSize = UIScreen.main.bounds.size
 
         logger.info(
@@ -847,18 +849,20 @@ struct IntrospectHandler: PepperHandler {
 
         var data: [String: AnyCodable] = [
             "screen": AnyCodable(screenID),
-            "screen_size": AnyCodable([
-                "w": AnyCodable(Int(screenSize.width)),
-                "h": AnyCodable(Int(screenSize.height)),
-            ]),
             "element_count": AnyCodable(mergedInteractive.count),
             "rows": AnyCodable(rows),
             "non_interactive": AnyCodable(nonInteractiveSerialized),
         ]
+        if !isSummary {
+            data["screen_size"] = AnyCodable([
+                "w": AnyCodable(Int(screenSize.width)),
+                "h": AnyCodable(Int(screenSize.height)),
+            ])
+        }
         if let title = navTitle, !title.isEmpty {
             data["nav_title"] = AnyCodable(title)
         }
-        if memMB > 0 {
+        if !isSummary && memMB > 0 {
             data["memory_mb"] = AnyCodable(memMB)
         }
         if bridge.lastInteractiveTruncated || bridge.lastAccessibilityTruncated {
@@ -887,9 +891,9 @@ struct IntrospectHandler: PepperHandler {
         if !leaks.isEmpty {
             data["leaks"] = AnyCodable(leaks)
         }
-        // Always include the screen key so the agent can see how screens
-        // are being identified for leak tracking
-        if screenKey != screenID {
+        // Include the screen key so the agent can see how screens
+        // are being identified for leak tracking (full mode only)
+        if !isSummary && screenKey != screenID {
             data["screen_key"] = AnyCodable(screenKey)
         }
 

@@ -80,6 +80,10 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
         save_screenshot: str | None = Field(
             default=None, description="Save screenshot to this file path (in addition to returning it)"
         ),
+        detail: str = Field(
+            default="summary",
+            description="Detail level: 'summary' (default) returns element names/types/tap commands — minimal tokens for agent use. 'full' includes frames, traits, heuristics, scroll_context — use when debugging layout.",
+        ),
     ) -> list:
         """Use this when you need to see what's on screen — returns all interactive elements with tap commands, plus visible text.
         This is your primary observation tool. Call it before acting to know what's available.
@@ -110,6 +114,8 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
                 look_params["region"] = region
         if ocr:
             look_params["ocr"] = True
+        if detail == "full":
+            look_params["detail"] = "full"
 
         # Always run the AX probe in parallel with the dylib command.
         # It checks for SpringBoard dialogs (permission prompts, etc.) that

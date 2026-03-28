@@ -79,7 +79,7 @@ extension IntrospectHandler {
     }
 
     /// Group elements into rows by Y-band proximity.
-    func groupIntoRows(_ elements: [MapElement], bandSize: CGFloat) -> [AnyCodable] {
+    func groupIntoRows(_ elements: [MapElement], bandSize: CGFloat, summary: Bool = false) -> [AnyCodable] {
         guard !elements.isEmpty else { return [] }
 
         var rows: [AnyCodable] = []
@@ -90,77 +90,76 @@ extension IntrospectHandler {
             if element.center.y - rowMinY <= bandSize {
                 currentRow.append(element)
             } else {
-                rows.append(serializeRow(currentRow))
+                rows.append(serializeRow(currentRow, summary: summary))
                 currentRow = [element]
                 rowMinY = element.center.y
             }
         }
         if !currentRow.isEmpty {
-            rows.append(serializeRow(currentRow))
+            rows.append(serializeRow(currentRow, summary: summary))
         }
 
         return rows
     }
 
     /// Serialize a row of elements for JSON output.
-    func serializeRow(_ elements: [MapElement]) -> AnyCodable {
+    /// When `summary` is true, omits frames, traits, heuristics, scroll_context,
+    /// and other verbose fields to reduce token count for agent use.
+    func serializeRow(_ elements: [MapElement], summary: Bool = false) -> AnyCodable {
         let minY = elements.map { $0.frame.origin.y }.min() ?? 0
         let maxY = elements.map { $0.frame.origin.y + $0.frame.size.height }.max() ?? 0
 
-        let serialized: [AnyCodable] = elements.sorted(by: { $0.center.x < $1.center.x }).map { elem in
-            var dict: [String: AnyCodable] = [
-                "type": AnyCodable(elem.type),
-                "center": AnyCodable([AnyCodable(Int(elem.center.x)), AnyCodable(Int(elem.center.y))]),
-                "frame": AnyCodable([
-                    AnyCodable(Int(elem.frame.origin.x)),
-                    AnyCodable(Int(elem.frame.origin.y)),
-                    AnyCodable(Int(elem.frame.size.width)),
-                    AnyCodable(Int(elem.frame.size.height)),
-                ]),
-                "hit_reachable": AnyCodable(elem.hitReachable),
-            ]
+        let serialized: [AnyCodable] = elements.sorted(by: { $0.center.x < $1.center.x }).map {
+            serializeElement($0, summary: summary)
+        }
 
+        var row: [String: AnyCodable] = [
+            "elements": AnyCodable(serialized),
+        ]
+        if !summary {
+            row["y_range"] = AnyCodable([AnyCodable(Int(minY)), AnyCodable(Int(maxY))])
+        }
+        return AnyCodable(row)
+    }
+
+    /// Serialize a single interactive element to a JSON dictionary.
+    private func serializeElement(_ elem: MapElement, summary: Bool) -> AnyCodable {
+        var dict: [String: AnyCodable] = [
+            "type": AnyCodable(elem.type),
+        ]
+
+        if !summary {
+            dict["center"] = AnyCodable([AnyCodable(Int(elem.center.x)), AnyCodable(Int(elem.center.y))])
+            dict["frame"] = AnyCodable([
+                AnyCodable(Int(elem.frame.origin.x)),
+                AnyCodable(Int(elem.frame.origin.y)),
+                AnyCodable(Int(elem.frame.size.width)),
+                AnyCodable(Int(elem.frame.size.height)),
+            ])
+            dict["hit_reachable"] = AnyCodable(elem.hitReachable)
             if elem.visible >= 0 {
                 dict["visible"] = AnyCodable(Double(round(elem.visible * 100) / 100))
             }
+        }
 
-            if let label = elem.label {
-                dict["label"] = AnyCodable(label)
-                dict["tap_cmd"] = AnyCodable("text")
-            } else if let iconName = elem.iconName {
-                dict["tap_cmd"] = AnyCodable("icon_name")
-                dict["suggested_tap"] = AnyCodable(iconName)
-            } else if let heuristic = elem.heuristic {
-                dict["tap_cmd"] = AnyCodable("heuristic")
-                dict["suggested_tap"] = AnyCodable(heuristic)
-            } else {
-                dict["tap_cmd"] = AnyCodable("point")
-            }
+        serializeTapTarget(elem, into: &dict, summary: summary)
 
-            if let idx = elem.index {
-                dict["index"] = AnyCodable(idx)
-            }
+        if let idx = elem.index {
+            dict["index"] = AnyCodable(idx)
+        }
 
-            if let heuristic = elem.heuristic {
-                dict["heuristic"] = AnyCodable(heuristic)
-            }
+        if !summary {
+            if let heuristic = elem.heuristic { dict["heuristic"] = AnyCodable(heuristic) }
+            if let iconName = elem.iconName { dict["icon_name"] = AnyCodable(iconName) }
+        }
 
-            if let iconName = elem.iconName {
-                dict["icon_name"] = AnyCodable(iconName)
-            }
+        if let value = elem.value, !value.isEmpty {
+            dict["value"] = AnyCodable(value)
+        }
 
-            if let value = elem.value, !value.isEmpty {
-                dict["value"] = AnyCodable(value)
-            }
-
-            if !elem.traits.isEmpty {
-                dict["traits"] = AnyCodable(elem.traits.map { AnyCodable($0) })
-            }
-
-            if let labelSource = elem.labelSource {
-                dict["label_source"] = AnyCodable(labelSource)
-            }
-
+        if !summary {
+            if !elem.traits.isEmpty { dict["traits"] = AnyCodable(elem.traits.map { AnyCodable($0) }) }
+            if let ls = elem.labelSource { dict["label_source"] = AnyCodable(ls) }
             if let sc = elem.scrollContext {
                 dict["scroll_context"] = AnyCodable(
                     [
@@ -168,23 +167,30 @@ extension IntrospectHandler {
                         "visible_in_viewport": AnyCodable(sc.visibleInViewport),
                     ] as [String: AnyCodable])
             }
-
-            if elem.selected == true {
-                dict["selected"] = AnyCodable(true)
-            }
-
-            if let toggleState = elem.toggleState {
-                dict["toggle_state"] = AnyCodable(toggleState)
-            }
-
-            return AnyCodable(dict)
         }
 
-        return AnyCodable(
-            [
-                "y_range": AnyCodable([AnyCodable(Int(minY)), AnyCodable(Int(maxY))]),
-                "elements": AnyCodable(serialized),
-            ] as [String: AnyCodable])
+        if elem.selected == true { dict["selected"] = AnyCodable(true) }
+        if let toggleState = elem.toggleState { dict["toggle_state"] = AnyCodable(toggleState) }
+
+        return AnyCodable(dict)
+    }
+
+    /// Add tap_cmd and related fields to an element dictionary.
+    private func serializeTapTarget(_ elem: MapElement, into dict: inout [String: AnyCodable], summary: Bool) {
+        if let label = elem.label {
+            dict["label"] = AnyCodable(label)
+            dict["tap_cmd"] = AnyCodable("text")
+        } else if let iconName = elem.iconName {
+            dict["tap_cmd"] = AnyCodable("icon_name")
+            dict["suggested_tap"] = AnyCodable(iconName)
+        } else if let heuristic = elem.heuristic {
+            dict["tap_cmd"] = AnyCodable("heuristic")
+            dict["suggested_tap"] = AnyCodable(heuristic)
+        } else {
+            // Point-based tap needs coordinates even in summary mode
+            dict["tap_cmd"] = AnyCodable("point")
+            dict["center"] = AnyCodable([AnyCodable(Int(elem.center.x)), AnyCodable(Int(elem.center.y))])
+        }
     }
 
     // MARK: - Spatial Query Helpers
@@ -607,23 +613,30 @@ extension IntrospectHandler {
     }
 
     /// Serialize non-interactive elements for JSON, marking volatile positions.
-    func serializeNonInteractive(_ elements: [MapElement], volatileKeys: Set<String>) -> [AnyCodable] {
+    /// When `summary` is true, returns only type, label, and value.
+    func serializeNonInteractive(_ elements: [MapElement], volatileKeys: Set<String>, summary: Bool = false)
+        -> [AnyCodable]
+    {
         elements.map { elem in
             var dict: [String: AnyCodable] = [
                 "type": AnyCodable(elem.type),
-                "center": AnyCodable([AnyCodable(Int(elem.center.x)), AnyCodable(Int(elem.center.y))]),
-                "frame": AnyCodable([
+            ]
+            if let label = elem.label { dict["label"] = AnyCodable(label) }
+            if let value = elem.value, !value.isEmpty { dict["value"] = AnyCodable(value) }
+
+            if !summary {
+                dict["center"] = AnyCodable([AnyCodable(Int(elem.center.x)), AnyCodable(Int(elem.center.y))])
+                dict["frame"] = AnyCodable([
                     AnyCodable(Int(elem.frame.origin.x)),
                     AnyCodable(Int(elem.frame.origin.y)),
                     AnyCodable(Int(elem.frame.size.width)),
                     AnyCodable(Int(elem.frame.size.height)),
-                ]),
-            ]
-            if let label = elem.label { dict["label"] = AnyCodable(label) }
-            if let value = elem.value, !value.isEmpty { dict["value"] = AnyCodable(value) }
-            if elem.visible >= 0 { dict["visible"] = AnyCodable(Double(round(elem.visible * 100) / 100)) }
-            if let ls = elem.labelSource { dict["label_source"] = AnyCodable(ls) }
-            if volatileKeys.contains(Self.posKey(elem.center)) { dict["volatile"] = AnyCodable(true) }
+                ])
+                if elem.visible >= 0 { dict["visible"] = AnyCodable(Double(round(elem.visible * 100) / 100)) }
+                if let ls = elem.labelSource { dict["label_source"] = AnyCodable(ls) }
+                if volatileKeys.contains(Self.posKey(elem.center)) { dict["volatile"] = AnyCodable(true) }
+            }
+
             return AnyCodable(dict)
         }
     }
