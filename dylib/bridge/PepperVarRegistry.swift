@@ -2,17 +2,6 @@ import Foundation
 import ObjectiveC
 import UIKit
 
-/// C function — find live instances of specific classes on the heap.
-/// Implemented in PepperHeapScan.c.
-@_silgen_name("pepper_heap_find_instances")
-func pepper_heap_find_instances(
-    _ target_classes: UnsafePointer<UnsafeRawPointer?>,
-    _ target_count: Int32,
-    _ out_instances: UnsafeMutablePointer<UnsafeMutablePointer<UnsafeRawPointer?>?>,
-    _ out_classes: UnsafeMutablePointer<UnsafeMutablePointer<UnsafeRawPointer?>?>,
-    _ out_count: UnsafeMutablePointer<Int32>
-) -> Int32
-
 /// Discovers and catalogs @Published properties on ObservableObject instances at runtime.
 /// Supports reading and writing values, triggering SwiftUI re-renders on mutation.
 ///
@@ -64,7 +53,7 @@ final class PepperVarRegistry {
     private var catalogCache: [String: [PropertyInfo]] = [:]
 
     /// Whether the initial heap scan for @Observable has run.
-    private var didInitialHeapScan = false
+    var didInitialHeapScan = false
 
     private init() {}
 
@@ -146,128 +135,6 @@ final class PepperVarRegistry {
         for child in vc.children {
             discoverFromVCTree(child)
         }
-    }
-
-    // MARK: - Heap-based @Observable Discovery (BUG-003)
-
-    /// Scan the heap for live instances of @Observable classes.
-    /// Uses ObjC runtime to find classes with `_$observationRegistrar` ivar,
-    /// Run heap scan lazily on first vars_inspect call, not at boot.
-    /// The scan blocks the main thread for 30+ seconds on complex SwiftUI apps.
-    func discoverFromHeapIfNeeded() {
-        guard !didInitialHeapScan else { return }
-        didInitialHeapScan = true
-        discoverFromHeap()
-    }
-
-    /// Scan the ObjC heap for @Observable instances. Uses class introspection first,
-    /// then the C heap scanner to find live instances. Independent of SwiftUI view tree.
-    func discoverFromHeap() {
-        // Safe mode: skip heap scanning entirely. Set PEPPER_SAFE_MODE=1 in CI
-        // or other environments where the heap scan may crash the process.
-        if ProcessInfo.processInfo.environment["PEPPER_SAFE_MODE"] != nil {
-            pepperLog.info("Vars: heap scan skipped (PEPPER_SAFE_MODE)", category: .bridge)
-            return
-        }
-
-        // Step 1: Find all ObjC classes that have a _$observationRegistrar ivar
-        let observableClasses = findObservableClasses()
-        guard !observableClasses.isEmpty else { return }
-
-        pepperLog.info("Vars: heap scan found \(observableClasses.count) @Observable class(es)", category: .bridge)
-
-        // Step 2: Use the heap scanner to find live instances
-        var targetPtrs: [UnsafeRawPointer?] = observableClasses.map { unsafeBitCast($0, to: UnsafeRawPointer.self) }
-
-        var instancesPtr: UnsafeMutablePointer<UnsafeRawPointer?>?
-        var classesPtr: UnsafeMutablePointer<UnsafeRawPointer?>?
-        var count: Int32 = 0
-
-        let result = targetPtrs.withUnsafeMutableBufferPointer { buf in
-            // swiftlint:disable:next force_unwrapping
-            pepper_heap_find_instances(buf.baseAddress!, Int32(buf.count), &instancesPtr, &classesPtr, &count)
-        }
-
-        guard result == 0, count > 0, let instances = instancesPtr, let classes = classesPtr else { return }
-        defer {
-            free(instances)
-            free(classes)
-        }
-
-        // Step 3: Track each found instance (deduplicated in trackInstance)
-        // Use a set to avoid tracking multiple instances of the same pointer
-        var seen = Set<UnsafeRawPointer>()
-        for i in 0..<Int(count) {
-            guard let instancePtr = instances[i] else { continue }
-            guard seen.insert(instancePtr).inserted else { continue }
-
-            // Liveness validation: the object may have been deallocated between
-            // the heap scan and now. Dereferencing a freed pointer is UB.
-            // 1) malloc_size returns 0 for freed blocks
-            guard malloc_size(instancePtr) >= MemoryLayout<UnsafeRawPointer>.size else { continue }
-            // 2) Verify the isa pointer still matches the class the scanner found.
-            //    If memory was freed and reused, the isa will differ.
-            guard let expectedClassPtr = classes[i] else { continue }
-            let isaPtr = instancePtr.load(as: UnsafeRawPointer.self)
-            guard isaPtr == expectedClassPtr else { continue }
-
-            // Safe to dereference — validated as a live instance of the expected class
-            let obj: AnyObject = Unmanaged<AnyObject>.fromOpaque(instancePtr).takeUnretainedValue()
-            trackInstance(obj, knownObservable: true)
-        }
-    }
-
-    /// Find all ObjC classes that have a `_$observationRegistrar` stored property.
-    /// This ivar is added by the @Observable macro (Observation framework).
-    /// Only returns classes from the app's main executable — system framework
-    /// @Observable classes (e.g. SwiftUI internals) are excluded to avoid crashes
-    /// when Mirror touches read-only __DATA_CONST memory.
-    private func findObservableClasses() -> [AnyClass] {
-        let totalCount = Int(objc_getClassList(nil, 0))
-        guard totalCount > 0 else { return [] }
-
-        let buffer = UnsafeMutablePointer<AnyClass>.allocate(capacity: totalCount)
-        let actualCount = Int(objc_getClassList(AutoreleasingUnsafeMutablePointer(buffer), Int32(totalCount)))
-        defer { buffer.deallocate() }
-
-        // Only include classes from the app's main bundle — skip all system frameworks.
-        // This avoids SwiftUI internal @Observable classes (NavigationSelectionHost,
-        // ScrollEnvironmentStorage, etc.) whose fields can point to read-only memory.
-        let mainBundlePath = Bundle.main.bundlePath
-
-        var result: [AnyClass] = []
-        for i in 0..<actualCount {
-            let cls: AnyClass = buffer[i]
-
-            // Filter to app bundle classes only
-            let classBundle = Bundle(for: cls)
-            guard classBundle.bundlePath.hasPrefix(mainBundlePath) else { continue }
-
-            // Skip Pepper dylib's own classes
-            let name = NSStringFromClass(cls)
-            if name.hasPrefix("Pepper.") { continue }
-
-            // Check if this class has _$observationRegistrar ivar
-            if classHasObservationRegistrar(cls) {
-                result.append(cls)
-            }
-        }
-        return result
-    }
-
-    /// Check if a class (not superclasses) declares a `_$observationRegistrar` ivar.
-    private func classHasObservationRegistrar(_ cls: AnyClass) -> Bool {
-        var ivarCount: UInt32 = 0
-        guard let ivars = class_copyIvarList(cls, &ivarCount) else { return false }
-        defer { free(ivars) }
-
-        for i in 0..<Int(ivarCount) {
-            guard let cName = ivar_getName(ivars[i]) else { continue }
-            if strcmp(cName, "_$observationRegistrar") == 0 {
-                return true
-            }
-        }
-        return false
     }
 
     /// Recursively mirror a SwiftUI view tree looking for ObservableObject refs.
@@ -495,7 +362,7 @@ final class PepperVarRegistry {
     /// - Parameter knownObservable: If true, skip the Mirror-based `isObservableClass` check
     ///   (already verified at the C/ObjC runtime level). This avoids crashes when Mirror
     ///   touches objects with fields in read-only memory.
-    private func trackInstance(_ obj: AnyObject, knownObservable: Bool = false) {
+    func trackInstance(_ obj: AnyObject, knownObservable: Bool = false) {
         let className = String(describing: type(of: obj))
 
         lock.lock()
@@ -601,37 +468,6 @@ final class PepperVarRegistry {
 
         catalogCache[className] = props
         return props
-    }
-
-    /// Extract the generic type parameter from "Published<SomeType>".
-    private func extractGenericParam(from typeName: String) -> String {
-        guard typeName.hasPrefix("Published<"), typeName.hasSuffix(">") else {
-            return typeName
-        }
-        let start = typeName.index(typeName.startIndex, offsetBy: 10)  // "Published<".count
-        let end = typeName.index(before: typeName.endIndex)
-        return String(typeName[start..<end])
-    }
-
-    /// Classify a type name string into our VarType enum.
-    private func classifyType(_ typeName: String) -> (VarType, VarType?) {
-        switch typeName {
-        case "Int": return (.int, nil)
-        case "Double": return (.double, nil)
-        case "CGFloat": return (.cgfloat, nil)
-        case "Bool": return (.bool, nil)
-        case "String": return (.string, nil)
-        case "CGSize": return (.cgSize, nil)
-        case "EdgeInsets": return (.edgeInsets, nil)
-        case "Color": return (.color, nil)
-        default:
-            if typeName.hasPrefix("Optional<") {
-                let innerName = String(typeName.dropFirst(9).dropLast(1))
-                let (innerType, _) = classifyType(innerName)
-                return (.optional, innerType)
-            }
-            return (.unknown, nil)
-        }
     }
 
     /// Find the ivar byte offset for a named property.
@@ -755,47 +591,6 @@ final class PepperVarRegistry {
         return result
     }
 
-    /// Describe a value for mirror output — handles optionals, collections, etc.
-    private func describeValue(_ value: Any) -> String {
-        let mirror = Mirror(reflecting: value)
-
-        // Unwrap optionals
-        if mirror.displayStyle == .optional {
-            if let first = mirror.children.first {
-                return describeValue(first.value)
-            }
-            return "nil"
-        }
-
-        // Short description for known simple types
-        if value is String || value is Int || value is Double || value is Bool || value is CGFloat {
-            return String(describing: value)
-        }
-
-        // Collections — show count + first few items
-        if mirror.displayStyle == .collection || mirror.displayStyle == .set {
-            let items = mirror.children.prefix(3).map { describeValue($0.value) }
-            let suffix = mirror.children.count > 3 ? ", ... (\(mirror.children.count) total)" : ""
-            return "[\(items.joined(separator: ", "))\(suffix)]"
-        }
-
-        // Dictionaries
-        if mirror.displayStyle == .dictionary {
-            return "[\(mirror.children.count) entries]"
-        }
-
-        return String(describing: value)
-    }
-
-    /// Describe an AnyCodable value as a string.
-    private func describeAnyCodable(_ value: AnyCodable) -> String {
-        if let s = value.stringValue { return s }
-        if let i = value.intValue { return String(i) }
-        if let d = value.doubleValue { return String(d) }
-        if let b = value.boolValue { return String(b) }
-        return String(describing: value.value)
-    }
-
     /// Dump all properties of a specific class.
     func dumpClass(_ className: String) -> [String: AnyCodable]? {
         lock.lock()
@@ -836,130 +631,6 @@ final class PepperVarRegistry {
             let value = extractPublishedValue(child.value)
             return serializeValue(value, type: prop.type, innerType: prop.innerType)
         }
-    }
-
-    /// Extract the wrapped value from a Published<T> instance.
-    /// Published<T> has two internal storage states:
-    ///   - .value(T) — before any subscriber attaches
-    ///   - .publisher(CurrentValueSubject<T, Never>) — after first subscription
-    private func extractPublishedValue(_ published: Any) -> Any? {
-        let mirror = Mirror(reflecting: published)
-
-        // Try direct "storage" child (Published internal layout)
-        for child in mirror.children {
-            let label = child.label ?? ""
-            if label == "storage" || label == "_storage" {
-                let storageMirror = Mirror(reflecting: child.value)
-                // Enum case: check children
-                for storageChild in storageMirror.children {
-                    let sLabel = storageChild.label ?? ""
-                    if sLabel == "value" || sLabel == ".0" {
-                        // .value(T) case — the T is directly here
-                        return storageChild.value
-                    }
-                    if sLabel == "publisher" || sLabel == ".0" {
-                        // .publisher case — it's a CurrentValueSubject, get its value
-                        let pubMirror = Mirror(reflecting: storageChild.value)
-                        for pubChild in pubMirror.children {
-                            let pLabel = pubChild.label ?? ""
-                            if pLabel == "value" || pLabel == "_value" || pLabel == "currentValue" {
-                                return pubChild.value
-                            }
-                        }
-                        // Try KVC on the subject
-                        let subject = storageChild.value as AnyObject
-                        if subject.responds(to: NSSelectorFromString("value")) {
-                            return subject.value(forKey: "value")
-                        }
-                    }
-                }
-                // If storage itself contains the value directly
-                return child.value
-            }
-        }
-
-        // Fallback: try to find value directly in mirror children
-        for child in mirror.children {
-            if child.label == "value" || child.label == "wrappedValue" {
-                return child.value
-            }
-        }
-
-        // Last resort: the first child might be the storage enum
-        if let first = mirror.children.first {
-            return extractValueFromEnum(first.value)
-        }
-
-        return nil
-    }
-
-    /// Try to extract value from a Swift enum storage.
-    private func extractValueFromEnum(_ value: Any) -> Any? {
-        let mirror = Mirror(reflecting: value)
-        if let first = mirror.children.first {
-            // Enum associated values appear as .0, .1, etc.
-            return first.value
-        }
-        return value
-    }
-
-    /// Serialize a value to AnyCodable based on its classified type.
-    // swiftlint:disable:next cyclomatic_complexity
-    private func serializeValue(_ value: Any?, type: VarType, innerType: VarType?) -> AnyCodable? {
-        guard let value = value else { return AnyCodable(NSNull()) }
-
-        // Handle optionals: unwrap the Optional<T>
-        if type == .optional {
-            let mirror = Mirror(reflecting: value)
-            if mirror.displayStyle == .optional {
-                if let first = mirror.children.first {
-                    return serializeValue(first.value, type: innerType ?? .unknown, innerType: nil)
-                } else {
-                    return AnyCodable(NSNull())  // nil
-                }
-            }
-            // Not actually Optional — serialize with inner type
-            return serializeValue(value, type: innerType ?? .unknown, innerType: nil)
-        }
-
-        switch type {
-        case .int:
-            if let v = value as? Int { return AnyCodable(v) }
-        case .double:
-            if let v = value as? Double { return AnyCodable(v) }
-        case .cgfloat:
-            if let v = value as? CGFloat { return AnyCodable(Double(v)) }
-        case .bool:
-            if let v = value as? Bool { return AnyCodable(v) }
-        case .string:
-            if let v = value as? String { return AnyCodable(v) }
-        case .cgSize:
-            if let v = value as? CGSize {
-                return AnyCodable([
-                    "width": AnyCodable(Double(v.width)),
-                    "height": AnyCodable(Double(v.height)),
-                ])
-            }
-        case .edgeInsets:
-            if let v = value as? UIEdgeInsets {
-                return AnyCodable([
-                    "top": AnyCodable(Double(v.top)),
-                    "leading": AnyCodable(Double(v.left)),
-                    "bottom": AnyCodable(Double(v.bottom)),
-                    "trailing": AnyCodable(Double(v.right)),
-                ])
-            }
-        case .color:
-            // Color → hex string
-            return AnyCodable(String(describing: value))
-        case .optional:
-            break  // handled above
-        case .unknown:
-            return AnyCodable(String(describing: value))
-        }
-
-        // Fallback: string description
-        return AnyCodable(String(describing: value))
     }
 
     // MARK: - Write
@@ -1010,56 +681,6 @@ final class PepperVarRegistry {
         return (newValue, nil)
     }
 
-    /// Convert a JSON AnyCodable to the target Swift type.
-    private func deserializeValue(_ json: AnyCodable, type: VarType, innerType: VarType?) -> Any? {
-        // Handle null for optionals
-        if type == .optional {
-            if json.isNull {
-                return NSNull()  // will be written as nil
-            }
-            return deserializeValue(json, type: innerType ?? .unknown, innerType: nil)
-        }
-
-        switch type {
-        case .int:
-            return json.intValue
-        case .double:
-            return json.doubleValue
-        case .cgfloat:
-            if let v = json.doubleValue { return CGFloat(v) }
-            return nil
-        case .bool:
-            return json.boolValue
-        case .string:
-            return json.stringValue
-        case .cgSize:
-            if let dict = json.dictValue,
-                let w = dict["width"]?.doubleValue,
-                let h = dict["height"]?.doubleValue
-            {
-                return CGSize(width: w, height: h)
-            }
-            return nil
-        case .edgeInsets:
-            if let dict = json.dictValue,
-                let top = dict["top"]?.doubleValue,
-                let leading = dict["leading"]?.doubleValue,
-                let bottom = dict["bottom"]?.doubleValue,
-                let trailing = dict["trailing"]?.doubleValue
-            {
-                return UIEdgeInsets(top: top, left: leading, bottom: bottom, right: trailing)
-            }
-            return nil
-        case .color:
-            // Accept hex string — return as-is, actual Color conversion is complex
-            return json.stringValue
-        case .optional:
-            return nil  // handled above
-        case .unknown:
-            return nil
-        }
-    }
-
     /// Perform the actual write to the Published property.
     private func performWrite(instance: AnyObject, prop: PropertyInfo, value: Any) -> String? {
         // Handle nil for optionals
@@ -1101,59 +722,6 @@ final class PepperVarRegistry {
         }
 
         return "All write strategies failed for '\(prop.name)'."
-    }
-
-    /// Write value into Published<T>'s internal CurrentValueSubject.
-    private func writeViaPublishedStorage(published: Any, value: Any, isNil: Bool) -> String? {
-        let mirror = Mirror(reflecting: published)
-
-        for child in mirror.children {
-            let label = child.label ?? ""
-            if label == "storage" || label == "_storage" {
-                let storageMirror = Mirror(reflecting: child.value)
-                for storageChild in storageMirror.children {
-                    // .publisher(CurrentValueSubject) case
-                    let subject = storageChild.value as AnyObject
-                    if subject.responds(to: NSSelectorFromString("value")) {
-                        if isNil {
-                            subject.setValue(nil, forKey: "value")
-                        } else {
-                            subject.setValue(value, forKey: "value")
-                        }
-                        return nil  // success
-                    }
-                }
-            }
-        }
-
-        return "Could not find CurrentValueSubject in Published storage."
-    }
-
-    /// Write to raw memory at the ivar offset. Unsafe but works for pure Swift classes.
-    private func writeRawMemory(
-        ptr: UnsafeMutableRawPointer, offset: Int, value: Any,
-        type: VarType, innerType: VarType?
-    ) -> String? {
-        let effectiveType = type == .optional ? (innerType ?? .unknown) : type
-
-        switch effectiveType {
-        case .int:
-            guard let v = value as? Int else { return "Type mismatch: expected Int" }
-            ptr.storeBytes(of: v, toByteOffset: offset, as: Int.self)
-        case .double:
-            guard let v = value as? Double else { return "Type mismatch: expected Double" }
-            ptr.storeBytes(of: v, toByteOffset: offset, as: Double.self)
-        case .cgfloat:
-            guard let v = value as? CGFloat else { return "Type mismatch: expected CGFloat" }
-            ptr.storeBytes(of: v, toByteOffset: offset, as: CGFloat.self)
-        case .bool:
-            guard let v = value as? Bool else { return "Type mismatch: expected Bool" }
-            ptr.storeBytes(of: v, toByteOffset: offset, as: Bool.self)
-        default:
-            return "Raw memory write not supported for type '\(effectiveType.rawValue)'"
-        }
-
-        return nil  // success
     }
 
     /// Fire objectWillChange.send() on the instance to trigger SwiftUI re-render.
