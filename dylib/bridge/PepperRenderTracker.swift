@@ -32,8 +32,9 @@ struct RenderEvent {
 ///
 /// Rate-limited to avoid performance impact — at most one snapshot per second per hosting view.
 ///
-/// Swizzles `layoutSubviews` on `_UIHostingView` to auto-record render events
+/// Swizzles `updateRootView` on `_UIHostingView` to auto-record render events
 /// into the flight recorder timeline for correlation with other event types.
+/// This tracks actual SwiftUI body evaluations, not UIKit layout passes.
 final class PepperRenderTracker {
 
     static let shared = PepperRenderTracker()
@@ -99,7 +100,7 @@ final class PepperRenderTracker {
     private var renderCounts: [String: Int] = [:]
     private let lock = NSLock()
 
-    /// Whether the layoutSubviews swizzle has been applied (auto-installed at startup).
+    /// Whether the updateRootView swizzle has been applied (auto-installed at startup).
     private var installed = false
 
     /// Whether the spike swizzles (updateRootView, didRender, setNeedsUpdate) are active.
@@ -126,7 +127,7 @@ final class PepperRenderTracker {
             timestampMs: currentTimestampMs(),
             hostingViewAddress: key,
             viewControllerType: vcType,
-            method: "layoutSubviews",
+            method: "updateRootView",
             cumulativeCount: count
         )
         appendEvent(event)
@@ -155,7 +156,8 @@ final class PepperRenderTracker {
 
     // MARK: - Lifecycle
 
-    /// Install the layoutSubviews swizzle on _UIHostingView. Idempotent.
+    /// Install the updateRootView swizzle on _UIHostingView. Idempotent.
+    /// Tracks actual SwiftUI body evaluations rather than UIKit layout passes.
     /// Must be called on the main thread (UIKit class resolution).
     func install() {
         guard !installed else { return }
@@ -166,13 +168,13 @@ final class PepperRenderTracker {
             return
         }
 
-        let originalSel = #selector(UIView.layoutSubviews)
-        let swizzledSel = #selector(UIView.pepper_renderTracker_layoutSubviews)
+        let originalSel = NSSelectorFromString("updateRootView")
+        let swizzledSel = #selector(UIView.pepper_renderTracker_updateRootView)
 
         guard let originalMethod = class_getInstanceMethod(hostingViewClass, originalSel),
             let swizzledMethod = class_getInstanceMethod(UIView.self, swizzledSel)
         else {
-            pepperLog.warning("Failed to resolve layoutSubviews methods for render tracking", category: .lifecycle)
+            pepperLog.warning("Failed to resolve updateRootView methods for render tracking", category: .lifecycle)
             return
         }
 
@@ -185,19 +187,19 @@ final class PepperRenderTracker {
         )
 
         if didAdd {
-            // Successfully added — now swap so _UIHostingView.layoutSubviews calls our impl
+            // Successfully added — now swap so _UIHostingView.updateRootView calls our impl
             guard let addedMethod = class_getInstanceMethod(hostingViewClass, swizzledSel) else { return }
             method_exchangeImplementations(originalMethod, addedMethod)
         } else {
             method_exchangeImplementations(originalMethod, swizzledMethod)
         }
 
-        pepperLog.info("Render tracker installed (_UIHostingView.layoutSubviews swizzled)", category: .lifecycle)
+        pepperLog.info("Render tracker installed (_UIHostingView.updateRootView swizzled)", category: .lifecycle)
     }
 
-    // MARK: - Spike: start/stop for updateRootView, didRender, setNeedsUpdate
+    // MARK: - Spike: start/stop for didRender, setNeedsUpdate
 
-    /// Start the render spike — swizzle updateRootView, didRender, and setNeedsUpdate
+    /// Start the render spike — swizzle didRender and setNeedsUpdate
     /// on _UIHostingView and all subclasses. Logs to console for observability.
     /// Returns a report of what was installed.
     @discardableResult
@@ -212,7 +214,7 @@ final class PepperRenderTracker {
             return ["status": "error", "message": msg]
         }
 
-        // Also ensure layoutSubviews tracking is installed
+        // Also ensure updateRootView tracking is installed
         install()
 
         let targetClasses = findHostingViewClasses(base: baseClass)
@@ -220,9 +222,10 @@ final class PepperRenderTracker {
             "[PepperRenderTracker] Found \(targetClasses.count) hosting view class(es): \(targetClasses.map { NSStringFromClass($0) })"
         )
 
-        // Methods to swizzle with their replacement selectors
+        // Methods to swizzle with their replacement selectors.
+        // updateRootView is already swizzled by install() for default counting,
+        // so the spike only adds didRender and setNeedsUpdate.
         let methodMap: [(name: String, swizzledSel: Selector)] = [
-            ("updateRootView", #selector(UIView.pepper_spike_updateRootView)),
             ("didRender", #selector(UIView.pepper_spike_didRender)),
             ("setNeedsUpdate", #selector(UIView.pepper_spike_setNeedsUpdate)),
         ]
@@ -782,22 +785,15 @@ struct ViewTreeChange {
 // MARK: - Swizzled methods
 
 extension UIView {
-    /// Replacement for `_UIHostingView.layoutSubviews`. After calling the original,
-    /// records a render event. The recursive call invokes the original implementation
-    /// due to method_exchangeImplementations.
-    @objc dynamic func pepper_renderTracker_layoutSubviews() {
-        pepper_renderTracker_layoutSubviews()  // calls original via exchange
+    /// Replacement for `_UIHostingView.updateRootView()`. After calling the original,
+    /// records a render event. Tracks actual SwiftUI body evaluations.
+    /// The recursive call invokes the original implementation due to method_exchangeImplementations.
+    @objc dynamic func pepper_renderTracker_updateRootView() {
+        pepper_renderTracker_updateRootView()  // calls original via exchange
         PepperRenderTracker.shared.recordRender(for: self)
     }
 
     // MARK: - Spike swizzle targets
-
-    /// Replacement for `_UIHostingView.updateRootView()`.
-    /// Called when SwiftUI evaluates the body.
-    @objc dynamic func pepper_spike_updateRootView() {
-        pepper_spike_updateRootView()  // calls original via exchange
-        PepperRenderTracker.shared.recordSpikeCall(method: "updateRootView", view: self)
-    }
 
     /// Replacement for `_UIHostingView.didRender()`.
     /// Called after a render pass completes.
