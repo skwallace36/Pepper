@@ -187,6 +187,13 @@ struct NetworkHandler: PepperHandler {
         let includeHeaders = command.params?["include_headers"]?.boolValue ?? false
         let includeBody = command.params?["include_body"]?.boolValue ?? false
 
+        // Noise filtering: hide_noise defaults to true, exclude is optional CSV
+        let hideNoise = command.params?["hide_noise"]?.boolValue ?? true
+        let excludeRaw = command.params?["exclude"]?.stringValue
+        let exclude: [String]? = excludeRaw?.split(separator: ",")
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+
         // Body logic: include_body=true defaults to 4096, explicit max_body overrides.
         // When include_body is false and no explicit max_body, default to 0 (omit bodies).
         let explicitMaxBody = command.params?["max_body"]?.intValue
@@ -203,16 +210,20 @@ struct NetworkHandler: PepperHandler {
         let sinceMs: Int64? =
             (command.params?["since_ms"]?.value as? Int).map { Int64($0) }
             ?? (command.params?["since_ms"]?.value as? Int64)
-        let transactions = interceptor.recentTransactions(limit: limit, filter: filter, sinceMs: sinceMs)
-        return .ok(
-            id: command.id,
-            data: [
-                "count": AnyCodable(transactions.count),
-                "transactions": AnyCodable(
-                    transactions.map {
-                        AnyCodable($0.toDictionary(maxBody: maxBody, includeHeaders: includeHeaders))
-                    }),
-            ])
+        let transactions = interceptor.recentTransactions(
+            limit: limit, filter: filter, sinceMs: sinceMs, hideNoise: hideNoise, exclude: exclude)
+
+        var data: [String: AnyCodable] = [
+            "count": AnyCodable(transactions.count),
+            "transactions": AnyCodable(
+                transactions.map {
+                    AnyCodable($0.toDictionary(maxBody: maxBody, includeHeaders: includeHeaders))
+                }),
+        ]
+        if hideNoise {
+            data["noise_filtered"] = AnyCodable(true)
+        }
+        return .ok(id: command.id, data: data)
     }
 
     // MARK: - Simulate
