@@ -275,12 +275,13 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `dynamic_type` | reset | untested |  |  |
 | `dynamic_type` | sizes | untested |  |  |
 | `verify` | — | untested | Any state | New command. Explicit pass/fail assertions on screen state. Supports text presence, element state (visible/enabled/value), and screen name checks. Batch mode for multiple assertions in one call. |
+| `swizzle_check` | — | untested | Any app | New command. Calls each swizzled authorization API and verifies the swizzle intercepted (completion fired synchronously with auto-grant value). Covers: notifications, photos, tracking, camera, contacts, location, eventkit_events, eventkit_reminders. |
 
 ## Summary
 
-**255 test points** across 70 commands.
+**256 test points** across 71 commands.
 
 - pass: 137
 - fail: 3
-- untested: 104
+- untested: 105
 
