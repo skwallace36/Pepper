@@ -30,6 +30,9 @@ final class PepperLeakMonitor {
     /// Per-screen snapshots: screen_key → (class_name → instance_count)
     private var screenSnapshots: [String: [String: Int]] = [:]
 
+    /// Per-screen observation count: screen_key → number of snapshots taken
+    private var screenObservations: [String: Int] = [:]
+
     /// Consecutive growth counter: (screen_key, class_name) → count of consecutive positive deltas
     private var growthStreaks: [String: Int] = [:]
 
@@ -88,8 +91,13 @@ final class PepperLeakMonitor {
         return queue.sync {
             var leaks: [[String: AnyCodable]] = []
 
+            screenObservations[screenKey, default: 0] += 1
+            let observations = screenObservations[screenKey] ?? 1
+            let inWarmup = observations <= HeapExclusions.warmupObservations
+
             if let previous = screenSnapshots[screenKey] {
                 for (cls, currentCount) in current {
+                    if HeapExclusions.isBenign(cls) { continue }
                     let prevCount = previous[cls] ?? 0
                     let delta = currentCount - prevCount
                     let streakKey = "\(screenKey)|\(cls)"
@@ -100,6 +108,9 @@ final class PepperLeakMonitor {
                     } else {
                         growthStreaks[streakKey] = 0
                     }
+
+                    // During warmup, only track — don't report
+                    if inWarmup { continue }
 
                     // Report if: large single spike OR sustained growth over multiple observations
                     let isSpike = delta >= spikeThreshold
@@ -162,6 +173,7 @@ final class PepperLeakMonitor {
     func reset() {
         queue.sync {
             screenSnapshots.removeAll()
+            screenObservations.removeAll()
             growthStreaks.removeAll()
             warnings.removeAll()
         }

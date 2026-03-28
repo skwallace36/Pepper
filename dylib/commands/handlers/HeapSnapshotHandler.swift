@@ -103,6 +103,7 @@ struct HeapSnapshotHandler: PepperHandler {
         var shrinking: [[String: AnyCodable]] = []
 
         for (cls, currentCount) in current {
+            if HeapExclusions.isBenign(cls) { continue }
             let baseCount = baseline[cls] ?? 0
             let delta = currentCount - baseCount
             if delta >= minGrowth {
@@ -123,7 +124,7 @@ struct HeapSnapshotHandler: PepperHandler {
         }
 
         // Classes that disappeared entirely
-        for (cls, baseCount) in baseline where current[cls] == nil {
+        for (cls, baseCount) in baseline where current[cls] == nil && !HeapExclusions.isBenign(cls) {
             shrinking.append([
                 "class": AnyCodable(cls),
                 "before": AnyCodable(baseCount),
@@ -163,15 +164,18 @@ struct HeapSnapshotHandler: PepperHandler {
 
         let current = scanHeap()
         let threshold = command.params?["threshold"]?.intValue ?? 1
+        let elapsed = Int(-baselineTime.timeIntervalSinceNow)
+        let inWarmup = elapsed < HeapExclusions.warmupSeconds
 
         var leaks: [[String: AnyCodable]] = []
 
         for (cls, currentCount) in current {
+            if HeapExclusions.isBenign(cls) { continue }
             let baseCount = baseline[cls] ?? 0
             let delta = currentCount - baseCount
             guard delta >= threshold else { continue }
 
-            let severity = classifySeverity(baseline: baseCount, current: currentCount, delta: delta)
+            let severity = inWarmup ? "low" : classifySeverity(baseline: baseCount, current: currentCount, delta: delta)
             leaks.append([
                 "class": AnyCodable(cls),
                 "baseline": AnyCodable(baseCount),
@@ -192,10 +196,11 @@ struct HeapSnapshotHandler: PepperHandler {
 
         let highCount = leaks.filter { $0["severity"]?.stringValue == "high" }.count
         let mediumCount = leaks.filter { $0["severity"]?.stringValue == "medium" }.count
-        let elapsed = Int(-baselineTime.timeIntervalSinceNow)
 
         let verdict: String
-        if leaks.isEmpty {
+        if inWarmup {
+            verdict = "Warmup period (\(HeapExclusions.warmupSeconds)s) — growth not yet classified"
+        } else if leaks.isEmpty {
             verdict = "No leaks detected"
         } else if highCount > 0 {
             verdict = "\(highCount) high-severity leak(s) detected — likely retain cycles"
@@ -203,17 +208,20 @@ struct HeapSnapshotHandler: PepperHandler {
             verdict = "\(mediumCount) medium-severity growth(s) detected — review recommended"
         }
 
-        return .ok(
-            id: command.id,
-            data: [
-                "leaks": AnyCodable(leaks),
-                "leak_count": AnyCodable(leaks.count),
-                "high_count": AnyCodable(highCount),
-                "medium_count": AnyCodable(mediumCount),
-                "elapsed_seconds": AnyCodable(elapsed),
-                "verdict": AnyCodable(verdict),
-                "memory": AnyCodable(getMemoryInfo()),
-            ])
+        var data: [String: AnyCodable] = [
+            "leaks": AnyCodable(leaks),
+            "leak_count": AnyCodable(leaks.count),
+            "high_count": AnyCodable(highCount),
+            "medium_count": AnyCodable(mediumCount),
+            "elapsed_seconds": AnyCodable(elapsed),
+            "verdict": AnyCodable(verdict),
+            "memory": AnyCodable(getMemoryInfo()),
+        ]
+        if inWarmup {
+            data["warmup"] = AnyCodable(true)
+        }
+
+        return .ok(id: command.id, data: data)
     }
 
     /// Classify growth severity based on delta and growth ratio.
