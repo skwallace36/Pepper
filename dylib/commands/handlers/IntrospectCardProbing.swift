@@ -2,7 +2,7 @@ import UIKit
 
 // MARK: - Card Detection via CALayer Probing
 
-extension IntrospectHandler {
+extension MapModeIntrospector {
 
     /// Detect tappable card containers invisible to standard element discovery.
     ///
