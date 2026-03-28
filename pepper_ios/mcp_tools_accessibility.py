@@ -31,15 +31,7 @@ def register_accessibility_tools(mcp, resolve_and_send):
             description="Minimum severity to include: error, warning (default), info",
         ),
     ) -> str:
-        """Use this to check for accessibility violations on the current screen.
-
-        Checks for: missing labels on interactive elements, invalid/missing traits,
-        insufficient color contrast (WCAG 2.1 AA), fixed fonts without Dynamic Type,
-        tap targets smaller than 44x44pt, and conflicting trait combinations.
-
-        Returns a list of issues sorted by severity with element details and frames.
-
-        Example: `accessibility_audit` → review reported issues → fix in code → re-audit to verify."""
+        """Audit the current screen for accessibility violations — missing labels, contrast, small tap targets, Dynamic Type."""
         params: dict = {}
         if checks is not None:
             params["checks"] = checks
@@ -68,19 +60,7 @@ def register_accessibility_tools(mcp, resolve_and_send):
             description="Index of the custom action to invoke (for invoke action, alternative to name)",
         ),
     ) -> str:
-        """Use this to test VoiceOver interactions without enabling VoiceOver.
-
-        Actions:
-        - list: List custom accessibility actions on an element.
-        - invoke: Invoke a custom action by name or index.
-        - escape: Trigger accessibilityPerformEscape() (two-finger Z gesture equivalent).
-        - magic_tap: Trigger accessibilityPerformMagicTap() (two-finger double-tap equivalent).
-        - increment: Call accessibilityIncrement() on adjustable elements (sliders, steppers).
-        - decrement: Call accessibilityDecrement() on adjustable elements.
-
-        For escape/magic_tap, element is optional — walks the responder chain from the current context.
-
-        Example: `accessibility_action action=list element=slider1` → `accessibility_action action=increment element=slider1`."""
+        """Test VoiceOver interactions without enabling VoiceOver — list/invoke custom actions, escape, magic_tap, increment, decrement."""
         params: dict = {"action": action}
         if element is not None:
             params["element"] = element
@@ -101,25 +81,7 @@ def register_accessibility_tools(mcp, resolve_and_send):
             default=None, description="Only events after this epoch-ms timestamp (for 'events' action)"
         ),
     ) -> str:
-        """Use this to detect screen changes instantly via UIAccessibility notifications.
-
-        Unlike polling, accessibility notifications fire immediately when the screen updates.
-        When the observer is active, wait_for uses these signals to wake up early instead of
-        sleeping the full poll interval — making transitions near-instant to detect.
-
-        Event types captured:
-        - screen_changed: major screen transition (view controller push/pop, modal)
-        - layout_changed: partial layout update within current screen
-        - announcement: VoiceOver announcement finished (includes text)
-
-        Actions:
-        - start: begin observing (registers for UIAccessibility notifications)
-        - stop: stop observing
-        - status: check if active and current event counts
-        - events: drain the ring buffer (newest last, up to 500 events retained)
-        - clear: empty the ring buffer without stopping
-
-        Example: `accessibility_events action=start` → interact with app → `accessibility_events action=events` → `accessibility_events action=stop`."""
+        """Detect screen changes instantly via UIAccessibility notifications (screen_changed, layout_changed, announcement)."""
         params: dict = {"action": action}
         if limit is not None:
             params["limit"] = limit

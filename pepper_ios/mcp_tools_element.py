@@ -25,11 +25,7 @@ def register_element_tools(mcp, resolve_and_send, act_and_look):
         element: str = Field(description="Accessibility ID of the switch/segment to toggle"),
         value: int | None = Field(default=None, description="Target segment index (for segmented controls)"),
     ) -> str:
-        """Use this when you need to flip a switch or change a segmented control.
-        Prefer this over tap for switches — toggle handles on/off state correctly, while tap may miss the hit target.
-        For switches: flips on/off. For segments: advances to next or jumps to specified index via value param.
-        Requires the element's accessibility ID (visible in look output).
-        Shows screen state after toggling."""
+        """Flip a switch or change a segmented control by accessibility ID. Prefer over tap for switches. Shows screen state after."""
         params: dict = {"element": element}
         if value is not None:
             params["value"] = value
@@ -54,9 +50,7 @@ def register_element_tools(mcp, resolve_and_send, act_and_look):
             description="Detail level: 'summary' (default) shows 2 levels deep with class/id/label only. 'full' shows everything with frames and interactive info.",
         ),
     ) -> str:
-        """Dump UIView hierarchy for debugging. Use detail='full' for the complete view tree with frames and interactive info.
-        Default summary mode shows 2 levels deep with class names, IDs, and labels — enough to understand structure.
-        Warning: full view tree can be large — use depth limit or scope to a subtree."""
+        """Dump UIView hierarchy. Default summary mode shows 2 levels; use detail='full' for complete tree with frames."""
         params: dict = {}
         if depth is not None:
             params["depth"] = depth
@@ -70,28 +64,12 @@ def register_element_tools(mcp, resolve_and_send, act_and_look):
     async def find(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
         predicate: str = Field(
-            description="NSPredicate format string (e.g. \"label CONTAINS 'Save' AND type == 'button'\")"
+            description="NSPredicate format string. Properties: label, type (button/toggle/text/searchField/tab), className, interactive, enabled, hitReachable, visible, heuristic, iconName, traits, x/y/width/height/centerX/centerY, viewController, presentationContext"
         ),
         action: str = Field(default="list", description="Action: list (default), first, count"),
         limit: int | None = Field(default=None, description="Max results to return (default: 50)"),
     ) -> str:
-        """Query on-screen elements using NSPredicate expressions. Native iOS predicate syntax.
-
-        Available properties:
-          label (String), type (String: button/toggle/text/searchField/tab/etc),
-          className (String), interactive (Bool), enabled (Bool), hitReachable (Bool),
-          visible (Float), heuristic (String), iconName (String), traits ([String]),
-          x/y/width/height/centerX/centerY (Double), viewController (String),
-          presentationContext (String: root/sheet/modal/navigation)
-
-        Examples:
-          "label CONTAINS 'Save'"
-          "type == 'button' AND hitReachable == true"
-          "'selected' IN traits"
-          "label LIKE '*Settings*' AND interactive == true"
-          "centerY > 400 AND type == 'toggle'"
-          "viewController == 'ProfileViewController'"
-        """
+        """Query on-screen elements using NSPredicate expressions (e.g. "label CONTAINS 'Save' AND type == 'button'")."""
         params: dict = {"predicate": predicate, "action": action}
         if limit is not None:
             params["limit"] = limit

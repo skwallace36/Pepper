@@ -649,9 +649,7 @@ async def wait_for(
     screen: str | None = Field(default=None, description="Wait for a specific screen ID (alternative to element)"),
     timeout_ms: int | None = Field(default=None, description="Timeout in milliseconds (default: 5000)"),
 ) -> str:
-    """Wait for a condition to be met — element visible, text appears, or screen changes.
-    Polls at 100ms intervals until the condition is satisfied or timeout.
-    Use this after navigation or actions that trigger async UI updates."""
+    """Wait for a condition — element visible, text appears, or screen changes. Use after actions that trigger async UI updates."""
     until: dict = {}
     if element:
         until["element"] = element
@@ -678,8 +676,7 @@ async def wait_idle(
     include_network: bool = Field(default=False, description="Also wait for pending network requests"),
     debug: bool = Field(default=False, description="Return what's blocking idle instead of waiting"),
 ) -> str:
-    """Wait for the app to become idle — no animations, no pending view controller transitions.
-    Use after navigation or complex interactions to ensure the UI has settled before inspecting."""
+    """Wait for the app to become idle — no animations or pending transitions. Use before inspecting after complex interactions."""
     params: dict = {}
     if timeout_ms is not None:
         params["timeout_ms"] = timeout_ms
@@ -701,11 +698,7 @@ async def build_sim(
     scheme: str | None = Field(default=None, description="Build scheme (default: from .env APP_SCHEME)"),
     simulator: str | None = Field(default=None, description="Simulator UDID for -destination"),
 ) -> str:
-    """Compile the iOS app for SIMULATOR. Build only — does not install or launch.
-
-    This is for simulator builds (iPhone/iPad simulators). For physical device builds, use build_hardware.
-    Use this to check if code compiles. To build AND restart the app, use iterate instead.
-    Returns structured error messages on failure. Workspace is required."""
+    """Compile the iOS app for simulator. Build only — does not install or launch. Use iterate for build + deploy."""
     success, message = await _build_app(workspace, scheme, simulator)
     return message
 
@@ -720,12 +713,7 @@ async def build_hardware(
     install: bool = Field(default=True, description="Install on device after building"),
     launch: bool = Field(default=True, description="Launch app after installing"),
 ) -> str:
-    """Build the iOS app for a PHYSICAL DEVICE connected via USB/WiFi.
-
-    NOT for simulators — use build_sim for simulator builds.
-    No Pepper dylib injection — clean device build for real-hardware testing.
-    Set install=false to compile only. Requires DEVICE_DEVICECTL_UUID in .env for install/launch.
-    Workspace is required."""
+    """Build the iOS app for a physical device connected via USB/WiFi. Not for simulators — use build_sim instead."""
     cfg = get_config()
     devicectl_uuid = cfg["device_devicectl_uuid"]
 
@@ -772,12 +760,7 @@ async def iterate(
     simulator: str | None = Field(default=None, description="Simulator UDID"),
     bundle_id: str | None = Field(default=None, description="App bundle ID (default: from .env APP_BUNDLE_ID)"),
 ) -> str:
-    """Build + deploy + verify in one call. The go-to tool after editing app source code.
-
-    Compiles the app, installs on simulator, launches with Pepper dylib injected,
-    and returns the current screen state so you can verify changes took effect.
-    Equivalent to calling build_sim then deploy_sim, but faster and returns screen state.
-    Workspace is required."""
+    """Build + deploy + verify in one call. The go-to tool after editing app source code. Returns screen state."""
     # Resolve sim first
     try:
         sim = _resolve_simulator(simulator)
@@ -810,12 +793,7 @@ async def deploy_sim(
         description="Skip auto-granting privacy permissions (photos, camera, microphone, contacts, calendar, location)",
     ),
 ) -> str:
-    """Terminate, install, and relaunch the app on SIMULATOR with Pepper injected.
-
-    Requires workspace so it can find the built .app in DerivedData and install it.
-    Does NOT rebuild — the last-compiled binary is used.
-    Use after a crash or when you need a fresh app launch without recompiling.
-    For build + restart, use iterate instead."""
+    """Terminate, install, and relaunch the app with Pepper injected. Does not rebuild — uses last-compiled binary."""
     try:
         sim = _resolve_simulator(simulator)
     except RuntimeError as e:
@@ -839,22 +817,7 @@ async def webview(
     index: int | None = Field(default=None, description="WKWebView index when multiple are present (default: 0)"),
     limit: int | None = Field(default=None, description="Max DOM elements to return (default: 50, for dom)"),
 ) -> str:
-    """Inspect and interact with WKWebView instances embedded in the app (hybrid apps).
-
-    Use this when the app contains web content (login flows, content pages, settings)
-    that Pepper's native view hierarchy tools cannot reach.
-
-    Actions:
-    - url:      List all WKWebViews found, with current URL, title, and navigation state.
-    - evaluate: Execute arbitrary JavaScript and return the result. Pass script='...'
-    - dom:      Return a simplified DOM element listing. Use selector to filter (e.g. 'a', 'input', '#id').
-
-    Examples:
-      webview(action='url')
-      webview(action='evaluate', script='document.title')
-      webview(action='dom', selector='input')
-      webview(action='evaluate', script='document.querySelector("#email").value')
-    """
+    """Inspect and interact with WKWebView instances — get URLs, execute JavaScript, or query the DOM."""
     params: dict = {"action": action}
     if script is not None:
         params["script"] = script

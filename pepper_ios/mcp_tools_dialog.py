@@ -185,15 +185,7 @@ def register_dialog_tools(mcp, resolve_and_send, resolve_simulator=None):
             default=None, description='JSON array of button titles for auto-dismiss (e.g. \'["Allow","OK"]\')'
         ),
     ) -> str:
-        """Interact with system dialogs (alerts, permission prompts, share sheets).
-        - list: see all pending dialogs
-        - current: get the topmost dialog
-        - dismiss: tap a button on the current dialog
-        - dismiss_system: detect + dismiss system dialog in one step (tries simctl privacy grant, then button click fallback)
-        - detect_system: single source of truth for ALL dialogs — combines in-process (intercepted UIAlertControllers) + system (SpringBoard via macOS Accessibility). Returns both signals.
-        - auto_dismiss: auto-handle permission dialogs (Allow, OK, etc.)
-        - share_sheet: check if a share sheet is showing
-        - dismiss_sheet: close the share sheet"""
+        """Interact with system dialogs — alerts, permission prompts, share sheets. Use dismiss_system to auto-handle permission dialogs."""
         if action == "dismiss_system":
             result = await _dismiss_system_dialog(simulator, resolve_and_send, resolve_simulator)
             return json.dumps(result, indent=2) if isinstance(result, dict) else result

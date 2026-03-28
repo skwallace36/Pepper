@@ -30,8 +30,7 @@ def register_sim_tools(mcp, resolve_and_send, resolve_simulator):
         params: str | dict | None = Field(default=None, description="JSON params (string or object)"),
         timeout: float = Field(default=10, description="Timeout in seconds"),
     ) -> str:
-        """Send any raw command to the Pepper dylib. Escape hatch for commands not exposed as dedicated tools.
-        Check status first to confirm Pepper is connected."""
+        """Send any raw command to the Pepper dylib. Escape hatch for commands not exposed as dedicated tools."""
         p = None
         if params:
             if isinstance(params, dict):
@@ -64,24 +63,7 @@ def register_sim_tools(mcp, resolve_and_send, resolve_simulator):
         clear_time: bool = Field(default=False, description="For action=status_bar: clear override instead of setting"),
         time: str | None = Field(default=None, description="For action=status_bar: time string like '09:41'"),
     ) -> str:
-        """Control the iOS Simulator itself — not the app process. Uses simctl under the hood.
-
-        This manages the simulator environment: permissions, GPS, biometrics, installed apps,
-        and device lifecycle. For app-level control, use deploy (restart app) or iterate (build + deploy).
-
-        Actions:
-          list           — show simulators with active Pepper connections
-          permissions    — grant/revoke/reset app permissions (photos, camera, microphone, contacts,
-                           calendar, reminders, location-always, location-when-in-use, notifications, health)
-          location       — set GPS coordinates (latitude + longitude); clear with 0,0
-          biometrics     — enroll Face ID or trigger a match for auth flow testing
-          open_url       — open a deep link or web URL in the simulator
-          install        — install .app/.ipa by path
-          uninstall      — remove app by bundle ID
-          addmedia       — inject photo/video into camera roll for picker testing
-          privacy_reset  — wipe all permission grants for a bundle ID
-          status_bar     — override status bar (time='09:41' for clean screenshots)
-          boot / shutdown / erase — simulator lifecycle (erase destroys all data)"""
+        """Control the iOS Simulator environment via simctl — permissions, GPS, biometrics, installed apps, and device lifecycle."""
 
         sim = simulator_id
         if action == "list":
