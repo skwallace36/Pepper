@@ -10,14 +10,15 @@ struct NetworkTransaction: Codable {
     /// GraphQL operation names parsed from the request body (empty if not a GraphQL request).
     var graphqlOperations: [String]?
 
-    func toDictionary(maxBody: Int? = nil) -> [String: AnyCodable] {
+    func toDictionary(maxBody: Int? = nil, includeHeaders: Bool = true) -> [String: AnyCodable] {
         var dict: [String: AnyCodable] = [
             "id": AnyCodable(id),
-            "request": AnyCodable(request.toDictionary(maxBody: maxBody)),
+            "request": AnyCodable(request.toDictionary(maxBody: maxBody, includeHeaders: includeHeaders)),
             "timing": AnyCodable(timing.toDictionary()),
         ]
         if let response = response {
-            dict["response"] = AnyCodable(response.toDictionary(maxBody: maxBody))
+            dict["response"] = AnyCodable(
+                response.toDictionary(maxBody: maxBody, includeHeaders: includeHeaders))
         }
         if let error = error {
             dict["error"] = AnyCodable(error)
@@ -44,14 +45,16 @@ struct NetworkRequestInfo: Codable {
     let originalBodySize: Int
     let timestampMs: Int64
 
-    func toDictionary(maxBody: Int? = nil) -> [String: Any] {
+    func toDictionary(maxBody: Int? = nil, includeHeaders: Bool = true) -> [String: Any] {
         var dict: [String: Any] = [
             "url": url,
             "method": method,
-            "headers": headers,
             "timestamp_ms": timestampMs,
             "original_body_size": originalBodySize,
         ]
+        if includeHeaders {
+            dict["headers"] = headers
+        }
         if let body = body {
             if let max = maxBody, body.count > max {
                 dict["body"] = String(body.prefix(max))
@@ -78,13 +81,15 @@ struct NetworkResponseInfo: Codable {
     let originalBodySize: Int
     let contentLength: Int64
 
-    func toDictionary(maxBody: Int? = nil) -> [String: Any] {
+    func toDictionary(maxBody: Int? = nil, includeHeaders: Bool = true) -> [String: Any] {
         var dict: [String: Any] = [
             "status_code": statusCode,
-            "headers": headers,
             "original_body_size": originalBodySize,
             "content_length": contentLength,
         ]
+        if includeHeaders {
+            dict["headers"] = headers
+        }
         if let body = body {
             if let max = maxBody, body.count > max {
                 dict["body"] = String(body.prefix(max))
