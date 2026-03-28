@@ -4,7 +4,7 @@ import os
 /// Handles {"cmd": "wait_for", "until": {"element": "id", "state": "visible"}, "timeout_ms": 5000}
 /// Polls for a condition to be met, returning when satisfied or on timeout.
 /// Supported conditions: element visible, element exists, screen is X, element has value,
-/// text visible (any element matching text label).
+/// text visible (any element matching text label), predicate match/gone.
 struct WaitHandler: PepperHandler {
     let commandName = "wait_for"
     let timeout: TimeInterval = 35.0  // generous — handler has its own internal deadline
@@ -25,8 +25,10 @@ struct WaitHandler: PepperHandler {
         let startTime = Date()
         let deadline = startTime.addingTimeInterval(TimeInterval(timeoutMs) / 1000.0)
 
-        guard let condition = parseCondition(from: untilDict) else {
-            return .error(id: command.id, message: "Invalid wait condition. Supported: element+state, screen.")
+        let parseResult = parseCondition(from: untilDict)
+        guard let condition = parseResult.condition else {
+            return .error(id: command.id, message: parseResult.error
+                ?? "Invalid wait condition. Supported: element+state, text, screen, predicate.")
         }
 
         logger.info("Wait started, timeout \(timeoutMs)ms, condition: \(String(describing: condition))")
@@ -117,6 +119,8 @@ struct WaitHandler: PepperHandler {
         case elementHasValue(id: String, value: String)
         case screenIs(screenID: String)
         case textVisible(text: String, exact: Bool)
+        case predicateMatch(format: String)
+        case predicateGone(format: String)
 
         var description: String {
             switch self {
@@ -125,38 +129,60 @@ struct WaitHandler: PepperHandler {
             case .elementHasValue(let id, let value): return "element '\(id)' has value '\(value)'"
             case .screenIs(let screenID): return "screen is '\(screenID)'"
             case .textVisible(let text, let exact): return "text '\(text)' visible (exact: \(exact))"
+            case .predicateMatch(let format): return "predicate match '\(format)'"
+            case .predicateGone(let format): return "predicate gone '\(format)'"
             }
         }
     }
 
-    private func parseCondition(from dict: [String: AnyCodable]) -> WaitCondition? {
+    private func parseCondition(from dict: [String: AnyCodable])
+        -> (condition: WaitCondition?, error: String?)
+    {
         if let elementID = dict["element"]?.value as? String {
             let state = (dict["state"]?.value as? String) ?? "visible"
             switch state {
             case "visible":
-                return .elementVisible(id: elementID)
+                return (.elementVisible(id: elementID), nil)
             case "exists":
-                return .elementExists(id: elementID)
+                return (.elementExists(id: elementID), nil)
             case "has_value":
                 if let value = dict["value"]?.value as? String {
-                    return .elementHasValue(id: elementID, value: value)
+                    return (.elementHasValue(id: elementID, value: value), nil)
                 }
-                return nil
+                return (nil, "has_value state requires a 'value' param")
             default:
-                return nil
+                return (nil, "Unknown state '\(state)'. Supported: visible, exists, has_value")
             }
         }
 
         if let screenID = dict["screen"]?.value as? String {
-            return .screenIs(screenID: screenID)
+            return (.screenIs(screenID: screenID), nil)
         }
 
         if let text = dict["text"]?.value as? String {
             let exact = (dict["exact"]?.value as? Bool) ?? true
-            return .textVisible(text: text, exact: exact)
+            return (.textVisible(text: text, exact: exact), nil)
         }
 
-        return nil
+        if let predicateFormat = dict["predicate"]?.value as? String {
+            // Validate the predicate format up front so a typo fails fast
+            var parseError: String?
+            PepperObjCExceptionCatcher.try(
+                { _ = NSPredicate(format: predicateFormat, argumentArray: nil) },
+                catch: { exception in
+                    parseError = "Invalid predicate: \(exception.reason ?? exception.name.rawValue)"
+                })
+            if let parseError = parseError {
+                return (nil, parseError)
+            }
+            let expect = (dict["expect"]?.value as? String) ?? "match"
+            let condition: WaitCondition = expect == "gone"
+                ? .predicateGone(format: predicateFormat)
+                : .predicateMatch(format: predicateFormat)
+            return (condition, nil)
+        }
+
+        return (nil, nil)
     }
 
     // MARK: - Condition Evaluation (called on main thread via dispatcher)
@@ -190,22 +216,36 @@ struct WaitHandler: PepperHandler {
             return topVC.pepperScreenID == screenID
 
         case .textVisible(let text, let exact):
-            // Search ALL windows (not just key window) and SwiftUI accessibility,
-            // matching TapHandler's multi-source search strategy.
-            for w in UIWindow.pepper_allVisibleWindows {
-                if w.pepper_findElement(text: text, exact: exact) != nil {
-                    return true
-                }
-            }
-            // Also check SwiftUI accessibility labels (may not have backing UIViews)
-            if PepperSwiftUIBridge.shared.findElement(label: text, exact: exact, in: window) != nil {
-                return true
-            }
-            if PepperSwiftUIBridge.shared.findAccessibilityElementCenter(label: text, exact: exact) != nil {
-                return true
-            }
-            return false
+            return evaluateTextVisible(text: text, exact: exact, window: window)
+
+        case .predicateMatch(let format):
+            return evaluatePredicate(format: format, expectMatch: true)
+
+        case .predicateGone(let format):
+            return evaluatePredicate(format: format, expectMatch: false)
         }
+    }
+
+    /// Search all windows and SwiftUI accessibility, matching TapHandler's multi-source strategy.
+    private func evaluateTextVisible(text: String, exact: Bool, window: UIWindow) -> Bool {
+        for w in UIWindow.pepper_allVisibleWindows {
+            if w.pepper_findElement(text: text, exact: exact) != nil {
+                return true
+            }
+        }
+        if PepperSwiftUIBridge.shared.findElement(label: text, exact: exact, in: window) != nil {
+            return true
+        }
+        if PepperSwiftUIBridge.shared.findAccessibilityElementCenter(label: text, exact: exact) != nil {
+            return true
+        }
+        return false
+    }
+
+    private func evaluatePredicate(format: String, expectMatch: Bool) -> Bool {
+        let result = PepperPredicateQuery.evaluate(predicate: format, hitTestFilter: false, limit: 1)
+        guard result.error == nil else { return false }
+        return expectMatch ? !result.matches.isEmpty : result.matches.isEmpty
     }
 
     // MARK: - Helpers
