@@ -10,10 +10,11 @@ import os
 ///   {"cmd":"network", "params":{"action":"start", "buffer_size":1000}}
 ///   {"cmd":"network", "params":{"action":"stop"}}
 ///   {"cmd":"network", "params":{"action":"status"}}
-///   {"cmd":"network", "params":{"action":"log"}}
+///   {"cmd":"network", "params":{"action":"log"}}                                       // URL+status+duration only
 ///   {"cmd":"network", "params":{"action":"log", "limit":10, "filter":"api.example.com"}}
-///   {"cmd":"network", "params":{"action":"log", "max_body":1024}}     // truncate bodies to 1KB
-///   {"cmd":"network", "params":{"action":"log", "max_body":0}}        // no body truncation
+///   {"cmd":"network", "params":{"action":"log", "include_headers":true}}                 // include request/response headers
+///   {"cmd":"network", "params":{"action":"log", "include_body":true}}                    // include bodies (up to 4096 chars)
+///   {"cmd":"network", "params":{"action":"log", "include_body":true, "max_body":1024}}   // include bodies, truncate to 1KB
 ///   {"cmd":"network", "params":{"action":"clear"}}
 ///   {"cmd":"network", "params":{"action":"simulate", "effect":"latency", "latency_ms":500}}
 ///   {"cmd":"network", "params":{"action":"simulate", "effect":"latency", "latency_ms":2000, "url":"images.example.com"}}
@@ -183,8 +184,22 @@ struct NetworkHandler: PepperHandler {
         let interceptor = PepperNetworkInterceptor.shared
         let limit = command.params?["limit"]?.intValue ?? 50
         let filter = command.params?["filter"]?.stringValue
-        let maxBodyRaw = command.params?["max_body"]?.intValue ?? 4096
+        let includeHeaders = command.params?["include_headers"]?.boolValue ?? false
+        let includeBody = command.params?["include_body"]?.boolValue ?? false
+
+        // Body logic: include_body=true defaults to 4096, explicit max_body overrides.
+        // When include_body is false and no explicit max_body, default to 0 (omit bodies).
+        let explicitMaxBody = command.params?["max_body"]?.intValue
+        let maxBodyRaw: Int
+        if let explicit = explicitMaxBody {
+            maxBodyRaw = explicit
+        } else if includeBody {
+            maxBodyRaw = 4096
+        } else {
+            maxBodyRaw = 0
+        }
         let maxBody: Int? = maxBodyRaw > 0 ? maxBodyRaw : nil
+
         let sinceMs: Int64? =
             (command.params?["since_ms"]?.value as? Int).map { Int64($0) }
             ?? (command.params?["since_ms"]?.value as? Int64)
@@ -193,7 +208,10 @@ struct NetworkHandler: PepperHandler {
             id: command.id,
             data: [
                 "count": AnyCodable(transactions.count),
-                "transactions": AnyCodable(transactions.map { AnyCodable($0.toDictionary(maxBody: maxBody)) }),
+                "transactions": AnyCodable(
+                    transactions.map {
+                        AnyCodable($0.toDictionary(maxBody: maxBody, includeHeaders: includeHeaders))
+                    }),
             ])
     }
 

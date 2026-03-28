@@ -28,8 +28,17 @@ def register_network_tools(mcp, resolve_and_send):
         ),
         filter_text: str | None = Field(default=None, description="Filter by URL pattern (for log action)"),
         limit: int | None = Field(default=None, description="Max entries to return (for log action)"),
+        include_headers: bool | None = Field(
+            default=None,
+            description="Include request/response headers in log output (default: false)",
+        ),
+        include_body: bool | None = Field(
+            default=None,
+            description="Include request/response bodies in log output (default: false, enables max_body=4096)",
+        ),
         max_body: int | None = Field(
-            default=None, description="Max chars per request/response body (default: 4096). Use 0 for unlimited."
+            default=None,
+            description="Max chars per body when include_body is true (default: 4096). Overrides include_body.",
         ),
         effect: str | None = Field(
             default=None,
@@ -63,6 +72,10 @@ def register_network_tools(mcp, resolve_and_send):
             params["filter"] = filter_text
         if limit is not None:
             params["limit"] = limit
+        if include_headers is not None:
+            params["include_headers"] = include_headers
+        if include_body is not None:
+            params["include_body"] = include_body
         if max_body is not None:
             params["max_body"] = max_body
         if effect:
