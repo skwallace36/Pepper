@@ -40,7 +40,7 @@
     {"name": "scroll_to", "category": "navigation", "description": "Scroll until a target element is visible"},
     {"name": "swipe", "category": "navigation", "description": "Swipe gesture with direction and distance"},
     {"name": "gesture", "category": "navigation", "description": "Custom gesture with coordinate sequence"},
-    {"name": "input_text", "category": "navigation", "description": "Type text into the focused field"},
+    {"name": "input_text", "category": "navigation", "description": "Type text into a field by label, accessibility ID, or focus"},
     {"name": "toggle", "category": "navigation", "description": "Toggle a switch or checkbox"},
     {"name": "navigate", "category": "navigation", "description": "Navigate to a named route or deep link"},
     {"name": "back", "category": "navigation", "description": "Go back in the navigation stack"},

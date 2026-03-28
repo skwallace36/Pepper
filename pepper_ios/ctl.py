@@ -9,7 +9,7 @@ Usage:
   pepper-ctl tap --id save_button
   pepper-ctl tap --class UIButton --index 0
   pepper-ctl tap --point 100,750
-  pepper-ctl input --id email_field --value "user@example.com"
+  pepper-ctl input --text "Email" --value "user@example.com"
   pepper-ctl navigate --deeplink "home"
   pepper-ctl navigate --screen settings
   pepper-ctl look                             # compact screen summary
@@ -210,7 +210,7 @@ def build_parser():
   pepper-ctl tap --id start_button           Tap element by accessibility ID
   pepper-ctl tap --class button --index 2    Tap 3rd button on screen
   pepper-ctl tap --point 200,400             Tap at screen coordinates
-  pepper-ctl input --id email --value "a@b"  Set text field value
+  pepper-ctl input --text Email --value "a@b" Set text field by label
   pepper-ctl navigate --screen settings      Navigate to screen
   pepper-ctl scroll --direction down         Scroll down
   pepper-ctl look                            Compact screen summary (what's tappable)
@@ -276,7 +276,9 @@ def build_parser():
 
     # input
     p = sub.add_parser("input", help="Set a text field value")
-    p.add_argument("--id", required=True, dest="element_id", help="Element accessibility ID")
+    input_target = p.add_mutually_exclusive_group()
+    input_target.add_argument("--id", dest="element_id", help="Element accessibility ID")
+    input_target.add_argument("--text", dest="input_text", help="Find field by visible text, placeholder, or label")
     p.add_argument("--value", required=True, help="Value to set")
     p.add_argument("--no-clear", action="store_true", help="Don't clear field before setting value")
 
@@ -498,14 +500,19 @@ async def cmd_tap(args):
 
 
 async def cmd_input(args):
-    params = {"element": args.element_id, "value": args.value}
+    params = {"value": args.value}
+    if args.element_id:
+        params["element"] = args.element_id
+    if args.input_text:
+        params["text"] = args.input_text
     if args.no_clear:
         params["clear"] = False
     msg = make_command("input", params)
     resp = await send_command(args.host, args.port, msg, args.timeout, args.verbose)
     if not args.raw_json and resp.get("status") == "ok":
         data = resp.get("data", {})
-        print(green(f'Set {cyan(data.get("element", "?"))} = "{data.get("value", "")}"'))
+        desc = data.get("description", data.get("element", "?"))
+        print(green(f'Set {cyan(desc)} = "{data.get("value", "")}"'))
         return
     output_response(resp, args.raw_json)
 

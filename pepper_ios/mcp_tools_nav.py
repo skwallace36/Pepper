@@ -288,18 +288,25 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
             default=None,
             description="Accessibility ID of the text field. If omitted, types into the focused field or first available text field.",
         ),
+        text: str | None = Field(
+            default=None,
+            description="Find text field by visible text, placeholder, or label (e.g. 'Search', 'Email'). Same matching as tap's text parameter.",
+        ),
         value: str = Field(description="Text to type"),
         clear: bool = Field(default=False, description="Clear existing text before typing"),
         submit: bool = Field(default=False, description="Submit/return after typing"),
     ) -> list:
         """Use this when you need to enter or replace text in a text field.
         Don't tap to type — use this tool directly. It focuses the field and types in one step.
-        If no element_id is given, types into the currently focused field or the first text field on screen.
+        Specify text to target a field by its visible label/placeholder (e.g. text="Search"), or element_id for accessibility ID.
+        If neither is given, types into the currently focused field or the first text field on screen.
         Use clear=true to replace existing text. Use submit=true to press Return after typing.
         Automatically shows screen state after input."""
         params: dict = {"value": value}
         if element_id:
             params["element"] = element_id
+        if text:
+            params["text"] = text
         if clear:
             params["clear"] = True
         if submit:
