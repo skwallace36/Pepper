@@ -155,14 +155,15 @@ def register_system_tools(mcp, resolve_and_send, act_and_look):
     @mcp.tool()
     async def gesture(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
-        type: str = Field(description="Gesture type: pinch or rotate"),
-        start_distance: int | None = Field(default=None, description="Starting pinch distance in points (for pinch)"),
-        end_distance: int | None = Field(default=None, description="Ending pinch distance in points (for pinch)"),
-        angle: float | None = Field(default=None, description="Rotation angle in degrees (for rotate)"),
-        center_x: float | None = Field(default=None, description="Center X coordinate (defaults to screen center)"),
-        center_y: float | None = Field(default=None, description="Center Y coordinate (defaults to screen center)"),
+        type: str = Field(description="Gesture type: 'pinch' for zoom in/out, 'rotate' for two-finger rotation"),
+        start_distance: int | None = Field(default=None, description="Starting distance between fingers in points (for pinch; e.g. 200 to start wide)"),
+        end_distance: int | None = Field(default=None, description="Ending distance between fingers in points (for pinch; e.g. 50 to zoom in, 300 to zoom out)"),
+        angle: float | None = Field(default=None, description="Rotation angle in degrees (for rotate; e.g. 90 for quarter turn, -45 for reverse)"),
+        center_x: float | None = Field(default=None, description="Center X coordinate — defaults to screen center (e.g. 200.0)"),
+        center_y: float | None = Field(default=None, description="Center Y coordinate — defaults to screen center (e.g. 400.0)"),
     ) -> str:
-        """Perform multi-touch gestures — pinch to zoom or two-finger rotate. Shows screen state after."""
+        """Use this for multi-touch gestures like pinch-to-zoom or two-finger rotation on maps, images, or zoomable views.
+        Synthesizes two-finger touch events via HID injection. Shows screen state after."""
         params: dict = {"type": type}
         if start_distance is not None:
             params["start_distance"] = start_distance

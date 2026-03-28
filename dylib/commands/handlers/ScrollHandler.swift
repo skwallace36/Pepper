@@ -77,10 +77,10 @@ struct ScrollHandler: PepperHandler {
         logger.info("Scroll to \(position): offset → (\(newOffset.x), \(newOffset.y))")
         scrollView.setContentOffset(newOffset, animated: false)
 
-        return .ok(
-            id: command.id,
-            data: [
-                "position": AnyCodable(position),
+        return .action(
+            id: command.id, action: "scroll", target: position,
+            extra: [
+                "description": AnyCodable("Scrolled to \(position)"),
                 "scrollOffset": AnyCodable([
                     "x": AnyCodable(Double(newOffset.x)),
                     "y": AnyCodable(Double(newOffset.y)),
@@ -126,10 +126,10 @@ struct ScrollHandler: PepperHandler {
 
         if visibleRect.contains(elementCenter) {
             logger.info("Text '\(text)' already visible at (\(elementCenter.x), \(elementCenter.y))")
-            return .ok(
-                id: command.id,
-                data: [
-                    "text": AnyCodable(text),
+            return .action(
+                id: command.id, action: "scroll", target: "'\(text)' (already visible)",
+                extra: [
+                    "description": AnyCodable("'\(text)' already visible at (\(Int(elementCenter.x)),\(Int(elementCenter.y)))"),
                     "already_visible": AnyCodable(true),
                     "center": AnyCodable([
                         "x": AnyCodable(Double(elementCenter.x)),
@@ -158,10 +158,10 @@ struct ScrollHandler: PepperHandler {
             CGPoint(x: element.bounds.midX, y: element.bounds.midY), to: window
         )
 
-        return .ok(
-            id: command.id,
-            data: [
-                "text": AnyCodable(text),
+        return .action(
+            id: command.id, action: "scroll", target: "'\(text)'",
+            extra: [
+                "description": AnyCodable("Scrolled to '\(text)' at (\(Int(finalCenter.x)),\(Int(finalCenter.y)))"),
                 "center": AnyCodable([
                     "x": AnyCodable(Double(finalCenter.x)),
                     "y": AnyCodable(Double(finalCenter.y)),
@@ -195,10 +195,10 @@ struct ScrollHandler: PepperHandler {
         let frame = element.convert(element.bounds, to: scrollView)
         scrollView.scrollRectToVisible(frame, animated: false)
 
-        return .ok(
-            id: command.id,
-            data: [
-                "element": AnyCodable(elementID),
+        return .action(
+            id: command.id, action: "scroll", target: elementID,
+            extra: [
+                "description": AnyCodable("Scrolled to '\(elementID)'"),
                 "scrollOffset": AnyCodable([
                     "x": AnyCodable(scrollView.contentOffset.x),
                     "y": AnyCodable(scrollView.contentOffset.y),
@@ -283,9 +283,10 @@ struct ScrollHandler: PepperHandler {
         )
 
         if success {
-            return .ok(
-                id: command.id,
-                data: [
+            return .action(
+                id: command.id, action: "scroll", target: "\(direction) \(Int(amount))pt",
+                extra: [
+                    "description": AnyCodable("Scrolled \(direction) \(Int(amount))pt"),
                     "direction": AnyCodable(direction),
                     "amount": AnyCodable(Double(amount)),
                     "duration": AnyCodable(duration),
