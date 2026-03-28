@@ -47,23 +47,32 @@ extension IntrospectHandler {
         var toggleState: String? = nil
     }
 
-    /// Assign 1-based ordinal indices to interactive elements that share the same label.
+    /// The effective identifier used for tap targeting: label, icon_name, or heuristic.
+    /// Used to detect duplicates and assign ordinal indices.
+    private func tapKey(for elem: MapElement) -> String? {
+        if let label = elem.label { return "label:\(label)" }
+        if let iconName = elem.iconName { return "icon:\(iconName)" }
+        if let heuristic = elem.heuristic { return "heur:\(heuristic)" }
+        return nil
+    }
+
+    /// Assign 1-based ordinal indices to interactive elements that share the same tap target.
     /// Elements are numbered in top-to-bottom, left-to-right order (their existing sort).
-    /// Labels that appear only once get no index (nil).
+    /// Unique identifiers get no index (nil). Covers labels, icon names, and heuristics.
     func assignOrdinalIndices(_ elements: inout [MapElement]) {
-        // Count labels (only for interactive elements with labels)
-        var labelCounts: [String: Int] = [:]
+        // Count tap keys (only for interactive elements with an identifier)
+        var keyCounts: [String: Int] = [:]
         for elem in elements where elem.isInteractive {
-            if let label = elem.label {
-                labelCounts[label, default: 0] += 1
+            if let key = tapKey(for: elem) {
+                keyCounts[key, default: 0] += 1
             }
         }
-        // Assign 1-based indices for duplicated labels
-        var labelCounters: [String: Int] = [:]
+        // Assign 1-based indices for duplicated keys
+        var keyCounters: [String: Int] = [:]
         for i in elements.indices where elements[i].isInteractive {
-            if let label = elements[i].label, let count = labelCounts[label], count > 1 {
-                let ordinal = (labelCounters[label] ?? 0) + 1
-                labelCounters[label] = ordinal
+            if let key = tapKey(for: elements[i]), let count = keyCounts[key], count > 1 {
+                let ordinal = (keyCounters[key] ?? 0) + 1
+                keyCounters[key] = ordinal
                 elements[i].index = ordinal
             }
         }
@@ -118,9 +127,6 @@ extension IntrospectHandler {
             if let label = elem.label {
                 dict["label"] = AnyCodable(label)
                 dict["tap_cmd"] = AnyCodable("text")
-                if let idx = elem.index {
-                    dict["index"] = AnyCodable(idx)
-                }
             } else if let iconName = elem.iconName {
                 dict["tap_cmd"] = AnyCodable("icon_name")
                 dict["suggested_tap"] = AnyCodable(iconName)
@@ -129,6 +135,10 @@ extension IntrospectHandler {
                 dict["suggested_tap"] = AnyCodable(heuristic)
             } else {
                 dict["tap_cmd"] = AnyCodable("point")
+            }
+
+            if let idx = elem.index {
+                dict["index"] = AnyCodable(idx)
             }
 
             if let heuristic = elem.heuristic {
