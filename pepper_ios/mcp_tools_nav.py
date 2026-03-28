@@ -51,6 +51,14 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
     @mcp.tool()
     async def look(
         simulator: str | None = Field(default=None, description="Simulator UDID (optional if only one sim running)"),
+        scope: str | None = Field(
+            default=None,
+            description="Filter to elements inside a container. Pass an accessibility identifier or visible label (e.g. scope='Steps', scope='tab_bar'). Uses element resolution — same matching as tap/read_element.",
+        ),
+        region: str | None = Field(
+            default=None,
+            description="Filter to elements in a y-range. Pass 'minY-maxY' (e.g. region='390-532'). For exact box use raw JSON: {\"x\":0,\"y\":390,\"w\":390,\"h\":142}.",
+        ),
         raw: bool = Field(default=False, description="Return raw JSON instead of formatted summary"),
         slim: bool = Field(
             default=False,
@@ -75,6 +83,8 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
     ) -> list:
         """Use this when you need to see what's on screen — returns all interactive elements with tap commands, plus visible text.
         This is your primary observation tool. Call it before acting to know what's available.
+        Use scope to filter to elements inside a specific container (e.g. scope='Steps' or scope='tab_bar').
+        Use region to filter by y-range (e.g. region='390-532').
         Use slim=true for a stateless flat list — every call returns the full screen with tap commands, no y-coords.
         Use compact=true for stateful diffs — first call returns full screen, subsequent calls show only changes (added/changed/removed). Includes tap commands. Resets when the screen changes.
         Use ocr=true to find text via pixel analysis (slower, but catches text missing from accessibility tree).
@@ -87,6 +97,17 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
             return [TextContent(type="text", text=str(e))]
 
         look_params: dict = {}
+        if scope:
+            look_params["scope"] = scope
+        if region:
+            # Try to parse as JSON dict first (e.g. '{"x":0,"y":390,"w":390,"h":142}')
+            if region.strip().startswith("{"):
+                try:
+                    look_params["region"] = json.loads(region)
+                except json.JSONDecodeError:
+                    look_params["region"] = region
+            else:
+                look_params["region"] = region
         if ocr:
             look_params["ocr"] = True
 

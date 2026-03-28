@@ -190,14 +190,30 @@ extension IntrospectHandler {
     // MARK: - Spatial Query Helpers
 
     /// Parse a region bounding box from command params.
+    /// Supports dict format `{x, y, w, h}` or y-range string `"minY-maxY"`.
     func parseRegion(from params: [String: AnyCodable]?) -> CGRect? {
-        guard let regionDict = params?["region"]?.dictValue,
+        // Dict format: {x, y, w, h}
+        if let regionDict = params?["region"]?.dictValue,
             let rx = regionDict["x"]?.doubleValue,
             let ry = regionDict["y"]?.doubleValue,
             let rw = regionDict["w"]?.doubleValue,
             let rh = regionDict["h"]?.doubleValue
-        else { return nil }
-        return CGRect(x: rx, y: ry, width: rw, height: rh)
+        {
+            return CGRect(x: rx, y: ry, width: rw, height: rh)
+        }
+        // Y-range string: "minY-maxY" (full screen width)
+        if let regionStr = params?["region"]?.stringValue {
+            let parts = regionStr.split(separator: "-")
+            if parts.count == 2,
+                let minY = Double(parts[0]),
+                let maxY = Double(parts[1]),
+                maxY > minY
+            {
+                let screenW = Double(UIScreen.main.bounds.width)
+                return CGRect(x: 0, y: minY, width: screenW, height: maxY - minY)
+            }
+        }
+        return nil
     }
 
     /// Filter interactive elements by proximity to a point, optionally in a direction.
