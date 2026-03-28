@@ -6,7 +6,35 @@ MCP server for iOS Simulator apps. Injects a dylib via `DYLD_INSERT_LIBRARIES`, 
 
 ## Quick Start
 
-**Homebrew** (recommended):
+```bash
+pip install pepper-ios
+```
+
+Installs `pepper-mcp` (MCP server) and `pepper-ctl` (CLI). Claude Code users with the repo cloned are ready — `.mcp.json` handles config automatically.
+
+Then ask your agent to `look` at the screen.
+
+<details>
+<summary>Manual MCP config (Cursor, Claude Desktop, other clients)</summary>
+
+Add to your MCP client config:
+
+```json
+{
+  "mcpServers": {
+    "pepper": {
+      "command": "pepper-mcp"
+    }
+  }
+}
+```
+
+</details>
+
+<details>
+<summary>Alternative installs (Homebrew, from source)</summary>
+
+**Homebrew:**
 
 ```bash
 brew install --HEAD skwallace36/pepper/pepper
@@ -22,20 +50,7 @@ cd Pepper
 make setup
 ```
 
-Add Pepper to your MCP client (Claude Code, Cursor, etc.):
-
-```json
-{
-  "mcpServers": {
-    "pepper": {
-      "command": "/path/to/pepper/.venv/bin/python3",
-      "args": ["/path/to/pepper/tools/pepper-mcp"]
-    }
-  }
-}
-```
-
-Then ask your agent to `look` at the screen.
+</details>
 
 ## How It Works
 
