@@ -731,6 +731,28 @@ struct IntrospectHandler: PepperHandler {
         }
 
         // Phase 5: Apply spatial filters
+        // Scope: resolve an element by label/identifier and use its frame as the filter region.
+        let scopeRect: CGRect? = {
+            guard let scopeID = command.params?["scope"]?.stringValue,
+                let window = UIWindow.pepper_keyWindow
+            else { return nil }
+            // Try accessibility identifier first
+            let resolveParams: [String: AnyCodable] = ["element": AnyCodable(scopeID)]
+            let (result, _) = PepperElementResolver.resolve(params: resolveParams, in: window)
+            if let r = result, r.tapPoint == nil {
+                return r.view.convert(r.view.bounds, to: nil)
+            }
+            // Fallback: try resolving by text/label
+            let textParams: [String: AnyCodable] = ["text": AnyCodable(scopeID)]
+            let (textResult, _) = PepperElementResolver.resolve(params: textParams, in: window)
+            guard let tr = textResult, tr.tapPoint == nil else { return nil }
+            return tr.view.convert(tr.view.bounds, to: nil)
+        }()
+        if let rect = scopeRect {
+            mergedInteractive = mergedInteractive.filter { rect.contains($0.center) }
+            mergedNonInteractive = mergedNonInteractive.filter { rect.contains($0.center) }
+        }
+
         if let regionRect = parseRegion(from: command.params) {
             mergedInteractive = mergedInteractive.filter { regionRect.contains($0.center) }
             mergedNonInteractive = mergedNonInteractive.filter { regionRect.contains($0.center) }
@@ -793,6 +815,9 @@ struct IntrospectHandler: PepperHandler {
                         traits: [], scrollContext: nil, labelSource: "nav_title"
                     ))
             }
+        }
+        if let rect = scopeRect {
+            textForOutput = textForOutput.filter { rect.contains($0.center) }
         }
         if let regionRect = parseRegion(from: command.params) {
             textForOutput = textForOutput.filter { regionRect.contains($0.center) }

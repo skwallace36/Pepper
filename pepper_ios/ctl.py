@@ -258,7 +258,9 @@ def build_parser():
     p.add_argument("--element", "-e", help="Scope to subtree of element ID")
 
     # look
-    sub.add_parser("look", help="Compact screen summary — what's visible and tappable")
+    p = sub.add_parser("look", help="Compact screen summary — what's visible and tappable")
+    p.add_argument("--scope", "-s", help="Filter to elements inside a container (by label or accessibility ID)")
+    p.add_argument("--region", "-r", help="Filter to y-range 'minY-maxY' (e.g. '390-532')")
 
     # snapshot
     sub.add_parser("snapshot", help="Get all interactive elements on screen")
@@ -408,7 +410,12 @@ async def cmd_tree(args):
 
 async def cmd_look(args):
     """Compact spatial summary of what's on screen and what's tappable."""
-    msg = make_command("introspect", {"mode": "map"})
+    params: dict = {"mode": "map"}
+    if getattr(args, "scope", None):
+        params["scope"] = args.scope
+    if getattr(args, "region", None):
+        params["region"] = args.region
+    msg = make_command("introspect", params)
     resp = await send_command(args.host, args.port, msg, args.timeout, args.verbose)
     if not args.raw_json and resp.get("status") == "ok":
         print(format_look(resp))
