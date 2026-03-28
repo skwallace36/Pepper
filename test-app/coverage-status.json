@@ -942,6 +942,11 @@
     "status": "pass",
     "surface": "AppState properties"
   },
+  "verify": {
+    "notes": "New command. Explicit pass/fail assertions on screen state. Supports text presence, element state (visible/enabled/value), and screen name checks. Batch mode for multiple assertions in one call.",
+    "status": "untested",
+    "surface": "Any state"
+  },
   "wait_for.exists": {
     "notes": "BUG-007 FIXED: Background thread polling allows SwiftUI state changes. Text-based exists condition now detects async changes. Note: element ID condition in WaitHandler still uses pepper_findElement directly (UIKit-only); see #266 for full fix.",
     "status": "pass",

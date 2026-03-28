@@ -1,13 +1,13 @@
 """Element inspection and control tool definitions for Pepper MCP.
 
-Tool definitions for: toggle, read_element, tree, find.
+Tool definitions for: toggle, read_element, tree, find, verify.
 """
 
 from __future__ import annotations
 
 from pydantic import Field
 
-from .pepper_commands import CMD_FIND, CMD_READ, CMD_TOGGLE, CMD_TREE
+from .pepper_commands import CMD_FIND, CMD_READ, CMD_TOGGLE, CMD_TREE, CMD_VERIFY
 
 
 def register_element_tools(mcp, resolve_and_send, act_and_look):
@@ -74,3 +74,69 @@ def register_element_tools(mcp, resolve_and_send, act_and_look):
         if limit is not None:
             params["limit"] = limit
         return await resolve_and_send(simulator, CMD_FIND, params)
+
+    @mcp.tool()
+    async def verify(
+        simulator: str | None = Field(default=None, description="Simulator UDID"),
+        text: str | None = Field(
+            default=None,
+            description="Assert this text is visible on screen",
+        ),
+        element: str | None = Field(
+            default=None,
+            description="Accessibility ID of element to assert on",
+        ),
+        screen: str | None = Field(
+            default=None,
+            description="Assert current screen matches this name",
+        ),
+        visible: bool | None = Field(
+            default=None,
+            description="Assert element is visible (use with element param)",
+        ),
+        enabled: bool | None = Field(
+            default=None,
+            description="Assert element is enabled (use with element param)",
+        ),
+        value: str | None = Field(
+            default=None,
+            description="Assert element has this value (use with element param)",
+        ),
+        contains: str | None = Field(
+            default=None,
+            description="Assert screen contains this text (use with screen param)",
+        ),
+        exact: bool | None = Field(
+            default=None,
+            description="Require exact text match for text param (default: substring match)",
+        ),
+        assertions: list[dict] | None = Field(
+            default=None,
+            description="Batch mode: list of assertion objects. Each can have text, element, screen, visible, enabled, value, contains, exact.",
+        ),
+    ) -> str:
+        """Run explicit pass/fail assertions on screen state. Returns structured results instead of requiring manual parsing of look output.
+
+        Single assertion: provide text, element, or screen param.
+        Batch: provide assertions list for multiple checks in one call."""
+        params: dict = {}
+        if assertions is not None:
+            params["assertions"] = assertions
+        else:
+            if text is not None:
+                params["text"] = text
+            if element is not None:
+                params["element"] = element
+            if screen is not None:
+                params["screen"] = screen
+            if visible is not None:
+                params["visible"] = visible
+            if enabled is not None:
+                params["enabled"] = enabled
+            if value is not None:
+                params["value"] = value
+            if contains is not None:
+                params["contains"] = contains
+            if exact is not None:
+                params["exact"] = exact
+        return await resolve_and_send(simulator, CMD_VERIFY, params)
