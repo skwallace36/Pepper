@@ -36,8 +36,8 @@
   "tools": [
     {"name": "look", "category": "navigation", "description": "Primary observation tool — returns full UI hierarchy map"},
     {"name": "tap", "category": "navigation", "description": "Tap an element by accessibility label or coordinates"},
-    {"name": "scroll", "category": "navigation", "description": "Scroll in a direction within a container"},
-    {"name": "scroll_to", "category": "navigation", "description": "Scroll until a target element is visible"},
+    {"name": "scroll", "category": "navigation", "description": "Scroll by direction, or pass target to scroll until specific text is visible"},
+    {"name": "scroll_to", "category": "navigation", "description": "Deprecated — use scroll with target param. Scroll until text is visible"},
     {"name": "swipe", "category": "navigation", "description": "Swipe gesture with direction and distance"},
     {"name": "gesture", "category": "navigation", "description": "Custom gesture with coordinate sequence"},
     {"name": "input_text", "category": "navigation", "description": "Type text into a field by label, accessibility ID, or focus"},
