@@ -160,7 +160,8 @@ def get_active_agents() -> list[tuple[str, int]]:
         return agents
     for lock in locks_dir.glob(".lock-*"):
         try:
-            pid = int(lock.read_text().strip())
+            lines = lock.read_text().strip().splitlines()
+            pid = int(lines[0])
             # Extract agent type from .lock-<type>-<n> or .lock-<type>
             name = lock.name.removeprefix(".lock-")
             # Strip trailing -N suffix (instance number)
@@ -168,8 +169,17 @@ def get_active_agents() -> list[tuple[str, int]]:
             if len(parts) == 2 and parts[1].isdigit():
                 name = parts[0]
             os.kill(pid, 0)  # Check if alive
+            # Verify process start time matches (detects PID reuse)
+            if len(lines) > 1 and lines[1]:
+                import subprocess
+                result = subprocess.run(
+                    ["ps", "-o", "lstart=", "-p", str(pid)],
+                    capture_output=True, text=True,
+                )
+                if result.stdout.strip() != lines[1]:
+                    continue  # PID reused by different process
             agents.append((name, pid))
-        except (ValueError, ProcessLookupError, PermissionError, OSError):
+        except (ValueError, ProcessLookupError, PermissionError, OSError, IndexError):
             continue
     return agents
 

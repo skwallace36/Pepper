@@ -6,6 +6,9 @@
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"
 
+# Shared lockfile helpers (PID-reuse-safe liveness checks)
+source "$REPO_ROOT/scripts/lib/lockfile.sh"
+
 echo "pepper agent cleanup"
 echo "===================="
 
@@ -58,9 +61,9 @@ git worktree prune 2>/dev/null || true
 LOCKS_REMOVED=0
 for lock in build/logs/.lock-*; do
   [ -f "$lock" ] || continue
-  LOCK_PID=$(cat "$lock" 2>/dev/null)
-  if ! kill -0 "$LOCK_PID" 2>/dev/null; then
-    echo "  Removing stale lockfile: $(basename "$lock") (PID $LOCK_PID dead)"
+  LOCK_PID=$(lockfile_pid "$lock")
+  if ! lockfile_alive "$lock"; then
+    echo "  Removing stale lockfile: $(basename "$lock") (PID $LOCK_PID dead/stale)"
     rm -f "$lock"
     LOCKS_REMOVED=$((LOCKS_REMOVED + 1))
   fi
