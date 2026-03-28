@@ -106,12 +106,12 @@ class RawWebSocket:
         if length == 126:
             while len(self._buf) < offset + 2:
                 self._buf += self._sock.recv(4096)
-            length = struct.unpack(">H", self._buf[offset:offset+2])[0]
+            length = struct.unpack(">H", self._buf[offset : offset + 2])[0]
             offset += 2
         elif length == 127:
             while len(self._buf) < offset + 8:
                 self._buf += self._sock.recv(4096)
-            length = struct.unpack(">Q", self._buf[offset:offset+8])[0]
+            length = struct.unpack(">Q", self._buf[offset : offset + 8])[0]
             offset += 8
 
         if masked:
@@ -124,15 +124,15 @@ class RawWebSocket:
                 raise ConnectionError("Connection closed mid-frame")
             self._buf += chunk
 
-        payload = self._buf[offset:offset+length]
+        payload = self._buf[offset : offset + length]
         if masked:
-            mask_key = self._buf[offset-4:offset]
+            mask_key = self._buf[offset - 4 : offset]
             payload = bytearray(payload)
             for i in range(len(payload)):
                 payload[i] ^= mask_key[i % 4]
             payload = bytes(payload)
 
-        self._buf = self._buf[offset+length:]
+        self._buf = self._buf[offset + length :]
 
         opcode = b0 & 0x0F
         if opcode == 0x8:  # close frame
@@ -158,9 +158,16 @@ class RawWebSocket:
         try:
             # Send close frame
             mask_key = os.urandom(4)
-            self._sock.sendall(bytes([0x88, 0x82]) + mask_key + bytes([
-                0x03 ^ mask_key[0], 0xE8 ^ mask_key[1]  # status 1000
-            ]))
+            self._sock.sendall(
+                bytes([0x88, 0x82])
+                + mask_key
+                + bytes(
+                    [
+                        0x03 ^ mask_key[0],
+                        0xE8 ^ mask_key[1],  # status 1000
+                    ]
+                )
+            )
         except OSError:
             pass
         try:

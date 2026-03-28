@@ -2,10 +2,12 @@
 
 Tool definitions for: toggle, read_element, tree, find.
 """
+
 from __future__ import annotations
 
-from pepper_commands import CMD_FIND, CMD_READ, CMD_TOGGLE, CMD_TREE
 from pydantic import Field
+
+from .pepper_commands import CMD_FIND, CMD_READ, CMD_TOGGLE, CMD_TREE
 
 
 def register_element_tools(mcp, resolve_and_send, act_and_look):

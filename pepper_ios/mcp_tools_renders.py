@@ -2,10 +2,12 @@
 
 Tool definitions for: renders
 """
+
 from __future__ import annotations
 
-from pepper_commands import CMD_RENDERS
 from pydantic import Field
+
+from .pepper_commands import CMD_RENDERS
 
 
 def register_renders_tools(mcp, resolve_and_send):
@@ -25,9 +27,7 @@ def register_renders_tools(mcp, resolve_and_send):
                 "counts, snapshot, diff, reset, ag_probe, ag_server, ag_dump, signpost, why"
             )
         ),
-        limit: int | None = Field(
-            default=None, description="Max events to return (for log action, default 100)"
-        ),
+        limit: int | None = Field(default=None, description="Max events to return (for log action, default 100)"),
         since_ms: int | None = Field(
             default=None,
             description="Only return events after this Unix timestamp in ms (for log action)",
@@ -36,9 +36,7 @@ def register_renders_tools(mcp, resolve_and_send):
             default=None,
             description="Filter events by view controller type or address (for log action)",
         ),
-        name: str | None = Field(
-            default=None, description="Snapshot name (for ag_dump action)"
-        ),
+        name: str | None = Field(default=None, description="Snapshot name (for ag_dump action)"),
         sub: str | None = Field(
             default=None,
             description="Sub-action for signpost: install or drain",

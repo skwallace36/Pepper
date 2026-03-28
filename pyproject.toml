@@ -1,0 +1,22 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pepper-ios"
+version = "0.1.0"
+description = "MCP server and CLI tools for Pepper iOS simulator control"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+dependencies = [
+    "mcp>=1.26.0",
+    "websockets>=12.0",
+]
+
+[project.scripts]
+pepper-mcp = "pepper_ios.mcp_server:main"
+pepper-ctl = "pepper_ios.ctl:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["pepper_ios"]

@@ -2,14 +2,16 @@
 
 Tool definitions for: raw (send any command), simulator (simctl operations).
 """
+
 from __future__ import annotations
 
 import os
 import subprocess
 
-import pepper_sessions
-from pepper_common import get_config, list_simulators, require_parse_json
 from pydantic import Field
+
+from . import pepper_sessions
+from .pepper_common import get_config, list_simulators, require_parse_json
 
 
 def register_sim_tools(mcp, resolve_and_send, resolve_simulator):
@@ -43,13 +45,18 @@ def register_sim_tools(mcp, resolve_and_send, resolve_simulator):
 
     @mcp.tool()
     async def simulator(
-        action: str = Field(description="Action: list, install, uninstall, location, permissions, biometrics, privacy_reset, open_url, addmedia, boot, shutdown, erase, status_bar"),
+        action: str = Field(
+            description="Action: list, install, uninstall, location, permissions, biometrics, privacy_reset, open_url, addmedia, boot, shutdown, erase, status_bar"
+        ),
         simulator_id: str | None = Field(default=None, description="Simulator UDID (auto-resolved if only one booted)"),
         app_path: str | None = Field(default=None, description="Path to .app/.ipa for action=install"),
         bundle_id: str | None = Field(default=None, description="App bundle ID for action=uninstall"),
         latitude: float | None = Field(default=None, description="Latitude for action=location"),
         longitude: float | None = Field(default=None, description="Longitude for action=location"),
-        permission: str | None = Field(default=None, description="Permission for action=permissions: photos, camera, microphone, contacts, calendar, reminders, location-always, location-when-in-use, notifications, health"),
+        permission: str | None = Field(
+            default=None,
+            description="Permission for action=permissions: photos, camera, microphone, contacts, calendar, reminders, location-always, location-when-in-use, notifications, health",
+        ),
         permission_value: str | None = Field(default=None, description="Permission value: grant, revoke, reset"),
         biometric_type: str | None = Field(default=None, description="For action=biometrics: enroll or match"),
         url: str | None = Field(default=None, description="URL for action=open_url (deep link or web)"),
@@ -115,35 +122,33 @@ def register_sim_tools(mcp, resolve_and_send, resolve_simulator):
         if action == "install":
             if not app_path:
                 return "Error: app_path required for install"
-            result = subprocess.run(
-                ["xcrun", "simctl", "install", sim, app_path],
-                capture_output=True, text=True
-            )
+            result = subprocess.run(["xcrun", "simctl", "install", sim, app_path], capture_output=True, text=True)
             return f"Installed {app_path}" if result.returncode == 0 else f"Install failed: {result.stderr.strip()}"
 
         elif action == "uninstall":
             bid = bundle_id or get_config().get("bundle_id")
             if not bid:
                 return "Error: bundle_id required for uninstall"
-            result = subprocess.run(
-                ["xcrun", "simctl", "uninstall", sim, bid],
-                capture_output=True, text=True
-            )
+            result = subprocess.run(["xcrun", "simctl", "uninstall", sim, bid], capture_output=True, text=True)
             return f"Uninstalled {bid}" if result.returncode == 0 else f"Uninstall failed: {result.stderr.strip()}"
 
         elif action == "location":
             if latitude is not None and longitude is not None:
                 if latitude == 0 and longitude == 0:
                     result = subprocess.run(
-                        ["xcrun", "simctl", "location", sim, "clear"],
-                        capture_output=True, text=True
+                        ["xcrun", "simctl", "location", sim, "clear"], capture_output=True, text=True
                     )
                     return "Location cleared" if result.returncode == 0 else f"Failed: {result.stderr.strip()}"
                 result = subprocess.run(
                     ["xcrun", "simctl", "location", sim, "set", f"{latitude},{longitude}"],
-                    capture_output=True, text=True
+                    capture_output=True,
+                    text=True,
                 )
-                return f"Location set to {latitude}, {longitude}" if result.returncode == 0 else f"Failed: {result.stderr.strip()}"
+                return (
+                    f"Location set to {latitude}, {longitude}"
+                    if result.returncode == 0
+                    else f"Failed: {result.stderr.strip()}"
+                )
             return "Error: latitude and longitude required for location"
 
         elif action == "permissions":
@@ -153,36 +158,62 @@ def register_sim_tools(mcp, resolve_and_send, resolve_simulator):
             if permission_value not in ("grant", "revoke", "reset"):
                 return "Error: permission_value must be grant, revoke, or reset"
             result = subprocess.run(
-                ["xcrun", "simctl", "privacy", sim, permission_value, permission, bid],
-                capture_output=True, text=True
+                ["xcrun", "simctl", "privacy", sim, permission_value, permission, bid], capture_output=True, text=True
             )
-            return f"Permission {permission} {permission_value}ed for {bid}" if result.returncode == 0 else f"Failed: {result.stderr.strip()}"
+            return (
+                f"Permission {permission} {permission_value}ed for {bid}"
+                if result.returncode == 0
+                else f"Failed: {result.stderr.strip()}"
+            )
 
         elif action == "privacy_reset":
             bid = bundle_id or get_config().get("bundle_id")
             if not bid:
                 return "Error: bundle_id required for privacy_reset"
             result = subprocess.run(
-                ["xcrun", "simctl", "privacy", sim, "reset", "all", bid],
-                capture_output=True, text=True
+                ["xcrun", "simctl", "privacy", sim, "reset", "all", bid], capture_output=True, text=True
             )
-            return f"All privacy permissions reset for {bid}" if result.returncode == 0 else f"Failed: {result.stderr.strip()}"
+            return (
+                f"All privacy permissions reset for {bid}"
+                if result.returncode == 0
+                else f"Failed: {result.stderr.strip()}"
+            )
 
         elif action == "biometrics":
             if biometric_type == "enroll":
                 result = subprocess.run(
-                    ["xcrun", "simctl", "spawn", sim, "notifyutil", "-s", "com.apple.BiometricKit.enrollmentChanged", "1"],
-                    capture_output=True, text=True
+                    [
+                        "xcrun",
+                        "simctl",
+                        "spawn",
+                        sim,
+                        "notifyutil",
+                        "-s",
+                        "com.apple.BiometricKit.enrollmentChanged",
+                        "1",
+                    ],
+                    capture_output=True,
+                    text=True,
                 )
                 subprocess.run(
                     ["xcrun", "simctl", "spawn", sim, "notifyutil", "-p", "com.apple.BiometricKit.enrollmentChanged"],
-                    capture_output=True, text=True
+                    capture_output=True,
+                    text=True,
                 )
                 return "Face ID enrolled" if result.returncode == 0 else f"Failed: {result.stderr.strip()}"
             elif biometric_type == "match":
                 result = subprocess.run(
-                    ["xcrun", "simctl", "spawn", sim, "notifyutil", "-p", "com.apple.BiometricKit_Sim.fingerTouch.match"],
-                    capture_output=True, text=True
+                    [
+                        "xcrun",
+                        "simctl",
+                        "spawn",
+                        sim,
+                        "notifyutil",
+                        "-p",
+                        "com.apple.BiometricKit_Sim.fingerTouch.match",
+                    ],
+                    capture_output=True,
+                    text=True,
                 )
                 return "Biometric match sent" if result.returncode == 0 else f"Failed: {result.stderr.strip()}"
             return "Error: biometric_type must be 'enroll' or 'match'"
@@ -190,10 +221,7 @@ def register_sim_tools(mcp, resolve_and_send, resolve_simulator):
         elif action == "open_url":
             if not url:
                 return "Error: url required for open_url"
-            result = subprocess.run(
-                ["xcrun", "simctl", "openurl", sim, url],
-                capture_output=True, text=True
-            )
+            result = subprocess.run(["xcrun", "simctl", "openurl", sim, url], capture_output=True, text=True)
             return f"Opened {url}" if result.returncode == 0 else f"Failed: {result.stderr.strip()}"
 
         elif action == "addmedia":
@@ -201,39 +229,28 @@ def register_sim_tools(mcp, resolve_and_send, resolve_simulator):
                 return "Error: media_path required for addmedia (path to image or video file)"
             if not os.path.exists(media_path):
                 return f"Error: file not found: {media_path}"
-            result = subprocess.run(
-                ["xcrun", "simctl", "addmedia", sim, media_path],
-                capture_output=True, text=True
+            result = subprocess.run(["xcrun", "simctl", "addmedia", sim, media_path], capture_output=True, text=True)
+            return (
+                f"Added {os.path.basename(media_path)} to camera roll"
+                if result.returncode == 0
+                else f"Failed: {result.stderr.strip()}"
             )
-            return f"Added {os.path.basename(media_path)} to camera roll" if result.returncode == 0 else f"Failed: {result.stderr.strip()}"
 
         elif action == "boot":
-            result = subprocess.run(
-                ["xcrun", "simctl", "boot", sim],
-                capture_output=True, text=True
-            )
+            result = subprocess.run(["xcrun", "simctl", "boot", sim], capture_output=True, text=True)
             return f"Booted {sim}" if result.returncode == 0 else f"Failed: {result.stderr.strip()}"
 
         elif action == "shutdown":
-            result = subprocess.run(
-                ["xcrun", "simctl", "shutdown", sim],
-                capture_output=True, text=True
-            )
+            result = subprocess.run(["xcrun", "simctl", "shutdown", sim], capture_output=True, text=True)
             return f"Shut down {sim}" if result.returncode == 0 else f"Failed: {result.stderr.strip()}"
 
         elif action == "erase":
-            result = subprocess.run(
-                ["xcrun", "simctl", "erase", sim],
-                capture_output=True, text=True
-            )
+            result = subprocess.run(["xcrun", "simctl", "erase", sim], capture_output=True, text=True)
             return f"Erased {sim}" if result.returncode == 0 else f"Failed: {result.stderr.strip()}"
 
         elif action == "status_bar":
             if clear_time:
-                result = subprocess.run(
-                    ["xcrun", "simctl", "status_bar", sim, "clear"],
-                    capture_output=True, text=True
-                )
+                result = subprocess.run(["xcrun", "simctl", "status_bar", sim, "clear"], capture_output=True, text=True)
                 return "Status bar cleared" if result.returncode == 0 else f"Failed: {result.stderr.strip()}"
             cmd = ["xcrun", "simctl", "status_bar", sim, "override"]
             if time:

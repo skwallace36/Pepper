@@ -3,6 +3,7 @@
 Simulator resolution, xcodebuild invocation, app deployment with dylib injection,
 and physical device build/install/launch.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -12,9 +13,9 @@ import subprocess
 import tempfile
 from collections.abc import Callable
 
-import pepper_sessions
-from pepper_common import PORT_DIR, get_config
-from pepper_format import format_look
+from . import pepper_sessions
+from .pepper_common import PORT_DIR, get_config
+from .pepper_format import format_look
 
 # Type alias for the send_command callable expected by deploy_app.
 # Signature: async (port, cmd, params=None, timeout=10) -> dict
@@ -34,6 +35,7 @@ _session_simulator: str | None = None
 # Simulator helpers
 # ---------------------------------------------------------------------------
 
+
 def _clean_stale_port(simulator: str):
     """Remove stale port file before (re)launch so we wait for the fresh one."""
     port_file = os.path.join(PORT_DIR, f"{simulator}.port")
@@ -46,10 +48,7 @@ def _clean_stale_port(simulator: str):
 
 def is_sim_booted(udid: str) -> bool:
     """Check if a specific simulator is booted."""
-    result = subprocess.run(
-        ["xcrun", "simctl", "list", "devices", "booted", "-j"],
-        capture_output=True, text=True
-    )
+    result = subprocess.run(["xcrun", "simctl", "list", "devices", "booted", "-j"], capture_output=True, text=True)
     try:
         data = json.loads(result.stdout)
         for _runtime, devices in data.get("devices", {}).items():
@@ -64,25 +63,16 @@ def is_sim_booted(udid: str) -> bool:
 def boot_simulator(udid: str):
     """Boot a simulator via Simulator.app (not simctl boot — that causes black screens)."""
     # open -a Simulator connects to the Simulator UI properly
-    subprocess.run(
-        ["open", "-a", "Simulator", "--args", "-CurrentDeviceUDID", udid],
-        capture_output=True, text=True
-    )
+    subprocess.run(["open", "-a", "Simulator", "--args", "-CurrentDeviceUDID", udid], capture_output=True, text=True)
     try:
-        subprocess.run(
-            ["xcrun", "simctl", "bootstatus", udid, "-b"],
-            capture_output=True, text=True, timeout=120
-        )
+        subprocess.run(["xcrun", "simctl", "bootstatus", udid, "-b"], capture_output=True, text=True, timeout=120)
     except subprocess.TimeoutExpired:
         pass  # Proceed anyway — bootstatus can hang even when sim is ready
 
 
 def find_available_iphone() -> str | None:
     """Find the best available iPhone simulator to boot. Returns UDID or None."""
-    result = subprocess.run(
-        ["xcrun", "simctl", "list", "devices", "available", "-j"],
-        capture_output=True, text=True
-    )
+    result = subprocess.run(["xcrun", "simctl", "list", "devices", "available", "-j"], capture_output=True, text=True)
     try:
         data = json.loads(result.stdout)
         # Collect iPhones from iOS runtimes, prefer newest runtime
@@ -161,8 +151,10 @@ def resolve_simulator(simulator: str | None = None) -> str:
 # Simulator build & deploy
 # ---------------------------------------------------------------------------
 
-async def build_app(workspace: str | None = None, scheme: str | None = None,
-                    simulator: str | None = None) -> tuple[bool, str]:
+
+async def build_app(
+    workspace: str | None = None, scheme: str | None = None, simulator: str | None = None
+) -> tuple[bool, str]:
     """Build the app. Returns (success, message). Message includes errors on failure."""
     cfg = get_config()
     ws = workspace
@@ -187,11 +179,19 @@ async def build_app(workspace: str | None = None, scheme: str | None = None,
         boot_simulator(sim_udid)
 
     cmd = [
-        wrapper, "-workspace", ws, "-scheme", sch,
-        "-configuration", "Debug",
-        "-destination", f"platform=iOS Simulator,id={sim_udid}",
-        "-skipPackagePluginValidation", "-skipMacroValidation",
-        "DEBUG_INFORMATION_FORMAT=dwarf-with-dsym", "build"
+        wrapper,
+        "-workspace",
+        ws,
+        "-scheme",
+        sch,
+        "-configuration",
+        "Debug",
+        "-destination",
+        f"platform=iOS Simulator,id={sim_udid}",
+        "-skipPackagePluginValidation",
+        "-skipMacroValidation",
+        "DEBUG_INFORMATION_FORMAT=dwarf-with-dsym",
+        "build",
     ]
 
     # If wrapper doesn't exist, fall back to raw xcodebuild with manual DerivedData isolation
@@ -234,12 +234,15 @@ async def build_app(workspace: str | None = None, scheme: str | None = None,
         return False, "BUILD FAILED\n" + "\n".join(lines[-20:])
 
 
-async def deploy_app(simulator: str, send_fn: SendFn,
-                     bundle_id: str | None = None,
-                     dylib_path: str | None = None,
-                     install_path: str | None = None,
-                     workspace: str | None = None,
-                     skip_privacy: bool = False) -> str:
+async def deploy_app(
+    simulator: str,
+    send_fn: SendFn,
+    bundle_id: str | None = None,
+    dylib_path: str | None = None,
+    install_path: str | None = None,
+    workspace: str | None = None,
+    skip_privacy: bool = False,
+) -> str:
     """Deploy (terminate + install + launch with Pepper). Returns status message + screen."""
     cfg = get_config()
     bid = bundle_id or cfg["bundle_id"]
@@ -270,8 +273,7 @@ async def deploy_app(simulator: str, send_fn: SendFn,
     _clean_stale_port(simulator)
 
     # Terminate existing app
-    subprocess.run(["xcrun", "simctl", "terminate", simulator, bid],
-                   capture_output=True, text=True)
+    subprocess.run(["xcrun", "simctl", "terminate", simulator, bid], capture_output=True, text=True)
 
     # Auto-find latest built app if no install_path given.
     # Use the workspace from the last build targeting this sim (handles worktrees correctly).
@@ -281,27 +283,32 @@ async def deploy_app(simulator: str, send_fn: SendFn,
 
     # Install if we have an app path
     if install_path and os.path.exists(install_path):
-        result = subprocess.run(
-            ["xcrun", "simctl", "install", simulator, install_path],
-            capture_output=True, text=True
-        )
+        result = subprocess.run(["xcrun", "simctl", "install", simulator, install_path], capture_output=True, text=True)
         if result.returncode != 0:
             return f"Install failed: {result.stderr.strip()}"
 
     # Grant ALL privacy permissions at once (opt-out with skip_privacy=True).
     # "grant all" covers every service simctl supports in one call.
     if not skip_privacy:
-        subprocess.run(
-            ["xcrun", "simctl", "privacy", simulator, "grant", "all", bid],
-            capture_output=True, text=True
-        )
+        subprocess.run(["xcrun", "simctl", "privacy", simulator, "grant", "all", bid], capture_output=True, text=True)
 
     # Enable VoiceOver accessibility flag so SwiftUI apps populate labels.
     # Many apps (Ice Cubes, etc.) only compute accessibilityLabel when VoiceOver is on.
     subprocess.run(
-        ["xcrun", "simctl", "spawn", simulator, "defaults", "write",
-         "com.apple.Accessibility", "VoiceOverTouchEnabled", "-bool", "true"],
-        capture_output=True, text=True
+        [
+            "xcrun",
+            "simctl",
+            "spawn",
+            simulator,
+            "defaults",
+            "write",
+            "com.apple.Accessibility",
+            "VoiceOverTouchEnabled",
+            "-bool",
+            "true",
+        ],
+        capture_output=True,
+        text=True,
     )
 
     # Launch with injection + adapter env vars
@@ -314,10 +321,7 @@ async def deploy_app(simulator: str, send_fn: SendFn,
     # grants permissions, so the dialogs are redundant and block agents/users.
     if not skip_privacy:
         env["SIMCTL_CHILD_PEPPER_SKIP_PERMISSIONS"] = "1"
-    result = subprocess.run(
-        ["xcrun", "simctl", "launch", simulator, bid],
-        capture_output=True, text=True, env=env
-    )
+    result = subprocess.run(["xcrun", "simctl", "launch", simulator, bid], capture_output=True, text=True, env=env)
 
     if result.returncode != 0:
         stderr = result.stderr.strip()
@@ -338,7 +342,9 @@ async def deploy_app(simulator: str, send_fn: SendFn,
                 if resp.get("status") == "ok":
                     await asyncio.sleep(1)  # let UI settle
                     look_resp = await send_fn(port, "look", {}, timeout=30)
-                    screen_summary = format_look(look_resp) if look_resp.get("status") == "ok" else "(look not ready yet)"
+                    screen_summary = (
+                        format_look(look_resp) if look_resp.get("status") == "ok" else "(look not ready yet)"
+                    )
                     # Claim this simulator for our session
                     pepper_sessions.claim_simulator(simulator, bundle_id=bid, port=port)
                     return f"Deployed to {simulator} (PID {pid}, port {port}). Pepper is connected.\n--- Screen ---\n{screen_summary}"
@@ -381,6 +387,7 @@ def find_built_app(workspace: str | None = None, platform: str = "iphonesimulato
 # Physical device build & deploy
 # ---------------------------------------------------------------------------
 
+
 async def verify_device_connected(devicectl_uuid: str) -> tuple[bool, str]:
     """Check if a physical device is connected via devicectl. Returns (connected, message)."""
     tmp_path = None
@@ -388,8 +395,7 @@ async def verify_device_connected(devicectl_uuid: str) -> tuple[bool, str]:
         fd, tmp_path = tempfile.mkstemp(suffix=".json")
         os.close(fd)
         result = subprocess.run(
-            ["xcrun", "devicectl", "list", "devices", "-j", tmp_path],
-            capture_output=True, text=True, timeout=15
+            ["xcrun", "devicectl", "list", "devices", "-j", tmp_path], capture_output=True, text=True, timeout=15
         )
         if result.returncode != 0:
             return False, f"devicectl list failed: {result.stderr.strip()}"
@@ -409,8 +415,9 @@ async def verify_device_connected(devicectl_uuid: str) -> tuple[bool, str]:
             os.unlink(tmp_path)
 
 
-async def build_app_device(workspace: str | None = None, scheme: str | None = None,
-                           xcodebuild_id: str | None = None) -> tuple[bool, str]:
+async def build_app_device(
+    workspace: str | None = None, scheme: str | None = None, xcodebuild_id: str | None = None
+) -> tuple[bool, str]:
     """Build the app for a physical device. Returns (success, message)."""
     cfg = get_config()
     ws = workspace
@@ -428,11 +435,19 @@ async def build_app_device(workspace: str | None = None, scheme: str | None = No
         return False, "No device xcodebuild ID configured. Set DEVICE_XCODEBUILD_ID in pepper/.env"
 
     cmd = [
-        wrapper, "-workspace", ws, "-scheme", sch,
-        "-configuration", "Debug",
-        "-destination", f"platform=iOS,id={device_id}",
-        "-skipPackagePluginValidation", "-skipMacroValidation",
-        "DEBUG_INFORMATION_FORMAT=dwarf-with-dsym", "build"
+        wrapper,
+        "-workspace",
+        ws,
+        "-scheme",
+        sch,
+        "-configuration",
+        "Debug",
+        "-destination",
+        f"platform=iOS,id={device_id}",
+        "-skipPackagePluginValidation",
+        "-skipMacroValidation",
+        "DEBUG_INFORMATION_FORMAT=dwarf-with-dsym",
+        "build",
     ]
 
     # Fall back to raw xcodebuild with manual DerivedData isolation
@@ -473,8 +488,14 @@ async def build_app_device(workspace: str | None = None, scheme: str | None = No
 async def install_on_device(devicectl_uuid: str, app_path: str) -> tuple[bool, str]:
     """Install app on physical device via devicectl."""
     proc = await asyncio.create_subprocess_exec(
-        "xcrun", "devicectl", "device", "install", "app",
-        "--device", devicectl_uuid, app_path,
+        "xcrun",
+        "devicectl",
+        "device",
+        "install",
+        "app",
+        "--device",
+        devicectl_uuid,
+        app_path,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.STDOUT,
     )
@@ -488,8 +509,15 @@ async def install_on_device(devicectl_uuid: str, app_path: str) -> tuple[bool, s
 async def launch_on_device(devicectl_uuid: str, bundle_id: str) -> tuple[bool, str]:
     """Launch app on physical device via devicectl."""
     proc = await asyncio.create_subprocess_exec(
-        "xcrun", "devicectl", "device", "process", "launch",
-        "--device", devicectl_uuid, "--terminate-existing", bundle_id,
+        "xcrun",
+        "devicectl",
+        "device",
+        "process",
+        "launch",
+        "--device",
+        devicectl_uuid,
+        "--terminate-existing",
+        bundle_id,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.STDOUT,
     )

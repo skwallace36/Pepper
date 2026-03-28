@@ -1,14 +1,17 @@
 """Unit tests for pepper_common.py — port discovery, .env loading, JSON parsing."""
+
 from __future__ import annotations
 
 import os
 
-import pepper_common as pc
 import pytest
+
+import pepper_ios.pepper_common as pc
 
 # ---------------------------------------------------------------------------
 # try_parse_json
 # ---------------------------------------------------------------------------
+
 
 class TestTryParseJson:
     def test_none_returns_none(self):
@@ -48,6 +51,7 @@ class TestTryParseJson:
 # require_parse_json
 # ---------------------------------------------------------------------------
 
+
 class TestRequireParseJson:
     def test_valid_json(self):
         assert pc.require_parse_json('{"key": "val"}') == {"key": "val"}
@@ -67,6 +71,7 @@ class TestRequireParseJson:
 # ---------------------------------------------------------------------------
 # load_env
 # ---------------------------------------------------------------------------
+
 
 class TestLoadEnv:
     def test_missing_file_returns_empty(self, tmp_path, monkeypatch):
@@ -119,6 +124,7 @@ class TestLoadEnv:
 # port_alive
 # ---------------------------------------------------------------------------
 
+
 class TestPortAlive:
     def test_closed_port_returns_false(self):
         # Port 1 is almost certainly not open on localhost
@@ -154,6 +160,7 @@ class TestPortAlive:
 # ---------------------------------------------------------------------------
 # discover_port / _resolve_port_file
 # ---------------------------------------------------------------------------
+
 
 class TestDiscoverPort:
     def _write_port_file(self, port_dir, udid, port):
@@ -223,6 +230,7 @@ class TestDiscoverPort:
 # list_simulators
 # ---------------------------------------------------------------------------
 
+
 class TestListSimulators:
     def test_empty_when_no_port_dir(self, tmp_path, monkeypatch):
         monkeypatch.setattr(pc, "PORT_DIR", str(tmp_path / "missing"))
@@ -249,6 +257,7 @@ class TestListSimulators:
 # ---------------------------------------------------------------------------
 # register_device / unregister_device / _read_device_file
 # ---------------------------------------------------------------------------
+
 
 class TestDeviceRegistration:
     def test_register_and_read(self, tmp_path, monkeypatch):
@@ -296,6 +305,7 @@ class TestDeviceRegistration:
 # ---------------------------------------------------------------------------
 # discover_instance — PEPPER_CONNECT env var
 # ---------------------------------------------------------------------------
+
 
 class TestDiscoverInstanceEnvVar:
     def test_host_colon_port(self, monkeypatch):

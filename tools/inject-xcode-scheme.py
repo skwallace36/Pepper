@@ -36,11 +36,11 @@ def env_var_xml(key, value, enabled=True):
     """Format a single Xcode scheme EnvironmentVariable XML element."""
     is_enabled = "YES" if enabled else "NO"
     return (
-        f'         <EnvironmentVariable\n'
+        f"         <EnvironmentVariable\n"
         f'            key = "{key}"\n'
         f'            value = "{value}"\n'
         f'            isEnabled = "{is_enabled}">\n'
-        f'         </EnvironmentVariable>\n'
+        f"         </EnvironmentVariable>\n"
     )
 
 
@@ -48,20 +48,20 @@ def build_preaction_xml(pepper_root):
     """Format the build pre-action that ensures the Pepper dylib exists."""
     # Escape for XML: use &#10; for newlines inside scriptText
     script = (
-        f'# {BUILD_MARKER}&#10;'
-        f'PEPPER=&quot;{pepper_root}&quot;&#10;'
-        f'if [ ! -f &quot;$PEPPER/build/Pepper.framework/Pepper&quot; ]; then&#10;'
-        f'    make -C &quot;$PEPPER&quot; build 2&gt;&amp;1 || true&#10;'
-        f'fi&#10;'
+        f"# {BUILD_MARKER}&#10;"
+        f"PEPPER=&quot;{pepper_root}&quot;&#10;"
+        f"if [ ! -f &quot;$PEPPER/build/Pepper.framework/Pepper&quot; ]; then&#10;"
+        f"    make -C &quot;$PEPPER&quot; build 2&gt;&amp;1 || true&#10;"
+        f"fi&#10;"
     )
     return (
-        f'         <ExecutionAction\n'
+        f"         <ExecutionAction\n"
         f'            ActionType = "Xcode.IDEStandardExecutionActionsCore.ExecutionActionType.ShellScriptAction">\n'
-        f'            <ActionContent\n'
+        f"            <ActionContent\n"
         f'               title = "{BUILD_MARKER}"\n'
         f'               scriptText = "{script}">\n'
-        f'            </ActionContent>\n'
-        f'         </ExecutionAction>\n'
+        f"            </ActionContent>\n"
+        f"         </ExecutionAction>\n"
     )
 
 
@@ -97,18 +97,14 @@ def inject_env_vars(content, pepper_root, adapter):
         # Insert after the newline before </EnvironmentVariables> indentation
         # so our vars get their own properly-indented lines
         pos = env_close
-        while pos > 0 and la_section[pos - 1] in (' ', '\t'):
+        while pos > 0 and la_section[pos - 1] in (" ", "\t"):
             pos -= 1
         # pos is now at the newline; insert after it
         insert_pos = la_start + pos
         content = content[:insert_pos] + new_vars + content[insert_pos:]
     else:
         # No EnvironmentVariables section — create one before </LaunchAction>
-        env_section = (
-            '      <EnvironmentVariables>\n'
-            + new_vars +
-            '      </EnvironmentVariables>\n'
-        )
+        env_section = "      <EnvironmentVariables>\n" + new_vars + "      </EnvironmentVariables>\n"
         # Insert before </LaunchAction>
         close_la = content.find("</LaunchAction>")
         content = content[:close_la] + env_section + "   " + content[close_la:]
@@ -138,11 +134,7 @@ def inject_build_preaction(content, pepper_root):
         # The LaunchAction might span multiple lines
         tag_close = content.find(">", la_start)
         first_newline_after = content.find("\n", tag_close) + 1
-        preactions_section = (
-            '      <PreActions>\n'
-            + preaction_xml +
-            '      </PreActions>\n'
-        )
+        preactions_section = "      <PreActions>\n" + preaction_xml + "      </PreActions>\n"
         content = content[:first_newline_after] + preactions_section + content[first_newline_after:]
 
     return content
@@ -164,7 +156,7 @@ def remove_block(content, start_marker, end_tag):
         return content
 
     # Include leading whitespace on the tag's line
-    nl = content.rfind('\n', 0, tag_pos)
+    nl = content.rfind("\n", 0, tag_pos)
     block_start = nl + 1 if nl != -1 else tag_pos
 
     # Walk forward to find the closing end_tag after the marker
@@ -173,7 +165,7 @@ def remove_block(content, start_marker, end_tag):
         return content
     block_end = close_pos + len(end_tag)
     # Include trailing newline
-    if block_end < len(content) and content[block_end] == '\n':
+    if block_end < len(content) and content[block_end] == "\n":
         block_end += 1
 
     return content[:block_start] + content[block_end:]
@@ -208,25 +200,24 @@ def setup_filter(scheme_path, pepper_root, adapter):
     """
     inject_script = os.path.abspath(__file__)
 
-    smudge_cmd = (
-        f'python3 "{inject_script}" --filter-smudge'
-        f' --pepper-root "{pepper_root}" --adapter {adapter}'
-    )
+    smudge_cmd = f'python3 "{inject_script}" --filter-smudge --pepper-root "{pepper_root}" --adapter {adapter}'
     clean_cmd = f'python3 "{inject_script}" --filter-clean'
 
-    subprocess.run(["git", "config", "filter.pepper-scheme.smudge", smudge_cmd],
-                   check=True, capture_output=True)
-    subprocess.run(["git", "config", "filter.pepper-scheme.clean", clean_cmd],
-                   check=True, capture_output=True)
+    subprocess.run(["git", "config", "filter.pepper-scheme.smudge", smudge_cmd], check=True, capture_output=True)
+    subprocess.run(["git", "config", "filter.pepper-scheme.clean", clean_cmd], check=True, capture_output=True)
 
     # Find the correct git dir (handles linked worktrees)
     git_dir = subprocess.run(
         ["git", "rev-parse", "--git-dir"],
-        capture_output=True, text=True, check=True,
+        capture_output=True,
+        text=True,
+        check=True,
     ).stdout.strip()
     repo_root = subprocess.run(
         ["git", "rev-parse", "--show-toplevel"],
-        capture_output=True, text=True, check=True,
+        capture_output=True,
+        text=True,
+        check=True,
     ).stdout.strip()
 
     rel_path = os.path.relpath(os.path.abspath(scheme_path), repo_root)
@@ -275,12 +266,15 @@ def main():
     parser.add_argument("--pepper-root", help="Pepper project root (auto-detected)")
     parser.add_argument("--adapter", default="generic", help="Adapter type (default: generic)")
     parser.add_argument("--remove", action="store_true", help="Remove injection")
-    parser.add_argument("--setup-filter", action="store_true",
-                        help="Configure git smudge/clean filter (replaces assume-unchanged)")
-    parser.add_argument("--filter-clean", action="store_true",
-                        help="Git clean filter: strip injection (stdin → stdout)")
-    parser.add_argument("--filter-smudge", action="store_true",
-                        help="Git smudge filter: add injection (stdin → stdout)")
+    parser.add_argument(
+        "--setup-filter", action="store_true", help="Configure git smudge/clean filter (replaces assume-unchanged)"
+    )
+    parser.add_argument(
+        "--filter-clean", action="store_true", help="Git clean filter: strip injection (stdin → stdout)"
+    )
+    parser.add_argument(
+        "--filter-smudge", action="store_true", help="Git smudge filter: add injection (stdin → stdout)"
+    )
     args = parser.parse_args()
 
     # --- Filter modes (stdin → stdout, no file path needed) ---

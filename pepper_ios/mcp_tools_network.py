@@ -2,12 +2,14 @@
 
 Tool definitions for: network, timeline.
 """
+
 from __future__ import annotations
 
 import time
 
-from pepper_commands import CMD_NETWORK, CMD_TIMELINE
 from pydantic import Field
+
+from .pepper_commands import CMD_NETWORK, CMD_TIMELINE
 
 
 def register_network_tools(mcp, resolve_and_send):
@@ -21,19 +23,36 @@ def register_network_tools(mcp, resolve_and_send):
     @mcp.tool()
     async def network(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
-        action: str = Field(description="Action: start, stop, log, status, clear, simulate, conditions, remove_condition, clear_conditions, mock, mocks, remove_mock, clear_mocks"),
+        action: str = Field(
+            description="Action: start, stop, log, status, clear, simulate, conditions, remove_condition, clear_conditions, mock, mocks, remove_mock, clear_mocks"
+        ),
         filter_text: str | None = Field(default=None, description="Filter by URL pattern (for log action)"),
         limit: int | None = Field(default=None, description="Max entries to return (for log action)"),
-        max_body: int | None = Field(default=None, description="Max chars per request/response body (default: 4096). Use 0 for unlimited."),
-        effect: str | None = Field(default=None, description="Condition effect for simulate: latency, fail_status, fail_error, throttle, offline"),
+        max_body: int | None = Field(
+            default=None, description="Max chars per request/response body (default: 4096). Use 0 for unlimited."
+        ),
+        effect: str | None = Field(
+            default=None,
+            description="Condition effect for simulate: latency, fail_status, fail_error, throttle, offline",
+        ),
         latency_ms: int | None = Field(default=None, description="Latency in ms (for effect=latency)"),
         status_code: int | None = Field(default=None, description="HTTP status code (for effect=fail_status)"),
-        error_domain: str | None = Field(default=None, description="NSError domain (for effect=fail_error, default: NSURLErrorDomain)"),
+        error_domain: str | None = Field(
+            default=None, description="NSError domain (for effect=fail_error, default: NSURLErrorDomain)"
+        ),
         error_code: int | None = Field(default=None, description="NSError code (for effect=fail_error)"),
-        bytes_per_second: int | None = Field(default=None, description="Bandwidth limit in bytes/sec (for effect=throttle)"),
-        url: str | None = Field(default=None, description="URL pattern to match (for simulate/mock — substring, case-insensitive)"),
-        method: str | None = Field(default=None, description="HTTP method to match (for simulate/mock — e.g., GET, POST)"),
-        condition_id: str | None = Field(default=None, description="Condition ID (for remove_condition, or custom ID for simulate)"),
+        bytes_per_second: int | None = Field(
+            default=None, description="Bandwidth limit in bytes/sec (for effect=throttle)"
+        ),
+        url: str | None = Field(
+            default=None, description="URL pattern to match (for simulate/mock — substring, case-insensitive)"
+        ),
+        method: str | None = Field(
+            default=None, description="HTTP method to match (for simulate/mock — e.g., GET, POST)"
+        ),
+        condition_id: str | None = Field(
+            default=None, description="Condition ID (for remove_condition, or custom ID for simulate)"
+        ),
         mock_status: int | None = Field(default=None, description="HTTP status code for mock response (default: 200)"),
         mock_body: str | None = Field(default=None, description="Response body for mock (JSON string)"),
         mock_id: str | None = Field(default=None, description="Mock ID (for remove_mock, or custom ID for mock)"),
@@ -98,8 +117,12 @@ def register_network_tools(mcp, resolve_and_send):
         simulator: str | None = Field(default=None, description="Simulator UDID"),
         action: str = Field(default="query", description="Action: query, status, config, clear"),
         limit: int | None = Field(default=None, description="Max events to return (default 100)"),
-        types: str | None = Field(default=None, description="Comma-separated event types: network, console, screen, command"),
-        last_seconds: int | None = Field(default=None, description="Events from the last N seconds (convenience for since_ms)"),
+        types: str | None = Field(
+            default=None, description="Comma-separated event types: network, console, screen, command"
+        ),
+        last_seconds: int | None = Field(
+            default=None, description="Events from the last N seconds (convenience for since_ms)"
+        ),
         since_ms: int | None = Field(default=None, description="Only events after this epoch ms timestamp"),
         filter_text: str | None = Field(default=None, description="Filter events by summary substring"),
         buffer_size: int | None = Field(default=None, description="Set buffer size (for config action)"),

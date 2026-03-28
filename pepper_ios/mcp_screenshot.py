@@ -1,4 +1,5 @@
 """Screenshot capture for Pepper MCP — in-process fast path + simctl fallback."""
+
 from __future__ import annotations
 
 import asyncio
@@ -8,8 +9,11 @@ import tempfile
 
 
 async def capture_screenshot_inprocess(
-    send_command, port: int, quality: str = "standard",
-    element: str | None = None, text: str | None = None,
+    send_command,
+    port: int,
+    quality: str = "standard",
+    element: str | None = None,
+    text: str | None = None,
     host: str = "localhost",
 ) -> str | None:
     """In-process screenshot via the dylib's screenshot handler.
@@ -47,13 +51,19 @@ async def capture_screenshot(udid: str, quality: str = "standard") -> str | None
     out_path = None
     try:
         # Create temp files
-        fd, png_path = tempfile.mkstemp(suffix='.png', prefix='pepper-vis-')
+        fd, png_path = tempfile.mkstemp(suffix=".png", prefix="pepper-vis-")
         os.close(fd)
 
         # Capture screenshot
         proc = await asyncio.create_subprocess_exec(
-            'xcrun', 'simctl', 'io', udid, 'screenshot', png_path,
-            stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL,
+            "xcrun",
+            "simctl",
+            "io",
+            udid,
+            "screenshot",
+            png_path,
+            stdout=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.DEVNULL,
         )
         await asyncio.wait_for(proc.wait(), timeout=5)
         if proc.returncode != 0:
@@ -61,16 +71,20 @@ async def capture_screenshot(udid: str, quality: str = "standard") -> str | None
 
         # Get actual image height and derive 1x logical height (divide by scale factor)
         height_proc = await asyncio.create_subprocess_exec(
-            'sips', '-g', 'pixelHeight', png_path,
-            stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL,
+            "sips",
+            "-g",
+            "pixelHeight",
+            png_path,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.DEVNULL,
         )
         height_out, _ = await height_proc.communicate()
         # sips output: "  pixelHeight: 1748\n" — extract the number
         logical_height = 874  # fallback
         for line in height_out.decode().splitlines():
-            if 'pixelHeight' in line:
+            if "pixelHeight" in line:
                 try:
-                    px = int(line.split(':')[-1].strip())
+                    px = int(line.split(":")[-1].strip())
                     # Common scales: 2x (most sims) or 3x (Plus models)
                     # Divide by 2 for standard retina; if result > 1000, likely 3x
                     h2 = px // 2
@@ -81,29 +95,49 @@ async def capture_screenshot(udid: str, quality: str = "standard") -> str | None
 
         if quality == "high":
             # High quality: 1x resize, 95% JPEG
-            out_path = png_path.replace('.png', '-hq.jpg')
+            out_path = png_path.replace(".png", "-hq.jpg")
             proc = await asyncio.create_subprocess_exec(
-                'sips', '-Z', str(logical_height), '-s', 'format', 'jpeg',
-                '-s', 'formatOptions', '95',
-                png_path, '--out', out_path,
-                stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL,
+                "sips",
+                "-Z",
+                str(logical_height),
+                "-s",
+                "format",
+                "jpeg",
+                "-s",
+                "formatOptions",
+                "95",
+                png_path,
+                "--out",
+                out_path,
+                stdout=asyncio.subprocess.DEVNULL,
+                stderr=asyncio.subprocess.DEVNULL,
             )
         else:
             # Standard: 1x resize, 70% JPEG
-            out_path = png_path.replace('.png', '.jpg')
+            out_path = png_path.replace(".png", ".jpg")
             proc = await asyncio.create_subprocess_exec(
-                'sips', '-Z', str(logical_height), '-s', 'format', 'jpeg',
-                '-s', 'formatOptions', '70',
-                png_path, '--out', out_path,
-                stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL,
+                "sips",
+                "-Z",
+                str(logical_height),
+                "-s",
+                "format",
+                "jpeg",
+                "-s",
+                "formatOptions",
+                "70",
+                png_path,
+                "--out",
+                out_path,
+                stdout=asyncio.subprocess.DEVNULL,
+                stderr=asyncio.subprocess.DEVNULL,
             )
 
         await asyncio.wait_for(proc.wait(), timeout=5)
         if proc.returncode != 0:
             return None
 
-        with open(out_path, 'rb') as f:
-            return base64.b64encode(f.read()).decode('ascii')
+        with open(out_path, "rb") as f:
+            return base64.b64encode(f.read()).decode("ascii")
     except (TimeoutError, OSError):
         return None
     finally:

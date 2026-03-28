@@ -2,10 +2,12 @@
 
 Tool definitions for: perf, animations, heap.
 """
+
 from __future__ import annotations
 
-from pepper_commands import CMD_ANIMATIONS, CMD_HEAP, CMD_HEAP_SNAPSHOT, CMD_PERF
 from pydantic import Field
+
+from .pepper_commands import CMD_ANIMATIONS, CMD_HEAP, CMD_HEAP_SNAPSHOT, CMD_PERF
 
 
 def register_perf_tools(mcp, resolve_and_send):
@@ -20,8 +22,12 @@ def register_perf_tools(mcp, resolve_and_send):
     async def perf(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
         action: str = Field(default="fps", description="Action: fps, hitches, redraws"),
-        duration_ms: int | None = Field(default=None, description="Sampling duration in ms (for fps/hitches; default: 2000/5000)"),
-        threshold_ms: int | None = Field(default=None, description="Hitch threshold in ms (for hitches action; default: 16)"),
+        duration_ms: int | None = Field(
+            default=None, description="Sampling duration in ms (for fps/hitches; default: 2000/5000)"
+        ),
+        threshold_ms: int | None = Field(
+            default=None, description="Hitch threshold in ms (for hitches action; default: 16)"
+        ),
     ) -> str:
         """Use this to measure frame rate, detect main-thread hitches, and find expensive redraws.
 
@@ -43,7 +49,10 @@ def register_perf_tools(mcp, resolve_and_send):
         simulator: str | None = Field(default=None, description="Simulator UDID"),
         action: str | None = Field(default=None, description="Action: scan (default), trace, or speed"),
         point: str | None = Field(default=None, description="Coordinates 'x,y' to trace (for trace action)"),
-        speed: float | None = Field(default=None, description="Animation speed multiplier for action=speed: 0=disabled, 0.1=slow-mo, 1=normal, 10=turbo"),
+        speed: float | None = Field(
+            default=None,
+            description="Animation speed multiplier for action=speed: 0=disabled, 0.1=slow-mo, 1=normal, 10=turbo",
+        ),
     ) -> str:
         """Use this to inspect running animations, trace view movement, or slow down/speed up animations.
 
@@ -66,10 +75,14 @@ def register_perf_tools(mcp, resolve_and_send):
     @mcp.tool()
     async def heap(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
-        action: str = Field(description="Action: classes, controllers, find, inspect, read, snapshot, diff, baseline, check, snapshot_clear, snapshot_status"),
+        action: str = Field(
+            description="Action: classes, controllers, find, inspect, read, snapshot, diff, baseline, check, snapshot_clear, snapshot_status"
+        ),
         class_name: str | None = Field(default=None, description="Class name or pattern to search for"),
         pattern: str | None = Field(default=None, description="Pattern for classes search"),
-        key_path: str | None = Field(default=None, description="KVC key path to read (for 'read' action, e.g. 'camera.zoom')"),
+        key_path: str | None = Field(
+            default=None, description="KVC key path to read (for 'read' action, e.g. 'camera.zoom')"
+        ),
         limit: int | None = Field(default=None, description="Max results to return"),
         min_growth: int | None = Field(default=None, description="Min instance growth to report in diff (default: 1)"),
         threshold: int | None = Field(default=None, description="Min instance growth to flag in check (default: 1)"),
@@ -101,9 +114,14 @@ def register_perf_tools(mcp, resolve_and_send):
         Related tools: vars_inspect (ViewModel @Published properties — read AND write),
         defaults (UserDefaults — persistent config), layers (CALayer visual properties)."""
         # Route snapshot/diff/baseline/check actions to the heap_snapshot handler
-        snapshot_actions = {"snapshot": "snapshot", "diff": "diff",
-                            "snapshot_clear": "clear", "snapshot_status": "status",
-                            "baseline": "baseline", "check": "check"}
+        snapshot_actions = {
+            "snapshot": "snapshot",
+            "diff": "diff",
+            "snapshot_clear": "clear",
+            "snapshot_status": "status",
+            "baseline": "baseline",
+            "check": "check",
+        }
         if action in snapshot_actions:
             params: dict = {"action": snapshot_actions[action]}
             if min_growth is not None:

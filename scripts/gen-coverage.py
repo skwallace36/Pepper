@@ -27,10 +27,10 @@ ACTION_PARAMS = ["action", "mode", "type", "direction", "value"]
 
 # Case values to skip — aliases, internal sub-cases, not top-level variants
 SKIP_CASES = {
-    "landscape-left",       # alias for landscape_left
-    "landscape-right",      # alias for landscape_right
-    "portrait-upside-down", # alias for portrait_upside_down
-    "content_area",         # introspect internal sub-case
+    "landscape-left",  # alias for landscape_left
+    "landscape-right",  # alias for landscape_right
+    "portrait-upside-down",  # alias for portrait_upside_down
+    "content_area",  # introspect internal sub-case
     "unlabeled_interactive",
     "icon_button",
 }
@@ -41,7 +41,7 @@ def parse_registered_commands():
     with open(DISPATCHER) as f:
         src = f.read()
 
-    m = re.search(r'func registerBuiltins\(\)\s*\{(.+)', src, re.DOTALL)
+    m = re.search(r"func registerBuiltins\(\)\s*\{(.+)", src, re.DOTALL)
     if not m:
         sys.exit("Could not find registerBuiltins() in dispatcher")
     body = m.group(1)
@@ -53,7 +53,7 @@ def parse_registered_commands():
         commands.append(m.group(1))
 
     # Handler-based: register(FooHandler(...))
-    for m in re.finditer(r'register\((\w+Handler)\(', body):
+    for m in re.finditer(r"register\((\w+Handler)\(", body):
         handler_class = m.group(1)
         cmd_name = handler_to_command(handler_class)
         if cmd_name:
@@ -73,7 +73,7 @@ def handler_to_command(handler_class):
             fp = os.path.join(HANDLERS_DIR, fname)
             with open(fp) as f:
                 src = f.read()
-            if re.search(rf'(?:class|struct)\s+{handler_class}\b', src):
+            if re.search(rf"(?:class|struct)\s+{handler_class}\b", src):
                 filepath = fp
                 break
         else:
@@ -83,7 +83,7 @@ def handler_to_command(handler_class):
         src = f.read()
 
     # Handle files with multiple classes (e.g. SubscribeHandler.swift)
-    class_pattern = rf'(?:class|struct)\s+{handler_class}\b.*?(?=(?:class|struct)\s+\w+Handler\b|\Z)'
+    class_pattern = rf"(?:class|struct)\s+{handler_class}\b.*?(?=(?:class|struct)\s+\w+Handler\b|\Z)"
     class_match = re.search(class_pattern, src, re.DOTALL)
     if class_match:
         m = re.search(r'(?:var|let)\s+commandName.*?"(\w+)"', class_match.group(0))
@@ -155,7 +155,7 @@ def get_variants_for_command(cmd, source_variants, status):
     prefix = f"{cmd}."
     for key in status:
         if key.startswith(prefix):
-            variant = key[len(prefix):]
+            variant = key[len(prefix) :]
             if variant not in variants:
                 variants.append(variant)
     return variants
@@ -171,7 +171,7 @@ def generate_markdown(commands, variants_map, status):
         "",
         "**Sources of truth:**",
         "- **Commands** — parsed from `dylib/commands/PepperDispatcher.swift` (`registerBuiltins()`)",
-        "- **Variants** — parsed from handler switch cases (`case \"action\":` patterns)",
+        '- **Variants** — parsed from handler switch cases (`case "action":` patterns)',
         "- **Status & test surfaces** — `test-app/coverage-status.json` (the only file you edit)",
         "",
         "**Workflow:**",

@@ -8,7 +8,7 @@ import asyncio
 import json
 import uuid
 
-from pepper_ws_raw import RawWebSocket
+from .pepper_ws_raw import RawWebSocket
 
 
 def make_command(cmd, params=None):
@@ -39,6 +39,7 @@ def _send_command_sync(host, port, msg, timeout=10, on_event=None):
     try:
         ws.send(json.dumps(msg))
         import time
+
         deadline = time.monotonic() + timeout
         while True:
             remaining = deadline - time.monotonic()

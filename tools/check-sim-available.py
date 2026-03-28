@@ -7,11 +7,12 @@ immediately — before the app is even launched.
 
 The Makefile's post-launch claim updates this to state=active with the real port.
 """
+
 import os
 import sys
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from pepper_sessions import claim_simulator_deploying, find_available_simulator, is_claimed
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from pepper_ios.pepper_sessions import claim_simulator_deploying, find_available_simulator, is_claimed
 
 udid = sys.argv[1] if len(sys.argv) > 1 else ""
 if not udid:

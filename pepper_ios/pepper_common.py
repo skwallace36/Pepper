@@ -3,6 +3,7 @@ Pepper common utilities — shared constants, config helpers, and port discovery
 
 Used by pepper-mcp, pepper-ctl, pepper-stream, and test-client.py.
 """
+
 from __future__ import annotations
 
 import json
@@ -61,6 +62,7 @@ def require_tool(name: str, install_hint: str = "") -> str:
 # .env loading
 # ---------------------------------------------------------------------------
 
+
 def load_env() -> dict[str, str]:
     """Load .env file from pepper repo root. Returns dict of key=value pairs."""
     env: dict[str, str] = {}
@@ -79,6 +81,7 @@ def load_env() -> dict[str, str]:
 # ---------------------------------------------------------------------------
 # Build config
 # ---------------------------------------------------------------------------
+
 
 def get_config() -> dict[str, str]:
     """Get build config from .env + defaults."""
@@ -101,6 +104,7 @@ def get_config() -> dict[str, str]:
 # Port liveness
 # ---------------------------------------------------------------------------
 
+
 def port_alive(port: int, host: str = "localhost", timeout: float = 1.0) -> bool:
     """Check if anything is listening on host:port via TCP connect."""
     try:
@@ -115,6 +119,7 @@ def port_alive(port: int, host: str = "localhost", timeout: float = 1.0) -> bool
 # Bonjour browse (fallback for on-device discovery)
 # ---------------------------------------------------------------------------
 
+
 def _bonjour_browse(timeout: float = 2.0) -> list[dict]:
     """Browse for _pepper._tcp. Bonjour services using dns-sd (macOS).
 
@@ -128,7 +133,9 @@ def _bonjour_browse(timeout: float = 2.0) -> list[dict]:
     try:
         proc = subprocess.Popen(
             ["dns-sd", "-B", "_pepper._tcp.", "local."],
-            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
         )
         try:
             browse_out, _ = proc.communicate(timeout=timeout)
@@ -141,7 +148,7 @@ def _bonjour_browse(timeout: float = 2.0) -> list[dict]:
     # Parse: "  Add        2   1 local.  _pepper._tcp.  Pepper-com.example.app"
     names = []
     for line in browse_out.splitlines():
-        m = re.search(r'\bAdd\b.+?_pepper\._tcp\.\s+(.+)$', line)
+        m = re.search(r"\bAdd\b.+?_pepper\._tcp\.\s+(.+)$", line)
         if m:
             names.append(m.group(1).strip())
 
@@ -154,7 +161,9 @@ def _bonjour_browse(timeout: float = 2.0) -> list[dict]:
         try:
             proc = subprocess.Popen(
                 ["dns-sd", "-L", name, "_pepper._tcp.", "local."],
-                stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+                text=True,
             )
             try:
                 resolve_out, _ = proc.communicate(timeout=1.5)
@@ -165,7 +174,7 @@ def _bonjour_browse(timeout: float = 2.0) -> list[dict]:
             continue
 
         for line in resolve_out.splitlines():
-            m = re.search(r'can be reached at (.+?):(\d+)', line)
+            m = re.search(r"can be reached at (.+?):(\d+)", line)
             if m:
                 raw_host = m.group(1).strip()
                 port = int(m.group(2))
@@ -183,6 +192,7 @@ def _bonjour_browse(timeout: float = 2.0) -> list[dict]:
 # ---------------------------------------------------------------------------
 # Port discovery
 # ---------------------------------------------------------------------------
+
 
 def _resolve_port_file(simulator: str | None = None) -> tuple[str, int]:
     """Resolve a single (udid, port) from port files.
@@ -237,8 +247,7 @@ def _resolve_port_file(simulator: str | None = None) -> tuple[str, int]:
         elif len(live_ports) > 1:
             sims = [f"  {udid} → port {port}" for udid, port in live_ports]
             raise RuntimeError(
-                f"Multiple simulators running ({len(live_ports)}). "
-                f"Pass simulator=UDID to pick one:\n" + "\n".join(sims)
+                f"Multiple simulators running ({len(live_ports)}). Pass simulator=UDID to pick one:\n" + "\n".join(sims)
             )
     raise RuntimeError("No Pepper instances found. Is the app running with dylib injection?")
 
@@ -283,6 +292,7 @@ def list_simulators() -> list[dict]:
 # Device discovery (physical devices via registered endpoints)
 # ---------------------------------------------------------------------------
 
+
 def _read_device_file(udid: str) -> dict | None:
     """Read a device registration file. Returns dict with host/port or None."""
     path = os.path.join(DEVICE_DIR, f"{udid}.device")
@@ -296,8 +306,7 @@ def _read_device_file(udid: str) -> dict | None:
     return None
 
 
-def register_device(udid: str, host: str, port: int, name: str = "",
-                    via: str = "") -> None:
+def register_device(udid: str, host: str, port: int, name: str = "", via: str = "") -> None:
     """Register a physical device endpoint for Pepper discovery.
 
     Creates a JSON file at /tmp/pepper-devices/{UDID}.device.
@@ -369,8 +378,7 @@ def _resolve_device_file(device: str | None = None) -> tuple[str, int, str]:
     elif len(live_devices) > 1:
         lines = [f"  {udid} → {host}:{port}" for host, port, udid in live_devices]
         raise RuntimeError(
-            f"Multiple devices responding ({len(live_devices)}). "
-            f"Pass device=UDID to pick one:\n" + "\n".join(lines)
+            f"Multiple devices responding ({len(live_devices)}). Pass device=UDID to pick one:\n" + "\n".join(lines)
         )
     raise RuntimeError("No devices registered")
 
@@ -392,6 +400,7 @@ def list_devices() -> list[dict]:
 # ---------------------------------------------------------------------------
 # Unified instance discovery (simulators + devices)
 # ---------------------------------------------------------------------------
+
 
 def discover_instance(identifier: str | None = None) -> tuple[str, int, str]:
     """Discover a Pepper instance — simulator or device. Returns (host, port, udid).
@@ -435,13 +444,10 @@ def discover_instance(identifier: str | None = None) -> tuple[str, int, str]:
             host, port = device_data["host"], device_data["port"]
             if port_alive(port, host=host):
                 return host, port, identifier
-            raise RuntimeError(
-                f"Instance {identifier} registered at {host}:{port} but not responding."
-            )
+            raise RuntimeError(f"Instance {identifier} registered at {host}:{port} but not responding.")
 
         raise RuntimeError(
-            f"No Pepper instance found for {identifier}. "
-            f"Check simulator port files and device registrations."
+            f"No Pepper instance found for {identifier}. Check simulator port files and device registrations."
         )
 
     # Auto-discover: collect all live instances

@@ -63,7 +63,7 @@ done
 
 # 3. Ruff lint (if available)
 if command -v ruff &>/dev/null; then
-    if ruff check "$REPO_DIR/tools/" "$REPO_DIR/scripts/gen-coverage.py" --quiet 2>/dev/null; then
+    if ruff check "$REPO_DIR/pepper_ios/" "$REPO_DIR/tools/" "$REPO_DIR/scripts/gen-coverage.py" --quiet 2>/dev/null; then
         pass "Ruff lint"
     else
         fail "Ruff lint errors found — run 'make lint-py' to see details"
@@ -73,7 +73,7 @@ else
 fi
 
 # 4. MCP server imports (validates all tool definitions parse)
-if [ -f "$REPO_DIR/tools/pepper-mcp" ]; then
+if [ -f "$REPO_DIR/pepper_ios/mcp_server.py" ]; then
     PYTHON=""
     for candidate in python3.11 python3.12 python3.13; do
         if command -v "$candidate" &>/dev/null && "$candidate" -c "import mcp" 2>/dev/null; then
@@ -84,10 +84,8 @@ if [ -f "$REPO_DIR/tools/pepper-mcp" ]; then
     if [ -n "$PYTHON" ]; then
         if "$PYTHON" -c "
 import sys, os
-os.chdir('$REPO_DIR')
-__file__ = '$REPO_DIR/tools/pepper-mcp'
-code = open(__file__).read()
-exec(code.split('if __name__')[0])
+sys.path.insert(0, '$REPO_DIR')
+from pepper_ios.mcp_server import mcp
 " 2>/dev/null; then
             pass "MCP server imports"
         else

@@ -3,14 +3,17 @@
 Tool definitions for: layers, console, crash_log, lifecycle, responder_chain,
 notifications, constraints, timers, concurrency.
 """
+
 from __future__ import annotations
 
 import json
 import os
 import time
 
-from mcp_crash import parse_crash_report
-from pepper_commands import (
+from pydantic import Field
+
+from .mcp_crash import parse_crash_report
+from .pepper_commands import (
     CMD_CONCURRENCY,
     CMD_CONSOLE,
     CMD_CONSTRAINTS,
@@ -20,8 +23,7 @@ from pepper_commands import (
     CMD_RESPONDER_CHAIN,
     CMD_TIMERS,
 )
-from pepper_common import get_config
-from pydantic import Field
+from .pepper_common import get_config
 
 
 def register_debug_tools(mcp, resolve_and_send):
@@ -199,8 +201,12 @@ def register_debug_tools(mcp, resolve_and_send):
         simulator: str | None = Field(default=None, description="Simulator UDID"),
         action: str = Field(description="Action: start, stop, list, counts, post, events, status, clear"),
         name: str | None = Field(default=None, description="Notification name to post (for 'post' action)"),
-        filter_text: str | None = Field(default=None, description="Filter observers/events by notification name or class pattern"),
-        user_info: str | None = Field(default=None, description="JSON string of userInfo dict to include when posting (for 'post' action)"),
+        filter_text: str | None = Field(
+            default=None, description="Filter observers/events by notification name or class pattern"
+        ),
+        user_info: str | None = Field(
+            default=None, description="JSON string of userInfo dict to include when posting (for 'post' action)"
+        ),
         limit: int | None = Field(default=None, description="Max results to return (for list/events actions)"),
     ) -> str:
         """Inspect NSNotificationCenter observers and post arbitrary notifications.
@@ -272,7 +278,9 @@ def register_debug_tools(mcp, resolve_and_send):
     async def timers(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
         action: str = Field(default="list", description="Action: start, stop, list, invalidate, status, clear"),
-        timer_id: str | None = Field(default=None, description="Timer/display-link ID to invalidate (e.g. timer_3, dlink_1)"),
+        timer_id: str | None = Field(
+            default=None, description="Timer/display-link ID to invalidate (e.g. timer_3, dlink_1)"
+        ),
         filter_text: str | None = Field(default=None, description="Filter by target class or selector name"),
         limit: int | None = Field(default=None, description="Max results to return (default 100)"),
     ) -> str:
@@ -322,9 +330,7 @@ def register_debug_tools(mcp, resolve_and_send):
             default=None,
             description="Task address to cancel, hex string e.g. '0x1234abcd' (for 'cancel' action)",
         ),
-        limit: int | None = Field(
-            default=None, description="Max results to return"
-        ),
+        limit: int | None = Field(default=None, description="Max results to return"),
     ) -> str:
         """Inspect the Swift Concurrency runtime: active Tasks, actor classes, and executor state.
 

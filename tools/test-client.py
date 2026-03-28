@@ -18,9 +18,9 @@ except ImportError:
     print("Error: 'websockets' package required. Install with: pip install websockets", file=sys.stderr)
     sys.exit(1)
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from pepper_common import DEFAULT_HOST
-from pepper_common import discover_port as _discover_port
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from pepper_ios.pepper_common import DEFAULT_HOST
+from pepper_ios.pepper_common import discover_port as _discover_port
 
 
 def discover_port(simulator=None):
@@ -31,26 +31,31 @@ def discover_port(simulator=None):
         print(str(e), file=sys.stderr)
         sys.exit(1)
 
+
 # Command shortcuts: name -> (cmd, params_template)
-SHORTCUTS = OrderedDict([
-    ("ping",       ("ping", None)),
-    ("screen",     ("screen", None)),
-    ("snapshot",   ("snapshot", None)),
-    ("tree",       ("tree", None)),
-    ("screenshot", ("screenshot", None)),
-    ("back",       ("back", None)),
-])
+SHORTCUTS = OrderedDict(
+    [
+        ("ping", ("ping", None)),
+        ("screen", ("screen", None)),
+        ("snapshot", ("snapshot", None)),
+        ("tree", ("tree", None)),
+        ("screenshot", ("screenshot", None)),
+        ("back", ("back", None)),
+    ]
+)
 
 # Shortcuts with arguments: name -> (cmd, param_name)
-ARG_SHORTCUTS = OrderedDict([
-    ("nav",    ("navigate", "to")),
-    ("tap",    ("tap", "element")),
-    ("input",  ("input", "element")),  # second arg is value
-    ("toggle", ("toggle", "element")),
-    ("scroll", ("scroll", "element")),
-    ("read",   ("read", "element")),
-    ("sub",    ("subscribe", "events")),
-])
+ARG_SHORTCUTS = OrderedDict(
+    [
+        ("nav", ("navigate", "to")),
+        ("tap", ("tap", "element")),
+        ("input", ("input", "element")),  # second arg is value
+        ("toggle", ("toggle", "element")),
+        ("scroll", ("scroll", "element")),
+        ("read", ("read", "element")),
+        ("sub", ("subscribe", "events")),
+    ]
+)
 
 
 def make_command(cmd, params=None):
@@ -138,7 +143,7 @@ def print_help():
     print()
     print("  Or send any command:")
     print("    <cmd> [key=value ...]")
-    print("    {\"cmd\": \"...\", ...}       (raw JSON)")
+    print('    {"cmd": "...", ...}       (raw JSON)')
     print()
     print("  Control:")
     print("    help       Show this help")

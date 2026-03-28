@@ -2,10 +2,12 @@
 
 Tool definitions for: accessibility_audit, accessibility_action, accessibility_events.
 """
+
 from __future__ import annotations
 
-from pepper_commands import CMD_ACCESSIBILITY_ACTION, CMD_ACCESSIBILITY_AUDIT, CMD_ACCESSIBILITY_EVENTS
 from pydantic import Field
+
+from .pepper_commands import CMD_ACCESSIBILITY_ACTION, CMD_ACCESSIBILITY_AUDIT, CMD_ACCESSIBILITY_EVENTS
 
 
 def register_accessibility_tools(mcp, resolve_and_send):
@@ -48,9 +50,7 @@ def register_accessibility_tools(mcp, resolve_and_send):
     @mcp.tool()
     async def accessibility_action(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
-        action: str = Field(
-            description="Action to perform: list, invoke, escape, magic_tap, increment, decrement"
-        ),
+        action: str = Field(description="Action to perform: list, invoke, escape, magic_tap, increment, decrement"),
         element: str | None = Field(
             default=None,
             description="Accessibility ID of the target element",
@@ -97,7 +97,9 @@ def register_accessibility_tools(mcp, resolve_and_send):
         simulator: str | None = Field(default=None, description="Simulator UDID"),
         action: str = Field(description="Action: start, stop, status, events, clear"),
         limit: int | None = Field(default=None, description="Max events to return (for 'events' action, default 100)"),
-        since_ms: int | None = Field(default=None, description="Only events after this epoch-ms timestamp (for 'events' action)"),
+        since_ms: int | None = Field(
+            default=None, description="Only events after this epoch-ms timestamp (for 'events' action)"
+        ),
     ) -> str:
         """Use this to detect screen changes instantly via UIAccessibility notifications.
 

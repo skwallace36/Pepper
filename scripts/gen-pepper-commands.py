@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Generate tools/pepper_commands.py from Swift handler commandName properties.
+"""Generate pepper_ios/pepper_commands.py from Swift handler commandName properties.
 
 Source of truth:
   - dylib/commands/handlers/*Handler.swift (let commandName = "...")
 
 Usage:
-  python3 scripts/gen-pepper-commands.py          # write tools/pepper_commands.py
+  python3 scripts/gen-pepper-commands.py          # write pepper_ios/pepper_commands.py
   python3 scripts/gen-pepper-commands.py --check  # exit 1 if file is stale
 """
 
@@ -15,7 +15,7 @@ import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 HANDLERS_DIR = os.path.join(ROOT, "dylib", "commands", "handlers")
-OUTPUT_FILE = os.path.join(ROOT, "tools", "pepper_commands.py")
+OUTPUT_FILE = os.path.join(ROOT, "pepper_ios", "pepper_commands.py")
 
 HEADER = '''\
 # @generated — do not edit directly.
