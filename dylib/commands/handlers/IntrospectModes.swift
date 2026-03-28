@@ -147,6 +147,20 @@ extension IntrospectHandler {
         return .ok(id: command.id, data: data)
     }
 
+    // MARK: - Spatial Query Helpers
+
+    /// Filter interactive elements by proximity to a point, optionally in a direction.
+    func spatialFilter(
+        _ elements: [PepperInteractiveElement],
+        nearestTo point: CGPoint,
+        direction: String?,
+        count: Int
+    ) -> [PepperInteractiveElement] {
+        spatialFilterGeneric(
+            elements, nearestTo: point, direction: direction, count: count,
+            center: \.center, frame: \.frame)
+    }
+
     // MARK: - Mirror reflection
 
     func handleMirror(_ command: PepperCommand) -> PepperResponse {

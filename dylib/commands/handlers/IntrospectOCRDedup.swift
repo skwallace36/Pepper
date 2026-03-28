@@ -8,7 +8,7 @@ struct OCRObservation {
 
 // MARK: - OCR Deduplication
 
-extension IntrospectHandler {
+extension MapModeIntrospector {
 
     /// Remove OCR observations that duplicate text already present in accessibility elements.
     ///

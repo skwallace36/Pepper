@@ -17,9 +17,88 @@ private func rgbComponents(of color: CGColor) -> (r: CGFloat, g: CGFloat, b: CGF
     return (comps[0], comps[1], comps[2], a)
 }
 
+// MARK: - Shared Spatial Utilities
+
+/// Parse a region bounding box from command params.
+/// Supports dict format `{x, y, w, h}` or y-range string `"minY-maxY"`.
+/// Used by both MapModeIntrospector and IntrospectHandler (interactive mode).
+func parseRegion(from params: [String: AnyCodable]?) -> CGRect? {
+    // Dict format: {x, y, w, h}
+    if let regionDict = params?["region"]?.dictValue,
+        let rx = regionDict["x"]?.doubleValue,
+        let ry = regionDict["y"]?.doubleValue,
+        let rw = regionDict["w"]?.doubleValue,
+        let rh = regionDict["h"]?.doubleValue
+    {
+        return CGRect(x: rx, y: ry, width: rw, height: rh)
+    }
+    // Y-range string: "minY-maxY" (full screen width)
+    if let regionStr = params?["region"]?.stringValue {
+        let parts = regionStr.split(separator: "-")
+        if parts.count == 2,
+            let minY = Double(parts[0]),
+            let maxY = Double(parts[1]),
+            maxY > minY
+        {
+            let screenW = Double(UIScreen.main.bounds.width)
+            return CGRect(x: 0, y: minY, width: screenW, height: maxY - minY)
+        }
+    }
+    return nil
+}
+
+/// Generic spatial filter: filters and sorts elements by proximity to a point.
+/// Used by both MapModeIntrospector (spatialFilterMap) and IntrospectHandler (spatialFilter).
+func spatialFilterGeneric<T>(
+    _ elements: [T],
+    nearestTo point: CGPoint,
+    direction: String?,
+    count: Int,
+    center: KeyPath<T, CGPoint>,
+    frame: KeyPath<T, CGRect>
+) -> [T] {
+    let yPad: CGFloat = 8
+    let xPad: CGFloat = 8
+
+    var filtered = elements
+
+    if let direction = direction {
+        filtered = filtered.filter { el in
+            let c = el[keyPath: center]
+            let f = el[keyPath: frame]
+            switch direction {
+            case "right":
+                guard c.x > point.x else { return false }
+                return f.minY - yPad < point.y && f.maxY + yPad > point.y
+            case "left":
+                guard c.x < point.x else { return false }
+                return f.minY - yPad < point.y && f.maxY + yPad > point.y
+            case "above":
+                guard c.y < point.y else { return false }
+                return f.minX - xPad < point.x && f.maxX + xPad > point.x
+            case "below":
+                guard c.y > point.y else { return false }
+                return f.minX - xPad < point.x && f.maxX + xPad > point.x
+            default:
+                return true
+            }
+        }
+    }
+
+    filtered.sort { a, b in
+        let ac = a[keyPath: center]
+        let bc = b[keyPath: center]
+        let da = hypot(ac.x - point.x, ac.y - point.y)
+        let db = hypot(bc.x - point.x, bc.y - point.y)
+        return da < db
+    }
+
+    return Array(filtered.prefix(count))
+}
+
 // MARK: - Map Mode Helpers
 
-extension IntrospectHandler {
+extension MapModeIntrospector {
 
     /// Temporary struct for map mode element merging.
     struct MapElement {
@@ -195,45 +274,6 @@ extension IntrospectHandler {
 
     // MARK: - Spatial Query Helpers
 
-    /// Parse a region bounding box from command params.
-    /// Supports dict format `{x, y, w, h}` or y-range string `"minY-maxY"`.
-    func parseRegion(from params: [String: AnyCodable]?) -> CGRect? {
-        // Dict format: {x, y, w, h}
-        if let regionDict = params?["region"]?.dictValue,
-            let rx = regionDict["x"]?.doubleValue,
-            let ry = regionDict["y"]?.doubleValue,
-            let rw = regionDict["w"]?.doubleValue,
-            let rh = regionDict["h"]?.doubleValue
-        {
-            return CGRect(x: rx, y: ry, width: rw, height: rh)
-        }
-        // Y-range string: "minY-maxY" (full screen width)
-        if let regionStr = params?["region"]?.stringValue {
-            let parts = regionStr.split(separator: "-")
-            if parts.count == 2,
-                let minY = Double(parts[0]),
-                let maxY = Double(parts[1]),
-                maxY > minY
-            {
-                let screenW = Double(UIScreen.main.bounds.width)
-                return CGRect(x: 0, y: minY, width: screenW, height: maxY - minY)
-            }
-        }
-        return nil
-    }
-
-    /// Filter interactive elements by proximity to a point, optionally in a direction.
-    func spatialFilter(
-        _ elements: [PepperInteractiveElement],
-        nearestTo point: CGPoint,
-        direction: String?,
-        count: Int
-    ) -> [PepperInteractiveElement] {
-        spatialFilterGeneric(
-            elements, nearestTo: point, direction: direction, count: count,
-            center: \.center, frame: \.frame)
-    }
-
     /// Filter map elements by proximity to a point (used in map mode).
     func spatialFilterMap(
         _ elements: [MapElement],
@@ -244,54 +284,6 @@ extension IntrospectHandler {
         spatialFilterGeneric(
             elements, nearestTo: point, direction: direction, count: count,
             center: \.center, frame: \.frame)
-    }
-
-    /// Generic spatial filter: filters and sorts elements by proximity to a point.
-    private func spatialFilterGeneric<T>(
-        _ elements: [T],
-        nearestTo point: CGPoint,
-        direction: String?,
-        count: Int,
-        center: KeyPath<T, CGPoint>,
-        frame: KeyPath<T, CGRect>
-    ) -> [T] {
-        let yPad: CGFloat = 8
-        let xPad: CGFloat = 8
-
-        var filtered = elements
-
-        if let direction = direction {
-            filtered = filtered.filter { el in
-                let c = el[keyPath: center]
-                let f = el[keyPath: frame]
-                switch direction {
-                case "right":
-                    guard c.x > point.x else { return false }
-                    return f.minY - yPad < point.y && f.maxY + yPad > point.y
-                case "left":
-                    guard c.x < point.x else { return false }
-                    return f.minY - yPad < point.y && f.maxY + yPad > point.y
-                case "above":
-                    guard c.y < point.y else { return false }
-                    return f.minX - xPad < point.x && f.maxX + xPad > point.x
-                case "below":
-                    guard c.y > point.y else { return false }
-                    return f.minX - xPad < point.x && f.maxX + xPad > point.x
-                default:
-                    return true
-                }
-            }
-        }
-
-        filtered.sort { a, b in
-            let ac = a[keyPath: center]
-            let bc = b[keyPath: center]
-            let da = hypot(ac.x - point.x, ac.y - point.y)
-            let db = hypot(bc.x - point.x, bc.y - point.y)
-            return da < db
-        }
-
-        return Array(filtered.prefix(count))
     }
 
     // MARK: - Gesture Container Grouping
@@ -889,7 +881,7 @@ struct SpatialTextIndex {
     private var bands: [Int: [Int]] = [:]  // band key → element indices
     private let bandSize: CGFloat
 
-    init(elements: [IntrospectHandler.MapElement], bandSize: CGFloat = 10) {
+    init(elements: [MapModeIntrospector.MapElement], bandSize: CGFloat = 10) {
         self.bandSize = bandSize
         for (i, elem) in elements.enumerated() {
             let key = Int(floor(elem.center.y / bandSize))
