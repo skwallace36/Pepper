@@ -102,6 +102,86 @@ def _format_ocr_line(item: dict) -> str:
     return f'  {"ocr":>6s}  "{disp}"  point:{cx},{cy}  conf:{conf:.2f}'
 
 
+def _group_text_by_container(all_interactive, ni, screen_size=None):
+    """Group non-interactive text under their smallest containing interactive element.
+
+    Returns (ordered_groups, grouped, ungrouped) where:
+    - ordered_groups: container labels in first-appearance order
+    - grouped: dict mapping container label -> list of text strings
+    - ungrouped: list of text strings not inside any container
+    """
+    if not ni:
+        return [], {}, []
+
+    # Skip containers larger than 50% of screen area
+    max_area = float("inf")
+    if screen_size:
+        sw = screen_size.get("w", 0)
+        sh = screen_size.get("h", 0)
+        if sw and sh:
+            max_area = sw * sh * 0.5
+
+    # Collect labeled interactive elements as potential containers
+    containers = []
+    for e in all_interactive:
+        label = _strip_sf_symbols(e.get("label", ""))
+        if not label:
+            continue
+        frame = e.get("frame", [0, 0, 0, 0])
+        if len(frame) != 4:
+            continue
+        x, y, w, h = frame
+        area = w * h
+        if area <= 0 or area > max_area:
+            continue
+        containers.append((label, x, y, w, h, area))
+
+    if not containers:
+        # No containers — return all text ungrouped
+        texts = [_strip_sf_symbols(e.get("label", "")) for e in ni]
+        return [], {}, [t for t in texts if t]
+
+    grouped: dict[str, list[str]] = {}
+    ungrouped: list[str] = []
+    ordered_groups: list[str] = []
+
+    for e in ni:
+        text = _strip_sf_symbols(e.get("label", ""))
+        if not text:
+            continue
+        cx, cy = e.get("center", [0, 0])
+
+        best_label = None
+        best_area = float("inf")
+
+        for clabel, fx, fy, fw, fh, area in containers:
+            if fx <= cx <= fx + fw and fy <= cy <= fy + fh and area < best_area:
+                best_label = clabel
+                best_area = area
+
+        if best_label and text != best_label:
+            if best_label not in grouped:
+                ordered_groups.append(best_label)
+                grouped[best_label] = []
+            grouped[best_label].append(text)
+        else:
+            ungrouped.append(text)
+
+    return ordered_groups, grouped, ungrouped
+
+
+def _render_grouped_text(ordered_groups, grouped, ungrouped, dim_fn):
+    """Render grouped text lines for the --- text --- section."""
+    lines = []
+    for glabel in ordered_groups:
+        lines.append(f"  {dim_fn(glabel + ':')}")
+        for text in grouped[glabel]:
+            lines.append(f"    {dim_fn(text)}")
+    for text in ungrouped:
+        lines.append(f"  {dim_fn(text)}")
+    return lines
+
+
 def format_look(resp: dict) -> str:
     """Format introspect mode:map response as compact readable summary.
 
@@ -259,13 +339,13 @@ def format_look(resp: dict) -> str:
 
             lines.append(f"  {cyan(prefix):>8s}  {desc:<52s} → {tap}{flags}")
 
-    # Non-interactive text
+    # Non-interactive text (grouped under containing interactive elements)
     if ni:
         lines.append(dim("--- text ---"))
-        for e in ni:
-            label = _strip_sf_symbols(e.get("label", ""))
-            if label:
-                lines.append(f"  {dim(label)}")
+        all_int = [e for row in rows for e in row.get("elements", [])]
+        ordered, grouped, ungrouped = _group_text_by_container(
+            all_int, ni, data.get("screen_size"))
+        lines.extend(_render_grouped_text(ordered, grouped, ungrouped, dim))
 
     # OCR-only text
     ocr_results = data.get("ocr_results", [])
@@ -430,14 +510,13 @@ def format_look_slim(resp: dict) -> str:
 
         lines.append(f"  {cyan(prefix):>8s}  {desc:<52s} → {tap}{flags}")
 
-    # Non-interactive text
+    # Non-interactive text (grouped under containing interactive elements)
     if ni:
         lines.append("")
         lines.append(dim("--- text ---"))
-        for e in ni:
-            label = e.get("label", "")
-            if label:
-                lines.append(f"  {dim(label)}")
+        ordered, grouped, ungrouped = _group_text_by_container(
+            all_interactive, ni, data.get("screen_size"))
+        lines.extend(_render_grouped_text(ordered, grouped, ungrouped, dim))
 
     # OCR-only text
     ocr_results = data.get("ocr_results", [])
@@ -733,15 +812,14 @@ def format_look_compact(resp: dict) -> str:
         else:
             lines.append(dim("  (no interactive changes)"))
 
-    # Non-interactive text
+    # Non-interactive text (grouped under containing interactive elements)
     if screen_changed or not prev_text:
         if ni:
             lines.append("")
             lines.append(dim("--- text ---"))
-            for e in ni:
-                label = e.get("label", "")
-                if label:
-                    lines.append(f"  {dim(label)}")
+            ordered, grouped, ungrouped = _group_text_by_container(
+                all_interactive, ni, data.get("screen_size"))
+            lines.extend(_render_grouped_text(ordered, grouped, ungrouped, dim))
     else:
         text_changes = new_text | removed_text
         if text_changes:
