@@ -32,7 +32,7 @@ def register_state_tools(mcp, resolve_and_send):
     @mcp.tool()
     async def vars_inspect(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
-        action: str = Field(description="Action: list (tracked VMs), dump (@Published props), mirror (all props), set (mutate live), discover (re-scan)"),
+        action: str = Field(description="Action: list | dump | mirror | set | discover"),
         class_name: str | None = Field(default=None, description="ViewModel class name (for dump/mirror/set)"),
         path: str | None = Field(default=None, description="Property path (for set, e.g. 'MyVM.flag')"),
         value: str | None = Field(default=None, description="Value to set (for set action)"),
@@ -130,7 +130,7 @@ def register_state_tools(mcp, resolve_and_send):
     @mcp.tool()
     async def sandbox(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
-        action: str = Field(default="paths", description="Action: paths (container dirs), list (files), read (auto-detect format), write, delete, info (attributes), size (dir summary)"),
+        action: str = Field(default="paths", description="Action: paths | list | read | write | delete | info | size"),
         path: str | None = Field(
             default=None,
             description="File or directory path. Supports shorthands: documents/, caches/, library/, tmp/, bundle/, ~/ or absolute paths",

@@ -22,10 +22,7 @@ def register_renders_tools(mcp, resolve_and_send):
     async def renders(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
         action: str = Field(
-            description=(
-                "Action: start, stop, status, log, clear, "
-                "counts, snapshot, diff, reset, ag_probe, ag_server, ag_dump, signpost, why"
-            )
+            description="Action: start | stop | status | log | clear | counts | snapshot | diff | reset | ag_probe | ag_server | ag_dump | signpost | why"
         ),
         limit: int | None = Field(default=None, description="Max events to return (for log action, default 100)"),
         since_ms: int | None = Field(

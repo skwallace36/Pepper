@@ -158,7 +158,7 @@ def register_debug_tools(mcp, resolve_and_send):
     @mcp.tool()
     async def notifications(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
-        action: str = Field(description="Action: start, stop, list, counts, post, events, status, clear"),
+        action: str = Field(description="Action: start | stop | list | counts | post | events | status | clear"),
         name: str | None = Field(default=None, description="Notification name to post (for 'post' action)"),
         filter_text: str | None = Field(
             default=None, description="Filter observers/events by notification name or class pattern"
@@ -203,7 +203,7 @@ def register_debug_tools(mcp, resolve_and_send):
     @mcp.tool()
     async def timers(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
-        action: str = Field(default="list", description="Action: start, stop, list, invalidate, status, clear"),
+        action: str = Field(default="list", description="Action: start | stop | list | invalidate | status | clear"),
         timer_id: str | None = Field(
             default=None, description="Timer/display-link ID to invalidate (e.g. timer_3, dlink_1)"
         ),

@@ -64,7 +64,7 @@ def register_perf_tools(mcp, resolve_and_send):
     async def heap(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
         action: str = Field(
-            description="Action: classes (search by pattern), controllers (live VCs), find (singleton), inspect (props), read (KVC key path), baseline (save counts), check (flag growth), diff, snapshot, snapshot_clear, snapshot_status"
+            description="Action: classes | controllers | find | inspect | read | baseline | check | diff | snapshot | snapshot_clear | snapshot_status"
         ),
         class_name: str | None = Field(default=None, description="Class name or pattern to search for"),
         pattern: str | None = Field(default=None, description="Pattern for classes search"),

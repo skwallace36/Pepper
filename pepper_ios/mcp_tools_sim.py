@@ -45,7 +45,7 @@ def register_sim_tools(mcp, resolve_and_send, resolve_simulator):
     @mcp.tool()
     async def simulator(
         action: str = Field(
-            description="Action: list, install, uninstall, location, permissions, biometrics, privacy_reset, open_url, addmedia, boot, shutdown, erase, status_bar"
+            description="Action: list | install | uninstall | location | permissions | biometrics | privacy_reset | open_url | addmedia | boot | shutdown | erase | status_bar"
         ),
         simulator_id: str | None = Field(default=None, description="Simulator UDID (auto-resolved if only one booted)"),
         app_path: str | None = Field(default=None, description="Path to .app/.ipa for action=install"),
@@ -54,7 +54,7 @@ def register_sim_tools(mcp, resolve_and_send, resolve_simulator):
         longitude: float | None = Field(default=None, description="Longitude for action=location"),
         permission: str | None = Field(
             default=None,
-            description="Permission for action=permissions: photos, camera, microphone, contacts, calendar, reminders, location-always, location-when-in-use, notifications, health",
+            description="Permission name (for action=permissions). See pepper://reference/actions for values.",
         ),
         permission_value: str | None = Field(default=None, description="Permission value: grant, revoke, reset"),
         biometric_type: str | None = Field(default=None, description="For action=biometrics: enroll or match"),

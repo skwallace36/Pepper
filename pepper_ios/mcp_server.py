@@ -597,6 +597,90 @@ _LAUNCHING_GUIDE = (
     "`deploy_sim` requires workspace — always pass the .xcworkspace path."
 )
 
+_ACTIONS_REFERENCE = """\
+ACTION REFERENCE — detailed docs for multi-action tools.
+
+## heap
+- classes: Search live heap classes by name pattern. Params: pattern, limit.
+- controllers: List live UIViewControllers.
+- find: Find singleton or specific instance. Params: class_name.
+- inspect: Show properties of a live object. Params: class_name.
+- read: Read a KVC key path on an object. Params: class_name, key_path (e.g. 'camera.zoom').
+- baseline: Save current instance counts for later comparison.
+- check: Compare current counts against baseline, flag growth. Params: threshold (min growth, default 1).
+- diff: Show instance count changes since last snapshot. Params: min_growth (default 1).
+- snapshot: Take a heap snapshot.
+- snapshot_clear: Clear saved snapshots.
+- snapshot_status: Check snapshot state.
+
+## renders
+- start: Begin tracking SwiftUI body evaluations.
+- stop: Stop tracking.
+- status: Check if tracking is active.
+- log: Return captured render events. Params: limit (default 100), since_ms, filter.
+- clear: Clear captured events.
+- counts: Show per-view render counts.
+- snapshot: Take a render-count snapshot for later diff.
+- diff: Compare current counts against snapshot.
+- reset: Clear counts and snapshots.
+- ag_probe: Probe AttributeGraph.
+- ag_server: Start AG debug server.
+- ag_dump: Dump AG state. Params: name.
+- signpost: Install or drain os_signpost probes. Params: sub (install | drain).
+- why: Explain why a view re-rendered.
+
+## notifications
+- start: Begin tracking NSNotificationCenter observers.
+- stop: Stop tracking.
+- list: List registered observers. Params: filter_text, limit.
+- counts: Show notification counts by name.
+- post: Post a notification. Params: name (required), user_info (JSON string).
+- events: List posted notification events. Params: filter_text, limit.
+- status: Check tracking state.
+- clear: Clear recorded data.
+
+## timers
+- start: Begin tracking NSTimer and CADisplayLink instances.
+- stop: Stop tracking.
+- list: List active timers. Params: filter_text, limit.
+- invalidate: Cancel a timer. Params: timer_id (e.g. 'timer_3', 'dlink_1').
+- status: Check tracking state.
+- clear: Clear recorded data.
+
+## simulator
+- list: Show booted simulators with Pepper connection status.
+- install: Install app. Params: app_path.
+- uninstall: Remove app. Params: bundle_id.
+- location: Set GPS coordinates. Params: latitude, longitude. (0,0 clears.)
+- permissions: Grant/revoke a permission. Params: permission (photos, camera, microphone, \
+contacts, calendar, reminders, location-always, location-when-in-use, notifications, health), \
+permission_value (grant | revoke | reset), bundle_id.
+- biometrics: Enroll Face ID or send match. Params: biometric_type (enroll | match).
+- privacy_reset: Reset all privacy permissions. Params: bundle_id.
+- open_url: Open a URL/deep link. Params: url.
+- addmedia: Add image/video to camera roll. Params: media_path.
+- boot: Boot a simulator.
+- shutdown: Shut down a simulator.
+- erase: Factory-reset a simulator.
+- status_bar: Override status bar. Params: time (e.g. '09:41'), clear_time (bool).
+
+## vars_inspect
+- list: List tracked ViewModels found via runtime scanning.
+- dump: Show @Published properties of a ViewModel. Params: class_name.
+- mirror: Show all properties (including non-Published) via Swift Mirror. Params: class_name.
+- set: Mutate a live property value. Params: path (e.g. 'MyVM.flag'), value.
+- discover: Re-scan the runtime for new ViewModel instances.
+
+## sandbox
+- paths: Show app container directories (Documents, Caches, Library, tmp, Bundle).
+- list: List files in a directory. Params: path, recursive.
+- read: Read file contents (auto-detects text/plist/JSON/binary). Params: path, max_length.
+- write: Write file contents. Params: path, content, base64.
+- delete: Delete a file. Params: path.
+- info: Show file attributes (size, dates, permissions). Params: path.
+- size: Show directory size summary. Params: path.
+"""
+
 
 @mcp.resource("pepper://guides/pr-validation")
 def pr_validation_guide() -> str:
@@ -614,6 +698,12 @@ def screen_recording_guide() -> str:
 def launching_guide() -> str:
     """App build and launch workflow using deploy_sim."""
     return _LAUNCHING_GUIDE
+
+
+@mcp.resource("pepper://reference/actions")
+def actions_reference() -> str:
+    """Detailed action reference for multi-action tools (heap, renders, notifications, timers, simulator)."""
+    return _ACTIONS_REFERENCE
 
 
 # ---------------------------------------------------------------------------
