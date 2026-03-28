@@ -320,7 +320,8 @@ final class PepperNetworkInterceptor {
 
         // Check if we hit the threshold
         if timestamps.count >= duplicateThreshold,
-           let first = timestamps.first, let last = timestamps.last {
+            let first = timestamps.first, let last = timestamps.last
+        {
             let windowActual = last - first
 
             // Only warn once per burst — check if we already warned for this key recently
@@ -482,7 +483,8 @@ final class PepperNetworkInterceptor {
                     }
                 }
             } catch {
-                pepperLog.debug("extractGraphQLOperationName: JSON parse failed — trying raw format: \(error)", category: .server)
+                pepperLog.debug(
+                    "extractGraphQLOperationName: JSON parse failed — trying raw format: \(error)", category: .server)
             }
         }
         // Try raw query format

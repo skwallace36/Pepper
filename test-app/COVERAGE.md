@@ -22,13 +22,13 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 |---------|---------|--------|-------------|-------|
 | `ping` | — | pass | Any state |  |
 | `help` | — | pass | Any state | Returns list of 50 available server commands. Tested via pepper-ctl and direct WebSocket. |
-| `tap` | text | pass | Tap Me button, tab bar items |  |
 | `tap` | element | pass | Buttons with a11y IDs | BUG-006 FIXED: PepperElementResolver now falls back to PepperSwiftUIBridge.collectAccessibilityElements() when UIView hierarchy lookup fails. SwiftUI .accessibilityIdentifier() elements (e.g. tap_button) are now discoverable via the accessibility tree. |
-| `tap` | point | pass | Tap Me button at (201,232) | Tapped Tap Me button by coordinate. Count incremented from 0 to 1. Strategy: point. |
-| `tap` | icon_name | untested | Custom icon asset buttons (pepper-home, pepper-camera, pepper-search) | Custom icon assets added to test app asset catalog. Icon-only buttons displayed on Controls tab. Ready for testing with tap icon_name=pepper-home. |
-| `tap` | tab | pass | Tab bar | BUG-005 FIXED: Added findAccessibilityTabButtons() that scans the accessibility tree for the .tabBar container and its .button children. Works for SwiftUI TabView (tabs found via accessibility elements). Programmatic UITabBarController selection also available as further fallback. |
 | `tap` | heuristic | pass | Slider element on Controls tab | Tapped slider via heuristic:'slider'. Found at (116,790). Error case also tested: nonexistent heuristic returns proper error. |
+| `tap` | icon_name | untested | Custom icon asset buttons (pepper-home, pepper-camera, pepper-search) | Custom icon assets added to test app asset catalog. Icon-only buttons displayed on Controls tab. Ready for testing with tap icon_name=pepper-home. |
+| `tap` | point | pass | Tap Me button at (201,232) | Tapped Tap Me button by coordinate. Count incremented from 0 to 1. Strategy: point. |
 | `tap` | predicate | pass | Tap Me button via NSPredicate | Predicate "label == 'Tap Me' AND type == 'button'" found and tapped correctly. Count incremented. Error case tested: no-match predicate returns proper error. |
+| `tap` | tab | pass | Tab bar | BUG-005 FIXED: Added findAccessibilityTabButtons() that scans the accessibility tree for the .tabBar container and its .button children. Works for SwiftUI TabView (tabs found via accessibility elements). Programmatic UITabBarController selection also available as further fallback. |
+| `tap` | text | pass | Tap Me button, tab bar items |  |
 | `input` | — | pass | TextField (text_field), TextEditor (text_view) | TextField: set 'Hello Pepper', appended ' World' with --no-clear, cleared+replaced with 'Replaced'. TextEditor (text_view): set value accepted. Error case: nonexistent ID returns proper 'Element not found' error. |
 | `toggle` | — | fail | Toggle (dark_mode_toggle, notifications_toggle, airplane_toggle), Segmented (sort_picker) | BUG-006 fix applied to PepperElementResolver (used by TapHandler) but ToggleHandler still calls pepper_findElement(id:) directly, bypassing the SwiftUI accessibility fallback. SwiftUI Toggle elements still return 'Element not found'. Segmented control (sort_picker) works. New issue: #265. |
 | `scroll` | top | pass | List tab (30 rows) | Scrolled to top from mid-list; Item 0 visible at top |
@@ -39,14 +39,14 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `scroll` | right | pass | Misc tab horizontal scroll (15 items) | Horizontal ScrollView already present; scroll right shifts content rightward |
 | `tree` | — | pass | Controls tab, Misc tab | Returns full UIView hierarchy as JSON (3355 lines on Controls tab). Supports --depth param for truncation (depth=3 returns 4 nodes). Reports nodeCount and truncated flag. |
 | `read` | — | pass | sort_picker (UIKit segmented control) | Works for UIKit elements: read sort_picker returned value=2, segmentCount=3, segmentTitles, enabled, visible. Fails for SwiftUI elements (BUG-006: tap_button returns 'Element not found'). Nonexistent IDs return proper 'Element not found' error. |
-| `wait_for` | visible | pass | Start 3s Timer → wait for FIRED text | BUG-007 FIXED: Polling moved to background thread (DispatchQueue.global). Main thread is free for SwiftUI @Observable re-rendering. 3s timer test now works — wait_for detects async text change to 'Timer: FIRED'. |
 | `wait_for` | exists | pass | Same timer or navigation push | BUG-007 FIXED: Background thread polling allows SwiftUI state changes. Text-based exists condition now detects async changes. Note: element ID condition in WaitHandler still uses pepper_findElement directly (UIKit-only); see #266 for full fix. |
 | `wait_for` | has_value | fail | Counter value after tap | BUG-006 fix not applied to WaitHandler — WaitHandler.evaluate(.elementHasValue) calls pepper_findElement(id:) directly, bypassing SwiftUI accessibility fallback. SwiftUI counter elements still not found. New issue: #266. |
+| `wait_for` | visible | pass | Start 3s Timer → wait for FIRED text | BUG-007 FIXED: Polling moved to background thread (DispatchQueue.global). Main thread is free for SwiftUI @Observable re-rendering. 3s timer test now works — wait_for detects async text change to 'Timer: FIRED'. |
 | `batch` | — | pass | Sequence of ping + screen, tap + look | Executes array of commands sequentially, returns all responses. Tested: (1) ping+screen returns 2 responses with correct data. (2) tap+look returns tap result then screen state. (3) Empty array returns {executed:0, errors:0, responses:[]}. (4) Missing commands param returns proper error. |
-| `navigate` | tab | pass | 3-tab TabView (Controls, List, Misc) |  |
 | `navigate` | deeplink | pass | Tab deep links (controls, list, misc) | URL scheme auto-detected from Info.plist. peppertest://controls, peppertest://list, peppertest://misc switch tabs via onOpenURL. Other routes show generic DeeplinkView modal. |
-| `navigate` | pop | pass | Detail nav stack (pushed via Item 0 tap) | BUG-001 FIXED: pepper_effectiveNavController now walks child VCs to find SwiftUI NavigationStack's UINavigationController. pepper_effectiveDepth uses nav bar item count as secondary signal. pepper_popBack falls back to HID back-button tap for SwiftUI-managed nav. |
 | `navigate` | dismiss | pass | Sheet from Show Sheet button | BUG-008 FIXED: NavigateHandler handlePop falls through to modal dismiss when nav stack is at root depth=1 (SwiftUI .sheet() case). SwiftUI .sheet() presentations now correctly dismissed. |
+| `navigate` | pop | pass | Detail nav stack (pushed via Item 0 tap) | BUG-001 FIXED: pepper_effectiveNavController now walks child VCs to find SwiftUI NavigationStack's UINavigationController. pepper_effectiveDepth uses nav bar item count as secondary signal. pepper_popBack falls back to HID back-button tap for SwiftUI-managed nav. |
+| `navigate` | tab | pass | 3-tab TabView (Controls, List, Misc) |  |
 | `deeplinks` | — | pass | Any state (generic mode) | Returns {count:0, deeplinks:[], note:'No deep links configured...'} in generic mode. Command works correctly; no adapter configured so no deeplinks available. |
 | `back` | — | pass | Detail → Deeper nav stack push | BUG-001 FIXED: BackHandler uses pepper_effectiveNavController to find child UINavigationController from SwiftUI NavigationStack. pepper_canPop checks nav bar items as secondary signal. pepper_popBack uses HID back-button tap for SwiftUI NavigationStack. |
 | `screen` | — | pass | Any tab |  |
@@ -82,11 +82,11 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `network` | mocks | untested | After network.mock | List active mocks. Verify entry for https://pepper.test/mock. |
 | `network` | remove_mock | untested | After network.mock | Remove mock by URL, confirm 'Mock Test' button returns error or real response. |
 | `network` | clear_mocks | untested | After network.mock | Clear all mocks, confirm subsequent 'Mock Test' is unaffected. |
-| `network` | simulate.latency | untested | Slow Request button (MiscTab Network) | Tap 'Slow Request', then use network simulate latency <ms>. Status label shows elapsed time. |
-| `network` | simulate.throttle | untested | Slow Request button (MiscTab Network) | Tap 'Slow Request' with network simulate throttle active. Observe increased elapsed time. |
-| `network` | simulate.fail_status | untested | Error Request button (MiscTab Network) | Tap 'Error Request' with network simulate fail_status 500. Status label shows injected status code. |
 | `network` | simulate.fail_error | untested | Error Request button (MiscTab Network) | Tap 'Error Request' with network simulate fail_error active. Status label shows NSError domain/code. |
+| `network` | simulate.fail_status | untested | Error Request button (MiscTab Network) | Tap 'Error Request' with network simulate fail_status 500. Status label shows injected status code. |
+| `network` | simulate.latency | untested | Slow Request button (MiscTab Network) | Tap 'Slow Request', then use network simulate latency <ms>. Status label shows elapsed time. |
 | `network` | simulate.offline | untested | Offline Test button (MiscTab Network) | Tap 'Offline Test' with network simulate offline true. Status label shows NSError (network offline). |
+| `network` | simulate.throttle | untested | Slow Request button (MiscTab Network) | Tap 'Slow Request' with network simulate throttle active. Observe increased elapsed time. |
 | `test` | start | pass | Any state | Starts test session with test_id. Returns {test_id, status:'started'}. Missing test_id returns proper error. |
 | `test` | result | pass | After start | Records test result. Tested: result with test_id='task024', status='pass', notes='All good'. Returns {test_id, timestamp, status:'pass'}. |
 | `test` | reset | pass | After result | Resets test state. Returns {reset:true}. Works both with and without active test session. |
@@ -255,7 +255,7 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `perf` | stop | untested |  |  |
 | `perf` | mark | untested |  |  |
 | `perf` | status | untested |  |  |
-| `screenshot` | — | untested |  |  |
+| `screenshot` | — | not_tested |  |  |
 | `storage` | summary | untested |  |  |
 | `storage` | coredata | untested |  |  |
 | `storage` | clear | untested |  |  |
@@ -272,5 +272,5 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 
 - pass: 137
 - fail: 3
-- untested: 95
+- untested: 94
 

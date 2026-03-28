@@ -92,9 +92,7 @@ struct PepperAccessibilityElement {
 
     /// Whether this element has any meaningful content to report.
     var hasContent: Bool {
-        return (label?.isEmpty == false) ||
-               (value?.isEmpty == false) ||
-               (identifier?.isEmpty == false)
+        return (label?.isEmpty == false) || (value?.isEmpty == false) || (identifier?.isEmpty == false)
     }
 
     /// Serialize to a dictionary for JSON transmission.

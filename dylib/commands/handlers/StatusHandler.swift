@@ -35,10 +35,12 @@ struct StatusHandler: PepperHandler {
                 "hid_available": AnyCodable(HIDEventAPI.isAvailable),
                 "swizzles": AnyCodable("\(swizzleOk)/\(swizzleCount)"),
                 "swizzle_health": AnyCodable(
-                    health.map { [
-                        "name": AnyCodable($0.name),
-                        "installed": AnyCodable($0.installed),
-                    ] }
+                    health.map {
+                        [
+                            "name": AnyCodable($0.name),
+                            "installed": AnyCodable($0.installed),
+                        ]
+                    }
                 ),
             ]),
         ]
@@ -50,7 +52,8 @@ struct StatusHandler: PepperHandler {
             "registered": AnyCodable(adapterConfig.adapterRegistered),
         ]
         if adapterConfig.requestedAdapterType != "generic" && !adapterConfig.adapterRegistered {
-            adapterData["warning"] = AnyCodable("adapter type '\(adapterConfig.requestedAdapterType)' was requested but not registered")
+            adapterData["warning"] = AnyCodable(
+                "adapter type '\(adapterConfig.requestedAdapterType)' was requested but not registered")
         }
         if adapterConfig.adapterRegistered {
             adapterData["has_pre_main_hook"] = AnyCodable(adapterConfig.preMainHook != nil)
@@ -78,11 +81,12 @@ struct StatusHandler: PepperHandler {
         // Known limitations for the current OS version
         var limitations: [AnyCodable] = []
         if #available(iOS 26, *) {
-            limitations.append(AnyCodable(
-                "iOS 26+: UNUserNotificationCenter .current() swizzle disabled (BUG-307). "
-                + "Notification permission auto-grant uses class enumeration fallback; "
-                + "if a dialog still appears, use AX dismiss from the MCP side."
-            ))
+            limitations.append(
+                AnyCodable(
+                    "iOS 26+: UNUserNotificationCenter .current() swizzle disabled (BUG-307). "
+                        + "Notification permission auto-grant uses class enumeration fallback; "
+                        + "if a dialog still appears, use AX dismiss from the MCP side."
+                ))
         }
         if !limitations.isEmpty {
             data["known_limitations"] = AnyCodable(limitations)

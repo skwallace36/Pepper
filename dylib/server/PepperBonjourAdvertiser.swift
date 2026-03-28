@@ -37,7 +37,7 @@ final class PepperBonjourAdvertiser: NSObject, NetServiceDelegate {
         guard netService == nil else { return }
 
         let service = NetService(
-            domain: "",               // default domain (local.)
+            domain: "",  // default domain (local.)
             type: Self.serviceType,
             name: serviceName,
             port: Int32(port)

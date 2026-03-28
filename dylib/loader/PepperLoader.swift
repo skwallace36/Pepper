@@ -25,10 +25,14 @@ public func pepperBootstrap() {
     // Validate adapter configuration at startup.
     if adapterType != "generic" {
         #if !PEPPER_HAS_ADAPTER
-            NSLog("[pepper] ⚠️ PEPPER_ADAPTER='%@' but no adapter was compiled in — build with ADAPTER_PATH set", adapterType)
+            NSLog(
+                "[pepper] ⚠️ PEPPER_ADAPTER='%@' but no adapter was compiled in — build with ADAPTER_PATH set",
+                adapterType)
         #else
             if !PepperAppConfig.shared.adapterRegistered {
-                NSLog("[pepper] ⚠️ PEPPER_ADAPTER='%@' did not match any compiled adapter — check APP_ADAPTER_TYPE in .env", adapterType)
+                NSLog(
+                    "[pepper] ⚠️ PEPPER_ADAPTER='%@' did not match any compiled adapter — check APP_ADAPTER_TYPE in .env",
+                    adapterType)
             }
         #endif
     }
@@ -78,8 +82,8 @@ public func pepperBootstrap() {
                 ProcessInfo.processInfo.environment["PEPPER_SIM_UDID"]
                 ?? PepperSimDetect.detectUDID()
         } else if let plistPort = Bundle.main.infoDictionary?["PepperPort"],
-                  let parsed = (plistPort as? Int).map(UInt16.init)
-                              ?? (plistPort as? String).flatMap(UInt16.init)
+            let parsed = (plistPort as? Int).map(UInt16.init)
+                ?? (plistPort as? String).flatMap(UInt16.init)
         {
             // Info.plist key — useful when env vars aren't available (e.g. app-clip, on-device builds).
             port = parsed

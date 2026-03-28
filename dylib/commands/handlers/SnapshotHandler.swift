@@ -34,7 +34,8 @@ struct SnapshotHandler: PepperHandler {
         case "clear":
             return handleClear(command)
         default:
-            return .error(id: command.id, message: "Unknown snapshot action: \(action). Use: save, diff, list, delete, clear")
+            return .error(
+                id: command.id, message: "Unknown snapshot action: \(action). Use: save, diff, list, delete, clear")
         }
     }
 
@@ -44,13 +45,15 @@ struct SnapshotHandler: PepperHandler {
         let state = captureScreenState()
         SnapshotStore.shared.save(state, name: name)
         logger.info("Saved snapshot '\(name)' with \(state.elements.count) elements on screen '\(state.screen)'")
-        return .ok(id: command.id, data: [
-            "action": AnyCodable("save"),
-            "name": AnyCodable(name),
-            "screen": AnyCodable(state.screen),
-            "element_count": AnyCodable(state.elements.count),
-            "text_count": AnyCodable(state.texts.count)
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "action": AnyCodable("save"),
+                "name": AnyCodable(name),
+                "screen": AnyCodable(state.screen),
+                "element_count": AnyCodable(state.elements.count),
+                "text_count": AnyCodable(state.texts.count),
+            ])
     }
 
     // MARK: - Diff
@@ -66,12 +69,15 @@ struct SnapshotHandler: PepperHandler {
 
         let diff = computeDiff(baseline: baseline, current: current, ignoreTransient: ignoreTransient)
 
-        let hasChanges = !diff.added.isEmpty || !diff.removed.isEmpty || !diff.changed.isEmpty
+        let hasChanges =
+            !diff.added.isEmpty || !diff.removed.isEmpty || !diff.changed.isEmpty
             || !diff.addedTexts.isEmpty || !diff.removedTexts.isEmpty || !diff.changedTexts.isEmpty
             || diff.screenChanged
 
         if assertNoDiff && hasChanges {
-            return .error(id: command.id, message: "Assertion failed: screen state differs from snapshot '\(name)'. \(diff.summary)")
+            return .error(
+                id: command.id,
+                message: "Assertion failed: screen state differs from snapshot '\(name)'. \(diff.summary)")
         }
 
         var data: [String: AnyCodable] = [
@@ -81,7 +87,7 @@ struct SnapshotHandler: PepperHandler {
             "baseline_screen": AnyCodable(baseline.screen),
             "current_screen": AnyCodable(current.screen),
             "screen_changed": AnyCodable(diff.screenChanged),
-            "summary": AnyCodable(diff.summary)
+            "summary": AnyCodable(diff.summary),
         ]
 
         if !diff.added.isEmpty {
@@ -111,28 +117,34 @@ struct SnapshotHandler: PepperHandler {
 
     private func handleList(_ command: PepperCommand) -> PepperResponse {
         let names = SnapshotStore.shared.listNames()
-        return .ok(id: command.id, data: [
-            "action": AnyCodable("list"),
-            "snapshots": AnyCodable(names.map { AnyCodable($0) }),
-            "count": AnyCodable(names.count)
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "action": AnyCodable("list"),
+                "snapshots": AnyCodable(names.map { AnyCodable($0) }),
+                "count": AnyCodable(names.count),
+            ])
     }
 
     private func handleDelete(_ command: PepperCommand, name: String) -> PepperResponse {
         let existed = SnapshotStore.shared.delete(name)
-        return .ok(id: command.id, data: [
-            "action": AnyCodable("delete"),
-            "name": AnyCodable(name),
-            "deleted": AnyCodable(existed)
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "action": AnyCodable("delete"),
+                "name": AnyCodable(name),
+                "deleted": AnyCodable(existed),
+            ])
     }
 
     private func handleClear(_ command: PepperCommand) -> PepperResponse {
         let count = SnapshotStore.shared.clearAll()
-        return .ok(id: command.id, data: [
-            "action": AnyCodable("clear"),
-            "cleared_count": AnyCodable(count)
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "action": AnyCodable("clear"),
+                "cleared_count": AnyCodable(count),
+            ])
     }
 
     // MARK: - Screen State Capture
@@ -218,7 +230,7 @@ struct SnapshotHandler: PepperHandler {
             if !changes.isEmpty {
                 var entry: [String: AnyCodable] = [
                     "element": AnyCodable(curElem.identityKey),
-                    "changes": AnyCodable(changes.map { AnyCodable($0) })
+                    "changes": AnyCodable(changes.map { AnyCodable($0) }),
                 ]
                 if let label = curElem.label {
                     entry["label"] = AnyCodable(label)
@@ -263,7 +275,7 @@ struct SnapshotHandler: PepperHandler {
             if !changes.isEmpty {
                 changedTexts.append([
                     "text": AnyCodable(cur.label),
-                    "changes": AnyCodable(changes.map { AnyCodable($0) })
+                    "changes": AnyCodable(changes.map { AnyCodable($0) }),
                 ])
             }
         }
@@ -363,21 +375,21 @@ struct ElementState {
             changes.append([
                 "property": AnyCodable("value"),
                 "from": AnyCodable(other.value ?? "nil"),
-                "to": AnyCodable(value ?? "nil")
+                "to": AnyCodable(value ?? "nil"),
             ])
         }
         if selected != other.selected {
             changes.append([
                 "property": AnyCodable("selected"),
                 "from": AnyCodable(other.selected.map { AnyCodable($0) } ?? AnyCodable("nil")),
-                "to": AnyCodable(selected.map { AnyCodable($0) } ?? AnyCodable("nil"))
+                "to": AnyCodable(selected.map { AnyCodable($0) } ?? AnyCodable("nil")),
             ])
         }
         if toggleState != other.toggleState {
             changes.append([
                 "property": AnyCodable("toggle_state"),
                 "from": AnyCodable(other.toggleState ?? "nil"),
-                "to": AnyCodable(toggleState ?? "nil")
+                "to": AnyCodable(toggleState ?? "nil"),
             ])
         }
         // Position change (> 20pt threshold to ignore minor layout shifts)
@@ -387,7 +399,7 @@ struct ElementState {
             changes.append([
                 "property": AnyCodable("position"),
                 "from": AnyCodable([AnyCodable(other.center.x), AnyCodable(other.center.y)]),
-                "to": AnyCodable([AnyCodable(center.x), AnyCodable(center.y)])
+                "to": AnyCodable([AnyCodable(center.x), AnyCodable(center.y)]),
             ])
         }
         return changes
@@ -422,7 +434,7 @@ struct TextState {
         [
             "text": AnyCodable(label),
             "type": AnyCodable(type),
-            "center": AnyCodable([AnyCodable(center.x), AnyCodable(center.y)])
+            "center": AnyCodable([AnyCodable(center.x), AnyCodable(center.y)]),
         ]
     }
 
@@ -434,7 +446,7 @@ struct TextState {
             changes.append([
                 "property": AnyCodable("position"),
                 "from": AnyCodable([AnyCodable(other.center.x), AnyCodable(other.center.y)]),
-                "to": AnyCodable([AnyCodable(center.x), AnyCodable(center.y)])
+                "to": AnyCodable([AnyCodable(center.x), AnyCodable(center.y)]),
             ])
         }
         return changes

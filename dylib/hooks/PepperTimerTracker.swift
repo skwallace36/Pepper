@@ -273,23 +273,25 @@ final class PepperTimerTracker {
         let origIMP = method_getImplementation(method)
         PepperTimerTracker.origScheduledTimerTargetIMP = origIMP
 
-        typealias OrigFunc = @convention(c) (
-            AnyObject, Selector, TimeInterval, AnyObject, Selector, AnyObject?, Bool
-        ) -> Timer
+        typealias OrigFunc =
+            @convention(c) (
+                AnyObject, Selector, TimeInterval, AnyObject, Selector, AnyObject?, Bool
+            ) -> Timer
         let original = unsafeBitCast(origIMP, to: OrigFunc.self)
 
-        let block: @convention(block) (
-            AnyObject, TimeInterval, AnyObject, Selector, AnyObject?, Bool
-        ) -> Timer = { metaSelf, interval, target, selector, userInfo, repeats in
-            let timer = original(metaSelf, sel, interval, target, selector, userInfo, repeats)
-            let targetClass = String(describing: type(of: target))
-            let selectorName = NSStringFromSelector(selector)
-            PepperTimerTracker.shared.recordTimerCreated(
-                timer, targetClass: targetClass, selector: selectorName,
-                repeats: repeats, isBlock: false
-            )
-            return timer
-        }
+        let block:
+            @convention(block) (
+                AnyObject, TimeInterval, AnyObject, Selector, AnyObject?, Bool
+            ) -> Timer = { metaSelf, interval, target, selector, userInfo, repeats in
+                let timer = original(metaSelf, sel, interval, target, selector, userInfo, repeats)
+                let targetClass = String(describing: type(of: target))
+                let selectorName = NSStringFromSelector(selector)
+                PepperTimerTracker.shared.recordTimerCreated(
+                    timer, targetClass: targetClass, selector: selectorName,
+                    repeats: repeats, isBlock: false
+                )
+                return timer
+            }
         method_setImplementation(method, imp_implementationWithBlock(block))
     }
 
@@ -302,21 +304,23 @@ final class PepperTimerTracker {
         let origIMP = method_getImplementation(method)
         PepperTimerTracker.origScheduledTimerBlockIMP = origIMP
 
-        typealias OrigFunc = @convention(c) (
-            AnyObject, Selector, TimeInterval, Bool, @escaping (Timer) -> Void
-        ) -> Timer
+        typealias OrigFunc =
+            @convention(c) (
+                AnyObject, Selector, TimeInterval, Bool, @escaping (Timer) -> Void
+            ) -> Timer
         let original = unsafeBitCast(origIMP, to: OrigFunc.self)
 
-        let block: @convention(block) (
-            AnyObject, TimeInterval, Bool, @escaping (Timer) -> Void
-        ) -> Timer = { metaSelf, interval, repeats, closure in
-            let timer = original(metaSelf, sel, interval, repeats, closure)
-            PepperTimerTracker.shared.recordTimerCreated(
-                timer, targetClass: "(block)", selector: nil,
-                repeats: repeats, isBlock: true
-            )
-            return timer
-        }
+        let block:
+            @convention(block) (
+                AnyObject, TimeInterval, Bool, @escaping (Timer) -> Void
+            ) -> Timer = { metaSelf, interval, repeats, closure in
+                let timer = original(metaSelf, sel, interval, repeats, closure)
+                PepperTimerTracker.shared.recordTimerCreated(
+                    timer, targetClass: "(block)", selector: nil,
+                    repeats: repeats, isBlock: true
+                )
+                return timer
+            }
         method_setImplementation(method, imp_implementationWithBlock(block))
     }
 
@@ -329,22 +333,24 @@ final class PepperTimerTracker {
         let origIMP = method_getImplementation(method)
         PepperTimerTracker.origDisplayLinkCreateIMP = origIMP
 
-        typealias OrigFunc = @convention(c) (
-            AnyObject, Selector, AnyObject, Selector
-        ) -> CADisplayLink
+        typealias OrigFunc =
+            @convention(c) (
+                AnyObject, Selector, AnyObject, Selector
+            ) -> CADisplayLink
         let original = unsafeBitCast(origIMP, to: OrigFunc.self)
 
-        let block: @convention(block) (
-            AnyObject, AnyObject, Selector
-        ) -> CADisplayLink = { metaSelf, target, selector in
-            let link = original(metaSelf, sel, target, selector)
-            let targetClass = String(describing: type(of: target))
-            let selectorName = NSStringFromSelector(selector)
-            PepperTimerTracker.shared.recordDisplayLinkCreated(
-                link, targetClass: targetClass, selector: selectorName
-            )
-            return link
-        }
+        let block:
+            @convention(block) (
+                AnyObject, AnyObject, Selector
+            ) -> CADisplayLink = { metaSelf, target, selector in
+                let link = original(metaSelf, sel, target, selector)
+                let targetClass = String(describing: type(of: target))
+                let selectorName = NSStringFromSelector(selector)
+                PepperTimerTracker.shared.recordDisplayLinkCreated(
+                    link, targetClass: targetClass, selector: selectorName
+                )
+                return link
+            }
         method_setImplementation(method, imp_implementationWithBlock(block))
     }
 }

@@ -74,7 +74,8 @@ struct RendersHandler: PepperHandler {
         default:
             return .error(
                 id: command.id,
-                message: "Unknown action '\(action)'. Use start, stop, status, log, clear, counts, snapshot, diff, reset, ag_probe, ag_server, ag_dump, signpost, or why."
+                message:
+                    "Unknown action '\(action)'. Use start, stop, status, log, clear, counts, snapshot, diff, reset, ag_probe, ag_server, ag_dump, signpost, or why."
             )
         }
     }
@@ -96,13 +97,16 @@ struct RendersHandler: PepperHandler {
             "status": AnyCodable(status),
             "swizzles_installed": AnyCodable(report["swizzles_installed"] as? Int ?? 0),
             "classes_found": AnyCodable(report["classes_found"] as? Int ?? 0),
-            "note": AnyCodable("Spike active. Interact with SwiftUI screens and watch console output. Call stop to remove swizzles and see stats."),
+            "note": AnyCodable(
+                "Spike active. Interact with SwiftUI screens and watch console output. Call stop to remove swizzles and see stats."
+            ),
         ]
 
         if let details = report["details"] as? [[String: String]] {
-            data["details"] = AnyCodable(details.map { dict in
-                AnyCodable(dict.mapValues { AnyCodable($0) })
-            })
+            data["details"] = AnyCodable(
+                details.map { dict in
+                    AnyCodable(dict.mapValues { AnyCodable($0) })
+                })
         }
 
         return .ok(id: command.id, data: data)
@@ -113,7 +117,7 @@ struct RendersHandler: PepperHandler {
         let status = report["status"] as? String ?? "unknown"
 
         var data: [String: AnyCodable] = [
-            "status": AnyCodable(status),
+            "status": AnyCodable(status)
         ]
 
         if let removed = report["swizzles_removed"] as? Int {
@@ -137,13 +141,15 @@ struct RendersHandler: PepperHandler {
 
     private func handleStatus(_ command: PepperCommand) -> PepperResponse {
         let tracker = PepperRenderTracker.shared
-        return .ok(id: command.id, data: [
-            "active": AnyCodable(tracker.spikeActive),
-            "buffer_size": AnyCodable(tracker.maxEvents),
-            "event_count": AnyCodable(tracker.totalEventCount),
-            "total_dropped": AnyCodable(tracker.totalDropped),
-            "render_counts": AnyCodable(tracker.currentCounts.mapValues { AnyCodable($0) }),
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "active": AnyCodable(tracker.spikeActive),
+                "buffer_size": AnyCodable(tracker.maxEvents),
+                "event_count": AnyCodable(tracker.totalEventCount),
+                "total_dropped": AnyCodable(tracker.totalDropped),
+                "render_counts": AnyCodable(tracker.currentCounts.mapValues { AnyCodable($0) }),
+            ])
     }
 
     private func handleLog(_ command: PepperCommand) -> PepperResponse {
@@ -192,17 +198,20 @@ struct RendersHandler: PepperHandler {
             "hosting_views": AnyCodable(hostingViewCount),
         ]
         if !hottestAddress.isEmpty {
-            summaryDict["hottest_view"] = AnyCodable([
-                "address": AnyCodable(hottestAddress),
-                "count": AnyCodable(hottestCount),
-                "view_controller": AnyCodable(hottestVC),
-            ] as [String: AnyCodable])
+            summaryDict["hottest_view"] = AnyCodable(
+                [
+                    "address": AnyCodable(hottestAddress),
+                    "count": AnyCodable(hottestCount),
+                    "view_controller": AnyCodable(hottestVC),
+                ] as [String: AnyCodable])
         }
 
-        return .ok(id: command.id, data: [
-            "events": AnyCodable(eventDicts),
-            "summary": AnyCodable(summaryDict),
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "events": AnyCodable(eventDicts),
+                "summary": AnyCodable(summaryDict),
+            ])
     }
 
     private func handleClear(_ command: PepperCommand) -> PepperResponse {
@@ -215,11 +224,13 @@ struct RendersHandler: PepperHandler {
         let spikeCounts = tracker.spikeMethodCounts
         let renderCounts = tracker.currentCounts
 
-        return .ok(id: command.id, data: [
-            "spike_active": AnyCodable(tracker.spikeActive),
-            "method_counts": AnyCodable(spikeCounts.mapValues { AnyCodable($0) }),
-            "layout_render_counts": AnyCodable(renderCounts.mapValues { AnyCodable($0) }),
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "spike_active": AnyCodable(tracker.spikeActive),
+                "method_counts": AnyCodable(spikeCounts.mapValues { AnyCodable($0) }),
+                "layout_render_counts": AnyCodable(renderCounts.mapValues { AnyCodable($0) }),
+            ])
     }
 
     // MARK: - Snapshot
@@ -267,7 +278,7 @@ struct RendersHandler: PepperHandler {
         return .ok(
             id: command.id,
             data: [
-                "hosting_views": AnyCodable(results.map { AnyCodable($0) }),
+                "hosting_views": AnyCodable(results.map { AnyCodable($0) })
             ])
     }
 
@@ -294,7 +305,7 @@ struct RendersHandler: PepperHandler {
             let vcName = owningViewControllerName(for: hostingView)
 
             var viewEntry: [String: AnyCodable] = [
-                "address": AnyCodable(address),
+                "address": AnyCodable(address)
             ]
             if let vcName = vcName {
                 viewEntry["view_controller"] = AnyCodable(vcName)
@@ -345,14 +356,20 @@ struct RendersHandler: PepperHandler {
 
     private func handleAGServer(_ command: PepperCommand) -> PepperResponse {
         if let url = PepperAGExplorer.startDebugServer() {
-            return .ok(id: command.id, data: [
-                "debug_server": AnyCodable(["status": AnyCodable("started"), "url": AnyCodable(url)]),
-            ])
+            return .ok(
+                id: command.id,
+                data: [
+                    "debug_server": AnyCodable(["status": AnyCodable("started"), "url": AnyCodable(url)])
+                ])
         }
-        return .ok(id: command.id, data: [
-            "debug_server": AnyCodable(["status": AnyCodable("unavailable"),
-                "note": AnyCodable("AGDebugServerStart not found. Symbol may not be exported on this iOS version.")]),
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "debug_server": AnyCodable([
+                    "status": AnyCodable("unavailable"),
+                    "note": AnyCodable("AGDebugServerStart not found. Symbol may not be exported on this iOS version."),
+                ])
+            ])
     }
 
     private func handleAGDump(_ command: PepperCommand) -> PepperResponse {
@@ -381,12 +398,16 @@ struct RendersHandler: PepperHandler {
             }
             return .ok(id: command.id, data: ["ag_dump": AnyCodable(result)])
         }
-        return .ok(id: command.id, data: [
-            "ag_dump": AnyCodable(["status": AnyCodable("unavailable"),
-                "note": AnyCodable(
-                    "AGGraphArchiveJSON not available or AGGraphRef extraction failed. " +
-                    "Run ag_probe to check symbol availability.")]),
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "ag_dump": AnyCodable([
+                    "status": AnyCodable("unavailable"),
+                    "note": AnyCodable(
+                        "AGGraphArchiveJSON not available or AGGraphRef extraction failed. "
+                            + "Run ag_probe to check symbol availability."),
+                ])
+            ])
     }
 
     private func handleSignpost(_ command: PepperCommand) -> PepperResponse {
@@ -395,20 +416,25 @@ struct RendersHandler: PepperHandler {
         switch sub {
         case "install":
             let success = PepperAGExplorer.installSignpostHook()
-            return .ok(id: command.id, data: [
-                "signpost_hook": AnyCodable([
-                    "installed": AnyCodable(success),
-                    "note": AnyCodable(success
-                        ? "Hook installed. SwiftUI signpost events will be captured. Use sub:drain to retrieve."
-                        : "Signpost hook symbol not found on this OS version."),
-                ]),
-            ])
+            return .ok(
+                id: command.id,
+                data: [
+                    "signpost_hook": AnyCodable([
+                        "installed": AnyCodable(success),
+                        "note": AnyCodable(
+                            success
+                                ? "Hook installed. SwiftUI signpost events will be captured. Use sub:drain to retrieve."
+                                : "Signpost hook symbol not found on this OS version."),
+                    ])
+                ])
         case "drain":
             let events = PepperAGExplorer.drainSignpostEvents() as? [[String: Any]] ?? []
-            return .ok(id: command.id, data: [
-                "signpost_events": AnyCodable(events),
-                "count": AnyCodable(events.count),
-            ])
+            return .ok(
+                id: command.id,
+                data: [
+                    "signpost_events": AnyCodable(events),
+                    "count": AnyCodable(events.count),
+                ])
         default:
             return .error(id: command.id, message: "Unknown signpost sub-action '\(sub)'. Use install or drain.")
         }
@@ -473,16 +499,18 @@ struct RendersHandler: PepperHandler {
 
             entry["hints"] = AnyCodable(hints)
             entry["note"] = AnyCodable(
-                "Phase 4 research: 'why' tracking depends on AttributeGraph API availability. " +
-                "Run ag_probe first to check. Visual diff shows WHAT changed; AG analysis can show WHY."
+                "Phase 4 research: 'why' tracking depends on AttributeGraph API availability. "
+                    + "Run ag_probe first to check. Visual diff shows WHAT changed; AG analysis can show WHY."
             )
 
             results.append(entry)
         }
 
-        return .ok(id: command.id, data: [
-            "why": AnyCodable(results.map { AnyCodable($0) }),
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "why": AnyCodable(results.map { AnyCodable($0) })
+            ])
     }
 
     // MARK: - Helpers

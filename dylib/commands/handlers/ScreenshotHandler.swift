@@ -135,13 +135,15 @@ struct ScreenshotHandler: PepperHandler {
 
         let b64 = jpegData.base64EncodedString()
 
-        return .ok(id: command.id, data: [
-            "image": AnyCodable(b64),
-            "width": AnyCodable(Int(width)),
-            "height": AnyCodable(Int(height)),
-            "format": AnyCodable("jpeg"),
-            "scope": AnyCodable(scope),
-            "size_bytes": AnyCodable(jpegData.count),
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "image": AnyCodable(b64),
+                "width": AnyCodable(Int(width)),
+                "height": AnyCodable(Int(height)),
+                "format": AnyCodable("jpeg"),
+                "scope": AnyCodable(scope),
+                "size_bytes": AnyCodable(jpegData.count),
+            ])
     }
 }

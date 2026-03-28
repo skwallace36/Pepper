@@ -24,41 +24,51 @@ struct NotificationsHandler: PepperHandler {
         switch action {
         case "start":
             tracker.install()
-            return .ok(id: command.id, data: [
-                "active": AnyCodable(true),
-            ])
+            return .ok(
+                id: command.id,
+                data: [
+                    "active": AnyCodable(true)
+                ])
 
         case "stop":
             tracker.uninstall()
-            return .ok(id: command.id, data: [
-                "active": AnyCodable(false),
-                "total_tracked": AnyCodable(tracker.totalTracked),
-            ])
+            return .ok(
+                id: command.id,
+                data: [
+                    "active": AnyCodable(false),
+                    "total_tracked": AnyCodable(tracker.totalTracked),
+                ])
 
         case "status":
-            return .ok(id: command.id, data: [
-                "active": AnyCodable(tracker.isTracking),
-                "observer_count": AnyCodable(tracker.observerCount),
-                "event_count": AnyCodable(tracker.eventCount),
-                "total_tracked": AnyCodable(tracker.totalTracked),
-            ])
+            return .ok(
+                id: command.id,
+                data: [
+                    "active": AnyCodable(tracker.isTracking),
+                    "observer_count": AnyCodable(tracker.observerCount),
+                    "event_count": AnyCodable(tracker.eventCount),
+                    "total_tracked": AnyCodable(tracker.totalTracked),
+                ])
 
         case "list":
             let filter = command.params?["filter"]?.stringValue
             let limit = command.params?["limit"]?.intValue ?? 100
             let observers = tracker.listObservers(filter: filter, limit: limit)
-            return .ok(id: command.id, data: [
-                "count": AnyCodable(observers.count),
-                "observers": AnyCodable(observers),
-            ])
+            return .ok(
+                id: command.id,
+                data: [
+                    "count": AnyCodable(observers.count),
+                    "observers": AnyCodable(observers),
+                ])
 
         case "counts":
             let filter = command.params?["filter"]?.stringValue
             let counts = tracker.countsByName(filter: filter)
-            return .ok(id: command.id, data: [
-                "count": AnyCodable(counts.count),
-                "notifications": AnyCodable(counts),
-            ])
+            return .ok(
+                id: command.id,
+                data: [
+                    "count": AnyCodable(counts.count),
+                    "notifications": AnyCodable(counts),
+                ])
 
         case "post":
             guard let name = command.params?["name"]?.stringValue else {
@@ -66,28 +76,36 @@ struct NotificationsHandler: PepperHandler {
             }
             let userInfo = extractUserInfo(command.params?["user_info"])
             tracker.postNotification(name: name, userInfo: userInfo)
-            return .ok(id: command.id, data: [
-                "posted": AnyCodable(name),
-                "user_info_keys": AnyCodable(userInfo?.keys.sorted().map { AnyCodable($0) } ?? []),
-            ])
+            return .ok(
+                id: command.id,
+                data: [
+                    "posted": AnyCodable(name),
+                    "user_info_keys": AnyCodable(userInfo?.keys.sorted().map { AnyCodable($0) } ?? []),
+                ])
 
         case "events":
             let filter = command.params?["filter"]?.stringValue
             let limit = command.params?["limit"]?.intValue ?? 50
             let events = tracker.recentEvents(limit: limit, filter: filter)
-            return .ok(id: command.id, data: [
-                "count": AnyCodable(events.count),
-                "events": AnyCodable(events),
-            ])
+            return .ok(
+                id: command.id,
+                data: [
+                    "count": AnyCodable(events.count),
+                    "events": AnyCodable(events),
+                ])
 
         case "clear":
             tracker.clear()
-            return .ok(id: command.id, data: [
-                "cleared": AnyCodable(true),
-            ])
+            return .ok(
+                id: command.id,
+                data: [
+                    "cleared": AnyCodable(true)
+                ])
 
         default:
-            return .error(id: command.id, message: "Unknown action '\(action)'. Use: start, stop, list, counts, post, events, status, clear")
+            return .error(
+                id: command.id,
+                message: "Unknown action '\(action)'. Use: start, stop, list, counts, post, events, status, clear")
         }
     }
 

@@ -38,7 +38,7 @@ final class PepperAccessibilityObserver {
     let changeSemaphore = DispatchSemaphore(value: 0)
 
     struct AccessibilityEvent {
-        let type: String           // "screen_changed", "layout_changed", "announcement", "focus_changed"
+        let type: String  // "screen_changed", "layout_changed", "announcement", "focus_changed"
         let timestampMs: Int64
         let announcement: String?  // Non-nil for announcement events
         let elementLabel: String?  // Focused element label (focus_changed events)

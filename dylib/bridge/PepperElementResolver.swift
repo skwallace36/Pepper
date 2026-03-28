@@ -160,11 +160,14 @@ enum PepperElementResolver {
                 )
             }
             if interactiveOnly {
-                let available = interactiveElements
+                let available =
+                    interactiveElements
                     .filter { $0.hitReachable }
                     .prefix(20)
                     .compactMap { $0.label }
-                return (nil, "No interactive element labeled \"\(text)\". Available: \(available.joined(separator: ", "))")
+                return (
+                    nil, "No interactive element labeled \"\(text)\". Available: \(available.joined(separator: ", "))"
+                )
             }
             return (nil, "Element not found by text: \"\(text)\"")
         }

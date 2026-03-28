@@ -170,7 +170,8 @@ final class PepperRenderTracker {
         let swizzledSel = #selector(UIView.pepper_renderTracker_layoutSubviews)
 
         guard let originalMethod = class_getInstanceMethod(hostingViewClass, originalSel),
-              let swizzledMethod = class_getInstanceMethod(UIView.self, swizzledSel) else {
+            let swizzledMethod = class_getInstanceMethod(UIView.self, swizzledSel)
+        else {
             pepperLog.warning("Failed to resolve layoutSubviews methods for render tracking", category: .lifecycle)
             return
         }
@@ -215,7 +216,9 @@ final class PepperRenderTracker {
         install()
 
         let targetClasses = findHostingViewClasses(base: baseClass)
-        print("[PepperRenderTracker] Found \(targetClasses.count) hosting view class(es): \(targetClasses.map { NSStringFromClass($0) })")
+        print(
+            "[PepperRenderTracker] Found \(targetClasses.count) hosting view class(es): \(targetClasses.map { NSStringFromClass($0) })"
+        )
 
         // Methods to swizzle with their replacement selectors
         let methodMap: [(name: String, swizzledSel: Selector)] = [
@@ -269,7 +272,9 @@ final class PepperRenderTracker {
         lock.unlock()
 
         spikeActive = true
-        print("[PepperRenderTracker] Spike started. \(installedSpikeSwizzles.count) swizzle(s) active. Interact with the app and observe console output.")
+        print(
+            "[PepperRenderTracker] Spike started. \(installedSpikeSwizzles.count) swizzle(s) active. Interact with the app and observe console output."
+        )
 
         return [
             "status": "started",
@@ -290,7 +295,8 @@ final class PepperRenderTracker {
         var removed = 0
         for swizzle in installedSpikeSwizzles {
             guard let origMethod = class_getInstanceMethod(swizzle.cls, swizzle.originalSel),
-                  let swizMethod = class_getInstanceMethod(swizzle.cls, swizzle.swizzledSel) else { continue }
+                let swizMethod = class_getInstanceMethod(swizzle.cls, swizzle.swizzledSel)
+            else { continue }
             method_exchangeImplementations(origMethod, swizMethod)
             removed += 1
         }
@@ -700,7 +706,7 @@ struct ViewTreeNode {
     /// Convert to a dictionary suitable for JSON response.
     func toDict() -> [String: AnyCodable] {
         var dict: [String: AnyCodable] = [
-            "type": AnyCodable(readableType),
+            "type": AnyCodable(readableType)
         ]
         if let size = size {
             dict["size"] = AnyCodable([
@@ -780,7 +786,7 @@ extension UIView {
     /// records a render event. The recursive call invokes the original implementation
     /// due to method_exchangeImplementations.
     @objc dynamic func pepper_renderTracker_layoutSubviews() {
-        pepper_renderTracker_layoutSubviews() // calls original via exchange
+        pepper_renderTracker_layoutSubviews()  // calls original via exchange
         PepperRenderTracker.shared.recordRender(for: self)
     }
 
@@ -789,21 +795,21 @@ extension UIView {
     /// Replacement for `_UIHostingView.updateRootView()`.
     /// Called when SwiftUI evaluates the body.
     @objc dynamic func pepper_spike_updateRootView() {
-        pepper_spike_updateRootView() // calls original via exchange
+        pepper_spike_updateRootView()  // calls original via exchange
         PepperRenderTracker.shared.recordSpikeCall(method: "updateRootView", view: self)
     }
 
     /// Replacement for `_UIHostingView.didRender()`.
     /// Called after a render pass completes.
     @objc dynamic func pepper_spike_didRender() {
-        pepper_spike_didRender() // calls original via exchange
+        pepper_spike_didRender()  // calls original via exchange
         PepperRenderTracker.shared.recordSpikeCall(method: "didRender", view: self)
     }
 
     /// Replacement for `_UIHostingView.setNeedsUpdate()`.
     /// Called when state changes invalidate the view graph.
     @objc dynamic func pepper_spike_setNeedsUpdate() {
-        pepper_spike_setNeedsUpdate() // calls original via exchange
+        pepper_spike_setNeedsUpdate()  // calls original via exchange
         PepperRenderTracker.shared.recordSpikeCall(method: "setNeedsUpdate", view: self)
     }
 }

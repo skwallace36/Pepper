@@ -47,12 +47,14 @@ struct DiffHandler: PepperHandler {
         let result = snapshotHandler.handle(saveCmd)
         guard let data = result.data else { return result }
         logger.info("Diff baseline captured: \(data["element_count"]?.intValue ?? 0) elements")
-        return .ok(id: command.id, data: [
-            "action": AnyCodable("start"),
-            "screen": data["screen"] ?? AnyCodable("unknown"),
-            "element_count": data["element_count"] ?? AnyCodable(0),
-            "text_count": data["text_count"] ?? AnyCodable(0),
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "action": AnyCodable("start"),
+                "screen": data["screen"] ?? AnyCodable("unknown"),
+                "element_count": data["element_count"] ?? AnyCodable(0),
+                "text_count": data["text_count"] ?? AnyCodable(0),
+            ])
     }
 
     // MARK: - Show (diff against baseline)
@@ -85,9 +87,11 @@ struct DiffHandler: PepperHandler {
     private func handleClear(_ command: PepperCommand) -> PepperResponse {
         let existed = SnapshotStore.shared.delete(Self.baselineName)
         logger.info("Diff baseline cleared (existed: \(existed))")
-        return .ok(id: command.id, data: [
-            "action": AnyCodable("clear"),
-            "had_baseline": AnyCodable(existed),
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "action": AnyCodable("clear"),
+                "had_baseline": AnyCodable(existed),
+            ])
     }
 }

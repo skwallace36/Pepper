@@ -26,11 +26,13 @@ extension PepperVarRegistry {
         var result: [String: AnyCodable] = [:]
         for instance in listAll() {
             guard let className = instance["class"]?.stringValue,
-                let propsArray = instance["properties"]?.arrayValue else { continue }
+                let propsArray = instance["properties"]?.arrayValue
+            else { continue }
             for propEntry in propsArray {
                 guard let propDict = propEntry.dictValue,
                     let name = propDict["name"]?.stringValue,
-                    let value = propDict["value"] else { continue }
+                    let value = propDict["value"]
+                else { continue }
                 result["\(className).\(name)"] = value
             }
         }

@@ -97,7 +97,8 @@ final class DialogAutoDismisser {
 
         for window in allWindows where window.windowLevel.rawValue > UIWindow.Level.normal.rawValue {
             guard let rootVC = window.rootViewController,
-                let alert = findAlertController(from: rootVC) else { continue }
+                let alert = findAlertController(from: rootVC)
+            else { continue }
 
             // Try preferred buttons first
             for buttonTitle in defaultButtons {

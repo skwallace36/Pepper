@@ -370,7 +370,8 @@ final class PepperAccessibility {
 
     private func collectUntaggedWithLabels(view: UIView, into results: inout [(view: UIView, label: String)]) {
         if let label = view.accessibilityLabel, !label.isEmpty,
-           (view.accessibilityIdentifier?.isEmpty ?? true) {
+            view.accessibilityIdentifier?.isEmpty ?? true
+        {
             results.append((view: view, label: label))
         }
         for subview in view.subviews {

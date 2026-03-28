@@ -50,7 +50,8 @@ struct TapHandler: PepperHandler {
             let allCandidates = elements.filter { $0.iconName == iconName }
             let matches = allCandidates.filter { $0.hitReachable }
             guard !matches.isEmpty else {
-                let msg = allCandidates.isEmpty
+                let msg =
+                    allCandidates.isEmpty
                     ? "No element with icon_name '\(iconName)' found in view hierarchy"
                     : "No hit-reachable element with icon_name '\(iconName)' found — \(rejectionSummary(for: allCandidates))"
                 return .error(id: command.id, message: msg)
@@ -103,7 +104,8 @@ struct TapHandler: PepperHandler {
             let allCandidates = elements.filter { $0.heuristic == heuristic }
             let matches = allCandidates.filter { $0.hitReachable }
             guard !matches.isEmpty else {
-                let msg = allCandidates.isEmpty
+                let msg =
+                    allCandidates.isEmpty
                     ? "No element with heuristic '\(heuristic)' found in view hierarchy"
                     : "No hit-reachable element with heuristic '\(heuristic)' found — \(rejectionSummary(for: allCandidates))"
                 return .error(id: command.id, message: msg)
@@ -254,8 +256,9 @@ struct TapHandler: PepperHandler {
                 let sorted = allMatches.sorted { $0.0.y < $1.0.y }
                 let pick = posFilter == "bottom" ? sorted[sorted.count - 1] : sorted[0]
                 let desc = "\(pick.2) [position:\(posFilter)]"
-                return executeTap(at: pick.0, strategy: pick.1,
-                                  description: desc, in: pick.3, command: command)
+                return executeTap(
+                    at: pick.0, strategy: pick.1,
+                    description: desc, in: pick.3, command: command)
             }
         }
 
@@ -381,7 +384,7 @@ struct TapHandler: PepperHandler {
         }
 
         var result: [String: AnyCodable] = [
-            "point": AnyCodable(["x": AnyCodable(Double(point.x)), "y": AnyCodable(Double(point.y))]),
+            "point": AnyCodable(["x": AnyCodable(Double(point.x)), "y": AnyCodable(Double(point.y))])
         ]
 
         if let hit = hitView {
@@ -405,7 +408,7 @@ struct TapHandler: PepperHandler {
 
     private func describeViewForDiag(_ view: UIView) -> [String: AnyCodable] {
         var info: [String: AnyCodable] = [
-            "class": AnyCodable(String(describing: type(of: view))),
+            "class": AnyCodable(String(describing: type(of: view)))
         ]
         let frame = view.convert(view.bounds, to: nil)
         info["frame"] = AnyCodable([
@@ -496,7 +499,8 @@ struct TapHandler: PepperHandler {
     private func collectOverlapping(view: UIView, point: CGPoint, result: inout [AnyCodable]) {
         let localPoint = view.convert(point, from: nil)
         guard !view.isHidden, view.alpha > 0.01,
-              view.bounds.contains(localPoint) else { return }
+            view.bounds.contains(localPoint)
+        else { return }
         result.append(AnyCodable(describeViewForDiag(view)))
         for subview in view.subviews.reversed() {
             collectOverlapping(view: subview, point: point, result: &result)
@@ -643,12 +647,20 @@ struct TapHandler: PepperHandler {
     /// Summarize why non-hit-reachable candidates were rejected, e.g. "2 off-screen, 1 covered by another view".
     private func rejectionSummary(for candidates: [PepperInteractiveElement]) -> String {
         let screen = UIScreen.main.bounds
-        var offScreen = 0, covered = 0, notInViewport = 0, other = 0
+        var offScreen = 0
+        var covered = 0
+        var notInViewport = 0
+        var other = 0
         for el in candidates {
-            if !screen.contains(el.center) { offScreen += 1 }
-            else if !el.hitReachable { covered += 1 }
-            else if let sc = el.scrollContext, !sc.visibleInViewport { notInViewport += 1 }
-            else { other += 1 }
+            if !screen.contains(el.center) {
+                offScreen += 1
+            } else if !el.hitReachable {
+                covered += 1
+            } else if let sc = el.scrollContext, !sc.visibleInViewport {
+                notInViewport += 1
+            } else {
+                other += 1
+            }
         }
         var parts: [String] = []
         if offScreen > 0 { parts.append("\(offScreen) off-screen") }
@@ -677,7 +689,9 @@ struct TapHandler: PepperHandler {
             )
         }
 
-        var offScreen = 0, covered = 0, notInViewport = 0
+        var offScreen = 0
+        var covered = 0
+        var notInViewport = 0
         var details: [AnyCodable] = []
         for el in candidates {
             var entry: [String: AnyCodable] = [
@@ -706,7 +720,8 @@ struct TapHandler: PepperHandler {
         if covered > 0 { parts.append("\(covered) covered by another view") }
         if notInViewport > 0 { parts.append("\(notInViewport) outside scroll viewport") }
 
-        let summary = parts.isEmpty
+        let summary =
+            parts.isEmpty
             ? "\(candidates.count) candidate(s) found but not hit-reachable"
             : "\(candidates.count) candidate(s) found (\(parts.joined(separator: ", ")))"
 

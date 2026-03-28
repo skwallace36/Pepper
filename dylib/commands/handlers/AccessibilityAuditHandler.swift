@@ -31,9 +31,12 @@ struct AccessibilityAuditHandler: PepperHandler {
 
         let enabledChecks: Set<String>
         if checksParam == "all" {
-            enabledChecks = ["missing_label", "missing_trait", "contrast", "dynamic_type", "touch_target", "redundant_trait"]
+            enabledChecks = [
+                "missing_label", "missing_trait", "contrast", "dynamic_type", "touch_target", "redundant_trait",
+            ]
         } else {
-            enabledChecks = Set(checksParam.split(separator: ",").map { String($0.trimmingCharacters(in: .whitespaces)) })
+            enabledChecks = Set(
+                checksParam.split(separator: ",").map { String($0.trimmingCharacters(in: .whitespaces)) })
         }
 
         let minSeverity = Severity(rawValue: severityParam) ?? .warning
@@ -82,16 +85,18 @@ struct AccessibilityAuditHandler: PepperHandler {
         let warningCount = sorted.filter { $0.severity == .warning }.count
         let infoCount = sorted.filter { $0.severity == .info }.count
 
-        return .ok(id: command.id, data: [
-            "issues": AnyCodable(serialized.map { AnyCodable($0) }),
-            "summary": AnyCodable([
-                "total": AnyCodable(sorted.count),
-                "errors": AnyCodable(errorCount),
-                "warnings": AnyCodable(warningCount),
-                "info": AnyCodable(infoCount),
-                "checks_run": AnyCodable(enabledChecks.sorted().map { AnyCodable($0) })
-            ]),
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "issues": AnyCodable(serialized.map { AnyCodable($0) }),
+                "summary": AnyCodable([
+                    "total": AnyCodable(sorted.count),
+                    "errors": AnyCodable(errorCount),
+                    "warnings": AnyCodable(warningCount),
+                    "info": AnyCodable(infoCount),
+                    "checks_run": AnyCodable(enabledChecks.sorted().map { AnyCodable($0) }),
+                ]),
+            ])
     }
 
     // MARK: - Check: Missing Labels
@@ -100,24 +105,26 @@ struct AccessibilityAuditHandler: PepperHandler {
         var issues: [AuditIssue] = []
         for elem in elements {
             guard elem.isInteractive else { continue }
-            let hasLabel = elem.label != nil && !elem.label!.isEmpty
-            let hasId = elem.identifier != nil && !elem.identifier!.isEmpty
+            let hasLabel = elem.label.map({ !$0.isEmpty }) ?? false
+            let hasId = elem.identifier.map({ !$0.isEmpty }) ?? false
             if !hasLabel {
-                issues.append(AuditIssue(
-                    check: "missing_label",
-                    severity: .error,
-                    message: "Interactive \(elem.type) has no accessibility label",
-                    element: describeElement(elem),
-                    frame: elem.frame
-                ))
+                issues.append(
+                    AuditIssue(
+                        check: "missing_label",
+                        severity: .error,
+                        message: "Interactive \(elem.type) has no accessibility label",
+                        element: describeElement(elem),
+                        frame: elem.frame
+                    ))
             } else if !hasId {
-                issues.append(AuditIssue(
-                    check: "missing_label",
-                    severity: .info,
-                    message: "Interactive \(elem.type) has label but no accessibilityIdentifier",
-                    element: describeElement(elem),
-                    frame: elem.frame
-                ))
+                issues.append(
+                    AuditIssue(
+                        check: "missing_label",
+                        severity: .info,
+                        message: "Interactive \(elem.type) has label but no accessibilityIdentifier",
+                        element: describeElement(elem),
+                        frame: elem.frame
+                    ))
             }
         }
         return issues
@@ -137,38 +144,42 @@ struct AccessibilityAuditHandler: PepperHandler {
 
             // UIButton should have button trait
             if view is UIButton && !traits.contains(.button) {
-                issues.append(AuditIssue(
-                    check: "missing_trait",
-                    severity: .warning,
-                    message: "UIButton missing .button trait",
-                    element: describeView(view),
-                    frame: view.accessibilityFrame
-                ))
+                issues.append(
+                    AuditIssue(
+                        check: "missing_trait",
+                        severity: .warning,
+                        message: "UIButton missing .button trait",
+                        element: describeView(view),
+                        frame: view.accessibilityFrame
+                    ))
             }
 
             // UIImageView with content should have image trait
             if let imageView = view as? UIImageView,
-               imageView.image != nil,
-               !traits.contains(.image),
-               imageView.isAccessibilityElement {
-                issues.append(AuditIssue(
-                    check: "missing_trait",
-                    severity: .warning,
-                    message: "UIImageView missing .image trait",
-                    element: describeView(view),
-                    frame: view.accessibilityFrame
-                ))
+                imageView.image != nil,
+                !traits.contains(.image),
+                imageView.isAccessibilityElement
+            {
+                issues.append(
+                    AuditIssue(
+                        check: "missing_trait",
+                        severity: .warning,
+                        message: "UIImageView missing .image trait",
+                        element: describeView(view),
+                        frame: view.accessibilityFrame
+                    ))
             }
 
             // UISwitch should have adjustable or button trait
             if view is UISwitch && !traits.contains(.button) && !traits.contains(.adjustable) {
-                issues.append(AuditIssue(
-                    check: "missing_trait",
-                    severity: .warning,
-                    message: "UISwitch missing interactive trait (.button or .adjustable)",
-                    element: describeView(view),
-                    frame: view.accessibilityFrame
-                ))
+                issues.append(
+                    AuditIssue(
+                        check: "missing_trait",
+                        severity: .warning,
+                        message: "UISwitch missing interactive trait (.button or .adjustable)",
+                        element: describeView(view),
+                        frame: view.accessibilityFrame
+                    ))
             }
         }
         return issues
@@ -193,13 +204,15 @@ struct AccessibilityAuditHandler: PepperHandler {
 
                 if ratio < threshold {
                     let sizeDesc = isLargeText ? "large" : "normal"
-                    issues.append(AuditIssue(
-                        check: "contrast",
-                        severity: .error,
-                        message: "Contrast ratio \(String(format: "%.2f", ratio)):1 below \(String(format: "%.1f", threshold)):1 minimum for \(sizeDesc) text",
-                        element: "UILabel(\"\(truncate(text, 40))\")",
-                        frame: view.accessibilityFrame
-                    ))
+                    issues.append(
+                        AuditIssue(
+                            check: "contrast",
+                            severity: .error,
+                            message:
+                                "Contrast ratio \(String(format: "%.2f", ratio)):1 below \(String(format: "%.1f", threshold)):1 minimum for \(sizeDesc) text",
+                            element: "UILabel(\"\(truncate(text, 40))\")",
+                            frame: view.accessibilityFrame
+                        ))
                 }
             }
 
@@ -213,24 +226,28 @@ struct AccessibilityAuditHandler: PepperHandler {
 
                 if ratio < threshold {
                     let sizeDesc = isLargeText ? "large" : "normal"
-                    issues.append(AuditIssue(
-                        check: "contrast",
-                        severity: .error,
-                        message: "Contrast ratio \(String(format: "%.2f", ratio)):1 below \(String(format: "%.1f", threshold)):1 minimum for \(sizeDesc) text",
-                        element: "UITextView(\"\(truncate(text, 40))\")",
-                        frame: view.accessibilityFrame
-                    ))
+                    issues.append(
+                        AuditIssue(
+                            check: "contrast",
+                            severity: .error,
+                            message:
+                                "Contrast ratio \(String(format: "%.2f", ratio)):1 below \(String(format: "%.1f", threshold)):1 minimum for \(sizeDesc) text",
+                            element: "UITextView(\"\(truncate(text, 40))\")",
+                            frame: view.accessibilityFrame
+                        ))
                 }
             }
 
             if let textField = view as? UITextField,
-               let placeholder = textField.placeholder, !placeholder.isEmpty,
-               textField.text?.isEmpty ?? true {
+                let placeholder = textField.placeholder, !placeholder.isEmpty,
+                textField.text?.isEmpty ?? true
+            {
                 // Check placeholder contrast (often lighter/harder to read)
                 let attrs = textField.attributedPlaceholder
                 let placeholderColor: UIColor
                 if let attrs = attrs, attrs.length > 0,
-                   let color = attrs.attribute(.foregroundColor, at: 0, effectiveRange: nil) as? UIColor {
+                    let color = attrs.attribute(.foregroundColor, at: 0, effectiveRange: nil) as? UIColor
+                {
                     placeholderColor = color
                 } else {
                     placeholderColor = .placeholderText
@@ -238,13 +255,15 @@ struct AccessibilityAuditHandler: PepperHandler {
                 let bgColor = effectiveBackgroundColor(for: view) ?? .systemBackground
                 let ratio = contrastRatio(placeholderColor, bgColor)
                 if ratio < 4.5 {
-                    issues.append(AuditIssue(
-                        check: "contrast",
-                        severity: .warning,
-                        message: "Placeholder contrast ratio \(String(format: "%.2f", ratio)):1 below 4.5:1 minimum",
-                        element: "UITextField(placeholder: \"\(truncate(placeholder, 40))\")",
-                        frame: view.accessibilityFrame
-                    ))
+                    issues.append(
+                        AuditIssue(
+                            check: "contrast",
+                            severity: .warning,
+                            message:
+                                "Placeholder contrast ratio \(String(format: "%.2f", ratio)):1 below 4.5:1 minimum",
+                            element: "UITextField(placeholder: \"\(truncate(placeholder, 40))\")",
+                            frame: view.accessibilityFrame
+                        ))
                 }
             }
         }
@@ -263,27 +282,32 @@ struct AccessibilityAuditHandler: PepperHandler {
 
             if let label = view as? UILabel, let font = label.font, label.text?.isEmpty == false {
                 if !isScaledFont(font) && !label.adjustsFontForContentSizeCategory {
-                    issues.append(AuditIssue(
-                        check: "dynamic_type",
-                        severity: .warning,
-                        message: "UILabel uses fixed font (\(font.fontName) \(Int(font.pointSize))pt) — not Dynamic Type",
-                        element: "UILabel(\"\(truncate(label.text ?? "", 40))\")",
-                        frame: view.accessibilityFrame
-                    ))
+                    issues.append(
+                        AuditIssue(
+                            check: "dynamic_type",
+                            severity: .warning,
+                            message:
+                                "UILabel uses fixed font (\(font.fontName) \(Int(font.pointSize))pt) — not Dynamic Type",
+                            element: "UILabel(\"\(truncate(label.text ?? "", 40))\")",
+                            frame: view.accessibilityFrame
+                        ))
                 }
             }
 
             if let textView = view as? UITextView,
-               let font = textView.font,
-               textView.text?.isEmpty == false {
+                let font = textView.font,
+                textView.text?.isEmpty == false
+            {
                 if !isScaledFont(font) && !textView.adjustsFontForContentSizeCategory {
-                    issues.append(AuditIssue(
-                        check: "dynamic_type",
-                        severity: .warning,
-                        message: "UITextView uses fixed font (\(font.fontName) \(Int(font.pointSize))pt) — not Dynamic Type",
-                        element: "UITextView(\"\(truncate(textView.text ?? "", 40))\")",
-                        frame: view.accessibilityFrame
-                    ))
+                    issues.append(
+                        AuditIssue(
+                            check: "dynamic_type",
+                            severity: .warning,
+                            message:
+                                "UITextView uses fixed font (\(font.fontName) \(Int(font.pointSize))pt) — not Dynamic Type",
+                            element: "UITextView(\"\(truncate(textView.text ?? "", 40))\")",
+                            frame: view.accessibilityFrame
+                        ))
                 }
             }
         }
@@ -300,13 +324,14 @@ struct AccessibilityAuditHandler: PepperHandler {
             if elem.frame.width < minSize || elem.frame.height < minSize {
                 let w = Int(elem.frame.width)
                 let h = Int(elem.frame.height)
-                issues.append(AuditIssue(
-                    check: "touch_target",
-                    severity: .warning,
-                    message: "Tap target \(w)x\(h)pt is smaller than 44x44pt minimum",
-                    element: describeElement(elem),
-                    frame: elem.frame
-                ))
+                issues.append(
+                    AuditIssue(
+                        check: "touch_target",
+                        severity: .warning,
+                        message: "Tap target \(w)x\(h)pt is smaller than 44x44pt minimum",
+                        element: describeElement(elem),
+                        frame: elem.frame
+                    ))
             }
         }
         return issues
@@ -324,13 +349,14 @@ struct AccessibilityAuditHandler: PepperHandler {
         for elem in elements {
             for (a, b) in conflictPairs {
                 if elem.traits.contains(a) && elem.traits.contains(b) {
-                    issues.append(AuditIssue(
-                        check: "redundant_trait",
-                        severity: .warning,
-                        message: "Element has conflicting traits: \(a) + \(b)",
-                        element: describeElement(elem),
-                        frame: elem.frame
-                    ))
+                    issues.append(
+                        AuditIssue(
+                            check: "redundant_trait",
+                            severity: .warning,
+                            message: "Element has conflicting traits: \(a) + \(b)",
+                            element: describeElement(elem),
+                            frame: elem.frame
+                        ))
                 }
             }
         }
@@ -396,7 +422,10 @@ struct AccessibilityAuditHandler: PepperHandler {
     private func relativeLuminance(_ color: UIColor) -> CGFloat {
         // Resolve in light mode to get concrete sRGB values
         let resolved = color.resolvedColor(with: UITraitCollection(userInterfaceStyle: .light))
-        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        var r: CGFloat = 0
+        var g: CGFloat = 0
+        var b: CGFloat = 0
+        var a: CGFloat = 0
         resolved.getRed(&r, green: &g, blue: &b, alpha: &a)
 
         func linearize(_ c: CGFloat) -> CGFloat {
@@ -440,8 +469,9 @@ struct AccessibilityAuditHandler: PepperHandler {
         // Fonts created via UIFont.preferredFont(forTextStyle:) contain text style info
         let desc = font.fontDescriptor
         if let traits = desc.object(forKey: .traits) as? [UIFontDescriptor.TraitKey: Any],
-           traits[.weight] != nil,
-           desc.object(forKey: .textStyle) != nil {
+            traits[.weight] != nil,
+            desc.object(forKey: .textStyle) != nil
+        {
             return true
         }
         // System fonts (SFPro variants) used with UIFontMetrics may not have textStyle
@@ -463,9 +493,9 @@ private enum Severity: String {
 
     var rank: Int {
         switch self {
-        case .error:   return 3
+        case .error: return 3
         case .warning: return 2
-        case .info:    return 1
+        case .info: return 1
         }
     }
 }
@@ -487,8 +517,8 @@ private struct AuditIssue {
                 "x": AnyCodable(Double(frame.origin.x)),
                 "y": AnyCodable(Double(frame.origin.y)),
                 "width": AnyCodable(Double(frame.size.width)),
-                "height": AnyCodable(Double(frame.size.height))
-            ])
+                "height": AnyCodable(Double(frame.size.height)),
+            ]),
         ]
     }
 }

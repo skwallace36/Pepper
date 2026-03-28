@@ -275,8 +275,8 @@ struct IntrospectHandler: PepperHandler {
 
         // Generic mode fallback: derive tab info from standard UITabBarController
         if tabTitles.isEmpty, tabBarProvider == nil,
-           let tabBarVC = UIWindow.pepper_tabBarController as? UITabBarController,
-           let vcs = tabBarVC.viewControllers, !vcs.isEmpty
+            let tabBarVC = UIWindow.pepper_tabBarController as? UITabBarController,
+            let vcs = tabBarVC.viewControllers, !vcs.isEmpty
         {
             tabTitles = vcs.enumerated().map { i, vc in
                 vc.tabBarItem.title ?? vc.title ?? "Tab \(i)"
@@ -901,10 +901,11 @@ struct IntrospectHandler: PepperHandler {
                         "A system dialog (e.g. permission prompt) appears to be overlaying the app. UI elements may not be interactable."
                     ),
                     "dialogs": AnyCodable([
-                        AnyCodable([
-                            "title": AnyCodable("System Dialog (detected via window monitor)"),
-                            "buttons": AnyCodable([] as [String]),
-                        ] as [String: AnyCodable]),
+                        AnyCodable(
+                            [
+                                "title": AnyCodable("System Dialog (detected via window monitor)"),
+                                "buttons": AnyCodable([] as [String]),
+                            ] as [String: AnyCodable])
                     ]),
                     "suggested_actions": AnyCodable([
                         AnyCodable("dialog detect_system — run full system dialog detection"),

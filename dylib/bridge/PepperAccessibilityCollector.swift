@@ -108,7 +108,9 @@ extension ElementDiscoveryBridge {
     /// - Parameter alreadyScoped: When true, the input elements are already collected from the
     ///   topmost presented VC (e.g. handleMap scoped to modalRootView). Skips the redundant
     ///   re-collection that would otherwise walk the same accessibility tree a second time.
-    func annotateDepth(_ elements: [PepperAccessibilityElement], alreadyScoped: Bool = false) -> [PepperAccessibilityElement] {
+    func annotateDepth(_ elements: [PepperAccessibilityElement], alreadyScoped: Bool = false)
+        -> [PepperAccessibilityElement]
+    {
         let screenBounds = UIScreen.main.bounds
 
         // Build the reachable set from the topmost presented VC's view subtree.
@@ -272,7 +274,8 @@ extension ElementDiscoveryBridge {
         var unlabeledContainerInfo: PepperAccessibilityElement?
         if let nsObj = element as? NSObject {
             let info = extractAccessibilityInfo(from: nsObj)
-            let isContainer = nsObj is UICollectionViewCell || nsObj is UITableViewCell
+            let isContainer =
+                nsObj is UICollectionViewCell || nsObj is UITableViewCell
                 || String(describing: type(of: nsObj)).contains("ListCollectionViewCell")
             // Unlabeled interactive container (e.g. SwiftUI List cells) — don't add as leaf,
             // force-descend to find the text content inside.
@@ -341,17 +344,18 @@ extension ElementDiscoveryBridge {
             let view = element as? UIView,
             let extractedText = extractTextFromView(view)
         {
-            results.append(PepperAccessibilityElement(
-                label: extractedText,
-                value: info.value,
-                hint: info.hint,
-                identifier: info.identifier,
-                type: info.type,
-                traits: info.traits,
-                frame: info.frame,
-                isInteractive: info.isInteractive,
-                className: info.className
-            ))
+            results.append(
+                PepperAccessibilityElement(
+                    label: extractedText,
+                    value: info.value,
+                    hint: info.hint,
+                    identifier: info.identifier,
+                    type: info.type,
+                    traits: info.traits,
+                    frame: info.frame,
+                    isInteractive: info.isInteractive,
+                    className: info.className
+                ))
         }
     }
 
@@ -365,7 +369,7 @@ extension ElementDiscoveryBridge {
         var label = stripSFSymbols(element.accessibilityLabel)
         // Fall back to placeholder text for unlabeled text fields — common in
         // SwiftUI apps that set .textFieldStyle but not .accessibilityLabel.
-        if (label == nil || label?.isEmpty == true), let tf = element as? UITextField,
+        if label == nil || label?.isEmpty == true, let tf = element as? UITextField,
             let placeholder = tf.placeholder, !placeholder.isEmpty
         {
             label = placeholder

@@ -25,7 +25,9 @@ struct AccessibilityActionHandler: PepperHandler {
 
     func handle(_ command: PepperCommand) -> PepperResponse {
         guard let action = command.params?["action"]?.stringValue else {
-            return .error(id: command.id, message: "Missing required parameter: action (list, invoke, escape, magic_tap, increment, decrement)")
+            return .error(
+                id: command.id,
+                message: "Missing required parameter: action (list, invoke, escape, magic_tap, increment, decrement)")
         }
 
         switch action {
@@ -42,7 +44,9 @@ struct AccessibilityActionHandler: PepperHandler {
         case "decrement":
             return handleDecrement(command)
         default:
-            return .error(id: command.id, message: "Unknown action: \(action). Use: list, invoke, escape, magic_tap, increment, decrement")
+            return .error(
+                id: command.id,
+                message: "Unknown action: \(action). Use: list, invoke, escape, magic_tap, increment, decrement")
         }
     }
 
@@ -69,13 +73,15 @@ struct AccessibilityActionHandler: PepperHandler {
         let traits = target.accessibilityTraits
         let supports = supportedActions(for: target)
 
-        return .ok(id: command.id, data: [
-            "custom_actions": AnyCodable(serialized.map { AnyCodable($0) }),
-            "custom_action_count": AnyCodable(actions.count),
-            "supported_actions": AnyCodable(supports.map { AnyCodable($0) }),
-            "is_adjustable": AnyCodable(traits.contains(.adjustable)),
-            "element": AnyCodable(describeTarget(target)),
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "custom_actions": AnyCodable(serialized.map { AnyCodable($0) }),
+                "custom_action_count": AnyCodable(actions.count),
+                "supported_actions": AnyCodable(supports.map { AnyCodable($0) }),
+                "is_adjustable": AnyCodable(traits.contains(.adjustable)),
+                "element": AnyCodable(describeTarget(target)),
+            ])
     }
 
     // MARK: - Invoke custom action
@@ -94,12 +100,15 @@ struct AccessibilityActionHandler: PepperHandler {
         if let name = command.params?["name"]?.stringValue {
             guard let found = actions.first(where: { $0.name == name }) else {
                 let available = actions.map { $0.name }
-                return .error(id: command.id, message: "Custom action '\(name)' not found. Available: \(available.joined(separator: ", "))")
+                return .error(
+                    id: command.id,
+                    message: "Custom action '\(name)' not found. Available: \(available.joined(separator: ", "))")
             }
             action = found
         } else if let index = command.params?["index"]?.intValue {
             guard index >= 0, index < actions.count else {
-                return .error(id: command.id, message: "Custom action index \(index) out of range (0..<\(actions.count))")
+                return .error(
+                    id: command.id, message: "Custom action index \(index) out of range (0..<\(actions.count))")
             }
             action = actions[index]
         } else {
@@ -114,16 +123,19 @@ struct AccessibilityActionHandler: PepperHandler {
             result = handler(action)
         } else if let actionTarget = action.target {
             let selector = action.selector
-            result = (actionTarget as AnyObject).perform(selector, with: action)?.takeUnretainedValue() as? Bool ?? false
+            result =
+                (actionTarget as AnyObject).perform(selector, with: action)?.takeUnretainedValue() as? Bool ?? false
         } else {
             result = false
         }
 
-        return .ok(id: command.id, data: [
-            "action": AnyCodable(action.name),
-            "result": AnyCodable(result),
-            "element": AnyCodable(describeTarget(target)),
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "action": AnyCodable(action.name),
+                "result": AnyCodable(result),
+                "element": AnyCodable(describeTarget(target)),
+            ])
     }
 
     // MARK: - Escape
@@ -150,9 +162,11 @@ struct AccessibilityActionHandler: PepperHandler {
 
         let result = performEscapeOnResponderChain(from: startResponder)
         if result {
-            return .ok(id: command.id, data: [
-                "performed": AnyCodable(true),
-            ])
+            return .ok(
+                id: command.id,
+                data: [
+                    "performed": AnyCodable(true)
+                ])
         }
         return .error(id: command.id, message: "No responder handled accessibilityPerformEscape()")
     }
@@ -179,9 +193,11 @@ struct AccessibilityActionHandler: PepperHandler {
 
         let result = performMagicTapOnResponderChain(from: startResponder)
         if result {
-            return .ok(id: command.id, data: [
-                "performed": AnyCodable(true),
-            ])
+            return .ok(
+                id: command.id,
+                data: [
+                    "performed": AnyCodable(true)
+                ])
         }
         return .error(id: command.id, message: "No responder handled accessibilityPerformMagicTap()")
     }
@@ -203,11 +219,13 @@ struct AccessibilityActionHandler: PepperHandler {
 
         logger.info("Increment on \(self.describeTarget(target)): \(valueBefore ?? "nil") -> \(valueAfter ?? "nil")")
 
-        return .ok(id: command.id, data: [
-            "element": AnyCodable(describeTarget(target)),
-            "value_before": valueBefore.map { AnyCodable($0) } ?? AnyCodable(NSNull()),
-            "value_after": valueAfter.map { AnyCodable($0) } ?? AnyCodable(NSNull()),
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "element": AnyCodable(describeTarget(target)),
+                "value_before": valueBefore.map { AnyCodable($0) } ?? AnyCodable(NSNull()),
+                "value_after": valueAfter.map { AnyCodable($0) } ?? AnyCodable(NSNull()),
+            ])
     }
 
     // MARK: - Decrement
@@ -227,11 +245,13 @@ struct AccessibilityActionHandler: PepperHandler {
 
         logger.info("Decrement on \(self.describeTarget(target)): \(valueBefore ?? "nil") -> \(valueAfter ?? "nil")")
 
-        return .ok(id: command.id, data: [
-            "element": AnyCodable(describeTarget(target)),
-            "value_before": valueBefore.map { AnyCodable($0) } ?? AnyCodable(NSNull()),
-            "value_after": valueAfter.map { AnyCodable($0) } ?? AnyCodable(NSNull()),
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "element": AnyCodable(describeTarget(target)),
+                "value_before": valueBefore.map { AnyCodable($0) } ?? AnyCodable(NSNull()),
+                "value_after": valueAfter.map { AnyCodable($0) } ?? AnyCodable(NSNull()),
+            ])
     }
 
     // MARK: - Element Resolution
@@ -275,7 +295,9 @@ struct AccessibilityActionHandler: PepperHandler {
     }
 
     /// Walk the accessibility tree looking for an object matching a predicate.
-    private func walkForObject(element: Any, maxDepth: Int, depth: Int = 0, matching predicate: (NSObject) -> Bool) -> NSObject? {
+    private func walkForObject(element: Any, maxDepth: Int, depth: Int = 0, matching predicate: (NSObject) -> Bool)
+        -> NSObject?
+    {
         guard depth < maxDepth else { return nil }
 
         if let nsObj = element as? NSObject, predicate(nsObj) {
@@ -283,9 +305,11 @@ struct AccessibilityActionHandler: PepperHandler {
         }
 
         // Walk accessibility elements
-        if let container = element as? NSObject, let accElements = container.accessibilityElements, !accElements.isEmpty {
+        if let container = element as? NSObject, let accElements = container.accessibilityElements, !accElements.isEmpty
+        {
             for child in accElements {
-                if let found = walkForObject(element: child, maxDepth: maxDepth, depth: depth + 1, matching: predicate) {
+                if let found = walkForObject(element: child, maxDepth: maxDepth, depth: depth + 1, matching: predicate)
+                {
                     return found
                 }
             }
@@ -298,7 +322,9 @@ struct AccessibilityActionHandler: PepperHandler {
             if count != NSNotFound && count > 0 {
                 for i in 0..<count {
                     if let child = container.accessibilityElement(at: i) {
-                        if let found = walkForObject(element: child, maxDepth: maxDepth, depth: depth + 1, matching: predicate) {
+                        if let found = walkForObject(
+                            element: child, maxDepth: maxDepth, depth: depth + 1, matching: predicate)
+                        {
                             return found
                         }
                     }
@@ -310,7 +336,9 @@ struct AccessibilityActionHandler: PepperHandler {
         // Walk UIView subviews
         if let view = element as? UIView {
             for subview in view.subviews {
-                if let found = walkForObject(element: subview, maxDepth: maxDepth, depth: depth + 1, matching: predicate) {
+                if let found = walkForObject(
+                    element: subview, maxDepth: maxDepth, depth: depth + 1, matching: predicate)
+                {
                     return found
                 }
             }
