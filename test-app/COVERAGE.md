@@ -265,12 +265,14 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `webview` | evaluate | untested |  |  |
 | `webview` | url | untested |  |  |
 | `webview` | dom | untested |  |  |
+| `appearance` | dark | untested |  |  |
+| `appearance` | light | untested |  |  |
 
 ## Summary
 
-**245 test points** across 67 commands.
+**247 test points** across 68 commands.
 
 - pass: 137
 - fail: 3
-- untested: 94
+- untested: 96
 
