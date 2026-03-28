@@ -220,7 +220,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
     async def tap(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
         text: str | None = Field(default=None, description="Visible text or label to match (e.g. 'Save', 'Settings', 'Log Out')"),
-        icon: str | None = Field(default=None, description="Icon asset name from look output (e.g. 'gift-fill-icon', 'close-icon')"),
+        icon_name: str | None = Field(default=None, description="Icon asset name from look output (e.g. 'gift-fill-icon', 'close-icon')"),
         heuristic: str | None = Field(default=None, description="Semantic role from look output (e.g. 'close_button', 'back_button', 'menu_button')"),
         point: str | None = Field(default=None, description="Raw screen coordinates 'x,y' — use when element has no label (e.g. '200,400')"),
         double: bool = Field(default=False, description="Double-tap — two rapid taps for zoom, like, or select"),
@@ -231,12 +231,12 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
         ),
     ) -> list:
         """Use this to interact with a button, link, or any tappable element on screen.
-        Resolves the element by text label, icon, heuristic, or coordinate, then synthesizes a real touch via HID. Specify exactly one targeting method. Shows screen state after."""
+        Resolves the element by text label, icon_name, heuristic, or coordinate, then synthesizes a real touch via HID. Specify exactly one targeting method. Shows screen state after."""
         params = {}
         if text:
             params["text"] = text
-        elif icon:
-            params["icon_name"] = icon
+        elif icon_name:
+            params["icon_name"] = icon_name
         elif heuristic:
             params["heuristic"] = heuristic
         elif point:
@@ -246,7 +246,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
             except (ValueError, IndexError):
                 return [TextContent(type="text", text="Error: point must be x,y (e.g. 200,400)")]
         else:
-            return [TextContent(type="text", text="Error: specify one of text, icon, heuristic, or point")]
+            return [TextContent(type="text", text="Error: specify one of text, icon_name, heuristic, or point")]
         if double:
             params["double"] = True
         if duration is not None:
