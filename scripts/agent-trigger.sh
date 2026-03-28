@@ -11,12 +11,18 @@
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"
 
+# Shared lockfile helpers (PID-reuse-safe liveness checks)
+source "$REPO_ROOT/scripts/lib/lockfile.sh"
+
 EVENT="${1:?Usage: agent-trigger.sh <event-type>}"
 
 # Don't stack — if same agent type is running, skip
 agent_running() {
-  local lock="build/logs/.lock-$1"
-  [ -f "$lock" ] && kill -0 "$(cat "$lock" 2>/dev/null)" 2>/dev/null
+  for lf in build/logs/.lock-$1-*; do
+    [ -f "$lf" ] || continue
+    lockfile_alive "$lf" && return 0
+  done
+  return 1
 }
 
 case "$EVENT" in

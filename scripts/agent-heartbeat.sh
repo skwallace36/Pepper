@@ -21,6 +21,9 @@ fi
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"
 
+# Shared lockfile helpers (PID-reuse-safe liveness checks)
+source "$REPO_ROOT/scripts/lib/lockfile.sh"
+
 PIDFILE="build/logs/heartbeat.pid"
 EVENTS="$REPO_ROOT/build/logs/events.jsonl"
 INTERVAL=300          # 5 min between cycles — each cycle is ~60s of actual work, rest is sleep
@@ -71,7 +74,7 @@ count_running() {
   local count=0
   for lf in build/logs/.lock-$1-*; do
     [ -f "$lf" ] || continue
-    kill -0 "$(cat "$lf" 2>/dev/null)" 2>/dev/null && count=$((count + 1))
+    lockfile_alive "$lf" && count=$((count + 1))
   done
   echo "$count"
 }

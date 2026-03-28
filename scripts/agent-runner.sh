@@ -9,6 +9,9 @@ TYPE="${1:?Usage: agent-runner.sh <type>}"
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"
 
+# Shared lockfile helpers (PID-reuse-safe liveness checks)
+source "$REPO_ROOT/scripts/lib/lockfile.sh"
+
 EVENTS="$REPO_ROOT/build/logs/events.jsonl"
 mkdir -p build/logs
 
@@ -25,8 +28,7 @@ for wt in $(git worktree list --porcelain 2>/dev/null | grep "^worktree .*/\.cla
   OWNED=false
   for lock in build/logs/.lock-*; do
     [ -f "$lock" ] || continue
-    pid=$(cat "$lock" 2>/dev/null)
-    if kill -0 "$pid" 2>/dev/null; then
+    if lockfile_alive "$lock"; then
       OWNED=true
       break
     fi
@@ -195,11 +197,10 @@ esac
 RUNNING=0
 for lf in build/logs/.lock-${TYPE}-*; do
   [ -f "$lf" ] || continue
-  lpid=$(cat "$lf" 2>/dev/null)
-  if kill -0 "$lpid" 2>/dev/null; then
+  if lockfile_alive "$lf"; then
     RUNNING=$((RUNNING + 1))
   else
-    rm -f "$lf"  # stale
+    rm -f "$lf"  # stale (dead or PID reused)
   fi
 done
 
@@ -264,7 +265,7 @@ print('yes' if elapsed < $BACKOFF_WINDOW else 'no')
 fi
 
 LOCKFILE="build/logs/.lock-${TYPE}-$$"
-echo $$ > "$LOCKFILE"
+lockfile_write "$LOCKFILE"
 
 if ! gh auth status &>/dev/null; then
   emit "failed" ",\"detail\":\"gh not authenticated\""

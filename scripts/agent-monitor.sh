@@ -7,6 +7,9 @@
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"
 
+# Shared lockfile helpers (PID-reuse-safe liveness checks)
+source "$REPO_ROOT/scripts/lib/lockfile.sh"
+
 EVENTS="build/logs/events.jsonl"
 REPLAY=false
 # Convert UTC timestamps to EST (America/New_York)
@@ -69,9 +72,9 @@ print_banner() {
   for lock in build/logs/.lock-*; do
     [ -f "$lock" ] || continue
     local lpid atype
-    lpid=$(cat "$lock" 2>/dev/null)
+    lpid=$(lockfile_pid "$lock")
     atype=$(basename "$lock" | sed 's/^\.lock-//; s/-[0-9]*$//')
-    if kill -0 "$lpid" 2>/dev/null; then
+    if lockfile_alive "$lock"; then
       local acol
       acol=$(color_for "$atype")
       active="${active}  \033[${acol}m${atype}\033[0m(${lpid})"
