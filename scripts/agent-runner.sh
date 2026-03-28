@@ -190,7 +190,7 @@ fi
 case "$TYPE" in
   bugfix)                MAX_INSTANCES=1 ;;
   pr-verifier|verifier)  MAX_INSTANCES=1 ;;
-  builder)               MAX_INSTANCES=1 ;;
+  builder)               MAX_INSTANCES=2 ;;
   pr-responder)          MAX_INSTANCES=1 ;;
   tester)                MAX_INSTANCES=0 ;;  # paused
   conflict-resolver)     MAX_INSTANCES=1 ;;
@@ -656,9 +656,10 @@ TURNS=$(jq -r '.num_turns // 0' "$TRANSCRIPT" 2>/dev/null || echo 0)
 EXIT_REASON=$(jq -r '.result // ""' "$TRANSCRIPT" 2>/dev/null | head -c 200 | tr '\n' ' ' | jq -Rs '.' 2>/dev/null || echo '""')
 
 # Detect unproductive runs: short duration + no commits/pushes
-# These should count as "failed" so the heartbeat backoff kicks in.
-# Catches: guardrail blocks, "no work available", claimed tasks, etc.
+# "idle" = agent correctly found no work (not a failure, skip backoff)
+# "failed" = agent had work but didn't accomplish anything (triggers backoff)
 UNPRODUCTIVE=false
+UNPRODUCTIVE_IDLE=false
 UNPRODUCTIVE_REASON=""
 if [ "$DURATION" -lt 120 ] && [ $EXIT_CODE -eq 0 ]; then
   PROD_STATS=$(python3 -c "
@@ -689,7 +690,12 @@ print(f'{blocks} {commits} {pushes} {edits} {builds}')
   # Unproductive if no commits, no pushes, no edits, and no builds
   if [ "$COMMIT_COUNT" -eq 0 ] && [ "$PUSH_COUNT" -eq 0 ] && [ "$EDIT_COUNT" -eq 0 ] && [ "$BUILD_COUNT" -eq 0 ]; then
     UNPRODUCTIVE=true
-    if [ "$GB_COUNT" -gt 0 ]; then
+    # Check if the agent legitimately found no work (idle vs broken)
+    RESULT_TEXT=$(jq -r '.result // ""' "$TRANSCRIPT" 2>/dev/null | tr '[:upper:]' '[:lower:]')
+    if echo "$RESULT_TEXT" | grep -qiE 'no (unclaimed|available|open|remaining) (bug|task|work|issue)|all .* (claimed|have (open )?pr)|nothing to do|no work'; then
+      UNPRODUCTIVE_IDLE=true
+      UNPRODUCTIVE_REASON="no work available, ${DURATION}s"
+    elif [ "$GB_COUNT" -gt 0 ]; then
       UNPRODUCTIVE_REASON="${GB_COUNT} guardrail blocks, no productive actions, ${DURATION}s"
     else
       UNPRODUCTIVE_REASON="no productive actions (no edits/commits/builds), ${DURATION}s"
@@ -712,6 +718,9 @@ elif [ "$NOT_LOGGED_IN" = true ]; then
   emit "auth-retry" ",\"detail\":\"Claude CLI session expired — will retry next cycle\",\"cost_usd\":${COST},\"duration_s\":${DURATION},\"turns\":${TURNS}"
 elif [ $EXIT_CODE -ne 0 ]; then
   emit_final "failed" ",\"detail\":${EXIT_REASON},\"cost_usd\":${COST},\"duration_s\":${DURATION},\"turns\":${TURNS}"
+elif [ "$UNPRODUCTIVE" = true ] && [ "$UNPRODUCTIVE_IDLE" = true ]; then
+  # Agent correctly found no work — emit "done" so backoff doesn't trigger
+  emit_final "done" ",\"detail\":\"idle (${UNPRODUCTIVE_REASON})\",\"cost_usd\":${COST},\"duration_s\":${DURATION},\"turns\":${TURNS}"
 elif [ "$UNPRODUCTIVE" = true ]; then
   emit_final "failed" ",\"detail\":\"unproductive run (${UNPRODUCTIVE_REASON})\",\"cost_usd\":${COST},\"duration_s\":${DURATION},\"turns\":${TURNS}"
 else

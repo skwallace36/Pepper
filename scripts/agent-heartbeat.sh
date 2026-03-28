@@ -153,9 +153,37 @@ while true; do
     fi
   done
 
-  # Check for open bugs → bugfix (exclude already-claimed bugs)
-  BUG_COUNT=$(gh issue list --repo skwallace36/Pepper-private --label bug --state open --json number,labels \
-    --jq '[.[] | select(.labels | map(.name) | (index("in-progress") | not) and (index("blocked") | not))] | length' 2>/dev/null || echo 0)
+  # Check for open bugs → bugfix (exclude claimed, blocked, and bugs with open PRs)
+  BUG_COUNT=$(python3 -c "
+import json, subprocess, sys
+bugs = json.loads(subprocess.check_output(
+    ['gh', 'issue', 'list', '--repo', 'skwallace36/Pepper-private', '--label', 'bug',
+     '--state', 'open', '--json', 'number,labels'], text=True) or '[]')
+prs = json.loads(subprocess.check_output(
+    ['gh', 'pr', 'list', '--repo', 'skwallace36/Pepper-private', '--state', 'open',
+     '--json', 'number,body'], text=True) or '[]')
+# Collect issue numbers referenced by open PRs (Fixes #N, Closes #N)
+import re
+claimed_by_pr = set()
+for pr in prs:
+    for m in re.findall(r'(?:fixes|closes|resolves)\s+#(\d+)', pr.get('body',''), re.I):
+        claimed_by_pr.add(int(m))
+# Also check for agent branches (agent/bugfix/BUG-N)
+branches = subprocess.check_output(
+    ['gh', 'api', 'repos/skwallace36/Pepper-private/branches', '--jq', '.[].name'], text=True)
+for line in branches.splitlines():
+    m = re.search(r'agent/bugfix/BUG-(\d+)', line)
+    if m: claimed_by_pr.add(int(m.group(1)))
+unclaimed = 0
+for bug in bugs:
+    labels = [l['name'] for l in bug.get('labels',[])]
+    if 'in-progress' in labels or 'blocked' in labels:
+        continue
+    if bug['number'] in claimed_by_pr:
+        continue
+    unclaimed += 1
+print(unclaimed)
+" 2>/dev/null || echo 0)
   if [ "$BUG_COUNT" -gt 0 ]; then
     if should_backoff bugfix; then
       echo "$(date +%H:%M) bugfix in backoff (${BACKOFF_THRESHOLD}+ consecutive failures) — skipping"
@@ -164,9 +192,36 @@ while true; do
     fi
   fi
 
-  # Check for open tasks → builder (exclude already-claimed tasks)
-  TASK_COUNT=$(gh issue list --repo skwallace36/Pepper-private --state open --json number,labels \
-    --jq '[.[] | select((.labels | map(.name) | any(startswith("area:"))) and (.labels | map(.name) | (index("in-progress") | not) and (index("blocked") | not)))] | length' 2>/dev/null || echo 0)
+  # Check for open tasks → builder (exclude claimed, blocked, and tasks with open PRs/branches)
+  TASK_COUNT=$(python3 -c "
+import json, subprocess, sys, re
+issues = json.loads(subprocess.check_output(
+    ['gh', 'issue', 'list', '--repo', 'skwallace36/Pepper-private', '--state', 'open',
+     '--limit', '100', '--json', 'number,labels'], text=True) or '[]')
+prs = json.loads(subprocess.check_output(
+    ['gh', 'pr', 'list', '--repo', 'skwallace36/Pepper-private', '--state', 'open',
+     '--json', 'number,body'], text=True) or '[]')
+claimed_by_pr = set()
+for pr in prs:
+    for m in re.findall(r'(?:fixes|closes|resolves)\s+#(\d+)', pr.get('body',''), re.I):
+        claimed_by_pr.add(int(m.group(0).split('#')[1]))
+branches = subprocess.check_output(
+    ['gh', 'api', 'repos/skwallace36/Pepper-private/branches', '--jq', '.[].name'], text=True)
+for line in branches.splitlines():
+    m = re.search(r'agent/builder/TASK-(\d+)', line)
+    if m: claimed_by_pr.add(int(m.group(1)))
+unclaimed = 0
+for issue in issues:
+    labels = [l['name'] for l in issue.get('labels',[])]
+    if not any(l.startswith('area:') for l in labels):
+        continue
+    if 'in-progress' in labels or 'blocked' in labels:
+        continue
+    if issue['number'] in claimed_by_pr:
+        continue
+    unclaimed += 1
+print(unclaimed)
+" 2>/dev/null || echo 0)
   if [ "$TASK_COUNT" -gt 0 ]; then
     if should_backoff builder; then
       echo "$(date +%H:%M) builder in backoff (${BACKOFF_THRESHOLD}+ consecutive failures) — skipping"
