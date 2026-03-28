@@ -176,9 +176,13 @@ struct ScrollHandler: PepperHandler {
     // MARK: - Scroll to element
 
     private func scrollToElement(_ elementID: String, in window: UIWindow, command: PepperCommand) -> PepperResponse {
-        guard let element = window.pepper_findElement(id: elementID) else {
+        guard let result = PepperElementResolver.resolveByID(elementID, in: window) else {
             return .error(id: command.id, message: "Element not found: \(elementID)")
         }
+        if result.tapPoint != nil {
+            return .error(id: command.id, message: "Element \(elementID) is a SwiftUI element without a UIView — scroll_to requires a UIKit view")
+        }
+        let element = result.view
 
         // Find the nearest ancestor scroll view
         guard let scrollView = findAncestorScrollView(of: element) else {
@@ -213,7 +217,9 @@ struct ScrollHandler: PepperHandler {
         var startY = window.bounds.midY
 
         if let id = scrollViewID,
-            let scrollView = window.pepper_findElement(id: id) as? UIScrollView
+            let resolved = PepperElementResolver.resolveByID(id, in: window),
+            resolved.tapPoint == nil,
+            let scrollView = resolved.view as? UIScrollView
         {
             let center = scrollView.convert(
                 CGPoint(x: scrollView.bounds.midX, y: scrollView.bounds.midY),

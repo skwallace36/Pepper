@@ -33,6 +33,12 @@ enum PepperElementResolver {
         }
     }
 
+    /// Resolve an element by accessibility ID, with SwiftUI accessibility fallback.
+    /// Convenience for handlers that have an element ID string rather than a full params dict.
+    static func resolveByID(_ elementID: String, in window: UIView) -> Result? {
+        return resolve(params: ["element": AnyCodable(elementID)], in: window).0
+    }
+
     /// Resolve an element from command params, trying strategies in priority order.
     /// Returns nil with an error message if no element is found.
     // swiftlint:disable:next cyclomatic_complexity

@@ -24,21 +24,12 @@ struct ToggleHandler: PepperHandler {
             throw PepperHandlerError.noKeyWindow
         }
 
-        // Try UIKit view hierarchy first, then fall back to PepperElementResolver
-        // (which searches the SwiftUI accessibility tree for elements like SwiftUI Toggle)
-        let element: UIView
-        var swiftUITapPoint: CGPoint?
-
-        if let uiView = window.pepper_findElement(id: elementID) {
-            element = uiView
-        } else {
-            let (resolved, errorMsg) = PepperElementResolver.resolve(params: command.params, in: window)
-            guard let resolved = resolved else {
-                return .elementNotFound(id: command.id, message: errorMsg ?? "Element not found: \(elementID)", query: elementID)
-            }
-            element = resolved.view
-            swiftUITapPoint = resolved.tapPoint
+        let (resolved, errorMsg) = PepperElementResolver.resolve(params: command.params, in: window)
+        guard let resolved = resolved else {
+            return .elementNotFound(id: command.id, message: errorMsg ?? "Element not found: \(elementID)", query: elementID)
         }
+        let element = resolved.view
+        let swiftUITapPoint = resolved.tapPoint
 
         // SwiftUI element found via accessibility tree — tap at the resolved point
         if let tapPoint = swiftUITapPoint {

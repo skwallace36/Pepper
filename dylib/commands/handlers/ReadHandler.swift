@@ -17,12 +17,39 @@ struct ReadHandler: PepperHandler {
             return .error(id: command.id, message: "No key window available")
         }
 
-        guard let view = window.pepper_findElement(id: elementID) else {
-            return .elementNotFound(id: command.id, message: "Element not found: \(elementID)", query: elementID)
+        let (result, errorMsg) = PepperElementResolver.resolve(params: command.params, in: window)
+        guard let result = result else {
+            return .elementNotFound(id: command.id, message: errorMsg ?? "Element not found: \(elementID)", query: elementID)
         }
 
         logger.info("Reading element: \(elementID)")
-        let data = readElement(view, id: elementID)
+
+        // SwiftUI element resolved via accessibility tree — return accessibility info
+        if result.tapPoint != nil {
+            let accElements = PepperSwiftUIBridge.shared.collectAccessibilityElements()
+            if let match = accElements.first(where: { $0.identifier == elementID }) {
+                var data: [String: AnyCodable] = [
+                    "id": AnyCodable(elementID),
+                    "type": AnyCodable(match.type),
+                    "visible": AnyCodable(true),
+                    "frame": AnyCodable([
+                        "x": AnyCodable(Double(match.frame.origin.x)),
+                        "y": AnyCodable(Double(match.frame.origin.y)),
+                        "width": AnyCodable(Double(match.frame.size.width)),
+                        "height": AnyCodable(Double(match.frame.size.height)),
+                    ]),
+                ]
+                if let label = match.label, !label.isEmpty {
+                    data["label"] = AnyCodable(label)
+                }
+                if let value = match.value, !value.isEmpty {
+                    data["value"] = AnyCodable(value)
+                }
+                return .ok(id: command.id, data: data)
+            }
+        }
+
+        let data = readElement(result.view, id: elementID)
         return .ok(id: command.id, data: data)
     }
 
