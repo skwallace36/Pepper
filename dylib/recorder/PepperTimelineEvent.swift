@@ -3,6 +3,7 @@ import Foundation
 /// Event types captured by the flight recorder.
 enum TimelineEventType: String, Codable, CaseIterable {
     case network  // HTTP request completed
+    case websocket  // WebSocket frame sent/received
     case console  // Console log line (stdout/stderr)
     case screen  // VC appeared/disappeared
     case command  // Pepper command dispatched

@@ -40,7 +40,7 @@ struct NetworkHandler: PepperHandler {
             return .error(
                 id: command.id,
                 message:
-                    "Missing 'action' param. Available: start, stop, status, log, clear, simulate, conditions, remove_condition, clear_conditions, mock, mocks, remove_mock, clear_mocks"
+                    "Missing 'action' param. Available: start, stop, status, log, clear, simulate, conditions, remove_condition, clear_conditions, mock, mocks, remove_mock, clear_mocks, ws_log, ws_status, ws_clear"
             )
         }
 
@@ -51,6 +51,7 @@ struct NetworkHandler: PepperHandler {
         case "start":
             let bufferSize = command.params?["buffer_size"]?.intValue
             interceptor.install(bufferSize: bufferSize)
+            PepperWebSocketInterceptor.shared.install(bufferSize: bufferSize)
             return .ok(
                 id: command.id,
                 data: [
@@ -60,6 +61,7 @@ struct NetworkHandler: PepperHandler {
 
         case "stop":
             interceptor.uninstall()
+            PepperWebSocketInterceptor.shared.uninstall()
             return .ok(
                 id: command.id,
                 data: [
@@ -115,11 +117,14 @@ struct NetworkHandler: PepperHandler {
         case "mock", "mocks", "remove_mock", "clear_mocks":
             return handleMockAction(action, command)
 
+        case "ws_log", "ws_status", "ws_clear":
+            return handleWsAction(action, command)
+
         default:
             return .error(
                 id: command.id,
                 message:
-                    "Unknown action '\(action)'. Available: start, stop, status, log, clear, simulate, conditions, remove_condition, clear_conditions, mock, mocks, remove_mock, clear_mocks"
+                    "Unknown action '\(action)'. Available: start, stop, status, log, clear, simulate, conditions, remove_condition, clear_conditions, mock, mocks, remove_mock, clear_mocks, ws_log, ws_status, ws_clear"
             )
         }
     }
@@ -157,6 +162,18 @@ struct NetworkHandler: PepperHandler {
         if !mocks.isEmpty {
             statusData["mocks"] = AnyCodable(mocks.map { AnyCodable($0.toDictionary()) })
         }
+
+        // WebSocket stats
+        let wsInterceptor = PepperWebSocketInterceptor.shared
+        let activeConns = wsInterceptor.activeConnections
+        statusData["ws_active"] = AnyCodable(wsInterceptor.isIntercepting)
+        statusData["ws_frame_count"] = AnyCodable(wsInterceptor.frameCount)
+        statusData["ws_total_recorded"] = AnyCodable(wsInterceptor.totalRecorded)
+        statusData["ws_connections"] = AnyCodable(activeConns.count)
+        if !activeConns.isEmpty {
+            statusData["ws_active_connections"] = AnyCodable(activeConns.map { AnyCodable($0.toDictionary()) })
+        }
+
         return .ok(id: command.id, data: statusData)
     }
 
@@ -362,5 +379,61 @@ struct NetworkHandler: PepperHandler {
                 "description": AnyCodable(description),
                 "active_mocks": AnyCodable(interceptor.activeMocks.count),
             ])
+    }
+
+    // MARK: - WebSocket
+
+    private func handleWsAction(_ action: String, _ command: PepperCommand) -> PepperResponse {
+        switch action {
+        case "ws_log":
+            return handleWsLog(command)
+        case "ws_status":
+            return handleWsStatus(command)
+        case "ws_clear":
+            PepperWebSocketInterceptor.shared.clearBuffer()
+            return .ok(id: command.id, data: ["cleared": AnyCodable(true)])
+        default:
+            return .error(id: command.id, message: "Unknown ws action '\(action)'")
+        }
+    }
+
+    private func handleWsLog(_ command: PepperCommand) -> PepperResponse {
+        let wsInterceptor = PepperWebSocketInterceptor.shared
+
+        // Auto-start if not active
+        if !wsInterceptor.isIntercepting {
+            wsInterceptor.install()
+        }
+
+        let limit = command.params?["limit"]?.intValue ?? 50
+        let filter = command.params?["filter"]?.stringValue
+        let direction = command.params?["direction"]?.stringValue
+        let frames = wsInterceptor.recentFrames(limit: limit, connectionFilter: filter, directionFilter: direction)
+        return .ok(
+            id: command.id,
+            data: [
+                "count": AnyCodable(frames.count),
+                "frames": AnyCodable(frames.map { AnyCodable($0.toDictionary()) }),
+            ])
+    }
+
+    // MARK: - WebSocket Status
+
+    private func handleWsStatus(_ command: PepperCommand) -> PepperResponse {
+        let wsInterceptor = PepperWebSocketInterceptor.shared
+        let activeConns = wsInterceptor.activeConnections
+        let closedConns = wsInterceptor.recentClosedConnections
+        var data: [String: AnyCodable] = [
+            "active": AnyCodable(wsInterceptor.isIntercepting),
+            "buffer_size": AnyCodable(wsInterceptor.bufferSize),
+            "frame_count": AnyCodable(wsInterceptor.frameCount),
+            "total_recorded": AnyCodable(wsInterceptor.totalRecorded),
+            "total_dropped": AnyCodable(wsInterceptor.totalDropped),
+            "active_connections": AnyCodable(activeConns.map { AnyCodable($0.toDictionary()) }),
+        ]
+        if !closedConns.isEmpty {
+            data["closed_connections"] = AnyCodable(closedConns.map { AnyCodable($0.toDictionary()) })
+        }
+        return .ok(id: command.id, data: data)
     }
 }
