@@ -74,9 +74,16 @@
 - name: scroll to element
   priority: high
   steps:
+    - tool: scroll
+      params: { target: "<off-screen element>", direction: "down" }
+  verify: target element now visible in look output
+
+- name: scroll to element (deprecated scroll_to)
+  priority: low
+  steps:
     - tool: scroll_to
       params: { text: "<off-screen element>", direction: "down" }
-  verify: target element now visible in look output
+  verify: redirects to scroll(target=...), target element visible
 
 # ── Observation ──
 

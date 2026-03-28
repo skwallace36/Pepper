@@ -1,7 +1,7 @@
 """Navigation and interaction tool definitions for Pepper MCP.
 
 Tool definitions for: look, tap, scroll, input_text, navigate, back, dismiss,
-swipe, screen, scroll_to, dismiss_keyboard, snapshot, diff.
+swipe, screen, scroll_to (deprecated), dismiss_keyboard, snapshot, diff.
 """
 
 from __future__ import annotations
@@ -257,11 +257,18 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
     @mcp.tool()
     async def scroll(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
-        direction: str = Field(description="Scroll direction: up, down, left, right"),
+        direction: str = Field(default="down", description="Scroll direction: up, down, left, right"),
         amount: int | None = Field(default=None, description="Scroll amount in points"),
+        target: str | None = Field(default=None, description="Text to scroll to — scrolls incrementally until this text is visible. When set, direction defaults to 'down'."),
+        max_scrolls: int | None = Field(default=None, description="Max scroll attempts when using target (default: 10)"),
     ) -> list:
-        """Slow drag to reveal content above/below. Use swipe for fast flick gestures, scroll_to to find specific text. Shows screen state after."""
-        params: dict = {"direction": direction}
+        """Scroll by direction, or pass target to scroll until specific text is visible. Shows screen state after."""
+        if target:
+            params: dict = {"text": target, "direction": direction}
+            if max_scrolls is not None:
+                params["max_scrolls"] = max_scrolls
+            return await act_and_look(simulator, CMD_SCROLL_TO, params, timeout=15)
+        params = {"direction": direction}
         if amount is not None:
             params["amount"] = amount
         return await act_and_look(simulator, CMD_SCROLL, params)
@@ -356,11 +363,9 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
         direction: str = Field(default="down", description="Scroll direction: up, down, left, right"),
         max_scrolls: int | None = Field(default=None, description="Max scroll attempts (default: 10)"),
     ) -> list:
-        """Scroll until specific text is visible on screen. Prefer this over manual scroll loops. Shows screen state after."""
-        params: dict = {"text": text, "direction": direction}
-        if max_scrolls is not None:
-            params["max_scrolls"] = max_scrolls
-        return await act_and_look(simulator, CMD_SCROLL_TO, params, timeout=15)
+        """Deprecated — use scroll with target param instead. Scrolls until text is visible."""
+        _logger.info("scroll_to is deprecated — use scroll(target='%s') instead", text)
+        return await scroll(simulator=simulator, direction=direction, target=text, max_scrolls=max_scrolls)
 
     @mcp.tool()
     async def dismiss_keyboard(
