@@ -63,6 +63,16 @@ struct MapModeIntrospector {
         let interactiveElements = bridge.discoverInteractiveElements(
             rootView: modalRootView, hitTestFilter: true, maxElements: 500)
 
+        // Build a label-keyed lookup for O(1) access to accessibility values.
+        // The merge loop previously did a linear scan of all accElements per
+        // interactive element — O(n*m). Grouping by label first reduces the
+        // inner search to the (typically 1-2) elements sharing the same label.
+        var accByLabel: [String: [PepperAccessibilityElement]] = [:]
+        for acc in accElements {
+            guard let label = acc.label else { continue }
+            accByLabel[label, default: []].append(acc)
+        }
+
         // Phase 3: Merge into a unified list, deduplicated by center proximity
         var mergedInteractive: [MapElement] = []
         var mergedNonInteractive: [MapElement] = []
@@ -108,12 +118,15 @@ struct MapModeIntrospector {
             if !isTextInput {
                 guard !coveredCenters.contains(x: elem.center.x, y: elem.center.y) else { continue }
             }
-            // Try to find accessibility value for this element
-            var accValue: String? = pepperSanitizeLabel(
-                accElements.first(where: { acc in
-                    guard let accLabel = acc.label, accLabel == elem.label else { return false }
-                    return abs(acc.frame.midX - elem.center.x) < 15 && abs(acc.frame.midY - elem.center.y) < 15
-                })?.value)
+            // Try to find accessibility value for this element via label-keyed dictionary
+            var accValue: String? = {
+                guard let label = elem.label,
+                      let candidates = accByLabel[label] else { return nil }
+                return pepperSanitizeLabel(
+                    candidates.first(where: {
+                        abs($0.frame.midX - elem.center.x) < 15 && abs($0.frame.midY - elem.center.y) < 15
+                    })?.value)
+            }()
 
             // For text fields/views, read the actual .text value from the UIKit view.
             // Accessibility value may not reflect the typed content; this gives us
