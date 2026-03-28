@@ -8,6 +8,8 @@ import Foundation
 ///   {"cmd":"console", "params":{"action":"start", "buffer_size":2000}}
 ///   {"cmd":"console", "params":{"action":"stop"}}
 ///   {"cmd":"console", "params":{"action":"log", "limit":50, "filter":"gradient"}}
+///   {"cmd":"console", "params":{"action":"log", "hide_noise":false}}
+///   {"cmd":"console", "params":{"action":"log", "exclude":"CoreData,AVAudioSession"}}
 ///   {"cmd":"console", "params":{"action":"status"}}
 ///   {"cmd":"console", "params":{"action":"clear"}}
 ///
@@ -60,13 +62,25 @@ struct ConsoleHandler: PepperHandler {
             let sinceMs: Int64? =
                 (command.params?["since_ms"]?.value as? Int).map { Int64($0) }
                 ?? (command.params?["since_ms"]?.value as? Int64)
-            let lines = interceptor.recentLines(limit: limit, filter: filter, sinceMs: sinceMs)
-            return .ok(
-                id: command.id,
-                data: [
-                    "count": AnyCodable(lines.count),
-                    "lines": AnyCodable(lines.map { AnyCodable($0) }),
-                ])
+
+            // Noise filtering: hide_noise defaults to true, exclude is optional CSV
+            let hideNoise = command.params?["hide_noise"]?.boolValue ?? true
+            let excludeRaw = command.params?["exclude"]?.stringValue
+            let exclude: [String]? = excludeRaw?.split(separator: ",")
+                .map { $0.trimmingCharacters(in: .whitespaces) }
+                .filter { !$0.isEmpty }
+
+            let lines = interceptor.recentLines(
+                limit: limit, filter: filter, sinceMs: sinceMs,
+                hideNoise: hideNoise, exclude: exclude)
+            var data: [String: AnyCodable] = [
+                "count": AnyCodable(lines.count),
+                "lines": AnyCodable(lines.map { AnyCodable($0) }),
+            ]
+            if hideNoise {
+                data["noise_filtered"] = AnyCodable(true)
+            }
+            return .ok(id: command.id, data: data)
 
         case "clear":
             interceptor.clearBuffer()

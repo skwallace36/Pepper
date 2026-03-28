@@ -51,12 +51,24 @@ def register_debug_tools(mcp, resolve_and_send):
         simulator: str | None = Field(default=None, description="Simulator UDID"),
         action: str = Field(description="Action: start, stop, log"),
         filter_text: str | None = Field(default=None, description="Filter log lines (for log action)"),
+        hide_noise: bool | None = Field(
+            default=None,
+            description="Hide known system framework noise — CFNetwork, Metal, AutoLayout, CoreData, etc. (default: true). Set false to see all.",
+        ),
+        exclude: str | None = Field(
+            default=None,
+            description="Comma-separated substrings to exclude from log (e.g. 'CoreData,Metal')",
+        ),
         limit: int | None = Field(default=None, description="Max lines to return (for log action)"),
     ) -> str:
-        """Capture and read app console output — both print() (stdout) and os_log/NSLog (stderr). Start, then log to read."""
+        """Capture and read app console output — both print() (stdout) and os_log/NSLog (stderr). Start, then log to read. System framework noise is filtered by default."""
         params: dict = {"action": action}
         if filter_text:
             params["filter"] = filter_text
+        if hide_noise is not None:
+            params["hide_noise"] = hide_noise
+        if exclude:
+            params["exclude"] = exclude
         if limit is not None:
             params["limit"] = limit
         return await resolve_and_send(simulator, CMD_CONSOLE, params)
