@@ -219,18 +219,19 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
     @mcp.tool()
     async def tap(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
-        text: str | None = Field(default=None, description="Tap element by visible text/label"),
-        icon: str | None = Field(default=None, description="Tap element by icon name (e.g. 'gift-fill-icon')"),
-        heuristic: str | None = Field(default=None, description="Tap element by heuristic (e.g. 'menu_button')"),
-        point: str | None = Field(default=None, description="Tap at coordinates 'x,y' (e.g. '200,400')"),
-        double: bool = Field(default=False, description="Double-tap (two rapid taps for zoom, like, etc.)"),
-        duration: float | None = Field(default=None, description="Hold duration in seconds. Use >0.5 for long press."),
+        text: str | None = Field(default=None, description="Visible text or label to match (e.g. 'Save', 'Settings', 'Log Out')"),
+        icon: str | None = Field(default=None, description="Icon asset name from look output (e.g. 'gift-fill-icon', 'close-icon')"),
+        heuristic: str | None = Field(default=None, description="Semantic role from look output (e.g. 'close_button', 'back_button', 'menu_button')"),
+        point: str | None = Field(default=None, description="Raw screen coordinates 'x,y' — use when element has no label (e.g. '200,400')"),
+        double: bool = Field(default=False, description="Double-tap — two rapid taps for zoom, like, or select"),
+        duration: float | None = Field(default=None, description="Hold duration in seconds (>0.5 for long press, e.g. 1.0 for context menu)"),
         debug: bool = Field(
             default=False,
             description="Include tap diagnostics: hit-test result, gesture recognizers, responder chain, and overlapping views. Use when a tap doesn't produce the expected result.",
         ),
     ) -> list:
-        """Tap an interactive element. Specify exactly one of: text, icon, heuristic, or point. Shows screen state after."""
+        """Use this to interact with a button, link, or any tappable element on screen.
+        Resolves the element by text label, icon, heuristic, or coordinate, then synthesizes a real touch via HID. Specify exactly one targeting method. Shows screen state after."""
         params = {}
         if text:
             params["text"] = text
@@ -257,12 +258,13 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
     @mcp.tool()
     async def scroll(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
-        direction: str = Field(default="down", description="Scroll direction: up, down, left, right"),
-        amount: int | None = Field(default=None, description="Scroll amount in points"),
-        target: str | None = Field(default=None, description="Text to scroll to — scrolls incrementally until this text is visible. When set, direction defaults to 'down'."),
+        direction: str = Field(default="down", description="Scroll direction: up, down, left, right (e.g. 'down' to see content below)"),
+        amount: int | None = Field(default=None, description="Scroll distance in points (default: 200; e.g. 400 for a bigger scroll)"),
+        target: str | None = Field(default=None, description="Text to scroll to — scrolls incrementally until visible (e.g. 'Load More', 'Footer'). Direction defaults to 'down'."),
         max_scrolls: int | None = Field(default=None, description="Max scroll attempts when using target (default: 10)"),
     ) -> list:
-        """Scroll by direction, or pass target to scroll until specific text is visible. Shows screen state after."""
+        """Use this to browse content that extends beyond the visible screen area.
+        Scrolls by direction and amount via touch synthesis, or pass target to scroll until specific text is visible. Shows screen state after."""
         if target:
             params: dict = {"text": target, "direction": direction}
             if max_scrolls is not None:
@@ -344,9 +346,10 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
     @mcp.tool()
     async def swipe(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
-        direction: str = Field(description="Swipe direction: up, down, left, right"),
+        direction: str = Field(description="Flick direction: up, down, left, right (e.g. 'left' for next page, 'down' to dismiss sheet)"),
     ) -> list:
-        """Fast flick gesture for paging, dismissing cards, or pull-to-refresh. Use scroll for slow content browsing instead. Shows screen state after."""
+        """Use this for quick flick gestures — swiping between pages, dismissing cards, or pull-to-refresh.
+        Synthesizes a fast directional flick via HID. For slow content browsing, use scroll instead. Shows screen state after."""
         return await act_and_look(simulator, CMD_SWIPE, {"direction": direction})
 
     @mcp.tool()

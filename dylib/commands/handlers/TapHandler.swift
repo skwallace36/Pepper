@@ -350,9 +350,10 @@ struct TapHandler: PepperHandler {
 
         if success {
             logger.info("Tapped \(description) via HID at (\(point.x), \(point.y))")
-            var data: [String: AnyCodable] = [
+            let action = doubleTap ? "double_tap" : "tap"
+            var extra: [String: AnyCodable] = [
+                "description": AnyCodable("Tapped \(description)"),
                 "strategy": AnyCodable(strategy),
-                "description": AnyCodable(description),
                 "type": AnyCodable("hid_touch"),
                 "tap_point": AnyCodable([
                     "x": AnyCodable(Double(point.x)),
@@ -361,9 +362,9 @@ struct TapHandler: PepperHandler {
             ]
             if debug {
                 let windows = UIWindow.pepper_allVisibleWindows
-                data["tap_diagnostics"] = AnyCodable(buildTapDiagnostics(at: point, in: windows))
+                extra["tap_diagnostics"] = AnyCodable(buildTapDiagnostics(at: point, in: windows))
             }
-            return .ok(id: command.id, data: data)
+            return .action(id: command.id, action: action, target: description, extra: extra)
         } else {
             return .error(id: command.id, message: "HID tap synthesis failed at (\(point.x), \(point.y))")
         }
