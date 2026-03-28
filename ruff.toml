@@ -23,7 +23,11 @@ ignore = [
 "tools/pepper-mcp" = ["E402"]
 "tools/pepper-ctl" = ["E402"]
 "tools/pepper-stream" = ["E402"]
+"tools/pepper-context" = ["E402"]
+# MCP server and CTL have deferred imports after dependency checks
+"pepper_ios/mcp_server.py" = ["E402", "E501", "F401", "B023"]
+"pepper_ios/ctl.py" = ["E402", "SIM102"]
 # MCP tool files have long Field() descriptions and docstrings
 # B008: Field() in argument defaults is the standard MCP tool pattern
-"tools/mcp_tools_*.py" = ["E501", "B008"]
-"tools/mcp_build.py" = ["E501"]
+"pepper_ios/mcp_tools_*.py" = ["E501", "B008"]
+"pepper_ios/mcp_build.py" = ["E501"]

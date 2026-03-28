@@ -26,8 +26,8 @@ from typing import Dict, List, Optional, Tuple
 # Config
 # ---------------------------------------------------------------------------
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from pepper_common import require_tool
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from pepper_ios.pepper_common import require_tool
 
 APP_SOURCE_ROOT = Path(os.environ.get("APP_SOURCE_ROOT", os.path.expanduser("~/Developer/ios")))
 PEPPER_CTL = Path(__file__).parent / "pepper-ctl"

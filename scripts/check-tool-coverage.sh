@@ -9,7 +9,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 mcp_tools=()
 while IFS= read -r name; do
   [[ -n "$name" ]] && mcp_tools+=("$name")
-done < <(grep -A1 '@mcp\.tool()' "$ROOT"/tools/pepper-mcp "$ROOT"/tools/mcp_tools_*.py | grep 'async def ' | sed -E 's/.*async def ([a-z_][a-z0-9_]*)\(.*/\1/' | sort -u)
+done < <(grep -A1 '@mcp\.tool()' "$ROOT"/pepper_ios/mcp_server.py "$ROOT"/pepper_ios/mcp_tools_*.py | grep 'async def ' | sed -E 's/.*async def ([a-z_][a-z0-9_]*)\(.*/\1/' | sort -u)
 
 # --- 2. Extract dylib handler command names ---
 dylib_commands=()

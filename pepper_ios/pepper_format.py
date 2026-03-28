@@ -3,19 +3,21 @@ Pepper formatting utilities — ANSI color helpers and look output formatting.
 
 Used by pepper-mcp, pepper-ctl, and pepper-stream.
 """
+
 from __future__ import annotations
 
 import re
 
 # SF Symbol private-use-area characters (U+100000–U+100FFF) that appear in
 # combined accessibility labels. Strip them to keep output readable.
-_SF_SYMBOL_RE = re.compile(r'[\U00100000-\U00100FFF]+')
+_SF_SYMBOL_RE = re.compile(r"[\U00100000-\U00100FFF]+")
 
 
 def _strip_sf_symbols(text: str) -> str:
     """Remove SF Symbol characters and collapse whitespace."""
-    cleaned = _SF_SYMBOL_RE.sub('', text).strip()
-    return re.sub(r'\s+', ' ', cleaned)
+    cleaned = _SF_SYMBOL_RE.sub("", text).strip()
+    return re.sub(r"\s+", " ", cleaned)
+
 
 # ---------------------------------------------------------------------------
 # ANSI color helpers
@@ -71,14 +73,23 @@ def white(text):
 # ---------------------------------------------------------------------------
 
 _TYPE_ABBREV = {
-    "button": "btn", "staticText": "txt", "textField": "fld",
-    "switch": "tog", "segment": "seg", "cell": "cell",
-    "slider": "sld", "image": "img",
+    "button": "btn",
+    "staticText": "txt",
+    "textField": "fld",
+    "switch": "tog",
+    "segment": "seg",
+    "cell": "cell",
+    "slider": "sld",
+    "image": "img",
 }
 
 _HEURISTIC_BADGES = {
-    "toggle": "toggle", "slider": "sld", "checkbox": "chk",
-    "tab_button": "tab", "radio_option": "opti", "segment": "seg",
+    "toggle": "toggle",
+    "slider": "sld",
+    "checkbox": "chk",
+    "tab_button": "tab",
+    "radio_option": "opti",
+    "segment": "seg",
 }
 
 
@@ -130,7 +141,7 @@ def format_look(resp: dict) -> str:
     ni = [e for e in ni if in_viewport(e)]
 
     # Simplify screen name
-    m = re.search(r'<(_\w+_view)', screen)
+    m = re.search(r"<(_\w+_view)", screen)
     if m:
         screen = m.group(1)
     elif len(screen) > 60:
@@ -158,7 +169,7 @@ def format_look(resp: dict) -> str:
         header += f" | Tab: {bold(tab_info)}"
     header += f"  ({interactive_count} interactive, {len(ni)} text)"
     if nav_title:
-        header += f"  Title: \"{nav_title}\""
+        header += f'  Title: "{nav_title}"'
     if mem:
         header += f"  [{mem:.0f}MB]"
     lines = [header]
@@ -172,7 +183,7 @@ def format_look(resp: dict) -> str:
             btn_str = ", ".join(str(b) for b in buttons)
             lines.append(f"  !! SYSTEM DIALOG: {title} [{btn_str}]")
             for btn in buttons:
-                lines.append(f"       → dialog dismiss button=\"{btn}\"")
+                lines.append(f'       → dialog dismiss button="{btn}"')
         lines.append("       → dialog dismiss_system (auto-detect and dismiss)")
         lines.append("")
 
@@ -356,7 +367,7 @@ def format_look_slim(resp: dict) -> str:
             btn_str = ", ".join(str(b) for b in buttons)
             lines.append(f"  !! SYSTEM DIALOG: {title} [{btn_str}]")
             for btn in buttons:
-                lines.append(f"       → dialog dismiss button=\"{btn}\"")
+                lines.append(f'       → dialog dismiss button="{btn}"')
         lines.append("       → dialog dismiss_system (auto-detect and dismiss)")
         lines.append("")
 
@@ -460,7 +471,7 @@ def format_look_slim(resp: dict) -> str:
 # Hex memory addresses embedded in UIKit class descriptions (e.g.,
 # "<UINavigationController: 0x7fb5a2d0c3e0>").  These change between calls
 # even when the screen hasn't actually changed.
-_HEX_ADDR_RE = re.compile(r':?\s*0x[0-9a-fA-F]+')
+_HEX_ADDR_RE = re.compile(r":?\s*0x[0-9a-fA-F]+")
 
 
 def _normalize_screen(screen: str) -> str:
@@ -470,13 +481,13 @@ def _normalize_screen(screen: str) -> str:
     screen produces the same string across calls.
     """
     # Strip hex memory addresses
-    screen = _HEX_ADDR_RE.sub('', screen)
+    screen = _HEX_ADDR_RE.sub("", screen)
     # Extract class name from angle-bracket descriptions (<ClassName ...>)
-    m = re.search(r'<(\w+)', screen)
+    m = re.search(r"<(\w+)", screen)
     if m:
         return m.group(1)
     # Extract private view names (_foo_view)
-    m = re.search(r'(_\w+_view)', screen)
+    m = re.search(r"(_\w+_view)", screen)
     if m:
         return m.group(1)
     if len(screen) > 60:
@@ -551,11 +562,7 @@ def _compact_element_line(e: dict, prefix_char: str = " ") -> str:
     elif label:
         disp = label if len(label) <= 50 else label[:47] + "..."
         idx_suffix = f" [{idx}]" if idx else ""
-        val_suffix = (
-            f" = {value}"
-            if value and etype in ("textField", "searchField", "textView")
-            else ""
-        )
+        val_suffix = f" = {value}" if value and etype in ("textField", "searchField", "textView") else ""
         desc = f'"{disp}"{idx_suffix}{val_suffix}'
     else:
         desc = f"({heuristic or etype})"
@@ -649,7 +656,7 @@ def format_look_compact(resp: dict) -> str:
     cur_ocr = {item.get("text", "") for item in ocr_results if item.get("text")}
 
     # Determine if screen changed (full reset on screen change)
-    screen_changed = (screen != _prev_compact_screen)
+    screen_changed = screen != _prev_compact_screen
 
     # Diff interactive elements
     prev_fp = _prev_compact_fingerprints if not screen_changed else {}
@@ -658,10 +665,7 @@ def format_look_compact(resp: dict) -> str:
 
     added_keys = set(cur_fingerprints) - set(prev_fp)
     removed_keys = set(prev_fp) - set(cur_fingerprints)
-    changed_keys = {
-        k for k in set(cur_fingerprints) & set(prev_fp)
-        if cur_fingerprints[k] != prev_fp[k]
-    }
+    changed_keys = {k for k in set(cur_fingerprints) & set(prev_fp) if cur_fingerprints[k] != prev_fp[k]}
     unchanged_count = len(cur_fingerprints) - len(added_keys) - len(changed_keys)
 
     new_text = cur_text - prev_text
@@ -698,7 +702,7 @@ def format_look_compact(resp: dict) -> str:
             btn_str = ", ".join(str(b) for b in buttons) if buttons else ""
             lines.append(f"  !! SYSTEM DIALOG: {title} [{btn_str}]")
             for btn in buttons:
-                lines.append(f"       → dialog dismiss button=\"{btn}\"")
+                lines.append(f'       → dialog dismiss button="{btn}"')
         lines.append("       → dialog dismiss_system (auto-detect and dismiss)")
 
     # Interactive elements
@@ -713,9 +717,7 @@ def format_look_compact(resp: dict) -> str:
         show_keys = added_keys | changed_keys
         if show_keys or removed_keys:
             lines.append("")
-            lines.append(
-                dim(f"--- {len(show_keys)} changed, {unchanged_count} unchanged ---")
-            )
+            lines.append(dim(f"--- {len(show_keys)} changed, {unchanged_count} unchanged ---"))
             # Show added/changed elements in original order
             for e in all_interactive:
                 key = _element_key(e)

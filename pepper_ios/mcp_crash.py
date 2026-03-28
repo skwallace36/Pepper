@@ -4,7 +4,7 @@ import asyncio
 import json
 import os
 
-from pepper_common import get_config
+from .pepper_common import get_config
 
 
 def parse_crash_report(path: str, content: str) -> str:

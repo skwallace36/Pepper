@@ -3,6 +3,7 @@
 Tool definitions for: look, tap, scroll, input_text, navigate, back, dismiss,
 swipe, screen, scroll_to, dismiss_keyboard, snapshot, diff.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -11,9 +12,11 @@ import json
 import logging
 
 from mcp.types import ImageContent, TextContent
-from mcp_screenshot import capture_screenshot, capture_screenshot_inprocess
-from pepper_ax import detect_dialog as _ax_detect
-from pepper_commands import (
+from pydantic import Field
+
+from .mcp_screenshot import capture_screenshot, capture_screenshot_inprocess
+from .pepper_ax import detect_dialog as _ax_detect
+from .pepper_commands import (
     CMD_BACK,
     CMD_DEEPLINKS,
     CMD_DIFF,
@@ -29,9 +32,8 @@ from pepper_commands import (
     CMD_SWIPE,
     CMD_TAP,
 )
-from pepper_common import discover_instance
-from pepper_format import format_look, format_look_compact, format_look_slim
-from pydantic import Field
+from .pepper_common import discover_instance
+from .pepper_format import format_look, format_look_compact, format_look_slim
 
 _logger = logging.getLogger(__name__)
 
@@ -50,12 +52,26 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
     async def look(
         simulator: str | None = Field(default=None, description="Simulator UDID (optional if only one sim running)"),
         raw: bool = Field(default=False, description="Return raw JSON instead of formatted summary"),
-        slim: bool = Field(default=False, description="Stateless flat list: every call returns all elements with tap commands, no y-coordinates or group headers. Best for one-shot observation when you need the full picture."),
-        compact: bool = Field(default=False, description="Stateful diff: first call returns all elements with tap commands; subsequent calls show only added/changed/removed elements. Best for monitoring — call repeatedly and only see what changed. Resets on screen change."),
-        ocr: bool = Field(default=False, description="Run OCR on the screen to find text not in the accessibility tree. Adds ~60-120ms. OCR-only results shown in a separate section."),
+        slim: bool = Field(
+            default=False,
+            description="Stateless flat list: every call returns all elements with tap commands, no y-coordinates or group headers. Best for one-shot observation when you need the full picture.",
+        ),
+        compact: bool = Field(
+            default=False,
+            description="Stateful diff: first call returns all elements with tap commands; subsequent calls show only added/changed/removed elements. Best for monitoring — call repeatedly and only see what changed. Resets on screen change.",
+        ),
+        ocr: bool = Field(
+            default=False,
+            description="Run OCR on the screen to find text not in the accessibility tree. Adds ~60-120ms. OCR-only results shown in a separate section.",
+        ),
         visual: bool = Field(default=False, description="Include a simulator screenshot alongside the structured data"),
-        screenshot_quality: str = Field(default="standard", description="Screenshot quality: 'standard' (70% JPEG) or 'high' (95% JPEG, for PR validation)"),
-        save_screenshot: str | None = Field(default=None, description="Save screenshot to this file path (in addition to returning it)"),
+        screenshot_quality: str = Field(
+            default="standard",
+            description="Screenshot quality: 'standard' (70% JPEG) or 'high' (95% JPEG, for PR validation)",
+        ),
+        save_screenshot: str | None = Field(
+            default=None, description="Save screenshot to this file path (in addition to returning it)"
+        ),
     ) -> list:
         """Use this when you need to see what's on screen — returns all interactive elements with tap commands, plus visible text.
         This is your primary observation tool. Call it before acting to know what's available.
@@ -77,20 +93,14 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
         # Always run the AX probe in parallel with the dylib command.
         # It checks for SpringBoard dialogs (permission prompts, etc.) that
         # the in-process dylib cannot see.
-        ax_task = asyncio.ensure_future(
-            asyncio.get_running_loop().run_in_executor(None, _ax_detect)
-        )
+        ax_task = asyncio.ensure_future(asyncio.get_running_loop().run_in_executor(None, _ax_detect))
 
         if visual or save_screenshot:
             # Run introspect and screenshot in parallel.
             # Try fast in-process capture first; fall back to simctl if unavailable.
             quality = screenshot_quality if screenshot_quality in ("standard", "high") else "standard"
-            introspect_task = asyncio.create_task(
-                send_command(port, CMD_LOOK, look_params, host=host, timeout=20)
-            )
-            screenshot_task = asyncio.create_task(
-                capture_screenshot_inprocess(send_command, port, quality, host=host)
-            )
+            introspect_task = asyncio.create_task(send_command(port, CMD_LOOK, look_params, host=host, timeout=20))
+            screenshot_task = asyncio.create_task(capture_screenshot_inprocess(send_command, port, quality, host=host))
             resp, screenshot_b64 = await asyncio.gather(introspect_task, screenshot_task)
             # Fallback to simctl if in-process capture failed
             if screenshot_b64 is None:
@@ -110,11 +120,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
         # (format_look, format_look_slim, format_look_compact) surface it
         # through existing system_dialog_blocking handling.
         data = resp.get("data", resp)
-        if (
-            ax_result
-            and ax_result.get("detected")
-            and not data.get("system_dialog_blocking")
-        ):
+        if ax_result and ax_result.get("detected") and not data.get("system_dialog_blocking"):
             data["system_dialog_blocking"] = {
                 "warning": "springboard_dialog_detected",
                 "description": "A SpringBoard system dialog is overlaying the app. Use dialog dismiss_system to handle it.",
@@ -140,7 +146,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
             # Save to disk if requested
             if save_screenshot:
                 try:
-                    with open(save_screenshot, 'wb') as f:
+                    with open(save_screenshot, "wb") as f:
                         f.write(base64.b64decode(screenshot_b64))
                     result[0] = TextContent(type="text", text=f"{text}\n\n[Screenshot saved to {save_screenshot}]")
                 except OSError as e:
@@ -166,7 +172,12 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
 
         q = quality if quality in ("standard", "high") else "standard"
         screenshot_b64 = await capture_screenshot_inprocess(
-            send_command, port, q, element=element, text=text, host=host,
+            send_command,
+            port,
+            q,
+            element=element,
+            text=text,
+            host=host,
         )
         if screenshot_b64 is None:
             # Fallback to simctl for full-screen only (no per-view support)
@@ -181,7 +192,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
 
         if save_to:
             try:
-                with open(save_to, 'wb') as f:
+                with open(save_to, "wb") as f:
                     f.write(base64.b64decode(screenshot_b64))
                 result.append(TextContent(type="text", text=f"[{scope} screenshot saved to {save_to}]"))
             except OSError as e:
@@ -199,7 +210,10 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
         point: str | None = Field(default=None, description="Tap at coordinates 'x,y' (e.g. '200,400')"),
         double: bool = Field(default=False, description="Double-tap (two rapid taps for zoom, like, etc.)"),
         duration: float | None = Field(default=None, description="Hold duration in seconds. Use >0.5 for long press."),
-        debug: bool = Field(default=False, description="Include tap diagnostics: hit-test result, gesture recognizers, responder chain, and overlapping views. Use when a tap doesn't produce the expected result."),
+        debug: bool = Field(
+            default=False,
+            description="Include tap diagnostics: hit-test result, gesture recognizers, responder chain, and overlapping views. Use when a tap doesn't produce the expected result.",
+        ),
     ) -> list:
         """Use this when you need to tap a button, link, cell, or any interactive element.
         Specify exactly one of: text, icon, heuristic, or point.
@@ -249,7 +263,10 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
     @mcp.tool()
     async def input_text(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
-        element_id: str | None = Field(default=None, description="Accessibility ID of the text field. If omitted, types into the focused field or first available text field."),
+        element_id: str | None = Field(
+            default=None,
+            description="Accessibility ID of the text field. If omitted, types into the focused field or first available text field.",
+        ),
         value: str = Field(description="Text to type"),
         clear: bool = Field(default=False, description="Clear existing text before typing"),
         submit: bool = Field(default=False, description="Submit/return after typing"),
@@ -368,27 +385,44 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
     @mcp.tool()
     async def snapshot(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
-        action: str = Field(default="save", description="Action: 'save' (capture baseline), 'diff' (compare to baseline), 'list', 'delete', 'clear'"),
+        action: str = Field(
+            default="save",
+            description="Action: 'save' (capture baseline), 'diff' (compare to baseline), 'list', 'delete', 'clear'",
+        ),
         name: str = Field(default="default", description="Snapshot name for save/diff/delete"),
-        ignore_transient: bool = Field(default=False, description="Ignore volatile/transient text elements (timestamps, animation frames) in diffs"),
-        assert_no_diff: bool = Field(default=False, description="Return error if any diff is detected (for regression testing)"),
+        ignore_transient: bool = Field(
+            default=False, description="Ignore volatile/transient text elements (timestamps, animation frames) in diffs"
+        ),
+        assert_no_diff: bool = Field(
+            default=False, description="Return error if any diff is detected (for regression testing)"
+        ),
     ) -> str:
         """Capture screen state as a named snapshot, then diff against it after actions.
 
         Workflow: snapshot action=save name=baseline → perform actions → snapshot action=diff name=baseline.
         Returns semantic diff: added/removed/changed elements and text.
         Use assert_no_diff=true to fail if state changed (regression testing)."""
-        return json.dumps(await resolve_and_send(simulator, CMD_SNAPSHOT, {
-            "action": action,
-            "name": name,
-            "ignore_transient": ignore_transient,
-            "assert_no_diff": assert_no_diff,
-        }), indent=2)
+        return json.dumps(
+            await resolve_and_send(
+                simulator,
+                CMD_SNAPSHOT,
+                {
+                    "action": action,
+                    "name": name,
+                    "ignore_transient": ignore_transient,
+                    "assert_no_diff": assert_no_diff,
+                },
+            ),
+            indent=2,
+        )
 
     @mcp.tool()
     async def diff(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
-        action: str = Field(default="start", description="Action: 'start' (capture baseline), 'show' (compare to baseline), 'clear' (discard baseline)"),
+        action: str = Field(
+            default="start",
+            description="Action: 'start' (capture baseline), 'show' (compare to baseline), 'clear' (discard baseline)",
+        ),
     ) -> str:
         """Quick view hierarchy diff — show what changed between two look snapshots.
 

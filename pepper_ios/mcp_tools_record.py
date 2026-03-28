@@ -2,6 +2,7 @@
 
 Tool definition for: record (start/stop simulator recording, mp4/gif output).
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -9,8 +10,9 @@ import os
 import signal
 import time
 
-from pepper_common import discover_instance
 from pydantic import Field
+
+from .pepper_common import discover_instance
 
 # Active recording sessions: UDID → {"proc": subprocess, "path": str, "start_time": float}
 _active_recordings: dict = {}
@@ -27,7 +29,10 @@ def register_record_tools(mcp):
     async def record(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
         action: str = Field(description="Action: start, stop"),
-        output: str | None = Field(default=None, description="Output path for stop (default: /tmp/pepper-recording.mp4). Use .gif extension for GIF output."),
+        output: str | None = Field(
+            default=None,
+            description="Output path for stop (default: /tmp/pepper-recording.mp4). Use .gif extension for GIF output.",
+        ),
         fps: int = Field(default=12, description="GIF frame rate, ignored for mp4 (default: 12)"),
     ) -> str:
         """Use this to capture a video of the simulator screen as mp4 or GIF.
@@ -65,8 +70,16 @@ def register_record_tools(mcp):
                 pass
 
             proc = await asyncio.create_subprocess_exec(
-                "xcrun", "simctl", "io", udid, "recordVideo",
-                "--display", "internal", "--codec", "h264", video_path,
+                "xcrun",
+                "simctl",
+                "io",
+                udid,
+                "recordVideo",
+                "--display",
+                "internal",
+                "--codec",
+                "h264",
+                video_path,
                 stdout=asyncio.subprocess.DEVNULL,
                 stderr=asyncio.subprocess.DEVNULL,
             )
@@ -103,18 +116,34 @@ def register_record_tools(mcp):
             if is_gif:
                 # Convert to GIF — small for inline display
                 ffmpeg_proc = await asyncio.create_subprocess_exec(
-                    "ffmpeg", "-y", "-i", video_path,
-                    "-vf", f"fps={fps},scale=300:-1:flags=lanczos",
-                    "-loop", "0", out_path,
+                    "ffmpeg",
+                    "-y",
+                    "-i",
+                    video_path,
+                    "-vf",
+                    f"fps={fps},scale=300:-1:flags=lanczos",
+                    "-loop",
+                    "0",
+                    out_path,
                     stdout=asyncio.subprocess.DEVNULL,
                     stderr=asyncio.subprocess.DEVNULL,
                 )
             else:
                 # Compress mp4 — keep native resolution, high quality
                 ffmpeg_proc = await asyncio.create_subprocess_exec(
-                    "ffmpeg", "-y", "-i", video_path,
-                    "-c:v", "libx264", "-crf", "20", "-preset", "slow",
-                    "-pix_fmt", "yuv420p", "-an",
+                    "ffmpeg",
+                    "-y",
+                    "-i",
+                    video_path,
+                    "-c:v",
+                    "libx264",
+                    "-crf",
+                    "20",
+                    "-preset",
+                    "slow",
+                    "-pix_fmt",
+                    "yuv420p",
+                    "-an",
                     out_path,
                     stdout=asyncio.subprocess.DEVNULL,
                     stderr=asyncio.subprocess.DEVNULL,

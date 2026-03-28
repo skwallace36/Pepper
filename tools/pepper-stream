@@ -31,8 +31,8 @@ except ImportError:
     print("Error: 'websockets' package required. Install with: pip install websockets", file=sys.stderr)
     sys.exit(1)
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from pepper_common import DEFAULT_HOST, discover_port as _discover_port
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from pepper_ios.pepper_common import DEFAULT_HOST, discover_port as _discover_port
 
 
 def discover_port(simulator=None):

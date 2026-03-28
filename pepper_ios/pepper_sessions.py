@@ -8,6 +8,7 @@ pick a different simulator. Stale sessions (dead PID) are cleaned up automatical
 Designed for zero-config single-user use: if only one session exists, everything works
 exactly as before. The session layer is purely additive.
 """
+
 from __future__ import annotations
 
 import json
@@ -38,6 +39,7 @@ DEFAULT_MAX_SIMS = 3
 # Liveness checks
 # ---------------------------------------------------------------------------
 
+
 def _is_pid_alive(pid: int) -> bool:
     """Check if a process with the given PID exists."""
     if pid <= 0:
@@ -67,6 +69,7 @@ def quick_port_check(port: int, timeout: float = 1.0) -> bool:
 # ---------------------------------------------------------------------------
 # Session file I/O
 # ---------------------------------------------------------------------------
+
 
 def _ensure_session_dir():
     """Create session directory if it doesn't exist."""
@@ -127,6 +130,7 @@ def _remove_session(udid: str):
 # Session lifecycle
 # ---------------------------------------------------------------------------
 
+
 def _is_session_live(session: dict) -> bool:
     """Check if a session is still active.
 
@@ -150,8 +154,10 @@ def _is_session_live(session: dict) -> bool:
             if age > MAX_SESSION_AGE_SECONDS:
                 logger.info(
                     "Time-based stale cleanup: session %s (PID %s) aged out at %.0fs (max %ds)",
-                    session.get("udid", "?"), session.get("pid", 0),
-                    age, MAX_SESSION_AGE_SECONDS,
+                    session.get("udid", "?"),
+                    session.get("pid", 0),
+                    age,
+                    MAX_SESSION_AGE_SECONDS,
                 )
                 return False
         except (ValueError, TypeError):
@@ -194,8 +200,9 @@ def _is_session_live(session: dict) -> bool:
     return bool(port and quick_port_check(port))
 
 
-def claim_simulator(udid: str, bundle_id: str = "", port: int = 0,
-                    label: str | None = None, pid: int | None = None) -> bool:
+def claim_simulator(
+    udid: str, bundle_id: str = "", port: int = 0, label: str | None = None, pid: int | None = None
+) -> bool:
     """Attempt to exclusively claim a simulator for this process.
 
     Returns True if claim succeeded. Returns False if another live session owns it.
@@ -284,8 +291,7 @@ def claim_simulator_deploying(udid: str, label: str | None = None) -> bool:
         return False
 
 
-def claim_simulator_with_port(udid: str, bundle_id: str = "", port: int = 0,
-                              label: str | None = None) -> bool:
+def claim_simulator_with_port(udid: str, bundle_id: str = "", port: int = 0, label: str | None = None) -> bool:
     """Claim a simulator using port liveness as the anchor (not PID).
 
     For use by short-lived scripts like `make deploy` where the claiming process
@@ -464,6 +470,7 @@ def cleanup_stale():
 # Simulator provisioning (reuse-first, capped)
 # ---------------------------------------------------------------------------
 
+
 def _get_max_sims() -> int:
     """Get the max concurrent simulator cap from env or default."""
     try:
@@ -495,10 +502,8 @@ def _list_port_files() -> list[dict]:
 def _list_booted_sims() -> list[str]:
     """List UDIDs of all booted simulators."""
     import subprocess
-    result = subprocess.run(
-        ["xcrun", "simctl", "list", "devices", "booted", "-j"],
-        capture_output=True, text=True
-    )
+
+    result = subprocess.run(["xcrun", "simctl", "list", "devices", "booted", "-j"], capture_output=True, text=True)
     booted = []
     try:
         data = json.loads(result.stdout)
@@ -514,10 +519,8 @@ def _list_booted_sims() -> list[str]:
 def _list_available_iphones() -> list[dict]:
     """List available (not booted) iPhone simulators, newest runtime first, Pro preferred."""
     import subprocess
-    result = subprocess.run(
-        ["xcrun", "simctl", "list", "devices", "available", "-j"],
-        capture_output=True, text=True
-    )
+
+    result = subprocess.run(["xcrun", "simctl", "list", "devices", "available", "-j"], capture_output=True, text=True)
     iphones = []
     try:
         data = json.loads(result.stdout)
@@ -525,9 +528,7 @@ def _list_available_iphones() -> list[dict]:
             if "iOS" not in runtime and "iphone" not in runtime.lower():
                 continue
             for d in data["devices"][runtime]:
-                if (d.get("isAvailable")
-                        and "iPhone" in d.get("name", "")
-                        and d.get("state") != "Booted"):
+                if d.get("isAvailable") and "iPhone" in d.get("name", "") and d.get("state") != "Booted":
                     iphones.append(d)
     except (json.JSONDecodeError, KeyError):
         pass
@@ -540,6 +541,7 @@ def _list_available_iphones() -> list[dict]:
         if "Pro" in name:
             return 1
         return 2
+
     iphones.sort(key=sort_key)
     return iphones
 
@@ -565,7 +567,7 @@ def find_available_simulator() -> str:
     for s in _list_port_files():
         udid = s["udid"]
         if not is_claimed(udid) and quick_port_check(s["port"]):
-                return udid
+            return udid
 
     # 2. Unclaimed booted sim
     claimed_udids = {s["udid"] for s in list_sessions() if s.get("live")}
@@ -578,9 +580,7 @@ def find_available_simulator() -> str:
         sessions = list_sessions()
         live = [s for s in sessions if s.get("live")]
         details = "\n".join(
-            f"  {s['udid']} — PID {s['pid']}"
-            + (f" ({s['label']})" if s.get("label") else "")
-            for s in live
+            f"  {s['udid']} — PID {s['pid']}" + (f" ({s['label']})" if s.get("label") else "") for s in live
         )
         raise RuntimeError(
             f"All simulators in use ({len(live)}/{max_sims} claimed). "
@@ -595,24 +595,18 @@ def find_available_simulator() -> str:
         if udid not in claimed_udids:
             return udid
 
-    raise RuntimeError(
-        "No available iPhone simulators found. "
-        "Install one via Xcode > Settings > Platforms."
-    )
+    raise RuntimeError("No available iPhone simulators found. Install one via Xcode > Settings > Platforms.")
 
 
 def is_app_installed(udid: str, bundle_id: str) -> bool:
     """Check if an app is installed on a simulator."""
     import subprocess
-    result = subprocess.run(
-        ["xcrun", "simctl", "listapps", udid],
-        capture_output=True, text=True
-    )
+
+    result = subprocess.run(["xcrun", "simctl", "listapps", udid], capture_output=True, text=True)
     return bundle_id in result.stdout
 
 
-def provision_simulators(count: int, bundle_id: str = "",
-                         project_dir: str = "") -> list[dict]:
+def provision_simulators(count: int, bundle_id: str = "", project_dir: str = "") -> list[dict]:
     """Find, boot, and optionally install an app on N simulators.
 
     Returns list of dicts with 'udid' and 'installed' keys.
@@ -633,13 +627,11 @@ def provision_simulators(count: int, bundle_id: str = "",
         booted = udid in _list_booted_sims()
         if not booted:
             subprocess.run(
-                ["open", "-a", "Simulator", "--args", "-CurrentDeviceUDID", udid],
-                capture_output=True, text=True
+                ["open", "-a", "Simulator", "--args", "-CurrentDeviceUDID", udid], capture_output=True, text=True
             )
             try:
                 subprocess.run(
-                    ["xcrun", "simctl", "bootstatus", udid, "-b"],
-                    capture_output=True, text=True, timeout=120
+                    ["xcrun", "simctl", "bootstatus", udid, "-b"], capture_output=True, text=True, timeout=120
                 )
             except subprocess.TimeoutExpired:
                 pass
@@ -652,9 +644,10 @@ def provision_simulators(count: int, bundle_id: str = "",
         if bundle_id and project_dir:
             if not is_app_installed(udid, bundle_id):
                 install_result = subprocess.run(
-                    ["make", "-C", project_dir, "test-app",
-                     f"SIMULATOR_ID={udid}"],
-                    capture_output=True, text=True, timeout=300
+                    ["make", "-C", project_dir, "test-app", f"SIMULATOR_ID={udid}"],
+                    capture_output=True,
+                    text=True,
+                    timeout=300,
                 )
                 installed = install_result.returncode == 0
             else:

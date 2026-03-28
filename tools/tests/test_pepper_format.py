@@ -1,11 +1,13 @@
 """Unit tests for pepper_format.py — ANSI helpers and look output formatters."""
+
 from __future__ import annotations
 
-import pepper_format as pf
+import pepper_ios.pepper_format as pf
 
 # ---------------------------------------------------------------------------
 # ANSI color helpers
 # ---------------------------------------------------------------------------
+
 
 class TestColorHelpers:
     def setup_method(self):
@@ -33,6 +35,7 @@ class TestColorHelpers:
 # Shared test data helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_response(screen="TestVC", rows=None, ni=None, screen_size=None, **kwargs):
     data = {
         "screen": screen,
@@ -45,8 +48,7 @@ def _make_response(screen="TestVC", rows=None, ni=None, screen_size=None, **kwar
     return {"status": "ok", "data": data}
 
 
-def _make_element(label="Tap me", etype="button", center=(100, 200),
-                  tap_cmd="text", **kwargs):
+def _make_element(label="Tap me", etype="button", center=(100, 200), tap_cmd="text", **kwargs):
     e = {
         "label": label,
         "type": etype,
@@ -60,6 +62,7 @@ def _make_element(label="Tap me", etype="button", center=(100, 200),
 # ---------------------------------------------------------------------------
 # format_look
 # ---------------------------------------------------------------------------
+
 
 class TestFormatLook:
     def setup_method(self):
@@ -102,19 +105,23 @@ class TestFormatLook:
         # Element at center (500, 500) outside 100x100 viewport
         e = _make_element(label="Hidden", center=(500, 500))
         row = {"y_range": [490, 510], "elements": [e]}
-        result = pf.format_look(_make_response(
-            rows=[row],
-            screen_size={"w": 100, "h": 100},
-        ))
+        result = pf.format_look(
+            _make_response(
+                rows=[row],
+                screen_size={"w": 100, "h": 100},
+            )
+        )
         assert "Hidden" not in result
 
     def test_viewport_keeps_onscreen_element(self):
         e = _make_element(label="Visible", center=(50, 50))
         row = {"y_range": [30, 70], "elements": [e]}
-        result = pf.format_look(_make_response(
-            rows=[row],
-            screen_size={"w": 100, "h": 100},
-        ))
+        result = pf.format_look(
+            _make_response(
+                rows=[row],
+                screen_size={"w": 100, "h": 100},
+            )
+        )
         assert "Visible" in result
 
     def test_nav_title_in_header(self):
@@ -151,6 +158,7 @@ class TestFormatLook:
 # format_look_slim
 # ---------------------------------------------------------------------------
 
+
 class TestFormatLookSlim:
     def setup_method(self):
         pf.USE_COLOR = False
@@ -186,6 +194,7 @@ class TestFormatLookSlim:
 # ---------------------------------------------------------------------------
 # format_look_compact (diff mode)
 # ---------------------------------------------------------------------------
+
 
 class TestFormatLookCompact:
     def setup_method(self):
@@ -244,13 +253,11 @@ class TestFormatLookCompact:
         assert "removed" in result or "Old" in result
 
     def test_toggle_state_change_shown(self):
-        e_off = _make_element(label="Switch", etype="switch", tap_cmd="text",
-                              toggle_state="off")
+        e_off = _make_element(label="Switch", etype="switch", tap_cmd="text", toggle_state="off")
         row = {"y_range": [0, 50], "elements": [e_off]}
         pf.format_look_compact(_make_response(rows=[row]))
 
-        e_on = _make_element(label="Switch", etype="switch", tap_cmd="text",
-                             toggle_state="on")
+        e_on = _make_element(label="Switch", etype="switch", tap_cmd="text", toggle_state="on")
         row2 = {"y_range": [0, 50], "elements": [e_on]}
         result = pf.format_look_compact(_make_response(rows=[row2]))
         assert "on" in result or "~" in result
@@ -266,17 +273,12 @@ class TestFormatLookCompact:
         diff engages on the second call even when the address differs."""
         e = _make_element(label="OK", tap_cmd="text")
         row = {"y_range": [0, 50], "elements": [e]}
-        pf.format_look_compact(
-            _make_response(screen="<UINavController: 0xaaa>", rows=[row])
-        )
-        result = pf.format_look_compact(
-            _make_response(screen="<UINavController: 0xbbb>", rows=[row])
-        )
+        pf.format_look_compact(_make_response(screen="<UINavController: 0xaaa>", rows=[row]))
+        result = pf.format_look_compact(_make_response(screen="<UINavController: 0xbbb>", rows=[row]))
         assert "no interactive changes" in result
 
     def test_compact_uses_short_flags(self):
-        e = _make_element(label="X", tap_cmd="text", selected=True,
-                          traits=["selected"])
+        e = _make_element(label="X", tap_cmd="text", selected=True, traits=["selected"])
         row = {"y_range": [0, 50], "elements": [e]}
         result = pf.format_look_compact(_make_response(rows=[row]))
         assert "[sel]" in result
@@ -285,6 +287,7 @@ class TestFormatLookCompact:
 # ---------------------------------------------------------------------------
 # _normalize_screen
 # ---------------------------------------------------------------------------
+
 
 class TestNormalizeScreen:
     def test_strips_hex_address(self):
@@ -305,6 +308,7 @@ class TestNormalizeScreen:
 # ---------------------------------------------------------------------------
 # _element_key / _element_state (internal helpers)
 # ---------------------------------------------------------------------------
+
 
 class TestElementHelpers:
     def test_element_key_stable(self):
@@ -340,6 +344,7 @@ class TestElementHelpers:
 # ---------------------------------------------------------------------------
 # OCR formatting
 # ---------------------------------------------------------------------------
+
 
 def _make_ocr_item(text="Hello World", center=(150, 300), confidence=0.92):
     return {"text": text, "center": list(center), "confidence": confidence}
@@ -416,10 +421,12 @@ class TestFormatLookCompactOCR:
     def test_new_ocr_text_shown_as_added(self):
         resp1 = _make_response(ocr_results=[_make_ocr_item(text="First")])
         pf.format_look_compact(resp1)
-        resp2 = _make_response(ocr_results=[
-            _make_ocr_item(text="First"),
-            _make_ocr_item(text="Second"),
-        ])
+        resp2 = _make_response(
+            ocr_results=[
+                _make_ocr_item(text="First"),
+                _make_ocr_item(text="Second"),
+            ]
+        )
         result = pf.format_look_compact(resp2)
         assert "1 new" in result
         assert "Second" in result

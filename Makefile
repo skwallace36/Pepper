@@ -161,12 +161,12 @@ lint:
 
 ## lint-py: Run ruff linter on Python code
 lint-py:
-	@ruff check tools/ scripts/gen-coverage.py scripts/gen-pepper-commands.py
+	@ruff check pepper_ios/ tools/ scripts/gen-coverage.py scripts/gen-pepper-commands.py
 
 ## fmt-py: Format Python code with ruff
 fmt-py:
-	@ruff format tools/ scripts/gen-coverage.py scripts/gen-pepper-commands.py
-	@ruff check --fix tools/ scripts/gen-coverage.py scripts/gen-pepper-commands.py
+	@ruff format pepper_ios/ tools/ scripts/gen-coverage.py scripts/gen-pepper-commands.py
+	@ruff check --fix pepper_ios/ tools/ scripts/gen-coverage.py scripts/gen-pepper-commands.py
 
 ## check-tools: Verify every MCP tool has a matching dylib handler
 check-tools:
@@ -357,7 +357,7 @@ coverage:
 coverage-check:
 	@python3 "$(PROJECT_DIR)/scripts/gen-coverage.py" --check
 
-## commands: Regenerate tools/pepper_commands.py from Swift handlers
+## commands: Regenerate pepper_ios/pepper_commands.py from Swift handlers
 commands:
 	@PEPPER_REGEN=1 python3 "$(PROJECT_DIR)/scripts/gen-pepper-commands.py"
 

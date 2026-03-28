@@ -2,11 +2,14 @@
 
 Tools: push, status, highlight, orientation, locale, gesture, hook, flags.
 """
+
 from __future__ import annotations
 
 import json
 
-from pepper_commands import (
+from pydantic import Field
+
+from .pepper_commands import (
     CMD_FLAGS,
     CMD_GESTURE,
     CMD_HIGHLIGHT,
@@ -17,8 +20,7 @@ from pepper_commands import (
     CMD_PUSH,
     CMD_STATUS,
 )
-from pepper_common import require_parse_json, try_parse_json
-from pydantic import Field
+from .pepper_common import require_parse_json, try_parse_json
 
 
 def register_system_tools(mcp, resolve_and_send, act_and_look):

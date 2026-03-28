@@ -4,6 +4,7 @@ Uses ctypes to call macOS Accessibility APIs directly — no pyobjc dependency.
 Finds the Simulator.app window, walks the accessibility tree to locate system
 dialog buttons ("Allow", "Allow While Using App", etc.), and clicks them.
 """
+
 from __future__ import annotations
 
 import ctypes
@@ -250,8 +251,7 @@ def _find_dialog_indicators(
     # iOS sim dialogs: buttons with permission text in AXDescription
     if role == "AXButton":
         desc = _get_str_attr(element, "AXDescription")
-        if desc and desc in ("Allow", "Allow Once", "Allow While Using App",
-                             "Don\u2019t Allow", "Don't Allow", "OK"):
+        if desc and desc in ("Allow", "Allow Once", "Allow While Using App", "Don\u2019t Allow", "Don't Allow", "OK"):
             return True
     if depth >= max_depth:
         return False

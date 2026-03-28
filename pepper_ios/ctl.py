@@ -1,0 +1,1349 @@
+"""
+pepper-ctl -- command-line interface for the pepper plane.
+
+Usage:
+  pepper-ctl ping
+  pepper-ctl tree [--depth N]
+  pepper-ctl snapshot                         # interactive elements (introspect)
+  pepper-ctl tap --text "Label"
+  pepper-ctl tap --id save_button
+  pepper-ctl tap --class UIButton --index 0
+  pepper-ctl tap --point 100,750
+  pepper-ctl input --id email_field --value "user@example.com"
+  pepper-ctl navigate --deeplink "home"
+  pepper-ctl navigate --screen settings
+  pepper-ctl look                             # compact screen summary
+  pepper-ctl read --id element_id
+  pepper-ctl scroll --direction down --amount 300
+  pepper-ctl batch --file commands.json
+  pepper-ctl wait-for-server --wait-timeout 60
+  pepper-ctl test-report --file tests.json --format junit --output results.xml
+  pepper-ctl ci-run                              # wait + smoke test + exit code
+  pepper-ctl ci-run --file custom.json -o results.xml
+  pepper-ctl help
+  pepper-ctl raw '{"cmd":"ping"}'
+
+Device management:
+  pepper-ctl register-device --udid UDID --host IP --port PORT
+  pepper-ctl unregister-device --udid UDID
+  pepper-ctl list-instances                   # show all sims + devices
+  pepper-ctl --device UDID ping               # target a specific device
+"""
+
+import argparse
+import asyncio
+import json
+import os
+import sys
+import time
+import uuid
+import xml.etree.ElementTree as ET
+
+try:
+    import websockets
+except ImportError:
+    print("Error: 'websockets' package required. Install with: pip install websockets", file=sys.stderr)
+    sys.exit(1)
+
+from . import pepper_format
+from .pepper_common import (
+    DEFAULT_HOST,
+    discover_instance,
+    load_env,
+)
+from .pepper_common import (
+    discover_port as _discover_port,
+)
+from .pepper_common import (
+    list_instances as _list_instances,
+)
+from .pepper_common import (
+    register_device as _register_device,
+)
+from .pepper_common import (
+    unregister_device as _unregister_device,
+)
+from .pepper_format import format_look
+from .pepper_websocket import CrashError, make_command
+from .pepper_websocket import send_command as ws_send_command
+
+DEFAULT_PORT = None  # Auto-discover from port files
+
+
+def discover_port(simulator=None):
+    """Auto-discover Pepper port, falling back to 8765 for CLI use."""
+    try:
+        return _discover_port(simulator=simulator, fallback=8765)
+    except RuntimeError as e:
+        print(str(e), file=sys.stderr)
+        sys.exit(1)
+
+
+# --- Colors (from pepper_format) ---
+
+USE_COLOR = sys.stdout.isatty()
+pepper_format.USE_COLOR = USE_COLOR
+
+green = pepper_format.green
+red = pepper_format.red
+yellow = pepper_format.yellow
+cyan = pepper_format.cyan
+dim = pepper_format.dim
+bold = pepper_format.bold
+
+
+# --- Protocol helpers ---
+# make_command is imported from pepper_websocket
+
+
+async def send_command(host, port, msg, timeout=10, verbose=False):
+    """Connect, send a single command, return the response.
+
+    Wraps pepper_websocket.send_command with CLI-appropriate error handling
+    (prints to stderr and exits on failure).
+    """
+
+    def on_event(evt, evt_data):
+        if verbose:
+            print(dim(f"[event:{evt}] {json.dumps(evt_data)}"), file=sys.stderr)
+
+    try:
+        return await ws_send_command(host, port, msg, timeout=timeout, on_event=on_event)
+    except ConnectionRefusedError:
+        url = f"ws://{host}:{port}"
+        print(red(f"Error: Cannot connect to {url}"), file=sys.stderr)
+        print("Is the app running with the control plane enabled?", file=sys.stderr)
+        sys.exit(1)
+    except asyncio.TimeoutError:
+        print(red("Error: Timeout waiting for response."), file=sys.stderr)
+        sys.exit(1)
+    except CrashError as e:
+        print(red(str(e)), file=sys.stderr)
+        print("Do NOT just redeploy.", file=sys.stderr)
+        sys.exit(1)
+
+
+# send_and_recv_multi was identical to send_command — use send_command instead.
+
+
+async def wait_for_events(host, port, events, timeout=30):
+    """Subscribe to events and wait."""
+    url = f"ws://{host}:{port}"
+    try:
+        async with websockets.connect(url, compression=None) as ws:
+            sub = make_command("subscribe", {"events": events})
+            await ws.send(json.dumps(sub))
+            await asyncio.wait_for(ws.recv(), timeout=5)
+            print(f"Listening for events: {', '.join(events)} (timeout: {timeout}s)", file=sys.stderr)
+            deadline = asyncio.get_running_loop().time() + timeout
+            while asyncio.get_running_loop().time() < deadline:
+                remaining = deadline - asyncio.get_running_loop().time()
+                try:
+                    raw = await asyncio.wait_for(ws.recv(), timeout=min(remaining, 1.0))
+                    data = json.loads(raw)
+                    if "event" in data:
+                        print(json.dumps(data, indent=2))
+                except asyncio.TimeoutError:
+                    continue
+    except ConnectionRefusedError:
+        print(red(f"Error: Cannot connect to {url}"), file=sys.stderr)
+        sys.exit(1)
+
+
+# --- Output formatting ---
+
+
+def pretty_json(obj):
+    """Pretty-print JSON with optional color."""
+    raw = json.dumps(obj, indent=2, ensure_ascii=False)
+    if not USE_COLOR:
+        return raw
+    # Colorize keys and values
+    lines = []
+    for line in raw.split("\n"):
+        # Colorize JSON keys
+        stripped = line.lstrip()
+        if stripped.startswith('"') and '": ' in stripped:
+            key_end = stripped.index('": ')
+            key = stripped[: key_end + 1]
+            rest = stripped[key_end + 2 :]
+            indent = line[: len(line) - len(stripped)]
+            lines.append(f"{indent}{cyan(key)}:{rest}")
+        else:
+            lines.append(line)
+    return "\n".join(lines)
+
+
+def output_response(response, raw_json=False):
+    """Print a response with status coloring."""
+    if raw_json:
+        print(json.dumps(response))
+        return
+
+    status = response.get("status", "unknown")
+    data = response.get("data")
+
+    if status == "error":
+        msg = data.get("message", "Unknown error") if data else "Unknown error"
+        print(red(f"Error: {msg}"), file=sys.stderr)
+        sys.exit(1)
+
+    if data:
+        print(pretty_json(data))
+    else:
+        print(green("OK"))
+
+
+# --- CLI argument parser ---
+
+
+def build_parser():
+    parser = argparse.ArgumentParser(
+        prog="pepper-ctl",
+        description="Command-line interface for the pepper plane.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""examples:
+  pepper-ctl ping                            Health check
+  pepper-ctl snapshot                        List interactive elements
+  pepper-ctl tree --depth 3                  View hierarchy (limited depth)
+  pepper-ctl tap --text "Sign In"            Tap element by label text
+  pepper-ctl tap --id start_button           Tap element by accessibility ID
+  pepper-ctl tap --class button --index 2    Tap 3rd button on screen
+  pepper-ctl tap --point 200,400             Tap at screen coordinates
+  pepper-ctl input --id email --value "a@b"  Set text field value
+  pepper-ctl navigate --screen settings      Navigate to screen
+  pepper-ctl scroll --direction down         Scroll down
+  pepper-ctl look                            Compact screen summary (what's tappable)
+  pepper-ctl read --id label_name            Read element value
+  pepper-ctl batch --file commands.json      Run batch commands
+  pepper-ctl wait-for-server                 Block until server is reachable
+  pepper-ctl test-report -f tests.json       Run tests, output JUnit XML
+  pepper-ctl test-report -f t.json --format json -o results.json
+  pepper-ctl ci-run                          Wait + smoke test + exit code
+  pepper-ctl ci-run -f custom.json -o r.xml  Custom tests, save results
+  pepper-ctl help                            List server commands
+""",
+    )
+    parser.add_argument(
+        "--host", default=None, help=f"Server host (default: auto-detect, or {DEFAULT_HOST} for simulators)"
+    )
+    parser.add_argument(
+        "--port", "-p", type=int, default=None, help="Server port (default: auto-discover from port files)"
+    )
+    parser.add_argument(
+        "--simulator",
+        "-s",
+        default=None,
+        help="Simulator UDID to connect to (reads port from /tmp/pepper-ports/<UDID>.port)",
+    )
+    parser.add_argument(
+        "--device",
+        "-d",
+        default=None,
+        help="Device UDID to connect to (reads host:port from /tmp/pepper-devices/<UDID>.device)",
+    )
+    parser.add_argument("--json", action="store_true", dest="raw_json", help="Output raw JSON response")
+    parser.add_argument("--timeout", "-t", type=int, default=10, help="Response timeout in seconds (default: 10)")
+    parser.add_argument("--verbose", "-v", action="store_true", help="Show event messages on stderr")
+    parser.add_argument("--no-color", action="store_true", help="Disable colored output")
+
+    sub = parser.add_subparsers(dest="command", help="Command to send")
+
+    # ping
+    sub.add_parser("ping", help="Health check")
+
+    # tree
+    p = sub.add_parser("tree", help="Get full view hierarchy")
+    p.add_argument("--depth", "-d", type=int, default=None, help="Maximum tree depth (default: unlimited)")
+    p.add_argument("--element", "-e", help="Scope to subtree of element ID")
+
+    # look
+    sub.add_parser("look", help="Compact screen summary — what's visible and tappable")
+
+    # snapshot
+    sub.add_parser("snapshot", help="Get all interactive elements on screen")
+
+    # tap
+    p = sub.add_parser("tap", help="Tap an element")
+    tap_target = p.add_mutually_exclusive_group(required=True)
+    tap_target.add_argument("--text", help="Find and tap element by label text")
+    tap_target.add_argument("--id", help="Tap element by accessibility identifier")
+    tap_target.add_argument("--class", dest="tap_class", help="Tap element by type/class (use --index to pick which)")
+    tap_target.add_argument("--point", help="Tap at screen coordinates (x,y)")
+    p.add_argument("--index", type=int, default=0, help="Index when using --class (default: 0)")
+
+    # input
+    p = sub.add_parser("input", help="Set a text field value")
+    p.add_argument("--id", required=True, dest="element_id", help="Element accessibility ID")
+    p.add_argument("--value", required=True, help="Value to set")
+    p.add_argument("--no-clear", action="store_true", help="Don't clear field before setting value")
+
+    # navigate
+    p = sub.add_parser("navigate", aliases=["nav"], help="Navigate to a screen")
+    nav_target = p.add_mutually_exclusive_group(required=True)
+    nav_target.add_argument("--screen", help="Screen ID to navigate to")
+    nav_target.add_argument("--deeplink", help="Deep link URL (e.g. myapp://settings)")
+    nav_target.add_argument("--tab", type=int, help="Tab index to switch to")
+
+    # back
+    sub.add_parser("back", help="Go back / dismiss current screen")
+
+    # screen
+    sub.add_parser("screen", help="Get current screen info")
+
+    # read
+    p = sub.add_parser("read", help="Read an element's value")
+    p.add_argument("--id", required=True, dest="element_id", help="Element accessibility ID")
+
+    # scroll
+    p = sub.add_parser("scroll", help="Scroll the screen or an element")
+    p.add_argument("--direction", "-d", choices=["up", "down", "left", "right"], help="Scroll direction")
+    p.add_argument("--amount", "-a", type=int, default=200, help="Scroll amount in points (default: 200)")
+    p.add_argument("--element", "-e", help="Scroll to make this element visible")
+
+    # toggle
+    p = sub.add_parser("toggle", help="Toggle a switch")
+    p.add_argument("--id", required=True, dest="element_id", help="Element accessibility ID")
+
+    # batch
+    p = sub.add_parser("batch", help="Execute a batch of commands")
+    p.add_argument("--file", "-f", required=True, help="JSON file with commands array")
+    p.add_argument("--delay", type=int, default=0, help="Delay between commands in ms (default: 0)")
+    p.add_argument("--continue-on-error", action="store_true", help="Continue executing after errors")
+
+    # help (server-side)
+    sub.add_parser("help", help="List all available commands from the server")
+
+    # wait-for-server
+    p = sub.add_parser("wait-for-server", help="Wait until Pepper server is reachable (health check)")
+    p.add_argument("--interval", type=float, default=1.0, help="Seconds between retries (default: 1.0)")
+    p.add_argument("--wait-timeout", type=int, default=30, help="Max seconds to wait (default: 30)")
+
+    # test-report
+    p = sub.add_parser("test-report", help="Run test cases and export results as JUnit XML or JSON")
+    p.add_argument("--file", "-f", required=True, help="JSON file with test definitions")
+    p.add_argument(
+        "--format",
+        choices=["junit", "json"],
+        default="junit",
+        dest="report_format",
+        help="Output format (default: junit)",
+    )
+    p.add_argument("--output", "-o", default=None, help="Output file (default: stdout)")
+    p.add_argument("--continue-on-error", action="store_true", help="Continue running tests after failures")
+    p.add_argument("--classname", default="pepper", help="JUnit classname prefix (default: pepper)")
+
+    # ci-run
+    p = sub.add_parser("ci-run", help="CI batch mode: wait for server, run tests, exit with pass/fail code")
+    p.add_argument(
+        "--file", "-f", default=None, help="JSON file with test definitions (default: scripts/smoke-tests.json)"
+    )
+    p.add_argument(
+        "--format",
+        choices=["junit", "json"],
+        default="junit",
+        dest="report_format",
+        help="Output format (default: junit)",
+    )
+    p.add_argument("--output", "-o", default=None, help="Output file (default: stdout)")
+    p.add_argument("--classname", default="pepper", help="JUnit classname prefix (default: pepper)")
+    p.add_argument("--wait-timeout", type=int, default=60, help="Max seconds to wait for server (default: 60)")
+    p.add_argument("--interval", type=float, default=1.0, help="Seconds between server retries (default: 1.0)")
+    p.add_argument(
+        "--stop-on-first-failure", action="store_true", help="Stop test run on first failure (default: run all)"
+    )
+
+    # subscribe / wait
+    p = sub.add_parser("wait", help="Subscribe to events and wait")
+    p.add_argument("events", nargs="+", help="Event types to subscribe to")
+    p.add_argument("--wait-timeout", type=int, default=30, help="How long to listen (default: 30s)")
+
+    # raw
+    p = sub.add_parser("raw", help="Send raw JSON command")
+    p.add_argument("json_str", help="JSON string to send")
+
+    # --- Device management (local, no server connection needed) ---
+
+    # register-device
+    p = sub.add_parser("register-device", help="Register a physical device endpoint for Pepper discovery")
+    p.add_argument("--udid", required=True, help="Device UDID (from devicectl or Xcode)")
+    p.add_argument("--host", required=True, help="Device IP or hostname (use localhost for iproxy)")
+    p.add_argument("--port", type=int, required=True, help="Pepper WebSocket port on the device")
+    p.add_argument("--name", default="", help="Human-readable device name (optional)")
+    p.add_argument("--via", default="", choices=["wifi", "usb", ""], help="Connection method (optional, for display)")
+
+    # unregister-device
+    p = sub.add_parser("unregister-device", help="Remove a device registration")
+    p.add_argument("--udid", required=True, help="Device UDID to remove")
+
+    # list-instances
+    sub.add_parser("list-instances", help="List all live Pepper instances (simulators + devices)")
+
+    return parser
+
+
+# --- Command handlers ---
+
+
+async def cmd_ping(args):
+    msg = make_command("ping")
+    resp = await send_command(args.host, args.port, msg, args.timeout, args.verbose)
+    if not args.raw_json:
+        if resp.get("status") == "ok":
+            print(green("pong"))
+            return
+    output_response(resp, args.raw_json)
+
+
+async def cmd_tree(args):
+    params = {}
+    if args.depth is not None:
+        params["depth"] = args.depth
+    if args.element:
+        params["element"] = args.element
+    msg = make_command("tree", params or None)
+    resp = await send_command(args.host, args.port, msg, args.timeout, args.verbose)
+    output_response(resp, args.raw_json)
+
+
+async def cmd_look(args):
+    """Compact spatial summary of what's on screen and what's tappable."""
+    msg = make_command("introspect", {"mode": "map"})
+    resp = await send_command(args.host, args.port, msg, args.timeout, args.verbose)
+    if not args.raw_json and resp.get("status") == "ok":
+        print(format_look(resp))
+        return
+    output_response(resp, args.raw_json)
+
+
+async def cmd_snapshot(args):
+    msg = make_command("introspect", {"mode": "interactive"})
+    resp = await send_command(args.host, args.port, msg, args.timeout, args.verbose)
+    if not args.raw_json and resp.get("status") == "ok":
+        data = resp.get("data", {})
+        elements = data.get("elements") or []
+        screen = data.get("screen", "unknown")
+        print(f"Screen: {bold(screen)}  ({len(elements)} elements)\n")
+        for e in elements:
+            eid = e.get("id", "?")
+            etype = e.get("type", "?")
+            label = e.get("label", "")
+            value = e.get("value", "")
+            visible = e.get("visible", True)
+            enabled = e.get("enabled", True)
+
+            # Status indicators
+            status = ""
+            if not visible:
+                status += dim(" [hidden]")
+            if not enabled:
+                status += yellow(" [disabled]")
+
+            # Format: id (type) "label" = value
+            line = f"  {cyan(eid)} ({etype})"
+            if label:
+                line += f'  "{label}"'
+            if value:
+                line += f"  = {value}"
+            line += status
+            print(line)
+        return
+    output_response(resp, args.raw_json)
+
+
+async def cmd_tap(args):
+    # Build tap params — pass directly to server (it handles text/id/class matching)
+    params = {}
+    if args.point:
+        try:
+            parts = args.point.split(",")
+            x, y = float(parts[0]), float(parts[1])
+            params["point"] = {"x": x, "y": y}
+        except (ValueError, IndexError):
+            print(red("Error: --point must be x,y (e.g. 100,750)"), file=sys.stderr)
+            sys.exit(1)
+    elif args.text:
+        params["text"] = args.text
+    elif args.id:
+        params["element"] = args.id
+    elif args.tap_class:
+        params["class"] = args.tap_class
+        if args.index:
+            params["index"] = args.index
+    else:
+        print(red("Error: tap requires --id, --text, --class, or --point"), file=sys.stderr)
+        sys.exit(1)
+
+    msg = make_command("tap", params)
+
+    resp = await send_command(args.host, args.port, msg, args.timeout, args.verbose)
+    if not args.raw_json and resp.get("status") == "ok":
+        data = resp.get("data", {})
+        eid = data.get("element", "?")
+        etype = data.get("type", "?")
+        title = data.get("title", "")
+        result = f"Tapped {cyan(eid)} ({etype})"
+        if title:
+            result += f' "{title}"'
+        print(green(result))
+        return
+    output_response(resp, args.raw_json)
+
+
+async def cmd_input(args):
+    params = {"element": args.element_id, "value": args.value}
+    if args.no_clear:
+        params["clear"] = False
+    msg = make_command("input", params)
+    resp = await send_command(args.host, args.port, msg, args.timeout, args.verbose)
+    if not args.raw_json and resp.get("status") == "ok":
+        data = resp.get("data", {})
+        print(green(f'Set {cyan(data.get("element", "?"))} = "{data.get("value", "")}"'))
+        return
+    output_response(resp, args.raw_json)
+
+
+async def cmd_navigate(args):
+    if args.screen:
+        msg = make_command("navigate", {"to": args.screen})
+    elif args.tab is not None:
+        msg = make_command("navigate", {"tab": args.tab})
+    elif args.deeplink:
+        msg = make_command("navigate", {"to": args.deeplink})
+    else:
+        print(red("Error: navigate requires --screen, --deeplink, or --tab"), file=sys.stderr)
+        sys.exit(1)
+
+    resp = await send_command(args.host, args.port, msg, args.timeout, args.verbose)
+    if not args.raw_json and resp.get("status") == "ok":
+        data = resp.get("data", {})
+        screen = data.get("current_screen", "?")
+        title = data.get("title", "")
+        result = f"Navigated to {bold(screen)}"
+        if title:
+            result += f' "{title}"'
+        if "selected_tab" in data:
+            result += f" (tab {data['selected_tab']})"
+        print(green(result))
+        return
+    output_response(resp, args.raw_json)
+
+
+async def cmd_back(args):
+    msg = make_command("back")
+    resp = await send_command(args.host, args.port, msg, args.timeout, args.verbose)
+    if not args.raw_json and resp.get("status") == "ok":
+        print(green("Navigated back"))
+        return
+    output_response(resp, args.raw_json)
+
+
+async def cmd_screen(args):
+    msg = make_command("screen")
+    resp = await send_command(args.host, args.port, msg, args.timeout, args.verbose)
+    output_response(resp, args.raw_json)
+
+
+async def cmd_read(args):
+    msg = make_command("read", {"element": args.element_id})
+    resp = await send_command(args.host, args.port, msg, args.timeout, args.verbose)
+    if not args.raw_json and resp.get("status") == "ok":
+        data = resp.get("data", {})
+        eid = data.get("id", "?")
+        etype = data.get("type", "?")
+        value = data.get("value", "")
+        label = data.get("label", "")
+        print(f"{cyan(eid)} ({etype})")
+        if label:
+            print(f"  label: {label}")
+        if value is not None and value != "":
+            print(f"  value: {bold(str(value))}")
+        # Print extra fields
+        skip = {"id", "type", "value", "label", "frame"}
+        for k, v in sorted(data.items()):
+            if k not in skip:
+                print(f"  {k}: {v}")
+        return
+    output_response(resp, args.raw_json)
+
+
+async def cmd_scroll(args):
+    if args.element:
+        # Scroll to element
+        msg = make_command("scroll", {"element": args.element})
+    elif args.direction:
+        params = {"direction": args.direction, "amount": args.amount}
+        msg = make_command("scroll", params)
+    else:
+        print(red("Error: scroll requires --direction or --element"), file=sys.stderr)
+        sys.exit(1)
+
+    resp = await send_command(args.host, args.port, msg, args.timeout, args.verbose)
+    if not args.raw_json and resp.get("status") == "ok":
+        data = resp.get("data", {})
+        if "direction" in data:
+            print(green(f"Scrolled {data['direction']} by {data.get('amount', '?')}pt"))
+        elif "element" in data:
+            print(green(f"Scrolled to element {cyan(data['element'])}"))
+        offset = data.get("scrollOffset", {})
+        if offset:
+            print(f"  offset: ({offset.get('x', 0)}, {offset.get('y', 0)})")
+        return
+    output_response(resp, args.raw_json)
+
+
+async def cmd_toggle(args):
+    msg = make_command("toggle", {"element": args.element_id})
+    resp = await send_command(args.host, args.port, msg, args.timeout, args.verbose)
+    if not args.raw_json and resp.get("status") == "ok":
+        print(green(f"Toggled {cyan(args.element_id)}"))
+        return
+    output_response(resp, args.raw_json)
+
+
+async def cmd_batch(args):
+    # Read commands from file
+    try:
+        with open(args.file) as f:
+            file_content = json.load(f)
+    except FileNotFoundError:
+        print(red(f"Error: File not found: {args.file}"), file=sys.stderr)
+        sys.exit(1)
+    except json.JSONDecodeError as e:
+        print(red(f"Error: Invalid JSON in {args.file}: {e}"), file=sys.stderr)
+        sys.exit(1)
+
+    # Accept either a bare array or {"commands": [...]}
+    if isinstance(file_content, list):
+        commands = file_content
+    elif isinstance(file_content, dict) and "commands" in file_content:
+        commands = file_content["commands"]
+    else:
+        print(red('Error: File must contain a JSON array or {"commands": [...]}'), file=sys.stderr)
+        sys.exit(1)
+
+    params = {
+        "commands": commands,
+    }
+    if args.delay > 0:
+        params["delay_ms"] = args.delay
+    if args.continue_on_error:
+        params["continue_on_error"] = True
+
+    msg = make_command("batch", params)
+    # Use a longer timeout for batch commands
+    batch_timeout = max(args.timeout, len(commands) * 5)
+    resp = await send_command(args.host, args.port, msg, batch_timeout, args.verbose)
+
+    if not args.raw_json and resp.get("status") == "ok":
+        data = resp.get("data", {})
+        total = data.get("total", 0)
+        executed = data.get("executed", 0)
+        errors = data.get("errors", 0)
+
+        status_color = green if errors == 0 else yellow
+        print(status_color(f"Batch: {executed}/{total} executed, {errors} errors"))
+
+        responses = data.get("responses", [])
+        for r in responses:
+            idx = r.get("index", "?")
+            cmd = r.get("cmd", "?")
+            st = r.get("status", "?")
+            if st == "ok":
+                print(f"  [{idx}] {cmd}: {green('ok')}")
+            else:
+                err_data = r.get("data", {})
+                err_msg = err_data.get("message", "") if isinstance(err_data, dict) else str(r.get("message", ""))
+                print(f"  [{idx}] {cmd}: {red(st)} - {err_msg}")
+        return
+    output_response(resp, args.raw_json)
+
+
+async def cmd_help(args):
+    msg = make_command("help")
+    resp = await send_command(args.host, args.port, msg, args.timeout, args.verbose)
+    if not args.raw_json and resp.get("status") == "ok":
+        data = resp.get("data", {})
+        commands = data.get("commands", [])
+        print(bold("Available server commands:"))
+        for cmd in sorted(commands):
+            print(f"  {cyan(cmd)}")
+        return
+    output_response(resp, args.raw_json)
+
+
+async def cmd_wait_for_server(args):
+    """Poll WebSocket with ping until the server responds or timeout expires."""
+    import time
+
+    from .pepper_ws_raw import RawWebSocket
+
+    deadline = time.monotonic() + args.wait_timeout
+    attempt = 0
+    while True:
+        attempt += 1
+        try:
+            msg = make_command("ping")
+            ws = RawWebSocket.connect(args.host, args.port, timeout=10)
+            try:
+                ws.send(json.dumps(msg))
+                # Read frames until we get the ping response (skip events)
+                inner_deadline = time.monotonic() + 10
+                while time.monotonic() < inner_deadline:
+                    raw = ws.recv(timeout=max(0.5, inner_deadline - time.monotonic()))
+                    resp = json.loads(raw)
+                    if "event" in resp:
+                        continue  # skip broadcast events
+                    if resp.get("status") == "ok":
+                        if not args.raw_json:
+                            print(green(f"Server ready (attempt {attempt})"))
+                        else:
+                            print(json.dumps({"status": "ok", "attempts": attempt}))
+                        return
+                    break  # non-event, non-ok response
+            finally:
+                ws.close()
+        except (ConnectionRefusedError, ConnectionError, OSError, TimeoutError) as e:
+            if args.verbose or attempt <= 3:
+                print(dim(f"[attempt {attempt}] {type(e).__name__}: {e}"), file=sys.stderr)
+
+        if time.monotonic() >= deadline:
+            if not args.raw_json:
+                print(
+                    red(f"Timeout: server not reachable after {args.wait_timeout}s ({attempt} attempts)"),
+                    file=sys.stderr,
+                )
+            else:
+                print(json.dumps({"status": "error", "message": "timeout", "attempts": attempt}))
+            sys.exit(1)
+
+        if args.verbose:
+            print(dim(f"[attempt {attempt}] not ready, retrying in {args.interval}s..."), file=sys.stderr)
+        await asyncio.sleep(args.interval)
+
+
+async def cmd_test_report(args):
+    """Run test cases from a definition file and export results as JUnit XML or JSON."""
+    # Load test definitions
+    try:
+        with open(args.file) as f:
+            file_content = json.load(f)
+    except FileNotFoundError:
+        print(red(f"Error: File not found: {args.file}"), file=sys.stderr)
+        sys.exit(1)
+    except json.JSONDecodeError as e:
+        print(red(f"Error: Invalid JSON in {args.file}: {e}"), file=sys.stderr)
+        sys.exit(1)
+
+    # Accept {"suite": "...", "tests": [...]} or bare array
+    if isinstance(file_content, list):
+        suite_name = os.path.splitext(os.path.basename(args.file))[0]
+        tests = file_content
+    elif isinstance(file_content, dict):
+        suite_name = file_content.get("suite", os.path.splitext(os.path.basename(args.file))[0])
+        tests = file_content.get("tests", [])
+    else:
+        print(red('Error: File must contain a JSON array or {"tests": [...]}'), file=sys.stderr)
+        sys.exit(1)
+
+    if not tests:
+        print(red("Error: No test cases found"), file=sys.stderr)
+        sys.exit(1)
+
+    # Run each test case
+    results = []
+    suite_start = time.monotonic()
+    for i, test in enumerate(tests):
+        test_name = test.get("name", f"test_{i}")
+        cmd = test.get("cmd")
+        params = test.get("params")
+
+        if not cmd:
+            results.append(
+                {
+                    "name": test_name,
+                    "status": "error",
+                    "time": 0.0,
+                    "message": "Missing 'cmd' field in test definition",
+                }
+            )
+            if not args.continue_on_error:
+                break
+            continue
+
+        if not args.raw_json:
+            print(dim(f"  [{i + 1}/{len(tests)}] {test_name} ..."), end="", flush=True, file=sys.stderr)
+
+        expect = test.get("expect")
+        msg = make_command(cmd, params)
+        t0 = time.monotonic()
+        try:
+            # Use ws_send_command directly (not the CLI wrapper) to avoid sys.exit on errors
+            resp = await ws_send_command(args.host, args.port, msg, timeout=args.timeout)
+            elapsed = time.monotonic() - t0
+            resp_status = resp.get("status", "unknown")
+            if resp_status == "ok":
+                # Validate expect assertions against response data
+                assertion_failure = None
+                if expect:
+                    data = resp.get("data") or {}
+                    required_keys = expect.get("has_keys", [])
+                    missing = [k for k in required_keys if k not in data]
+                    if missing:
+                        assertion_failure = f"expected keys {missing} missing from data (got: {list(data.keys())})"
+                if assertion_failure:
+                    results.append(
+                        {
+                            "name": test_name,
+                            "status": "fail",
+                            "time": elapsed,
+                            "cmd": cmd,
+                            "message": assertion_failure,
+                        }
+                    )
+                    if not args.raw_json:
+                        print(red(" FAIL") + dim(f" ({elapsed:.2f}s) {assertion_failure}"), file=sys.stderr)
+                    if not args.continue_on_error:
+                        break
+                else:
+                    results.append(
+                        {
+                            "name": test_name,
+                            "status": "pass",
+                            "time": elapsed,
+                            "cmd": cmd,
+                        }
+                    )
+                    if not args.raw_json:
+                        print(green(" pass") + dim(f" ({elapsed:.2f}s)"), file=sys.stderr)
+            else:
+                data = resp.get("data", {})
+                err_msg = data.get("message", resp_status) if isinstance(data, dict) else str(resp_status)
+                results.append(
+                    {
+                        "name": test_name,
+                        "status": "fail",
+                        "time": elapsed,
+                        "cmd": cmd,
+                        "message": err_msg,
+                    }
+                )
+                if not args.raw_json:
+                    print(red(" FAIL") + dim(f" ({elapsed:.2f}s) {err_msg}"), file=sys.stderr)
+                if not args.continue_on_error:
+                    break
+        except ConnectionRefusedError:
+            elapsed = time.monotonic() - t0
+            results.append(
+                {
+                    "name": test_name,
+                    "status": "error",
+                    "time": elapsed,
+                    "cmd": cmd,
+                    "message": "Connection refused — is the server running?",
+                }
+            )
+            if not args.continue_on_error:
+                break
+        except asyncio.TimeoutError:
+            elapsed = time.monotonic() - t0
+            results.append(
+                {
+                    "name": test_name,
+                    "status": "error",
+                    "time": elapsed,
+                    "cmd": cmd,
+                    "message": f"Timeout after {args.timeout}s",
+                }
+            )
+            if not args.continue_on_error:
+                break
+        except CrashError as e:
+            elapsed = time.monotonic() - t0
+            results.append(
+                {
+                    "name": test_name,
+                    "status": "error",
+                    "time": elapsed,
+                    "cmd": cmd,
+                    "message": str(e),
+                }
+            )
+            # App crashed — stop regardless of continue-on-error
+            if not args.raw_json:
+                print(red(" CRASH") + dim(f" ({elapsed:.2f}s)"), file=sys.stderr)
+            break
+
+    suite_time = time.monotonic() - suite_start
+    num_pass = sum(1 for r in results if r["status"] == "pass")
+    num_fail = sum(1 for r in results if r["status"] == "fail")
+    num_error = sum(1 for r in results if r["status"] == "error")
+
+    # Format output
+    if args.report_format == "junit":
+        output = _format_junit(suite_name, results, suite_time, args.classname)
+    else:
+        output = _format_json_report(suite_name, results, suite_time)
+
+    # Write output
+    if args.output:
+        with open(args.output, "w") as f:
+            f.write(output)
+        if not args.raw_json:
+            print(f"\nReport written to {args.output}", file=sys.stderr)
+    else:
+        print(output)
+
+    # Summary on stderr
+    if not args.raw_json:
+        total = len(results)
+        color = green if num_fail == 0 and num_error == 0 else red
+        print(
+            color(f"\n{total} tests: {num_pass} passed, {num_fail} failed, {num_error} errors ({suite_time:.2f}s)"),
+            file=sys.stderr,
+        )
+
+    # Exit with failure if any tests failed
+    if num_fail > 0 or num_error > 0:
+        sys.exit(1)
+
+
+def _format_junit(suite_name, results, suite_time, classname):
+    """Format test results as JUnit XML."""
+    testsuites = ET.Element("testsuites")
+    testsuite = ET.SubElement(
+        testsuites,
+        "testsuite",
+        {
+            "name": suite_name,
+            "tests": str(len(results)),
+            "failures": str(sum(1 for r in results if r["status"] == "fail")),
+            "errors": str(sum(1 for r in results if r["status"] == "error")),
+            "time": f"{suite_time:.3f}",
+        },
+    )
+
+    for result in results:
+        testcase = ET.SubElement(
+            testsuite,
+            "testcase",
+            {
+                "name": result["name"],
+                "classname": classname,
+                "time": f"{result['time']:.3f}",
+            },
+        )
+        if result["status"] == "fail":
+            failure = ET.SubElement(
+                testcase,
+                "failure",
+                {
+                    "message": result.get("message", "Test failed"),
+                },
+            )
+            failure.text = result.get("message", "")
+        elif result["status"] == "error":
+            error = ET.SubElement(
+                testcase,
+                "error",
+                {
+                    "message": result.get("message", "Test error"),
+                },
+            )
+            error.text = result.get("message", "")
+
+    ET.indent(testsuites, space="  ")
+    xml_str = ET.tostring(testsuites, encoding="unicode", xml_declaration=True)
+    return xml_str
+
+
+def _format_json_report(suite_name, results, suite_time):
+    """Format test results as JSON."""
+    report = {
+        "suite": suite_name,
+        "tests": len(results),
+        "passed": sum(1 for r in results if r["status"] == "pass"),
+        "failed": sum(1 for r in results if r["status"] == "fail"),
+        "errors": sum(1 for r in results if r["status"] == "error"),
+        "time": round(suite_time, 3),
+        "results": results,
+    }
+    # Round individual times
+    for r in report["results"]:
+        r["time"] = round(r["time"], 3)
+    return json.dumps(report, indent=2)
+
+
+async def cmd_ci_run(args):
+    """CI batch mode: wait for server, run test suite, exit with pass/fail code.
+
+    Combines wait-for-server + test-report into a single CI-friendly command.
+    Defaults to scripts/smoke-tests.json and continue-on-error behavior.
+    """
+    # Resolve test file — default to scripts/smoke-tests.json relative to repo root
+    if args.file is None:
+        repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        args.file = os.path.join(repo_root, "scripts", "smoke-tests.json")
+
+    # --- Phase 1: Wait for server ---
+    if not args.raw_json:
+        print(bold("=== CI Run: Waiting for server ==="), file=sys.stderr)
+
+    deadline = time.monotonic() + args.wait_timeout
+    attempt = 0
+    server_ready = False
+    while True:
+        attempt += 1
+        try:
+            msg = make_command("ping")
+            url = f"ws://{args.host}:{args.port}"
+            async with websockets.connect(url, close_timeout=2) as ws:
+                await ws.send(json.dumps(msg))
+                raw = await asyncio.wait_for(ws.recv(), timeout=3)
+                resp = json.loads(raw)
+                if resp.get("status") == "ok":
+                    if not args.raw_json:
+                        print(green(f"Server ready (attempt {attempt})"), file=sys.stderr)
+                    server_ready = True
+                    break
+        except (
+            ConnectionRefusedError,
+            OSError,
+            asyncio.TimeoutError,
+            websockets.ConnectionClosed,
+            websockets.ConnectionClosedError,
+            websockets.InvalidURI,
+            websockets.InvalidHandshake,
+        ):
+            pass
+
+        if time.monotonic() >= deadline:
+            if not args.raw_json:
+                print(
+                    red(f"Timeout: server not reachable after {args.wait_timeout}s ({attempt} attempts)"),
+                    file=sys.stderr,
+                )
+            sys.exit(1)
+
+        if args.verbose:
+            print(dim(f"[attempt {attempt}] not ready, retrying in {args.interval}s..."), file=sys.stderr)
+        await asyncio.sleep(args.interval)
+
+    if not server_ready:
+        sys.exit(1)
+
+    # --- Phase 2: Load and run tests ---
+    if not args.raw_json:
+        print(bold(f"\n=== CI Run: Running tests from {os.path.basename(args.file)} ==="), file=sys.stderr)
+
+    try:
+        with open(args.file) as f:
+            file_content = json.load(f)
+    except FileNotFoundError:
+        print(red(f"Error: Test file not found: {args.file}"), file=sys.stderr)
+        sys.exit(1)
+    except json.JSONDecodeError as e:
+        print(red(f"Error: Invalid JSON in {args.file}: {e}"), file=sys.stderr)
+        sys.exit(1)
+
+    if isinstance(file_content, list):
+        suite_name = os.path.splitext(os.path.basename(args.file))[0]
+        tests = file_content
+    elif isinstance(file_content, dict):
+        suite_name = file_content.get("suite", os.path.splitext(os.path.basename(args.file))[0])
+        tests = file_content.get("tests", [])
+    else:
+        print(red('Error: Test file must contain a JSON array or {"tests": [...]}'), file=sys.stderr)
+        sys.exit(1)
+
+    if not tests:
+        print(red("Error: No test cases found"), file=sys.stderr)
+        sys.exit(1)
+
+    continue_on_error = not args.stop_on_first_failure
+    results = []
+    suite_start = time.monotonic()
+    for i, test in enumerate(tests):
+        test_name = test.get("name", f"test_{i}")
+        cmd = test.get("cmd")
+        params = test.get("params")
+
+        if not cmd:
+            results.append(
+                {
+                    "name": test_name,
+                    "status": "error",
+                    "time": 0.0,
+                    "message": "Missing 'cmd' field in test definition",
+                }
+            )
+            if not continue_on_error:
+                break
+            continue
+
+        if not args.raw_json:
+            print(dim(f"  [{i + 1}/{len(tests)}] {test_name} ..."), end="", flush=True, file=sys.stderr)
+
+        msg = make_command(cmd, params)
+        t0 = time.monotonic()
+        try:
+            resp = await ws_send_command(args.host, args.port, msg, timeout=args.timeout)
+            elapsed = time.monotonic() - t0
+            resp_status = resp.get("status", "unknown")
+            if resp_status == "ok":
+                results.append(
+                    {
+                        "name": test_name,
+                        "status": "pass",
+                        "time": elapsed,
+                        "cmd": cmd,
+                    }
+                )
+                if not args.raw_json:
+                    print(green(" pass") + dim(f" ({elapsed:.2f}s)"), file=sys.stderr)
+            else:
+                data = resp.get("data", {})
+                err_msg = data.get("message", resp_status) if isinstance(data, dict) else str(resp_status)
+                results.append(
+                    {
+                        "name": test_name,
+                        "status": "fail",
+                        "time": elapsed,
+                        "cmd": cmd,
+                        "message": err_msg,
+                    }
+                )
+                if not args.raw_json:
+                    print(red(" FAIL") + dim(f" ({elapsed:.2f}s) {err_msg}"), file=sys.stderr)
+                if not continue_on_error:
+                    break
+        except ConnectionRefusedError:
+            elapsed = time.monotonic() - t0
+            results.append(
+                {
+                    "name": test_name,
+                    "status": "error",
+                    "time": elapsed,
+                    "cmd": cmd,
+                    "message": "Connection refused — is the server running?",
+                }
+            )
+            if not continue_on_error:
+                break
+        except asyncio.TimeoutError:
+            elapsed = time.monotonic() - t0
+            results.append(
+                {
+                    "name": test_name,
+                    "status": "error",
+                    "time": elapsed,
+                    "cmd": cmd,
+                    "message": f"Timeout after {args.timeout}s",
+                }
+            )
+            if not continue_on_error:
+                break
+        except CrashError as e:
+            elapsed = time.monotonic() - t0
+            results.append(
+                {
+                    "name": test_name,
+                    "status": "error",
+                    "time": elapsed,
+                    "cmd": cmd,
+                    "message": str(e),
+                }
+            )
+            if not args.raw_json:
+                print(red(" CRASH") + dim(f" ({elapsed:.2f}s)"), file=sys.stderr)
+            break
+
+    suite_time = time.monotonic() - suite_start
+    num_pass = sum(1 for r in results if r["status"] == "pass")
+    num_fail = sum(1 for r in results if r["status"] == "fail")
+    num_error = sum(1 for r in results if r["status"] == "error")
+
+    # --- Phase 3: Format and output results ---
+    if args.report_format == "junit":
+        output = _format_junit(suite_name, results, suite_time, args.classname)
+    else:
+        output = _format_json_report(suite_name, results, suite_time)
+
+    if args.output:
+        os.makedirs(os.path.dirname(os.path.abspath(args.output)), exist_ok=True)
+        with open(args.output, "w") as f:
+            f.write(output)
+        if not args.raw_json:
+            print(f"\nReport written to {args.output}", file=sys.stderr)
+    else:
+        print(output)
+
+    # Summary
+    if not args.raw_json:
+        total = len(results)
+        color = green if num_fail == 0 and num_error == 0 else red
+        result_word = "PASSED" if (num_fail == 0 and num_error == 0) else "FAILED"
+        print(bold(f"\n=== CI Run: {result_word} ==="), file=sys.stderr)
+        print(
+            color(f"{total} tests: {num_pass} passed, {num_fail} failed, {num_error} errors ({suite_time:.2f}s)"),
+            file=sys.stderr,
+        )
+
+    if num_fail > 0 or num_error > 0:
+        sys.exit(1)
+
+
+async def cmd_wait(args):
+    await wait_for_events(args.host, args.port, args.events, args.wait_timeout)
+
+
+async def cmd_raw(args):
+    try:
+        msg = json.loads(args.json_str)
+        if "id" not in msg:
+            msg["id"] = str(uuid.uuid4())[:8]
+    except json.JSONDecodeError as e:
+        print(red(f"Invalid JSON: {e}"), file=sys.stderr)
+        sys.exit(1)
+    resp = await send_command(args.host, args.port, msg, args.timeout, args.verbose)
+    output_response(resp, args.raw_json)
+
+
+async def cmd_register_device(args):
+    """Register a device endpoint for discovery."""
+    _register_device(args.udid, args.host, args.port, name=args.name, via=args.via)
+    addr = f"{args.host}:{args.port}"
+    name_str = f' "{args.name}"' if args.name else ""
+    print(green(f"Registered device {args.udid[:12]}{name_str} at {addr}"))
+
+
+async def cmd_unregister_device(args):
+    """Remove a device registration."""
+    if _unregister_device(args.udid):
+        print(green(f"Unregistered device {args.udid[:12]}"))
+    else:
+        print(yellow(f"No registration found for {args.udid[:12]}"))
+
+
+async def cmd_list_instances(args):
+    """List all live Pepper instances."""
+    instances = _list_instances()
+    if not instances:
+        print(yellow("No live Pepper instances found."))
+        return
+    for inst in instances:
+        kind = inst.get("kind", "?")
+        udid = inst.get("udid", "?")
+        host = inst.get("host", "localhost")
+        port = inst.get("port", 0)
+        name = inst.get("name", "")
+        addr = f"{host}:{port}"
+        tag = cyan(f"[{kind}]")
+        name_str = f'  "{name}"' if name else ""
+        print(f"  {tag} {udid} → {bold(addr)}{name_str}")
+
+
+# --- Main ---
+
+
+def main():
+    parser = build_parser()
+    args = parser.parse_args()
+
+    if args.no_color:
+        global USE_COLOR
+        USE_COLOR = False
+        pepper_format.USE_COLOR = False
+
+    if not args.command:
+        parser.print_help()
+        sys.exit(1)
+
+    # Commands that don't need a server connection
+    local_handlers = {
+        "register-device": cmd_register_device,
+        "unregister-device": cmd_unregister_device,
+        "list-instances": cmd_list_instances,
+    }
+    if args.command in local_handlers:
+        asyncio.run(local_handlers[args.command](args))
+        return
+
+    # Load .env defaults — CLI flags take precedence
+    env = load_env()
+    if args.simulator is None and "PEPPER_SIMULATOR" in env:
+        args.simulator = env["PEPPER_SIMULATOR"]
+    if args.device is None and "PEPPER_DEVICE" in env:
+        args.device = env["PEPPER_DEVICE"]
+
+    if args.simulator and args.device:
+        print(red("Error: --simulator and --device are mutually exclusive"), file=sys.stderr)
+        sys.exit(1)
+
+    # Resolve host + port:
+    #   1. Explicit --host/--port wins
+    #   2. --device → look up device registration
+    #   3. --simulator → look up simulator port file
+    #   4. Auto-discover (sims + devices)
+    if args.host is not None and args.port is not None:
+        pass  # Both explicitly set
+    elif args.device:
+        try:
+            host, port, _udid = discover_instance(args.device)
+            if args.host is None:
+                args.host = host
+            if args.port is None:
+                args.port = port
+        except RuntimeError as e:
+            print(red(str(e)), file=sys.stderr)
+            sys.exit(1)
+    elif args.port is None:
+        try:
+            host, port, _udid = discover_instance(args.simulator)
+            if args.host is None:
+                args.host = host
+            args.port = port
+        except RuntimeError as e:
+            # Fallback to 8765 for CLI when no instances found (legacy behavior)
+            if "Multiple" in str(e):
+                print(str(e), file=sys.stderr)
+                sys.exit(1)
+            args.port = 8765
+
+    if args.host is None:
+        args.host = DEFAULT_HOST
+
+    # Dispatch to handler
+    handlers = {
+        "ping": cmd_ping,
+        "tree": cmd_tree,
+        "look": cmd_look,
+        "snapshot": cmd_snapshot,
+        "tap": cmd_tap,
+        "input": cmd_input,
+        "navigate": cmd_navigate,
+        "nav": cmd_navigate,
+        "back": cmd_back,
+        "screen": cmd_screen,
+        "read": cmd_read,
+        "scroll": cmd_scroll,
+        "toggle": cmd_toggle,
+        "batch": cmd_batch,
+        "help": cmd_help,
+        "wait-for-server": cmd_wait_for_server,
+        "test-report": cmd_test_report,
+        "ci-run": cmd_ci_run,
+        "wait": cmd_wait,
+        "raw": cmd_raw,
+    }
+
+    handler = handlers.get(args.command)
+    if not handler:
+        parser.print_help()
+        sys.exit(1)
+
+    asyncio.run(handler(args))
+
+
+if __name__ == "__main__":
+    main()

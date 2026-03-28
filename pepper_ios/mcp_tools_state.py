@@ -2,9 +2,12 @@
 
 Tool definitions for: vars_inspect, defaults, clipboard, keychain, cookies.
 """
+
 from __future__ import annotations
 
-from pepper_commands import (
+from pydantic import Field
+
+from .pepper_commands import (
     CMD_CLIPBOARD,
     CMD_COOKIES,
     CMD_COREDATA,
@@ -15,8 +18,7 @@ from pepper_commands import (
     CMD_UNDO,
     CMD_VARS,
 )
-from pepper_common import try_parse_json
-from pydantic import Field
+from .pepper_common import try_parse_json
 
 
 def register_state_tools(mcp, resolve_and_send):
@@ -112,7 +114,9 @@ def register_state_tools(mcp, resolve_and_send):
     async def keychain(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
         action: str = Field(default="list", description="Action: list, get, set, delete, clear"),
-        service: str | None = Field(default=None, description="Keychain service name (for get/set/delete, or filter for list)"),
+        service: str | None = Field(
+            default=None, description="Keychain service name (for get/set/delete, or filter for list)"
+        ),
         account: str | None = Field(default=None, description="Keychain account (for get/set/delete)"),
         value: str | None = Field(default=None, description="Value to store (for set)"),
     ) -> str:
@@ -186,11 +190,16 @@ def register_state_tools(mcp, resolve_and_send):
     async def sandbox(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
         action: str = Field(default="paths", description="Action: paths, list, read, write, delete, info, size"),
-        path: str | None = Field(default=None, description="File or directory path. Supports shorthands: documents/, caches/, library/, tmp/, bundle/, ~/ or absolute paths"),
+        path: str | None = Field(
+            default=None,
+            description="File or directory path. Supports shorthands: documents/, caches/, library/, tmp/, bundle/, ~/ or absolute paths",
+        ),
         content: str | None = Field(default=None, description="File content to write (for write action)"),
         base64: bool = Field(default=False, description="If true, content is base64-encoded binary data (for write)"),
         recursive: bool = Field(default=False, description="List files recursively (for list action)"),
-        max_length: int | None = Field(default=None, description="Max characters/bytes to read (default: 50000 for text, 10000 for binary)"),
+        max_length: int | None = Field(
+            default=None, description="Max characters/bytes to read (default: 50000 for text, 10000 for binary)"
+        ),
     ) -> str:
         """Browse, read, write, and delete files in the app's sandbox directories.
         Direct in-process FileManager access — no shell gymnastics to find simulator data paths.
@@ -222,8 +231,12 @@ def register_state_tools(mcp, resolve_and_send):
     async def storage(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
         action: str = Field(default="summary", description="Action: summary, coredata, clear"),
-        entity: str | None = Field(default=None, description="Core Data entity name (for coredata detail or clear coredata)"),
-        type: str | None = Field(default=None, description="Storage type to clear: defaults, keychain, coredata (for clear action)"),
+        entity: str | None = Field(
+            default=None, description="Core Data entity name (for coredata detail or clear coredata)"
+        ),
+        type: str | None = Field(
+            default=None, description="Storage type to clear: defaults, keychain, coredata (for clear action)"
+        ),
         limit: int | None = Field(default=None, description="Max rows to return (for coredata, default 50)"),
     ) -> str:
         """Unified persistence inspector — view UserDefaults, Keychain, and Core Data in one place.

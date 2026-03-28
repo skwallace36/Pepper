@@ -3,17 +3,19 @@
 Tool definitions for: dialog.
 Includes system-dialog dismiss helper with simctl privacy grant + AX fallback.
 """
+
 from __future__ import annotations
 
 import asyncio
 import json
 import subprocess
 
-from pepper_ax import detect_dialog as _ax_detect
-from pepper_ax import find_and_dismiss_dialog as _ax_dismiss
-from pepper_commands import CMD_DIALOG
-from pepper_common import get_config, require_parse_json
 from pydantic import Field
+
+from .pepper_ax import detect_dialog as _ax_detect
+from .pepper_ax import find_and_dismiss_dialog as _ax_dismiss
+from .pepper_commands import CMD_DIALOG
+from .pepper_common import get_config, require_parse_json
 
 # Permission keywords found in dialog titles/messages → simctl permission names
 _PERMISSION_KEYWORDS = {
@@ -210,20 +212,23 @@ def register_dialog_tools(mcp, resolve_and_send, resolve_simulator=None):
                 pass
 
             detected = ip_data.get("detected", False) or ax_result.get("detected", False)
-            return json.dumps({
-                "status": "ok",
-                "detected": detected,
-                "in_process": {
-                    "detected": ip_data.get("detected", False),
-                    "confidence": ip_data.get("confidence", "none"),
-                    "intercepted_dialogs": ip_data.get("intercepted_dialog_count", 0),
-                    "signals": ip_data.get("signals", []),
+            return json.dumps(
+                {
+                    "status": "ok",
+                    "detected": detected,
+                    "in_process": {
+                        "detected": ip_data.get("detected", False),
+                        "confidence": ip_data.get("confidence", "none"),
+                        "intercepted_dialogs": ip_data.get("intercepted_dialog_count", 0),
+                        "signals": ip_data.get("signals", []),
+                    },
+                    "system": {
+                        "detected": ax_result.get("detected", False),
+                        "buttons": ax_result.get("buttons", []),
+                    },
                 },
-                "system": {
-                    "detected": ax_result.get("detected", False),
-                    "buttons": ax_result.get("buttons", []),
-                },
-            }, indent=2)
+                indent=2,
+            )
 
         params: dict = {"action": action}
         if button:
