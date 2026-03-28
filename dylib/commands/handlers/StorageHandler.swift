@@ -40,13 +40,13 @@ struct StorageHandler: PepperHandler {
         let ud = UserDefaults.standard
         let udDict = ud.dictionaryRepresentation()
         sections["defaults"] = AnyCodable([
-            "count": AnyCodable(udDict.count),
+            "count": AnyCodable(udDict.count)
         ])
 
         // Keychain
         let keychainCount = countKeychainItems()
         sections["keychain"] = AnyCodable([
-            "count": AnyCodable(keychainCount),
+            "count": AnyCodable(keychainCount)
         ])
 
         // Core Data
@@ -76,7 +76,8 @@ struct StorageHandler: PepperHandler {
 
         if let entityFilter = entityFilter {
             // Show rows for a specific entity
-            return entityDetail(context: context, model: model, entityName: entityFilter, limit: limit, command: command)
+            return entityDetail(
+                context: context, model: model, entityName: entityFilter, limit: limit, command: command)
         }
 
         // List all entities with row counts
@@ -260,7 +261,7 @@ struct StorageHandler: PepperHandler {
     private func coreDataSummary() -> [String: AnyCodable] {
         guard let container = findPersistentContainer() else {
             return [
-                "available": AnyCodable(false),
+                "available": AnyCodable(false)
             ]
         }
         let model = container.managedObjectModel

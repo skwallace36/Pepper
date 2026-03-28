@@ -37,7 +37,7 @@ struct UndoHandler: PepperHandler {
 
     /// Discover all UndoManager instances via responder chain walking + heap scan.
     private func handleList(_ command: PepperCommand) -> PepperResponse {
-        var managers: [(UndoManager, String)] = [] // (manager, owner description)
+        var managers: [(UndoManager, String)] = []  // (manager, owner description)
         var seen = Set<ObjectIdentifier>()
 
         // Strategy 1: Walk responder chains from all visible view controllers
@@ -57,10 +57,12 @@ struct UndoHandler: PepperHandler {
             managerEntry(manager, owner: owner)
         }
 
-        return .ok(id: command.id, data: [
-            "count": AnyCodable(entries.count),
-            "managers": AnyCodable(entries),
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "count": AnyCodable(entries.count),
+                "managers": AnyCodable(entries),
+            ])
     }
 
     // MARK: - Status
@@ -69,7 +71,9 @@ struct UndoHandler: PepperHandler {
         let index = command.params?["index"]?.intValue ?? 0
 
         guard let (manager, owner) = findManager(index: index) else {
-            return .error(id: command.id, message: "No UndoManager found at index \(index). Use 'list' to see available managers.")
+            return .error(
+                id: command.id, message: "No UndoManager found at index \(index). Use 'list' to see available managers."
+            )
         }
 
         return .ok(id: command.id, data: managerEntry(manager, owner: owner))
@@ -91,13 +95,15 @@ struct UndoHandler: PepperHandler {
         let actionName = manager.undoActionName
         manager.undo()
 
-        return .ok(id: command.id, data: [
-            "performed": AnyCodable("undo"),
-            "action_name": AnyCodable(actionName),
-            "owner": AnyCodable(owner),
-            "can_undo": AnyCodable(manager.canUndo),
-            "can_redo": AnyCodable(manager.canRedo),
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "performed": AnyCodable("undo"),
+                "action_name": AnyCodable(actionName),
+                "owner": AnyCodable(owner),
+                "can_undo": AnyCodable(manager.canUndo),
+                "can_redo": AnyCodable(manager.canRedo),
+            ])
     }
 
     // MARK: - Redo
@@ -116,13 +122,15 @@ struct UndoHandler: PepperHandler {
         let actionName = manager.redoActionName
         manager.redo()
 
-        return .ok(id: command.id, data: [
-            "performed": AnyCodable("redo"),
-            "action_name": AnyCodable(actionName),
-            "owner": AnyCodable(owner),
-            "can_undo": AnyCodable(manager.canUndo),
-            "can_redo": AnyCodable(manager.canRedo),
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "performed": AnyCodable("redo"),
+                "action_name": AnyCodable(actionName),
+                "owner": AnyCodable(owner),
+                "can_undo": AnyCodable(manager.canUndo),
+                "can_redo": AnyCodable(manager.canRedo),
+            ])
     }
 
     // MARK: - Discovery Helpers

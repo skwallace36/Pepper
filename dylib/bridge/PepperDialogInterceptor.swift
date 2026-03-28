@@ -1,5 +1,5 @@
-import AppTrackingTransparency
 import AVFoundation
+import AppTrackingTransparency
 import Contacts
 import CoreLocation
 import Photos
@@ -197,7 +197,8 @@ final class PepperDialogInterceptor {
             method_setImplementation(originalMethod, method_getImplementation(swizzledMethod))
             pepperLog.info("Camera/mic authorization auto-grant installed", category: .lifecycle)
         } else {
-            pepperLog.error("Failed to swizzle AVCaptureDevice.requestAccess(for:completionHandler:)", category: .lifecycle)
+            pepperLog.error(
+                "Failed to swizzle AVCaptureDevice.requestAccess(for:completionHandler:)", category: .lifecycle)
         }
     }
 
@@ -212,7 +213,8 @@ final class PepperDialogInterceptor {
             method_setImplementation(originalMethod, method_getImplementation(swizzledMethod))
             pepperLog.info("Contacts authorization auto-grant installed", category: .lifecycle)
         } else {
-            pepperLog.error("Failed to swizzle CNContactStore.requestAccess(for:completionHandler:)", category: .lifecycle)
+            pepperLog.error(
+                "Failed to swizzle CNContactStore.requestAccess(for:completionHandler:)", category: .lifecycle)
         }
     }
 

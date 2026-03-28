@@ -129,6 +129,10 @@ print(' '.join(d['udid'] for r in devs.values() for d in r if d['state'] == 'Boo
 
   # Safety net: if no final event was emitted, emit one now with diagnostic info
   if [ "$FINAL_EVENT_EMITTED" = false ] && [ -n "$START" ]; then
+    # Extract transcript from verbose log if it wasn't done before cleanup
+    if [ ! -s "$TRANSCRIPT" ] && [ -s "$VERBOSE_LOG" ]; then
+      grep '"type":"result"' "$VERBOSE_LOG" 2>/dev/null | tail -1 > "$TRANSCRIPT" 2>/dev/null || true
+    fi
     local end_ts
     end_ts=$(date +%s)
     local dur=$((end_ts - START))
@@ -186,10 +190,10 @@ fi
 case "$TYPE" in
   bugfix)                MAX_INSTANCES=1 ;;
   pr-verifier|verifier)  MAX_INSTANCES=1 ;;
-  builder)               MAX_INSTANCES=0 ;;  # paused — enable after bugfix+verifier prove stable
-  pr-responder)          MAX_INSTANCES=0 ;;  # paused
+  builder)               MAX_INSTANCES=1 ;;
+  pr-responder)          MAX_INSTANCES=1 ;;
   tester)                MAX_INSTANCES=0 ;;  # paused
-  conflict-resolver)     MAX_INSTANCES=0 ;;  # paused
+  conflict-resolver)     MAX_INSTANCES=1 ;;
   *)                     MAX_INSTANCES=0 ;;
 esac
 
@@ -452,6 +456,7 @@ print(' '.join(d['udid'] for r in devs.values() for d in r if d['state'] == 'Boo
 
 START=$(date +%s)
 TRANSCRIPT="build/logs/transcript-${TYPE}-${START}.json"
+VERBOSE_LOG="build/logs/verbose-${TYPE}-${START}.log"
 
 PROMPT=$(cat "$PROMPT_FILE")
 
@@ -483,15 +488,17 @@ sleep $(( RANDOM % 4 ))
 
 # Launch the agent in background so we can enforce timeout
 # --name is our stable marker for process identification (agents-stop uses pgrep on it)
+# Stream-json gives turn-by-turn verbose log; we extract the final result line for the transcript.
 claude -p \
   "You are the ${TYPE} agent. Follow your instructions." \
   --append-system-prompt "$PROMPT" \
   --model "$MODEL" \
   --max-budget-usd "$BUDGET" \
-  --output-format json \
+  --output-format stream-json \
+  --verbose \
   --worktree \
   --name "pepper-agent-${TYPE}" \
-  > "$TRANSCRIPT" 2>&1 &
+  > "$VERBOSE_LOG" 2>&1 &
 AGENT_PID=$!
 
 # Identify which worktree was created for this agent
@@ -508,10 +515,11 @@ if ! kill -0 "$AGENT_PID" 2>/dev/null; then
   wait "$AGENT_PID" 2>/dev/null
   EXIT_CODE=$?
   AGENT_PID=""
+  grep '"type":"result"' "$VERBOSE_LOG" 2>/dev/null | tail -1 > "$TRANSCRIPT" || true
   END=$(date +%s)
   DURATION=$((END - START))
   COST=$(jq -r '.total_cost_usd // .cost_usd // 0' "$TRANSCRIPT" 2>/dev/null || echo 0)
-  DETAIL=$(head -c 200 "$TRANSCRIPT" 2>/dev/null | tr '\n' ' ' || echo "agent died immediately")
+  DETAIL=$(head -c 200 "$VERBOSE_LOG" 2>/dev/null | tr '\n' ' ' || echo "agent died immediately")
   emit_final "failed" ",\"detail\":\"agent died in <3s (auth? crash?): $(echo "$DETAIL" | jq -Rs '.'| head -c 150)\",\"cost_usd\":${COST},\"duration_s\":${DURATION}"
   echo "Agent died immediately. Transcript: $TRANSCRIPT"
   exit 1
@@ -533,6 +541,10 @@ done
 wait "$AGENT_PID" 2>/dev/null
 EXIT_CODE=$?
 AGENT_PID=""  # Clear so cleanup doesn't try to kill again
+
+# Extract final result line from stream-json verbose log into transcript
+# The result line has {"type":"result",...} with the same shape as --output-format json
+grep '"type":"result"' "$VERBOSE_LOG" 2>/dev/null | tail -1 > "$TRANSCRIPT" || true
 
 END=$(date +%s)
 DURATION=$((END - START))
@@ -720,4 +732,4 @@ fi
 # No auto-chaining — heartbeat is the sole agent scheduler.
 # Spawning subagents here bypassed heartbeat's backoff logic. See #661.
 
-echo "Done. Transcript: $TRANSCRIPT"
+echo "Done. Transcript: $TRANSCRIPT  Verbose: $VERBOSE_LOG"

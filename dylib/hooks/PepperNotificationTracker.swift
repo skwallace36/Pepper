@@ -195,7 +195,7 @@ final class PepperNotificationTracker {
                 let lower = filter.lowercased()
                 records = records.filter { record in
                     (record.notificationName?.lowercased().contains(lower) ?? false)
-                    || record.observerClass.lowercased().contains(lower)
+                        || record.observerClass.lowercased().contains(lower)
                 }
             }
 
@@ -246,7 +246,7 @@ final class PepperNotificationTracker {
                 let lower = filter.lowercased()
                 filtered = filtered.filter { event in
                     (event.notificationName?.lowercased().contains(lower) ?? false)
-                    || event.observerClass.lowercased().contains(lower)
+                        || event.observerClass.lowercased().contains(lower)
                 }
             }
 
@@ -310,10 +310,12 @@ final class PepperNotificationTracker {
             let origIMP = method_getImplementation(method)
             PepperNotificationTracker.origAddObserverIMP = origIMP
 
-            typealias AddFunc = @convention(c) (AnyObject, Selector, AnyObject, Selector, NSNotification.Name?, AnyObject?) -> Void
+            typealias AddFunc =
+                @convention(c) (AnyObject, Selector, AnyObject, Selector, NSNotification.Name?, AnyObject?) -> Void
             let original = unsafeBitCast(origIMP, to: AddFunc.self)
 
-            let block: @convention(block) (AnyObject, AnyObject, Selector, NSNotification.Name?, AnyObject?) -> Void = { center, observer, selector, name, object in
+            let block: @convention(block) (AnyObject, AnyObject, Selector, NSNotification.Name?, AnyObject?) -> Void = {
+                center, observer, selector, name, object in
                 original(center, addSel, observer, selector, name, object)
                 PepperNotificationTracker.shared.recordAddObserver(
                     observer: observer,
@@ -330,17 +332,24 @@ final class PepperNotificationTracker {
             let origIMP = method_getImplementation(method)
             PepperNotificationTracker.origAddBlockObserverIMP = origIMP
 
-            typealias AddBlockFunc = @convention(c) (AnyObject, Selector, NSNotification.Name?, AnyObject?, OperationQueue?, @escaping (Notification) -> Void) -> AnyObject
+            typealias AddBlockFunc =
+                @convention(c) (
+                    AnyObject, Selector, NSNotification.Name?, AnyObject?, OperationQueue?,
+                    @escaping (Notification) -> Void
+                ) -> AnyObject
             let original = unsafeBitCast(origIMP, to: AddBlockFunc.self)
 
-            let block: @convention(block) (AnyObject, NSNotification.Name?, AnyObject?, OperationQueue?, @escaping (Notification) -> Void) -> AnyObject = { center, name, object, queue, usingBlock in
-                let obsRef = original(center, addBlockSel, name, object, queue, usingBlock)
-                PepperNotificationTracker.shared.recordAddBlockObserver(
-                    name: name,
-                    observerRef: obsRef
-                )
-                return obsRef
-            }
+            let block:
+                @convention(block) (
+                    AnyObject, NSNotification.Name?, AnyObject?, OperationQueue?, @escaping (Notification) -> Void
+                ) -> AnyObject = { center, name, object, queue, usingBlock in
+                    let obsRef = original(center, addBlockSel, name, object, queue, usingBlock)
+                    PepperNotificationTracker.shared.recordAddBlockObserver(
+                        name: name,
+                        observerRef: obsRef
+                    )
+                    return obsRef
+                }
             method_setImplementation(method, imp_implementationWithBlock(block))
         }
 
@@ -369,10 +378,12 @@ final class PepperNotificationTracker {
             let origIMP = method_getImplementation(method)
             PepperNotificationTracker.origRemoveObserverNameIMP = origIMP
 
-            typealias RemoveNameFunc = @convention(c) (AnyObject, Selector, AnyObject, NSNotification.Name?, AnyObject?) -> Void
+            typealias RemoveNameFunc =
+                @convention(c) (AnyObject, Selector, AnyObject, NSNotification.Name?, AnyObject?) -> Void
             let original = unsafeBitCast(origIMP, to: RemoveNameFunc.self)
 
-            let block: @convention(block) (AnyObject, AnyObject, NSNotification.Name?, AnyObject?) -> Void = { center, observer, name, object in
+            let block: @convention(block) (AnyObject, AnyObject, NSNotification.Name?, AnyObject?) -> Void = {
+                center, observer, name, object in
                 PepperNotificationTracker.shared.recordRemoveObserver(
                     observer: observer,
                     name: name

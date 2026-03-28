@@ -155,7 +155,8 @@ final class PepperServer {
         // Binary frame format: [4-byte big-endian header length][JSON header][raw binary payload]
         if let binaryPayload = PepperResponse.takeBinaryPayload(for: response.id) {
             guard let headerData = try? encoder.encode(response) else {
-                pepperLog.warning("Failed to encode binary response header id=\(response.id) — frame dropped", category: .server)
+                pepperLog.warning(
+                    "Failed to encode binary response header id=\(response.id) — frame dropped", category: .server)
                 return
             }
             var headerLen = UInt32(headerData.count).bigEndian
@@ -169,7 +170,7 @@ final class PepperServer {
         guard let data = try? encoder.encode(response) else {
             pepperLog.warning(
                 "Failed to encode response id=\(response.id) status=\(response.status.rawValue) — "
-                + "response dropped (possible non-finite float or unencodable value)",
+                    + "response dropped (possible non-finite float or unencodable value)",
                 category: .server)
             return
         }

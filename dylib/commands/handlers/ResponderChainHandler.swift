@@ -25,8 +25,11 @@ struct ResponderChainHandler: PepperHandler {
             return .error(id: command.id, message: resolved.error ?? "Could not resolve target")
         }
 
-        let point = resolved.point ?? CGPoint(x: target.convert(target.bounds, to: nil).midX,
-                                               y: target.convert(target.bounds, to: nil).midY)
+        let point =
+            resolved.point
+            ?? CGPoint(
+                x: target.convert(target.bounds, to: nil).midX,
+                y: target.convert(target.bounds, to: nil).midY)
 
         // Build all three data sets
         let gestureStack = buildGestureStack(for: target)
@@ -34,8 +37,10 @@ struct ResponderChainHandler: PepperHandler {
         let hitTestPath = buildHitTestPath(at: point, in: windows)
 
         let data: [String: AnyCodable] = [
-            "point": AnyCodable(["x": AnyCodable(Double(point.x)),
-                                 "y": AnyCodable(Double(point.y))]),
+            "point": AnyCodable([
+                "x": AnyCodable(Double(point.x)),
+                "y": AnyCodable(Double(point.y)),
+            ]),
             "target": AnyCodable(describeView(target)),
             "gesture_recognizers": AnyCodable(gestureStack),
             "responder_chain": AnyCodable(responderChain),
@@ -60,8 +65,9 @@ struct ResponderChainHandler: PepperHandler {
 
         // Point-based: hit test to find the view at that point
         if let pointDict = params["point"]?.dictValue,
-           let x = pointDict["x"]?.doubleValue,
-           let y = pointDict["y"]?.doubleValue {
+            let x = pointDict["x"]?.doubleValue,
+            let y = pointDict["y"]?.doubleValue
+        {
             let point = CGPoint(x: x, y: y)
             for window in windows.reversed() {
                 if let view = window.hitTest(point, with: nil) {
@@ -81,8 +87,9 @@ struct ResponderChainHandler: PepperHandler {
             }
         }
 
-        return ResolvedTarget(view: nil, point: nil,
-                              error: "Element not found. Use: point, element, text, label, or class")
+        return ResolvedTarget(
+            view: nil, point: nil,
+            error: "Element not found. Use: point, element, text, label, or class")
     }
 
     // MARK: - Gesture Recognizer Stack
@@ -194,7 +201,7 @@ struct ResponderChainHandler: PepperHandler {
 
         while let r = responder {
             var entry: [String: AnyCodable] = [
-                "class": AnyCodable(String(describing: type(of: r))),
+                "class": AnyCodable(String(describing: type(of: r)))
             ]
 
             if let view = r as? UIView {
@@ -287,7 +294,7 @@ struct ResponderChainHandler: PepperHandler {
 
     private func describeView(_ view: UIView) -> [String: AnyCodable] {
         var info: [String: AnyCodable] = [
-            "class": AnyCodable(String(describing: type(of: view))),
+            "class": AnyCodable(String(describing: type(of: view)))
         ]
 
         let frame = view.convert(view.bounds, to: nil)

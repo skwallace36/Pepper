@@ -46,21 +46,22 @@ extension IntrospectHandler {
             }
             if isDuplicate { continue }
 
-            results.append(MapElement(
-                label: trimmed,
-                type: "staticText",
-                center: ocrCenter,
-                frame: obs.bounds,
-                hitReachable: false,
-                visible: 1.0,
-                heuristic: nil,
-                iconName: nil,
-                isInteractive: false,
-                value: nil,
-                traits: [],
-                scrollContext: nil,
-                labelSource: "ocr"
-            ))
+            results.append(
+                MapElement(
+                    label: trimmed,
+                    type: "staticText",
+                    center: ocrCenter,
+                    frame: obs.bounds,
+                    hitReachable: false,
+                    visible: 1.0,
+                    heuristic: nil,
+                    iconName: nil,
+                    isInteractive: false,
+                    value: nil,
+                    traits: [],
+                    scrollContext: nil,
+                    labelSource: "ocr"
+                ))
         }
         return results
     }
@@ -76,16 +77,17 @@ extension IntrospectHandler {
             s = s.replacingOccurrences(of: "  ", with: " ")
         }
         // Replace commonly confused OCR characters with canonical forms
-        s = s.replacingOccurrences(of: "|", with: "l")   // pipe → l
+        s = s.replacingOccurrences(of: "|", with: "l")  // pipe → l
         s = s.replacingOccurrences(of: "rn", with: "m")  // rn → m
         // Map confusable chars: 0↔o, 1↔l
-        s = String(s.map { ch in
-            switch ch {
-            case "0": return Character("o")
-            case "1": return Character("l")
-            default: return ch
-            }
-        })
+        s = String(
+            s.map { ch in
+                switch ch {
+                case "0": return Character("o")
+                case "1": return Character("l")
+                default: return ch
+                }
+            })
         return s
     }
 

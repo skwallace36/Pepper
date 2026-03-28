@@ -28,7 +28,8 @@ enum PepperElementSuggestions {
             return (label, 0)
         }
 
-        let ranked = scored
+        let ranked =
+            scored
             .filter { $0.score > 0 || labels.count <= maxResults }
             .sorted { $0.score > $1.score }
         return Array(ranked.prefix(maxResults).map { $0.label })

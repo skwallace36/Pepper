@@ -114,7 +114,7 @@ extension ElementDiscoveryBridge {
 
             var label = pepperSanitizeLabel(view.accessibilityLabel)
             // Fall back to placeholder for unlabeled text fields
-            if (label == nil || label?.isEmpty == true), let tf = view as? UITextField,
+            if label == nil || label?.isEmpty == true, let tf = view as? UITextField,
                 let placeholder = tf.placeholder, !placeholder.isEmpty
             {
                 label = placeholder
@@ -136,7 +136,8 @@ extension ElementDiscoveryBridge {
                     iconName: &iconName
                 )
 
-            let labelSource: String? = labeled
+            let labelSource: String? =
+                labeled
                 ? Self.classifyLabelSource(view: view, label: label ?? "")
                 : nil
             results.append(

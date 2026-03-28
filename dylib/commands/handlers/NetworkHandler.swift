@@ -37,7 +37,11 @@ struct NetworkHandler: PepperHandler {
 
     func handle(_ command: PepperCommand) -> PepperResponse {
         guard let action = command.params?["action"]?.stringValue else {
-            return .error(id: command.id, message: "Missing 'action' param. Available: start, stop, status, log, clear, simulate, conditions, remove_condition, clear_conditions, mock, mocks, remove_mock, clear_mocks")
+            return .error(
+                id: command.id,
+                message:
+                    "Missing 'action' param. Available: start, stop, status, log, clear, simulate, conditions, remove_condition, clear_conditions, mock, mocks, remove_mock, clear_mocks"
+            )
         }
 
         PepperFlightRecorder.shared.ensureInstalled()
@@ -82,31 +86,41 @@ struct NetworkHandler: PepperHandler {
 
         case "conditions":
             let conditions = interceptor.activeConditions
-            return .ok(id: command.id, data: [
-                "count": AnyCodable(conditions.count),
-                "conditions": AnyCodable(conditions.map { AnyCodable($0.toDictionary()) }),
-            ])
+            return .ok(
+                id: command.id,
+                data: [
+                    "count": AnyCodable(conditions.count),
+                    "conditions": AnyCodable(conditions.map { AnyCodable($0.toDictionary()) }),
+                ])
 
         case "remove_condition":
             guard let conditionId = command.params?["id"]?.stringValue else {
                 return .error(id: command.id, message: "Missing 'id' param for remove_condition")
             }
             interceptor.removeCondition(id: conditionId)
-            return .ok(id: command.id, data: [
-                "removed": AnyCodable(conditionId),
-            ])
+            return .ok(
+                id: command.id,
+                data: [
+                    "removed": AnyCodable(conditionId)
+                ])
 
         case "clear_conditions":
             interceptor.removeAllConditions()
-            return .ok(id: command.id, data: [
-                "cleared": AnyCodable(true),
-            ])
+            return .ok(
+                id: command.id,
+                data: [
+                    "cleared": AnyCodable(true)
+                ])
 
         case "mock", "mocks", "remove_mock", "clear_mocks":
             return handleMockAction(action, command)
 
         default:
-            return .error(id: command.id, message: "Unknown action '\(action)'. Available: start, stop, status, log, clear, simulate, conditions, remove_condition, clear_conditions, mock, mocks, remove_mock, clear_mocks")
+            return .error(
+                id: command.id,
+                message:
+                    "Unknown action '\(action)'. Available: start, stop, status, log, clear, simulate, conditions, remove_condition, clear_conditions, mock, mocks, remove_mock, clear_mocks"
+            )
         }
     }
 
@@ -170,7 +184,9 @@ struct NetworkHandler: PepperHandler {
 
     private func handleSimulate(_ command: PepperCommand) -> PepperResponse {
         guard let effectName = command.params?["effect"]?.stringValue else {
-            return .error(id: command.id, message: "Missing 'effect' param. Available: latency, fail_status, fail_error, throttle, offline")
+            return .error(
+                id: command.id,
+                message: "Missing 'effect' param. Available: latency, fail_status, fail_error, throttle, offline")
         }
 
         let interceptor = PepperNetworkInterceptor.shared
@@ -212,7 +228,10 @@ struct NetworkHandler: PepperHandler {
             description = "Simulate offline"
 
         default:
-            return .error(id: command.id, message: "Unknown effect '\(effectName)'. Available: latency, fail_status, fail_error, throttle, offline")
+            return .error(
+                id: command.id,
+                message:
+                    "Unknown effect '\(effectName)'. Available: latency, fail_status, fail_error, throttle, offline")
         }
 
         // Build matcher (optional — nil means match all)
@@ -241,12 +260,14 @@ struct NetworkHandler: PepperHandler {
         )
         interceptor.addCondition(condition)
 
-        return .ok(id: command.id, data: [
-            "condition_id": AnyCodable(conditionId),
-            "effect": AnyCodable(effectName),
-            "description": AnyCodable(description),
-            "active_conditions": AnyCodable(interceptor.activeConditions.count),
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "condition_id": AnyCodable(conditionId),
+                "effect": AnyCodable(effectName),
+                "description": AnyCodable(description),
+                "active_conditions": AnyCodable(interceptor.activeConditions.count),
+            ])
     }
 
     // MARK: - Mock
@@ -259,23 +280,29 @@ struct NetworkHandler: PepperHandler {
             return handleMock(command)
         case "mocks":
             let mocks = interceptor.activeMocks
-            return .ok(id: command.id, data: [
-                "count": AnyCodable(mocks.count),
-                "mocks": AnyCodable(mocks.map { AnyCodable($0.toDictionary()) }),
-            ])
+            return .ok(
+                id: command.id,
+                data: [
+                    "count": AnyCodable(mocks.count),
+                    "mocks": AnyCodable(mocks.map { AnyCodable($0.toDictionary()) }),
+                ])
         case "remove_mock":
             guard let mockId = command.params?["id"]?.stringValue else {
                 return .error(id: command.id, message: "Missing 'id' param for remove_mock")
             }
             interceptor.removeMock(id: mockId)
-            return .ok(id: command.id, data: [
-                "removed": AnyCodable(mockId),
-            ])
+            return .ok(
+                id: command.id,
+                data: [
+                    "removed": AnyCodable(mockId)
+                ])
         case "clear_mocks":
             interceptor.removeAllMocks()
-            return .ok(id: command.id, data: [
-                "cleared": AnyCodable(true),
-            ])
+            return .ok(
+                id: command.id,
+                data: [
+                    "cleared": AnyCodable(true)
+                ])
         default:
             return .error(id: command.id, message: "Unknown mock action '\(action)'")
         }
@@ -283,7 +310,8 @@ struct NetworkHandler: PepperHandler {
 
     private func handleMock(_ command: PepperCommand) -> PepperResponse {
         guard let urlPattern = command.params?["url"]?.stringValue else {
-            return .error(id: command.id, message: "Missing 'url' param — URL pattern to match (substring, case-insensitive)")
+            return .error(
+                id: command.id, message: "Missing 'url' param — URL pattern to match (substring, case-insensitive)")
         }
 
         let interceptor = PepperNetworkInterceptor.shared
@@ -326,11 +354,13 @@ struct NetworkHandler: PepperHandler {
         )
         interceptor.addMock(mock)
 
-        return .ok(id: command.id, data: [
-            "mock_id": AnyCodable(mockId),
-            "status_code": AnyCodable(statusCode),
-            "description": AnyCodable(description),
-            "active_mocks": AnyCodable(interceptor.activeMocks.count),
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "mock_id": AnyCodable(mockId),
+                "status_code": AnyCodable(statusCode),
+                "description": AnyCodable(description),
+                "active_mocks": AnyCodable(interceptor.activeMocks.count),
+            ])
     }
 }

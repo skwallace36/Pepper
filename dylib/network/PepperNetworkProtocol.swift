@@ -201,12 +201,14 @@ final class PepperNetworkProtocol: URLProtocol {
         case .failStatus(let statusCode):
             // swiftlint:disable:next force_unwrapping — "about:blank" is a valid URL literal
             let responseUrl = request.url ?? URL(string: "about:blank")!
-            guard let syntheticResponse = HTTPURLResponse(
-                url: responseUrl,
-                statusCode: statusCode,
-                httpVersion: "HTTP/1.1",
-                headerFields: ["X-Pepper-Simulated": "true"]
-            ) else { return }
+            guard
+                let syntheticResponse = HTTPURLResponse(
+                    url: responseUrl,
+                    statusCode: statusCode,
+                    httpVersion: "HTTP/1.1",
+                    headerFields: ["X-Pepper-Simulated": "true"]
+                )
+            else { return }
             let body = Data("{\"error\":\"Simulated HTTP \(statusCode) (Pepper network condition)\"}".utf8)
             let respBody = PepperNetworkInterceptor.processBody(body, contentType: "application/json")
             let responseInfo = NetworkResponseInfo(
@@ -276,12 +278,14 @@ final class PepperNetworkProtocol: URLProtocol {
         responseHeaders["X-Pepper-Mocked"] = "true"
         // swiftlint:disable:next force_unwrapping — "about:blank" is a valid URL literal
         let responseUrl = request.url ?? URL(string: "about:blank")!
-        guard let syntheticResponse = HTTPURLResponse(
-            url: responseUrl,
-            statusCode: mock.statusCode,
-            httpVersion: "HTTP/1.1",
-            headerFields: responseHeaders
-        ) else { return }
+        guard
+            let syntheticResponse = HTTPURLResponse(
+                url: responseUrl,
+                statusCode: mock.statusCode,
+                httpVersion: "HTTP/1.1",
+                headerFields: responseHeaders
+            )
+        else { return }
 
         let respContentType = mock.headers["Content-Type"] ?? "application/json"
         let respBody = PepperNetworkInterceptor.processBody(mock.body, contentType: respContentType)

@@ -45,7 +45,8 @@ final class PepperDispatcher {
     }
 
     /// Register a closure-based handler for simple commands.
-    func register(_ command: String, timeout: TimeInterval = 10.0, handler: @escaping (PepperCommand) -> PepperResponse) {
+    func register(_ command: String, timeout: TimeInterval = 10.0, handler: @escaping (PepperCommand) -> PepperResponse)
+    {
         register(ClosureHandler(commandName: command, closure: handler, timeout: timeout))
     }
 
@@ -191,9 +192,11 @@ final class PepperDispatcher {
                 message: "[\(command.cmd)] ObjC exception: \(reason)")
         }
 
-        let response = result ?? .error(
-            id: command.id,
-            message: "[\(command.cmd)] Handler produced no response")
+        let response =
+            result
+            ?? .error(
+                id: command.id,
+                message: "[\(command.cmd)] Handler produced no response")
 
         // Record to flight recorder (skip timeline queries to avoid noise)
         if command.cmd != "timeline" {

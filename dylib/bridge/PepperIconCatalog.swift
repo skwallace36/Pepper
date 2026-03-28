@@ -62,14 +62,16 @@ final class PepperIconCatalog {
             // Wrap in ObjC exception catcher — some assets (vector PDFs, corrupted entries)
             // crash UIKit internally with "Need an imageRef" assertion.
             var image: UIImage?
-            PepperObjCExceptionCatcher.try({
-                image =
-                    UIImage(named: name, in: bundle, with: nil)
-                    ?? UIImage(named: name, in: Bundle.main, with: nil)
-                    ?? UIImage(named: name)
-            }, catch: { _ in
-                image = nil
-            })
+            PepperObjCExceptionCatcher.try(
+                {
+                    image =
+                        UIImage(named: name, in: bundle, with: nil)
+                        ?? UIImage(named: name, in: Bundle.main, with: nil)
+                        ?? UIImage(named: name)
+                },
+                catch: { _ in
+                    image = nil
+                })
             guard let image = image, image.cgImage != nil else {
                 failedLoad.append(name)
                 continue
@@ -381,7 +383,7 @@ final class PepperIconCatalog {
         var bestMatch: IconMatch?
         for scale in [0.7, 1.0, 1.5, 1.82] as [CGFloat] {
             if let match = identifyAtScale(frame: effectiveFrame, window: window, scale: scale) {
-                if match.distance == 0 { return match } // Perfect → short-circuit
+                if match.distance == 0 { return match }  // Perfect → short-circuit
                 if match.distance < (bestMatch?.distance ?? Int.max) {
                     bestMatch = match
                 }

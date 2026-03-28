@@ -29,13 +29,18 @@ final class ElementCacheBridge {
     // MARK: - Cached results
 
     var accessibility:
-        (gen: UInt64, rootID: ObjectIdentifier?, elements: [PepperAccessibilityElement], truncated: Bool, time: CFAbsoluteTime)?
+        (
+            gen: UInt64, rootID: ObjectIdentifier?, elements: [PepperAccessibilityElement], truncated: Bool,
+            time: CFAbsoluteTime
+        )?
 
     var interactive:
-        (gen: UInt64, rootID: ObjectIdentifier?, elements: [PepperInteractiveElement], truncated: Bool, time: CFAbsoluteTime)?
+        (
+            gen: UInt64, rootID: ObjectIdentifier?, elements: [PepperInteractiveElement], truncated: Bool,
+            time: CFAbsoluteTime
+        )?
 
-    var scrollViews:
-        (gen: UInt64, views: [(scrollView: UIScrollView, frameInWindow: CGRect, direction: String)])?
+    var scrollViews: (gen: UInt64, views: [(scrollView: UIScrollView, frameInWindow: CGRect, direction: String)])?
 
     // MARK: - Invalidation
 

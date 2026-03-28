@@ -63,11 +63,12 @@ final class PepperFrameProfiler {
     func mark(_ label: String) {
         let ts = CACurrentMediaTime()
         queue.async(flags: .barrier) {
-            self.markers.append(FrameMarker(
-                label: label,
-                timestamp: ts,
-                offsetMs: (ts - self.startTime) * 1000
-            ))
+            self.markers.append(
+                FrameMarker(
+                    label: label,
+                    timestamp: ts,
+                    offsetMs: (ts - self.startTime) * 1000
+                ))
         }
         PepperFlightRecorder.shared.record(type: .command, summary: "perf:mark \(label)")
     }

@@ -128,7 +128,7 @@ struct FlagsHandler: PepperHandler {
             return .ok(
                 id: command.id,
                 data: [
-                    "cleared": AnyCodable(count),
+                    "cleared": AnyCodable(count)
                 ])
         }
     }

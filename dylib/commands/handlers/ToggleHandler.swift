@@ -26,7 +26,8 @@ struct ToggleHandler: PepperHandler {
 
         let (resolved, errorMsg) = PepperElementResolver.resolve(params: command.params, in: window)
         guard let resolved = resolved else {
-            return .elementNotFound(id: command.id, message: errorMsg ?? "Element not found: \(elementID)", query: elementID)
+            return .elementNotFound(
+                id: command.id, message: errorMsg ?? "Element not found: \(elementID)", query: elementID)
         }
         let element = resolved.view
         let swiftUITapPoint = resolved.tapPoint

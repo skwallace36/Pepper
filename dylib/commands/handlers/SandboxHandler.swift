@@ -79,10 +79,12 @@ struct SandboxHandler: PepperHandler {
             ])
         }
 
-        return .ok(id: command.id, data: [
-            "paths": AnyCodable(paths),
-            "directories": AnyCodable(info),
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "paths": AnyCodable(paths),
+                "directories": AnyCodable(info),
+            ])
     }
 
     // MARK: - List
@@ -103,7 +105,8 @@ struct SandboxHandler: PepperHandler {
 
         let contents: [String]
         do {
-            contents = try recursive
+            contents =
+                try recursive
                 ? fm.subpathsOfDirectory(atPath: path)
                 : fm.contentsOfDirectory(atPath: path)
         } catch {
@@ -137,12 +140,14 @@ struct SandboxHandler: PepperHandler {
             entries.append(entry)
         }
 
-        return .ok(id: command.id, data: [
-            "path": AnyCodable(path),
-            "count": AnyCodable(entries.count),
-            "total": AnyCodable(contents.count),
-            "entries": AnyCodable(entries),
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "path": AnyCodable(path),
+                "count": AnyCodable(entries.count),
+                "total": AnyCodable(contents.count),
+                "entries": AnyCodable(entries),
+            ])
     }
 
     // MARK: - Read
@@ -166,18 +171,24 @@ struct SandboxHandler: PepperHandler {
             do {
                 let plist = try PropertyListSerialization.propertyList(from: data, options: [], format: nil)
                 do {
-                    let json = try JSONSerialization.data(withJSONObject: plist, options: [.prettyPrinted, .sortedKeys])
+                    let json = try JSONSerialization.data(
+                        withJSONObject: plist, options: [.prettyPrinted, .sortedKeys])
                     if let str = String(data: json, encoding: .utf8) {
-                        return .ok(id: command.id, data: [
-                            "path": AnyCodable(path), "format": AnyCodable("plist"),
-                            "content": AnyCodable(str), "size": AnyCodable(data.count),
-                        ])
+                        return .ok(
+                            id: command.id,
+                            data: [
+                                "path": AnyCodable(path), "format": AnyCodable("plist"),
+                                "content": AnyCodable(str), "size": AnyCodable(data.count),
+                            ])
                     }
                 } catch {
-                    pepperLog.debug("Failed to serialize plist to JSON at \(path): \(error) — falling through to text", category: .commands)
+                    pepperLog.debug(
+                        "Failed to serialize plist to JSON at \(path): \(error) — falling through to text",
+                        category: .commands)
                 }
             } catch {
-                pepperLog.debug("Failed to parse plist at \(path): \(error) — falling through to text", category: .commands)
+                pepperLog.debug(
+                    "Failed to parse plist at \(path): \(error) — falling through to text", category: .commands)
             }
         }
 
@@ -186,18 +197,24 @@ struct SandboxHandler: PepperHandler {
             do {
                 let obj = try JSONSerialization.jsonObject(with: data)
                 do {
-                    let pretty = try JSONSerialization.data(withJSONObject: obj, options: [.prettyPrinted, .sortedKeys])
+                    let pretty = try JSONSerialization.data(
+                        withJSONObject: obj, options: [.prettyPrinted, .sortedKeys])
                     if let str = String(data: pretty, encoding: .utf8) {
-                        return .ok(id: command.id, data: [
-                            "path": AnyCodable(path), "format": AnyCodable("json"),
-                            "content": AnyCodable(str), "size": AnyCodable(data.count),
-                        ])
+                        return .ok(
+                            id: command.id,
+                            data: [
+                                "path": AnyCodable(path), "format": AnyCodable("json"),
+                                "content": AnyCodable(str), "size": AnyCodable(data.count),
+                            ])
                     }
                 } catch {
-                    pepperLog.debug("Failed to re-serialize JSON at \(path): \(error) — falling through to text", category: .commands)
+                    pepperLog.debug(
+                        "Failed to re-serialize JSON at \(path): \(error) — falling through to text",
+                        category: .commands)
                 }
             } catch {
-                pepperLog.debug("Failed to parse JSON at \(path): \(error) — falling through to text", category: .commands)
+                pepperLog.debug(
+                    "Failed to parse JSON at \(path): \(error) — falling through to text", category: .commands)
             }
         }
 
@@ -205,22 +222,26 @@ struct SandboxHandler: PepperHandler {
         if let text = String(data: data, encoding: .utf8) {
             let maxLen = command.params?["max_length"]?.intValue ?? 50_000
             let truncated = text.count > maxLen
-            return .ok(id: command.id, data: [
-                "path": AnyCodable(path), "format": AnyCodable("text"),
-                "content": AnyCodable(truncated ? String(text.prefix(maxLen)) : text),
-                "size": AnyCodable(text.count), "truncated": AnyCodable(truncated),
-            ])
+            return .ok(
+                id: command.id,
+                data: [
+                    "path": AnyCodable(path), "format": AnyCodable("text"),
+                    "content": AnyCodable(truncated ? String(text.prefix(maxLen)) : text),
+                    "size": AnyCodable(text.count), "truncated": AnyCodable(truncated),
+                ])
         }
 
         // Binary → base64
         let maxBytes = command.params?["max_length"]?.intValue ?? 10_000
         let truncated = data.count > maxBytes
         let slice = truncated ? data.prefix(maxBytes) : data
-        return .ok(id: command.id, data: [
-            "path": AnyCodable(path), "format": AnyCodable("base64"),
-            "content": AnyCodable(slice.base64EncodedString()),
-            "size": AnyCodable(data.count), "truncated": AnyCodable(truncated),
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "path": AnyCodable(path), "format": AnyCodable("base64"),
+                "content": AnyCodable(slice.base64EncodedString()),
+                "size": AnyCodable(data.count), "truncated": AnyCodable(truncated),
+            ])
     }
 
     // MARK: - Write
@@ -270,12 +291,14 @@ struct SandboxHandler: PepperHandler {
 
         let existed = fm.fileExists(atPath: path)
         if fm.createFile(atPath: path, contents: data) {
-            return .ok(id: command.id, data: [
-                "path": AnyCodable(path),
-                "size": AnyCodable(data.count),
-                "created": AnyCodable(!existed),
-                "ok": AnyCodable(true),
-            ])
+            return .ok(
+                id: command.id,
+                data: [
+                    "path": AnyCodable(path),
+                    "size": AnyCodable(data.count),
+                    "created": AnyCodable(!existed),
+                    "ok": AnyCodable(true),
+                ])
         }
 
         return .error(id: command.id, message: "Failed to write file: \(path)")
@@ -302,10 +325,12 @@ struct SandboxHandler: PepperHandler {
 
         do {
             try fm.removeItem(atPath: path)
-            return .ok(id: command.id, data: [
-                "path": AnyCodable(path),
-                "removed": AnyCodable(true),
-            ])
+            return .ok(
+                id: command.id,
+                data: [
+                    "path": AnyCodable(path),
+                    "removed": AnyCodable(true),
+                ])
         } catch {
             return .error(id: command.id, message: "Delete failed: \(error.localizedDescription)")
         }
@@ -412,12 +437,14 @@ struct SandboxHandler: PepperHandler {
             ])
         }
 
-        return .ok(id: command.id, data: [
-            "path": AnyCodable(path),
-            "total_size": AnyCodable(Int(totalSize)),
-            "total_formatted": AnyCodable(formatBytes(totalSize)),
-            "directories": AnyCodable(entries),
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "path": AnyCodable(path),
+                "total_size": AnyCodable(Int(totalSize)),
+                "total_formatted": AnyCodable(formatBytes(totalSize)),
+                "directories": AnyCodable(entries),
+            ])
     }
 
     // MARK: - Helpers

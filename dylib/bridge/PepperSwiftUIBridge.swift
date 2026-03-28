@@ -29,14 +29,17 @@ final class PepperSwiftUIBridge {
         discovery.collectAccessibilityElements(from: rootView)
     }
 
-    func annotateDepth(_ elements: [PepperAccessibilityElement], alreadyScoped: Bool = false) -> [PepperAccessibilityElement] {
+    func annotateDepth(_ elements: [PepperAccessibilityElement], alreadyScoped: Bool = false)
+        -> [PepperAccessibilityElement]
+    {
         discovery.annotateDepth(elements, alreadyScoped: alreadyScoped)
     }
 
     func discoverInteractiveElements(
         rootView: UIView? = nil, hitTestFilter: Bool = true, maxElements: Int = 500
     ) -> [PepperInteractiveElement] {
-        discovery.discoverInteractiveElements(rootView: rootView, hitTestFilter: hitTestFilter, maxElements: maxElements)
+        discovery.discoverInteractiveElements(
+            rootView: rootView, hitTestFilter: hitTestFilter, maxElements: maxElements)
     }
 
     func checkFrameVisibility(frame: CGRect, in window: UIWindow) -> Float {

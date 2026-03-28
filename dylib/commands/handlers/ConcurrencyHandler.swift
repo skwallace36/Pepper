@@ -41,7 +41,7 @@ struct ConcurrencyHandler: PepperHandler {
         let runtime = SwiftConcurrencyRuntime.shared
 
         var data: [String: AnyCodable] = [
-            "runtime_available": AnyCodable(runtime.available),
+            "runtime_available": AnyCodable(runtime.available)
         ]
 
         // Active task count from debug symbol
@@ -92,7 +92,7 @@ struct ConcurrencyHandler: PepperHandler {
         var actorDetails: [[String: AnyCodable]] = []
         for className in actors.prefix(limit) {
             var entry: [String: AnyCodable] = [
-                "class": AnyCodable(className),
+                "class": AnyCodable(className)
             ]
 
             // Check if it's a default actor (has built-in serial executor)
@@ -128,7 +128,7 @@ struct ConcurrencyHandler: PepperHandler {
         let runtime = SwiftConcurrencyRuntime.shared
 
         var data: [String: AnyCodable] = [
-            "runtime_available": AnyCodable(runtime.available),
+            "runtime_available": AnyCodable(runtime.available)
         ]
 
         let taskCount = runtime.activeTaskCount
@@ -177,7 +177,8 @@ struct ConcurrencyHandler: PepperHandler {
         }
 
         // Parse hex address
-        let cleanAddress = addressStr.hasPrefix("0x")
+        let cleanAddress =
+            addressStr.hasPrefix("0x")
             ? String(addressStr.dropFirst(2))
             : addressStr
 

@@ -190,7 +190,8 @@ struct NavigateHandler: PepperHandler {
         }
         // Generic mode: match against standard UITabBarController tab titles
         guard let tabBarVC = UIWindow.pepper_tabBarController as? UITabBarController,
-              let vcs = tabBarVC.viewControllers else { return nil }
+            let vcs = tabBarVC.viewControllers
+        else { return nil }
         let normalized = name.lowercased()
         return vcs.firstIndex { vc in
             let title = vc.tabBarItem.title ?? vc.title ?? ""
