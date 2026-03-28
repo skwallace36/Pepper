@@ -137,10 +137,7 @@ enum PepperPredicateQuery {
     static func serializeMatch(_ el: PepperInteractiveElement) -> [String: AnyCodable] {
         var dict: [String: AnyCodable] = [
             "type": AnyCodable(inferType(el)),
-            "center": AnyCodable([
-                "x": AnyCodable(Int(el.center.x)),
-                "y": AnyCodable(Int(el.center.y)),
-            ]),
+            "center": AnyCodable([AnyCodable(Int(el.center.x)), AnyCodable(Int(el.center.y))]),
         ]
         if let label = el.label {
             dict["label"] = AnyCodable(label)
@@ -156,9 +153,6 @@ enum PepperPredicateQuery {
         }
         if !el.traits.isEmpty {
             dict["traits"] = AnyCodable(el.traits.map { AnyCodable($0) })
-        }
-        if let vc = el.viewController {
-            dict["view_controller"] = AnyCodable(vc)
         }
         // Include tap command hint
         if let label = el.label, !label.isEmpty {

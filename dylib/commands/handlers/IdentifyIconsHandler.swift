@@ -6,8 +6,8 @@ import UIKit
 /// Usage: {"cmd": "identify_icons"}
 ///
 /// Returns each unlabeled small-square element with:
-/// - frame, center, className
-/// - matched icon_name (or null)
+/// - center coordinates
+/// - matched icon_name (omitted if no match)
 /// - distance (hamming) and confidence ("exact" / "fuzzy" / "none")
 /// - catalog stats (built, icon_count, bundle path)
 struct IdentifyIconsHandler: PepperHandler {
@@ -39,17 +39,7 @@ struct IdentifyIconsHandler: PepperHandler {
             let debug = PepperIconCatalog.shared.identifyDebug(frame: element.frame)
 
             var entry: [String: AnyCodable] = [
-                "class": AnyCodable(element.className),
-                "center": AnyCodable([
-                    "x": AnyCodable(Double(element.center.x)),
-                    "y": AnyCodable(Double(element.center.y)),
-                ]),
-                "frame": AnyCodable([
-                    "x": AnyCodable(Double(element.frame.origin.x)),
-                    "y": AnyCodable(Double(element.frame.origin.y)),
-                    "width": AnyCodable(Double(element.frame.size.width)),
-                    "height": AnyCodable(Double(element.frame.size.height)),
-                ]),
+                "center": AnyCodable([AnyCodable(Int(element.center.x)), AnyCodable(Int(element.center.y))]),
             ]
 
             if let debug = debug {
@@ -60,7 +50,6 @@ struct IdentifyIconsHandler: PepperHandler {
                     entry["distance"] = AnyCodable(match.distance)
                     entry["confidence"] = AnyCodable(match.distance == 0 ? "exact" : "fuzzy")
                 } else {
-                    entry["icon_name"] = AnyCodable(NSNull())
                     entry["best_candidate"] = AnyCodable(debug.bestName as Any)
                     entry["best_distance"] = AnyCodable(debug.bestDistance)
                     entry["confidence"] = AnyCodable("none")
@@ -78,7 +67,6 @@ struct IdentifyIconsHandler: PepperHandler {
                 }
                 entry["scales"] = AnyCodable(scales)
             } else {
-                entry["icon_name"] = AnyCodable(NSNull())
                 entry["confidence"] = AnyCodable("none")
             }
 
