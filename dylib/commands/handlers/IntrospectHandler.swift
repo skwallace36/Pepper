@@ -866,6 +866,15 @@ struct IntrospectHandler: PepperHandler {
             data["element_limit"] = AnyCodable(500)
         }
 
+        // Keyboard state: surface when keyboard covers the lower screen so agents
+        // know tapping covered elements will fail.
+        let kbMonitor = PepperKeyboardMonitor.shared
+        if kbMonitor.isVisible {
+            let frame = kbMonitor.keyboardFrame
+            data["keyboard_visible"] = AnyCodable(true)
+            data["keyboard_height"] = AnyCodable(Int(frame.height))
+        }
+
         // Leak detection: build a screen fingerprint from element labels
         // so type-erased screens (short generic IDs) get unique keys
         let elementLabels = mergedInteractive.compactMap { $0.label }
