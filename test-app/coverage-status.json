@@ -189,6 +189,11 @@
     "status": "untested",
     "surface": "Any screen"
   },
+  "dynamic_type": {
+    "notes": "New command. Overrides UIContentSizeCategory via traitOverrides on all visible windows. Same runtime override pattern as appearance/locale.",
+    "status": "untested",
+    "surface": "Any state"
+  },
   "dismiss": {
     "notes": "BUG-008 FIXED: DismissHandler now checks modalPresentationStyle (pageSheet/formSheet/automatic) instead of chain depth. SwiftUI .sheet() presentations correctly detected and dismissed.",
     "status": "pass",
