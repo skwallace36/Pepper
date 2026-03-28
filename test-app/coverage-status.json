@@ -981,5 +981,10 @@
     "notes": "New command. Finds WKWebView instances, evaluates JavaScript, queries DOM. Actions: url (list webviews+URLs), evaluate (run JS), dom (DOM element listing via querySelectorAll).",
     "status": "untested",
     "surface": "App with WKWebView"
+  },
+  "swizzle_check": {
+    "notes": "New command. Calls each swizzled authorization API and verifies the swizzle intercepted (completion fired synchronously with auto-grant value). Covers: notifications, photos, tracking, camera, contacts, location, eventkit_events, eventkit_reminders.",
+    "status": "untested",
+    "surface": "Any app"
   }
 }

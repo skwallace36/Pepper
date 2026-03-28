@@ -359,6 +359,7 @@ final class PepperDispatcher {
         register(AppearanceHandler())
         register(DynamicTypeHandler())
         register(VerifyHandler())
+        register(SwizzleCheckHandler())
     }
 }
 
