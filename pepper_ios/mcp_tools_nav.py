@@ -32,7 +32,7 @@ from .pepper_commands import (
     CMD_SWIPE,
     CMD_TAP,
 )
-from .pepper_common import discover_instance
+from .pepper_common import discover_instance, json_dumps
 from .pepper_format import format_look, format_look_compact, format_look_slim
 
 _logger = logging.getLogger(__name__)
@@ -150,7 +150,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
             }
 
         if raw:
-            text = json.dumps(resp, indent=2)
+            text = json_dumps(resp)
         elif slim:
             text = format_look_slim(resp)
         elif compact:
@@ -313,7 +313,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
             params: dict = {}
             if category:
                 params["category"] = category
-            return json.dumps(await resolve_and_send(simulator, CMD_DEEPLINKS, params), indent=2)
+            return json_dumps(await resolve_and_send(simulator, CMD_DEEPLINKS, params))
         params = {}
         if deeplink:
             params["deeplink"] = deeplink
@@ -354,7 +354,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
         simulator: str | None = Field(default=None, description="Simulator UDID"),
     ) -> str:
         """Identify which screen is currently displayed. Returns screen name and view controller class — no element data."""
-        return json.dumps(await resolve_and_send(simulator, CMD_SCREEN), indent=2)
+        return json_dumps(await resolve_and_send(simulator, CMD_SCREEN))
 
     @mcp.tool()
     async def scroll_to(
@@ -390,7 +390,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
         ),
     ) -> str:
         """Capture screen state as a named snapshot, then diff against it later to see what changed."""
-        return json.dumps(
+        return json_dumps(
             await resolve_and_send(
                 simulator,
                 CMD_SNAPSHOT,
@@ -400,8 +400,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
                     "ignore_transient": ignore_transient,
                     "assert_no_diff": assert_no_diff,
                 },
-            ),
-            indent=2,
+            )
         )
 
     @mcp.tool()
@@ -413,4 +412,4 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
         ),
     ) -> str:
         """Quick view hierarchy diff — start a baseline, perform actions, then show to see only added/removed/changed elements."""
-        return json.dumps(await resolve_and_send(simulator, CMD_DIFF, {"action": action}), indent=2)
+        return json_dumps(await resolve_and_send(simulator, CMD_DIFF, {"action": action}))

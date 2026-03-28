@@ -7,7 +7,6 @@ Includes system-dialog dismiss helper with simctl privacy grant + AX fallback.
 from __future__ import annotations
 
 import asyncio
-import json
 import subprocess
 
 from pydantic import Field
@@ -15,7 +14,7 @@ from pydantic import Field
 from .pepper_ax import detect_dialog as _ax_detect
 from .pepper_ax import find_and_dismiss_dialog as _ax_dismiss
 from .pepper_commands import CMD_DIALOG
-from .pepper_common import get_config, require_parse_json
+from .pepper_common import get_config, json_dumps, require_parse_json
 
 # Permission keywords found in dialog titles/messages → simctl permission names
 _PERMISSION_KEYWORDS = {
@@ -188,7 +187,7 @@ def register_dialog_tools(mcp, resolve_and_send, resolve_simulator=None):
         """Interact with system dialogs — alerts, permission prompts, share sheets. Use dismiss_system to auto-handle permission dialogs."""
         if action == "dismiss_system":
             result = await _dismiss_system_dialog(simulator, resolve_and_send, resolve_simulator)
-            return json.dumps(result, indent=2) if isinstance(result, dict) else result
+            return json_dumps(result) if isinstance(result, dict) else result
 
         if action == "detect_system":
             # Single source of truth: combine in-process (dylib) + AX (macOS) detection.
@@ -204,7 +203,7 @@ def register_dialog_tools(mcp, resolve_and_send, resolve_simulator=None):
                 pass
 
             detected = ip_data.get("detected", False) or ax_result.get("detected", False)
-            return json.dumps(
+            return json_dumps(
                 {
                     "status": "ok",
                     "detected": detected,
@@ -218,8 +217,7 @@ def register_dialog_tools(mcp, resolve_and_send, resolve_simulator=None):
                         "detected": ax_result.get("detected", False),
                         "buttons": ax_result.get("buttons", []),
                     },
-                },
-                indent=2,
+                }
             )
 
         params: dict = {"action": action}
@@ -233,4 +231,4 @@ def register_dialog_tools(mcp, resolve_and_send, resolve_simulator=None):
             except ValueError as e:
                 return f"Error: {e}"
         resp = await resolve_and_send(simulator, CMD_DIALOG, params)
-        return json.dumps(resp, indent=2) if isinstance(resp, dict) else resp
+        return json_dumps(resp) if isinstance(resp, dict) else resp

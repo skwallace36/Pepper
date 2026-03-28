@@ -22,7 +22,7 @@ from .pepper_commands import (
     CMD_PUSH,
     CMD_STATUS,
 )
-from .pepper_common import require_parse_json, try_parse_json
+from .pepper_common import json_dumps, require_parse_json, try_parse_json
 
 
 def register_system_tools(mcp, resolve_and_send, act_and_look):
@@ -81,7 +81,7 @@ def register_system_tools(mcp, resolve_and_send, act_and_look):
             if isinstance(mem_result, str):
                 mem_result = json.loads(mem_result)
             result["memory"] = mem_result.get("data", mem_result)
-            return json.dumps(result, indent=2)
+            return json_dumps(result)
         return result
 
     @mcp.tool()

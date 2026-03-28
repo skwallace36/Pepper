@@ -97,6 +97,7 @@ from .pepper_common import (
     PEPPER_DIR,
     discover_instance,
     get_config,
+    json_dumps,
     load_env,
 )
 
@@ -255,7 +256,7 @@ async def resolve_and_send_json(
     handler declares -> str causes a validation error.
     """
     resp = await resolve_and_send(simulator, cmd, params, timeout)
-    return json.dumps(resp, indent=2)
+    return json_dumps(resp)
 
 
 async def _snapshot_counts(port: int, send_fn) -> dict:
@@ -407,7 +408,7 @@ async def act_and_look(simulator: str | None, cmd: str, params: dict | None = No
         host, port, udid = discover_instance(simulator)
     except RuntimeError as e:
         logger.warning("act_and_look cmd=%s discovery failed: %s", cmd, e)
-        return json.dumps({"status": "error", "error": str(e)}, indent=2)
+        return json_dumps({"status": "error", "error": str(e)})
 
     # Bind host so downstream telemetry calls reach the right target
     bound_fn = partial(send_command, host=host) if host != "localhost" else send_command
@@ -428,7 +429,7 @@ async def act_and_look(simulator: str | None, cmd: str, params: dict | None = No
 
         # Crash — don't try to look (app is dead), but fetch crash info
         if "APP CRASHED" in err:
-            result = json.dumps(action_resp, indent=2)
+            result = json_dumps(action_resp)
             crash_info = await fetch_crash_info(udid)
             if crash_info:
                 result += crash_info
@@ -450,7 +451,7 @@ async def act_and_look(simulator: str | None, cmd: str, params: dict | None = No
                 )
             ]
 
-        return [TextContent(type="text", text=json.dumps(action_resp, indent=2))]
+        return [TextContent(type="text", text=json_dumps(action_resp))]
 
     # Brief pause for UI to settle after interaction.
     # Navigation commands (dismiss, back, navigate) need more time for
