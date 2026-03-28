@@ -180,7 +180,9 @@ struct ScrollHandler: PepperHandler {
             return .error(id: command.id, message: "Element not found: \(elementID)")
         }
         if result.tapPoint != nil {
-            return .error(id: command.id, message: "Element \(elementID) is a SwiftUI element without a UIView — scroll_to requires a UIKit view")
+            return .error(
+                id: command.id,
+                message: "Element \(elementID) is a SwiftUI element without a UIView — scroll_to requires a UIKit view")
         }
         let element = result.view
 

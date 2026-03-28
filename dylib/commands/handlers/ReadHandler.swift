@@ -19,7 +19,8 @@ struct ReadHandler: PepperHandler {
 
         let (result, errorMsg) = PepperElementResolver.resolve(params: command.params, in: window)
         guard let result = result else {
-            return .elementNotFound(id: command.id, message: errorMsg ?? "Element not found: \(elementID)", query: elementID)
+            return .elementNotFound(
+                id: command.id, message: errorMsg ?? "Element not found: \(elementID)", query: elementID)
         }
 
         logger.info("Reading element: \(elementID)")
