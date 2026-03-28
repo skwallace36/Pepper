@@ -35,19 +35,7 @@ def register_record_tools(mcp):
         ),
         fps: int = Field(default=12, description="GIF frame rate, ignored for mp4 (default: 12)"),
     ) -> str:
-        """Use this to capture a video of the simulator screen as mp4 or GIF.
-
-        Start/stop workflow:
-          1. record action=start
-          2. (do your interactions — tap, scroll, navigate, etc.)
-          3. record action=stop output=/tmp/my-recording.mp4
-
-        Use .gif extension on output path for GIF output (smaller, inline-friendly).
-
-        Example: `record action=start` → tap/scroll through a flow → `record action=stop output=/tmp/demo.gif`.
-
-        Upload videos to GitHub via Playwright MCP (browser automation) for autoplay in PRs.
-        Upload GIFs/screenshots via upload-screenshot tool (release assets)."""
+        """Record the simulator screen as mp4 or GIF. Start, interact, then stop with an output path."""
         try:
             _host, _port, udid = discover_instance(simulator)
         except RuntimeError as e:

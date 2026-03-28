@@ -42,39 +42,7 @@ def register_renders_tools(mcp, resolve_and_send):
             description="Sub-action for signpost: install or drain",
         ),
     ) -> str:
-        """Use this to track SwiftUI re-renders and diagnose excessive view body evaluations.
-
-        Workflow:
-        1. `renders start` — install swizzles on _UIHostingView to track renders
-        2. Interact with the app to trigger re-renders
-        3. `renders log` — see structured render events with per-view counts + summary
-        4. `renders status` — quick check: active?, how many events?
-        5. `renders stop` — uninstall swizzles (render counts stay until clear)
-        6. `renders clear` — reset the event buffer
-
-        Example: `renders start` → scroll a list → `renders log` → find the hottest view → `renders stop`.
-
-        Actions:
-        - start:     Install render swizzles (updateRootView, didRender, setNeedsUpdate)
-        - stop:      Remove swizzles and return method call statistics
-        - status:    Report active/inactive + event count + per-view render counts
-        - log:       Structured event log with hosting view addresses, VC types, methods, counts.
-                     Returns summary: total renders, hosting view count, hottest view.
-                     Use limit/since_ms/filter to narrow results.
-        - clear:     Clear the event ring buffer (keeps render counts)
-        - counts:    Raw method call counts (layoutSubviews + spike methods)
-        - snapshot:  Capture SwiftUI view tree via makeViewDebugData()
-        - diff:      Compare current view tree against previous snapshot
-        - reset:     Clear all data (counts + buffer + snapshots)
-        - ag_probe:  Probe AttributeGraph private APIs — check symbol availability
-        - ag_server: Start the AG debug server (if available on this iOS version)
-        - ag_dump:   Dump the attribute graph to JSON via AGGraphArchiveJSON
-        - signpost:  Install/drain os_signpost hook for SwiftUI events
-        - why:       Experimental — combine AG probing + view tree diff to explain re-renders
-
-        Related tools: vars_inspect (ViewModel state), network (API calls during renders),
-        console (logs during renders), timeline (cross-cutting event timeline).
-        """
+        """Track SwiftUI re-renders and diagnose excessive view body evaluations. Start tracking, interact, then log to see results."""
         params: dict = {"action": action}
         if limit is not None:
             params["limit"] = limit

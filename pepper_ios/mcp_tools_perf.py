@@ -29,14 +29,7 @@ def register_perf_tools(mcp, resolve_and_send):
             default=None, description="Hitch threshold in ms (for hitches action; default: 16)"
         ),
     ) -> str:
-        """Use this to measure frame rate, detect main-thread hitches, and find expensive redraws.
-
-        action=fps: measure frame rate using CADisplayLink. Returns avg/min/max FPS, dropped frames, per-second buckets.
-        action=hitches: detect main-thread blocks via background watchdog. Returns hitch count, durations, and timestamps.
-        action=redraws: scan the layer tree for expensive rendering: shadows without shadowPath, masks, rasterization,
-        oversized images, semi-transparent large layers. Returns issues sorted by severity.
-
-        Example: `perf action=fps` while scrolling → check for drops → `perf action=redraws` to find the cause."""
+        """Measure frame rate (fps), detect main-thread hitches, or find expensive redraws in the layer tree."""
         params: dict = {"action": action}
         if duration_ms is not None:
             params["duration_ms"] = duration_ms
@@ -54,12 +47,7 @@ def register_perf_tools(mcp, resolve_and_send):
             description="Animation speed multiplier for action=speed: 0=disabled, 0.1=slow-mo, 1=normal, 10=turbo",
         ),
     ) -> str:
-        """Use this to inspect running animations, trace view movement, or slow down/speed up animations.
-
-        action=scan: find all active CAAnimations. action=trace: sample a view's position over time.
-        action=speed: set global animation speed (0=off, 1=normal, 10=turbo). Omit speed to query current.
-
-        Example: `animations action=scan` to see what's animating → `animations action=speed speed=0.1` to slow-mo debug."""
+        """Inspect running animations (scan), trace view movement, or change global animation speed."""
         if action == "speed":
             params: dict = {"action": "speed"}
             if speed is not None:
@@ -76,7 +64,7 @@ def register_perf_tools(mcp, resolve_and_send):
     async def heap(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
         action: str = Field(
-            description="Action: classes, controllers, find, inspect, read, snapshot, diff, baseline, check, snapshot_clear, snapshot_status"
+            description="Action: classes (search by pattern), controllers (live VCs), find (singleton), inspect (props), read (KVC key path), baseline (save counts), check (flag growth), diff, snapshot, snapshot_clear, snapshot_status"
         ),
         class_name: str | None = Field(default=None, description="Class name or pattern to search for"),
         pattern: str | None = Field(default=None, description="Pattern for classes search"),
@@ -87,32 +75,7 @@ def register_perf_tools(mcp, resolve_and_send):
         min_growth: int | None = Field(default=None, description="Min instance growth to report in diff (default: 1)"),
         threshold: int | None = Field(default=None, description="Min instance growth to flag in check (default: 1)"),
     ) -> str:
-        """Use this to find live objects on the heap, inspect their state, and detect memory leaks.
-
-        Discovery actions:
-        - classes: search loaded ObjC classes by pattern (e.g. 'Manager', 'Service', 'MapView')
-        - controllers: list all live UIViewControllers (with hierarchy)
-        - find: locate a singleton instance (tries .shared, .default, .current, etc.)
-
-        Inspection actions:
-        - inspect: full property dump of a found instance (all ObjC properties)
-        - read: read a specific property via KVC key path. Supports nested paths
-          (e.g. class_name='GMSMapView', key_path='camera.zoom'). Read-only — cannot set values.
-
-        Leak detection actions:
-        - baseline: capture current instance counts as a reference baseline
-        - check: compare current counts to baseline, flag growing classes with severity levels
-          (high/medium/low). Returns structured { leaks: [{class, baseline, current, delta, severity}] }
-          suitable for automated test assertions.
-        - snapshot: alias for baseline (save current counts)
-        - diff: compare current counts to baseline — growing counts indicate retain cycles
-        - snapshot_clear / snapshot_status: manage the saved baseline
-
-        Leak detection workflow: baseline → navigate to a screen and back 3x → check.
-        Automated test workflow: baseline → exercise feature → check (assert leak_count == 0).
-
-        Related tools: vars_inspect (ViewModel @Published properties — read AND write),
-        defaults (UserDefaults — persistent config), layers (CALayer visual properties)."""
+        """Find live objects on the heap, inspect their properties, and detect memory leaks via baseline/check diffing."""
         # Route snapshot/diff/baseline/check actions to the heap_snapshot handler
         snapshot_actions = {
             "snapshot": "snapshot",

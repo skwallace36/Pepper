@@ -85,16 +85,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
             description="Detail level: 'summary' (default) returns element names/types/tap commands — minimal tokens for agent use. 'full' includes frames, traits, heuristics, scroll_context — use when debugging layout.",
         ),
     ) -> list:
-        """Use this when you need to see what's on screen — returns all interactive elements with tap commands, plus visible text.
-        This is your primary observation tool. Call it before acting to know what's available.
-        Use scope to filter to elements inside a specific container (e.g. scope='Steps' or scope='tab_bar').
-        Use region to filter by y-range (e.g. region='390-532').
-        Use slim=true for a stateless flat list — every call returns the full screen with tap commands, no y-coords.
-        Use compact=true for stateful diffs — first call returns full screen, subsequent calls show only changes (added/changed/removed). Includes tap commands. Resets when the screen changes.
-        Use ocr=true to find text via pixel analysis (slower, but catches text missing from accessibility tree).
-        Use raw=true when you need coordinates, frames, or scroll context.
-        Use visual=true to include a screenshot for visual validation.
-        Use screenshot_quality='high' + save_screenshot='/tmp/foo.jpg' for PR validation screenshots."""
+        """Primary observation tool — returns all interactive elements with tap commands, plus visible text. Call before acting to know what's available."""
         try:
             host, port, udid = discover_instance(simulator)
         except RuntimeError as e:
@@ -188,10 +179,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
         quality: str = Field(default="standard", description="'standard' (70% JPEG) or 'high' (95% JPEG)"),
         save_to: str | None = Field(default=None, description="Save screenshot to this file path"),
     ) -> list:
-        """Use this when you need a visual screenshot without structured element data.
-        Faster than simctl. Omit element/text to capture the full screen.
-        Specify element or text to capture just that view.
-        Prefer look with visual=true if you also need element data alongside the image."""
+        """Capture a visual screenshot without structured element data. Prefer look with visual=true if you also need element data."""
         try:
             host, port, udid = discover_instance(simulator)
         except RuntimeError as e:
@@ -242,13 +230,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
             description="Include tap diagnostics: hit-test result, gesture recognizers, responder chain, and overlapping views. Use when a tap doesn't produce the expected result.",
         ),
     ) -> list:
-        """Use this when you need to tap a button, link, cell, or any interactive element.
-        Specify exactly one of: text, icon, heuristic, or point.
-        For text fields: tap focuses the field, then use input_text to type. Don't use tap to enter text.
-        For switches/toggles: prefer the toggle tool instead — it handles on/off state correctly.
-        Add double=true for double-tap, or duration=1.0 for long press.
-        Add debug=true to diagnose why a tap isn't working — shows hit-test result, gesture recognizers, and responder chain.
-        Automatically shows screen state after the tap so you can verify it worked."""
+        """Tap an interactive element. Specify exactly one of: text, icon, heuristic, or point. Shows screen state after."""
         params = {}
         if text:
             params["text"] = text
@@ -278,10 +260,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
         direction: str = Field(description="Scroll direction: up, down, left, right"),
         amount: int | None = Field(default=None, description="Scroll amount in points"),
     ) -> list:
-        """Use this when you need to reveal content above or below the visible area.
-        Performs a slow drag (not a flick). Use swipe for fast flick gestures like dismissing or paging.
-        Use scroll_to if you're looking for specific text — it scrolls and checks automatically.
-        Automatically shows screen state after scrolling."""
+        """Slow drag to reveal content above/below. Use swipe for fast flick gestures, scroll_to to find specific text. Shows screen state after."""
         params: dict = {"direction": direction}
         if amount is not None:
             params["amount"] = amount
@@ -302,12 +281,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
         clear: bool = Field(default=False, description="Clear existing text before typing"),
         submit: bool = Field(default=False, description="Submit/return after typing"),
     ) -> list:
-        """Use this when you need to enter or replace text in a text field.
-        Don't tap to type — use this tool directly. It focuses the field and types in one step.
-        Specify text to target a field by its visible label/placeholder (e.g. text="Search"), or element_id for accessibility ID.
-        If neither is given, types into the currently focused field or the first text field on screen.
-        Use clear=true to replace existing text. Use submit=true to press Return after typing.
-        Automatically shows screen state after input."""
+        """Enter or replace text in a field. Focuses the field and types in one step — don't tap first. Shows screen state after."""
         params: dict = {"value": value}
         if element_id:
             params["element"] = element_id
@@ -327,12 +301,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
         list_deeplinks: bool = Field(default=False, description="List all available deep link destinations"),
         category: str | None = Field(default=None, description="Filter deep link list by category"),
     ) -> list | str:
-        """Use this when you need to jump to a specific screen or switch tabs.
-        Goes directly to the destination — skips intermediate screens unlike repeated back/tap.
-        Use deeplink for named destinations (e.g. 'home', 'settings'). Use tab for tab bar switching.
-        Use list_deeplinks=true to see all available destinations.
-        For going back one screen, use back instead. For closing modals/sheets, use dismiss instead.
-        Shows screen state after navigation."""
+        """Jump to a specific screen via deeplink or switch tabs. Use list_deeplinks=true to see available destinations. Shows screen state after."""
         if list_deeplinks:
             params: dict = {}
             if category:
@@ -355,20 +324,14 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
     async def back(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
     ) -> list:
-        """Use this when you need to go back one screen in a navigation stack (like pressing the back button).
-        Works on pushed screens in UINavigationController. For modals or sheets, use dismiss instead.
-        For jumping to a specific screen, use navigate instead.
-        Automatically shows screen state after going back."""
+        """Go back one screen in a navigation stack. For modals/sheets use dismiss; for jumping to a screen use navigate."""
         return await act_and_look(simulator, CMD_BACK)
 
     @mcp.tool()
     async def dismiss(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
     ) -> list:
-        """Use this when you need to close a modal, sheet, popover, or overlay.
-        Only works on presented modals — for navigation stack screens, use back instead.
-        For system dialogs (alerts, permission prompts), use the dialog tool instead.
-        Automatically shows screen state after dismissal."""
+        """Close a modal, sheet, popover, or overlay. For navigation stack screens use back; for system dialogs use dialog."""
         return await act_and_look(simulator, CMD_DISMISS)
 
     @mcp.tool()
@@ -376,18 +339,14 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
         simulator: str | None = Field(default=None, description="Simulator UDID"),
         direction: str = Field(description="Swipe direction: up, down, left, right"),
     ) -> list:
-        """Use this when you need a fast flick gesture — paging between screens, dismissing cards, or pull-to-refresh.
-        Unlike scroll (slow drag to reveal content), swipe is a quick flick that triggers gesture recognizers.
-        Use scroll for browsing lists. Use swipe for paging, dismissing, or pull-to-refresh.
-        Shows screen state after."""
+        """Fast flick gesture for paging, dismissing cards, or pull-to-refresh. Use scroll for slow content browsing instead. Shows screen state after."""
         return await act_and_look(simulator, CMD_SWIPE, {"direction": direction})
 
     @mcp.tool()
     async def screen(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
     ) -> str:
-        """Use this when you need to identify which screen is currently displayed.
-        Returns the screen name and view controller class. Lightweight — no element data."""
+        """Identify which screen is currently displayed. Returns screen name and view controller class — no element data."""
         return json.dumps(await resolve_and_send(simulator, CMD_SCREEN), indent=2)
 
     @mcp.tool()
@@ -397,10 +356,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
         direction: str = Field(default="down", description="Scroll direction: up, down, left, right"),
         max_scrolls: int | None = Field(default=None, description="Max scroll attempts (default: 10)"),
     ) -> list:
-        """Use this when you need to find and reveal a specific piece of text that may be off-screen.
-        Scrolls incrementally and checks for the text after each scroll. Stops when found.
-        Prefer this over manual scroll loops — it handles the polling automatically.
-        Automatically shows screen state after finding the element."""
+        """Scroll until specific text is visible on screen. Prefer this over manual scroll loops. Shows screen state after."""
         params: dict = {"text": text, "direction": direction}
         if max_scrolls is not None:
             params["max_scrolls"] = max_scrolls
@@ -410,10 +366,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
     async def dismiss_keyboard(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
     ) -> list:
-        """Use this when the keyboard is covering elements you need to interact with.
-        The keyboard stays visible after input_text — call this to dismiss it before tapping elements behind it.
-        Not needed if your next action is another input_text or navigate (which handle focus automatically).
-        Shows screen state after."""
+        """Dismiss the on-screen keyboard. Call after input_text when you need to tap elements the keyboard covers."""
         return await act_and_look(simulator, CMD_DISMISS_KEYBOARD)
 
     @mcp.tool()
@@ -431,11 +384,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
             default=False, description="Return error if any diff is detected (for regression testing)"
         ),
     ) -> str:
-        """Capture screen state as a named snapshot, then diff against it after actions.
-
-        Workflow: snapshot action=save name=baseline → perform actions → snapshot action=diff name=baseline.
-        Returns semantic diff: added/removed/changed elements and text.
-        Use assert_no_diff=true to fail if state changed (regression testing)."""
+        """Capture screen state as a named snapshot, then diff against it later to see what changed."""
         return json.dumps(
             await resolve_and_send(
                 simulator,
@@ -458,9 +407,5 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
             description="Action: 'start' (capture baseline), 'show' (compare to baseline), 'clear' (discard baseline)",
         ),
     ) -> str:
-        """Quick view hierarchy diff — show what changed between two look snapshots.
-
-        Workflow: diff action=start → perform actions (tap, scroll, etc.) → diff action=show.
-        Returns only added/removed/changed elements — much smaller than a full look call.
-        Useful for verifying that an action actually changed the UI."""
+        """Quick view hierarchy diff — start a baseline, perform actions, then show to see only added/removed/changed elements."""
         return json.dumps(await resolve_and_send(simulator, CMD_DIFF, {"action": action}), indent=2)

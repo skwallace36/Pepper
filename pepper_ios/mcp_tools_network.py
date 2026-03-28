@@ -57,26 +57,7 @@ def register_network_tools(mcp, resolve_and_send):
         mock_body: str | None = Field(default=None, description="Response body for mock (JSON string)"),
         mock_id: str | None = Field(default=None, description="Mock ID (for remove_mock, or custom ID for mock)"),
     ) -> str:
-        """Monitor HTTP network traffic, simulate network conditions, and mock API responses.
-
-        Monitoring: start/stop/log/status/clear — see every API call, status code, and response body.
-
-        Simulation: simulate adverse conditions without external tools:
-        - latency: add delay (ms) to matching requests
-        - fail_status: return synthetic HTTP error (e.g., 500, 503)
-        - fail_error: return NSError (e.g., NSURLErrorNotConnectedToInternet)
-        - throttle: limit bandwidth (bytes/sec) for matching requests
-        - offline: fail all matching requests as if no network
-
-        Mocking: intercept requests and return stubbed responses without hitting the network:
-        - mock: stub a URL pattern with a custom status code and body
-        - mocks: list active mock rules
-        - remove_mock/clear_mocks: manage active mocks
-        Mocks take priority over overrides and conditions.
-
-        Per-domain rules: use 'url' to target specific endpoints (e.g., slow images but not API calls).
-        Multiple conditions stack — latency adds up, first fail wins, lowest throttle wins.
-        Use conditions/remove_condition/clear_conditions to manage active rules."""
+        """Monitor HTTP traffic, simulate network conditions (latency, errors, throttle, offline), and mock API responses."""
         params: dict = {"action": action}
         if filter_text:
             params["filter"] = filter_text
@@ -128,8 +109,7 @@ def register_network_tools(mcp, resolve_and_send):
         buffer_size: int | None = Field(default=None, description="Set buffer size (for config action)"),
         recording: bool | None = Field(default=None, description="Enable/disable recording (for config action)"),
     ) -> str:
-        """Always-on flight recorder timeline. Captures network requests, console logs, screen transitions,
-        and command dispatch into a ring buffer — no setup needed. Query to correlate events when debugging."""
+        """Always-on flight recorder — captures network, console, screen, and command events into a ring buffer. No setup needed."""
         params: dict = {"action": action}
         if limit is not None:
             params["limit"] = limit

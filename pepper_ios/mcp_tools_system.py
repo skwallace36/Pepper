@@ -43,11 +43,7 @@ def register_system_tools(mcp, resolve_and_send, act_and_look):
             default=None, description='JSON userInfo payload for deeplink routing (e.g. \'{"type":"order_detail"}\')'
         ),
     ) -> str:
-        """Simulate push notifications in the running app.
-
-        Delivered notifications appear exactly like real APNs pushes — banner, sound, badge.
-        Include a data payload to test deeplink routing (the app receives it in userInfo).
-        Use action='pending' to list queued notifications, action='clear' to remove them all."""
+        """Simulate push notifications in the running app — banner, sound, badge, and deeplink routing via data payload."""
         params: dict = {}
         if action:
             params["action"] = action
@@ -72,11 +68,7 @@ def register_system_tools(mcp, resolve_and_send, act_and_look):
             default=False, description="Include detailed VM breakdown (internal, compressed, purgeable)"
         ),
     ) -> str:
-        """Check Pepper connection health and app identity.
-
-        Returns: bundle ID, app version, Pepper server port, active WebSocket connections, current screen name.
-        Call after deploy to confirm Pepper connected successfully, or anytime to identify the current screen.
-        Add memory=true for process memory (resident size, footprint), memory_detail=true for full VM breakdown."""
+        """Check Pepper connection health — bundle ID, version, port, connections, current screen. Add memory=true for process memory stats."""
         result = await resolve_and_send(simulator, CMD_STATUS)
         if memory or memory_detail:
             mem_params: dict = {}
@@ -103,10 +95,7 @@ def register_system_tools(mcp, resolve_and_send, act_and_look):
         duration: float | None = Field(default=None, description="How long to show in seconds (default: 0.8)"),
         clear: bool = Field(default=False, description="Clear all highlights"),
     ) -> str:
-        """Draw a colored border around an element for visual debugging. Visible in screenshots and recordings.
-
-        Specify text to highlight by label, or frame for exact coordinates.
-        Highlights render as real UIViews overlaid on the app. Use clear=true to remove all."""
+        """Draw a colored border around an element for visual debugging. Visible in screenshots and recordings."""
         params: dict = {}
         if clear:
             params["clear"] = True
@@ -150,10 +139,7 @@ def register_system_tools(mcp, resolve_and_send, act_and_look):
         region: str | None = Field(default=None, description="Region code for set (e.g. 'JP', 'US')"),
         key: str | None = Field(default=None, description="Localization key to look up (for lookup action)"),
     ) -> str:
-        """Override app locale at runtime without changing simulator settings.
-
-        Actions: current (read locale), set (override language/region), reset (restore original),
-        lookup (find a localized string by key), languages (list available localizations)."""
+        """Override app locale at runtime without changing simulator settings."""
         params: dict = {}
         if action:
             params["action"] = action
@@ -175,14 +161,7 @@ def register_system_tools(mcp, resolve_and_send, act_and_look):
         center_x: float | None = Field(default=None, description="Center X coordinate (defaults to screen center)"),
         center_y: float | None = Field(default=None, description="Center Y coordinate (defaults to screen center)"),
     ) -> str:
-        """Perform multi-touch gestures — pinch to zoom or two-finger rotate. Shows screen state after.
-
-        Pinch: set start_distance and end_distance in points. Larger end = zoom in, smaller = zoom out.
-        Rotate: set angle in degrees.
-        Center defaults to screen center; override with center_x/center_y to target a specific view.
-
-        Pinch may not work on views with custom gesture recognizers (e.g. map SDKs).
-        If it doesn't take effect, try defaults or vars_inspect to change zoom state directly."""
+        """Perform multi-touch gestures — pinch to zoom or two-finger rotate. Shows screen state after."""
         params: dict = {"type": type}
         if start_distance is not None:
             params["start_distance"] = start_distance
@@ -210,15 +189,7 @@ def register_system_tools(mcp, resolve_and_send, act_and_look):
         hook_id: str | None = Field(default=None, description="Hook ID (for remove, log, clear)"),
         limit: int | None = Field(default=None, description="Max log entries to return (default: 50)"),
     ) -> str:
-        """Hook ObjC methods at runtime to log every invocation. Non-destructive — the original method runs normally.
-
-        install: attach a hook (class_name + method required). remove: detach by hook_id.
-        list: show active hooks. log: read captured invocations for a hook_id. clear: wipe log entries.
-
-        Supports void/object/BOOL return types with 0-3 object args, plus void+BOOL.
-        Covers lifecycle, delegate, network, and analytics methods.
-
-        Example: hook action=install class_name=UIViewController method="viewDidAppear:" """
+        """Hook ObjC methods at runtime to log every invocation. Non-destructive — the original method runs normally."""
         params: dict = {"action": action}
         if class_name:
             params["class"] = class_name
@@ -239,15 +210,7 @@ def register_system_tools(mcp, resolve_and_send, act_and_look):
         key: str | None = Field(default=None, description="Feature flag key"),
         value: str | None = Field(default=None, description="Value to set (true/false for bools, or string/int)"),
     ) -> str:
-        """Override feature flags by intercepting the network response that delivers them.
-
-        The app receives modified flag data through its normal code path — no timing races.
-        Overrides persist across deploys until explicitly cleared.
-
-        Workflow: flags set key="flag" value="true" → deploy (restart) → look (verify).
-
-        Actions: list (show overrides + status), get (read one flag), set (override a flag),
-        clear (remove one override by key, or all if no key)."""
+        """Override feature flags by intercepting the network response that delivers them. Overrides persist across deploys."""
         params: dict = {"action": action}
         if key:
             params["key"] = key
@@ -263,10 +226,7 @@ def register_system_tools(mcp, resolve_and_send, act_and_look):
             description="Appearance mode: dark, light, system. Omit to query current mode.",
         ),
     ) -> str:
-        """Toggle light/dark mode at runtime without changing simulator settings.
-
-        Sets overrideUserInterfaceStyle on all app windows. Use mode='system' to restore
-        the simulator's default appearance. Omit mode to query the current appearance."""
+        """Toggle light/dark mode at runtime. Omit mode to query current appearance."""
         params: dict = {}
         if mode:
             params["mode"] = mode
