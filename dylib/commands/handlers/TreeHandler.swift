@@ -68,10 +68,10 @@ struct TreeHandler: PepperHandler {
 
         if !summary {
             node["frame"] = AnyCodable([
-                "x": AnyCodable(Double(view.frame.origin.x)),
-                "y": AnyCodable(Double(view.frame.origin.y)),
-                "width": AnyCodable(Double(view.frame.size.width)),
-                "height": AnyCodable(Double(view.frame.size.height)),
+                AnyCodable(Int(view.frame.origin.x)),
+                AnyCodable(Int(view.frame.origin.y)),
+                AnyCodable(Int(view.frame.size.width)),
+                AnyCodable(Int(view.frame.size.height)),
             ])
         }
 

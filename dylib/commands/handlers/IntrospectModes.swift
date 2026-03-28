@@ -54,11 +54,9 @@ extension IntrospectHandler {
             var dict: [String: AnyCodable] = [
                 "text": AnyCodable(item.label),
                 "type": AnyCodable(item.type),
-                "frame": AnyCodable([
-                    "x": AnyCodable(Double(item.frame.origin.x)),
-                    "y": AnyCodable(Double(item.frame.origin.y)),
-                    "width": AnyCodable(Double(item.frame.size.width)),
-                    "height": AnyCodable(Double(item.frame.size.height)),
+                "center": AnyCodable([
+                    AnyCodable(Int(item.frame.midX)),
+                    AnyCodable(Int(item.frame.midY)),
                 ]),
             ]
             if !item.hitReachable {

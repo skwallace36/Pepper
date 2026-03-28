@@ -175,7 +175,7 @@ struct NavigateHandler: PepperHandler {
             var data = buildScreenData()
             data["action"] = AnyCodable("tap_tab")
             data["tab_index"] = AnyCodable(index)
-            data["tap_point"] = AnyCodable(["x": AnyCodable(Double(center.x)), "y": AnyCodable(Double(center.y))])
+            data["tap_point"] = AnyCodable([AnyCodable(Int(center.x)), AnyCodable(Int(center.y))])
             return .ok(id: command.id, data: data)
         } else {
             return .error(id: command.id, message: "Tab tap failed — HID event synthesis unavailable")

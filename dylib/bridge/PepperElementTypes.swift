@@ -99,8 +99,6 @@ struct PepperAccessibilityElement {
     func toDictionary() -> [String: AnyCodable] {
         var dict: [String: AnyCodable] = [
             "type": AnyCodable(type),
-            "interactive": AnyCodable(isInteractive),
-            "class": AnyCodable(className),
         ]
 
         if let label = label, !label.isEmpty {
@@ -120,10 +118,10 @@ struct PepperAccessibilityElement {
         }
         if frame != .zero {
             dict["frame"] = AnyCodable([
-                "x": AnyCodable(Double(frame.origin.x)),
-                "y": AnyCodable(Double(frame.origin.y)),
-                "width": AnyCodable(Double(frame.size.width)),
-                "height": AnyCodable(Double(frame.size.height)),
+                AnyCodable(Int(frame.origin.x)),
+                AnyCodable(Int(frame.origin.y)),
+                AnyCodable(Int(frame.size.width)),
+                AnyCodable(Int(frame.size.height)),
             ])
         }
         // Only include when element is occluded — keeps response compact
@@ -135,12 +133,6 @@ struct PepperAccessibilityElement {
                 "direction": AnyCodable(sc.direction),
                 "visible_in_viewport": AnyCodable(sc.visibleInViewport),
             ])
-        }
-        if let vc = viewController {
-            dict["view_controller"] = AnyCodable(vc)
-        }
-        if let pc = presentationContext {
-            dict["presentation_context"] = AnyCodable(pc)
         }
 
         return dict
@@ -185,40 +177,21 @@ struct PepperInteractiveElement {
 
     func toDictionary() -> [String: AnyCodable] {
         var dict: [String: AnyCodable] = [
-            "class": AnyCodable(className),
-            "center": AnyCodable([
-                "x": AnyCodable(Double(center.x)),
-                "y": AnyCodable(Double(center.y)),
-            ]),
-            "frame": AnyCodable([
-                "x": AnyCodable(Double(frame.origin.x)),
-                "y": AnyCodable(Double(frame.origin.y)),
-                "width": AnyCodable(Double(frame.size.width)),
-                "height": AnyCodable(Double(frame.size.height)),
-            ]),
-            "labeled": AnyCodable(labeled),
-            "source": AnyCodable(source),
-            "hit_reachable": AnyCodable(hitReachable),
-            "is_control": AnyCodable(isControl),
+            "center": AnyCodable([AnyCodable(Int(center.x)), AnyCodable(Int(center.y))]),
         ]
 
         if let label = label {
             dict["label"] = AnyCodable(label)
         }
-        if !gestures.isEmpty {
-            dict["gestures"] = AnyCodable(gestures.map { AnyCodable($0) })
-        }
-        if let controlType = controlType {
-            dict["control_type"] = AnyCodable(controlType)
+        // Only include when element is occluded
+        if !hitReachable {
+            dict["hit_reachable"] = AnyCodable(false)
         }
         if let heuristic = heuristic {
             dict["heuristic"] = AnyCodable(heuristic)
         }
         if let iconName = iconName {
             dict["icon_name"] = AnyCodable(iconName)
-        }
-        if let labelSource = labelSource {
-            dict["label_source"] = AnyCodable(labelSource)
         }
         if !traits.isEmpty {
             dict["traits"] = AnyCodable(traits.map { AnyCodable($0) })
@@ -228,12 +201,6 @@ struct PepperInteractiveElement {
                 "direction": AnyCodable(sc.direction),
                 "visible_in_viewport": AnyCodable(sc.visibleInViewport),
             ])
-        }
-        if let vc = viewController {
-            dict["view_controller"] = AnyCodable(vc)
-        }
-        if let pc = presentationContext {
-            dict["presentation_context"] = AnyCodable(pc)
         }
 
         return dict
@@ -256,18 +223,21 @@ struct PepperIntrospectionResult {
             "accessibilityCount": AnyCodable(accessibilityElements.count),
             "viewHierarchy": AnyCodable(
                 viewHierarchyElements.map { element in
-                    AnyCodable(
-                        [
-                            "id": AnyCodable(element.id),
-                            "type": AnyCodable(element.type),
-                            "label": AnyCodable(element.label ?? ""),
-                            "value": AnyCodable(element.value ?? ""),
-                            "enabled": AnyCodable(element.enabled),
-                            "visible": AnyCodable(element.visible),
-                        ] as [String: AnyCodable])
+                    var dict: [String: AnyCodable] = [
+                        "id": AnyCodable(element.id),
+                        "type": AnyCodable(element.type),
+                        "enabled": AnyCodable(element.enabled),
+                        "visible": AnyCodable(element.visible),
+                    ]
+                    if let label = element.label, !label.isEmpty {
+                        dict["label"] = AnyCodable(label)
+                    }
+                    if let value = element.value, !value.isEmpty {
+                        dict["value"] = AnyCodable(value)
+                    }
+                    return AnyCodable(dict)
                 }),
             "viewHierarchyCount": AnyCodable(viewHierarchyElements.count),
-            "hostingControllerCount": AnyCodable(hostingControllerCount),
         ]
     }
 }
