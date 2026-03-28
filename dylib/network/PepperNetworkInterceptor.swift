@@ -241,20 +241,33 @@ final class PepperNetworkInterceptor {
 
     /// Record a completed transaction. Called by PepperNetworkProtocol.
     func record(_ transaction: NetworkTransaction) {
+        // Parse GraphQL operation names from request body (before entering queue)
+        var tx = transaction
+        let url = tx.request.url
+        if let body = tx.request.body,
+            url.hasSuffix("/graphql") || url.hasSuffix("/graphql/")
+                || url.contains("/graphql?")
+        {
+            let ops = Self.extractGraphQLOperations(body)
+            if !ops.isEmpty {
+                tx.graphqlOperations = ops
+            }
+        }
+
         queue.async(flags: .barrier) {
             if self.buffer.count >= self.bufferSize {
                 self.buffer.removeFirst()
                 self.totalDropped += 1
             }
-            self.buffer.append(transaction)
+
+            self.buffer.append(tx)
             self.totalRecorded += 1
 
             // Record to flight recorder (lightweight summary only)
-            let method = transaction.request.method
-            let status = transaction.response?.statusCode ?? 0
-            let durationMs = transaction.timing.durationMs ?? 0
-            let bodySize = transaction.response?.originalBodySize ?? 0
-            let url = transaction.request.url
+            let method = tx.request.method
+            let status = tx.response?.statusCode ?? 0
+            let durationMs = tx.timing.durationMs ?? 0
+            let bodySize = tx.response?.originalBodySize ?? 0
 
             // Build compact summary: "200 POST /graphql GetUserProfile (89ms, 1.1KB)"
             var summary = "\(status) \(method)"
@@ -264,23 +277,23 @@ final class PepperNetworkInterceptor {
             } else {
                 summary += " \(url)"
             }
-            if let body = transaction.request.body,
-                url.hasSuffix("/graphql") || url.hasSuffix("/graphql/"),
-                let opName = Self.extractGraphQLOperationName(body)
-            {
-                summary += " \(opName)"
+            if let ops = tx.graphqlOperations, let first = ops.first {
+                summary += " \(first)"
+                if ops.count > 1 {
+                    summary += " +\(ops.count - 1)"
+                }
             }
             summary += " (\(durationMs)ms, \(Self.formatBytes(bodySize)))"
-            PepperFlightRecorder.shared.record(type: .network, summary: summary, referenceId: transaction.id)
+            PepperFlightRecorder.shared.record(type: .network, summary: summary, referenceId: tx.id)
 
             // Check for duplicate requests
-            self.checkForDuplicates(transaction)
+            self.checkForDuplicates(tx)
         }
 
         // Broadcast event to WebSocket clients
         let event = PepperEvent(
             event: "network_request",
-            data: transaction.toDictionary()
+            data: tx.toDictionary()
         )
         DispatchQueue.main.async {
             PepperPlane.shared.broadcast(event)
@@ -471,24 +484,57 @@ final class PepperNetworkInterceptor {
     /// Handles both JSON format {"operationName": "GetUser", "query": "..."}
     /// and raw query format "query GetUser { ... }" / "mutation CreatePost { ... }"
     static func extractGraphQLOperationName(_ body: String) -> String? {
-        // Try JSON format first (most common)
-        if let data = body.data(using: .utf8) {
-            do {
-                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                    if let opName = json["operationName"] as? String, !opName.isEmpty {
-                        return opName
-                    }
-                    if let query = json["query"] as? String {
-                        return parseOperationName(from: query)
+        extractGraphQLOperations(body).first
+    }
+
+    /// Extract all GraphQL operation names from a request body.
+    /// Handles single operations, batched arrays, and raw query format.
+    static func extractGraphQLOperations(_ body: String) -> [String] {
+        guard let data = body.data(using: .utf8) else {
+            // Try raw query format
+            if let name = parseOperationName(from: body) { return [name] }
+            return []
+        }
+
+        do {
+            let parsed = try JSONSerialization.jsonObject(with: data)
+
+            // Batched: [{operationName: ...}, ...]
+            if let array = parsed as? [[String: Any]] {
+                var names: [String] = []
+                for item in array {
+                    if let name = operationNameFromJSON(item) {
+                        names.append(name)
                     }
                 }
-            } catch {
-                pepperLog.debug(
-                    "extractGraphQLOperationName: JSON parse failed — trying raw format: \(error)", category: .server)
+                return names
             }
+
+            // Single: {operationName: ..., query: ...}
+            if let json = parsed as? [String: Any] {
+                if let name = operationNameFromJSON(json) {
+                    return [name]
+                }
+            }
+        } catch {
+            pepperLog.debug(
+                "extractGraphQLOperations: JSON parse failed — trying raw format: \(error)", category: .server)
         }
+
         // Try raw query format
-        return parseOperationName(from: body)
+        if let name = parseOperationName(from: body) { return [name] }
+        return []
+    }
+
+    /// Extract operation name from a single GraphQL JSON object.
+    private static func operationNameFromJSON(_ json: [String: Any]) -> String? {
+        if let opName = json["operationName"] as? String, !opName.isEmpty {
+            return opName
+        }
+        if let query = json["query"] as? String {
+            return parseOperationName(from: query)
+        }
+        return nil
     }
 
     /// Parse operation name from a GraphQL query string.
