@@ -400,7 +400,7 @@ def _ax_detect_safe() -> dict | None:
 async def act_and_look(simulator: str | None, cmd: str, params: dict | None = None, timeout: float = 10) -> str:
     """Send a command, then automatically run look to show screen state after the action.
     Returns: action result + screen summary + telemetry. Forces the check-act-verify loop."""
-    from .pepper_format import format_look
+    from .pepper_format import format_look, format_look_compact
 
     logger.debug("act_and_look cmd=%s simulator=%s params=%s", cmd, simulator, params)
     try:
@@ -491,7 +491,7 @@ async def act_and_look(simulator: str | None, cmd: str, params: dict | None = No
                     "dialog detect_system",
                 ],
             }
-        screen_summary = format_look(look_resp) if look_resp.get("status") == "ok" else "(look failed)"
+        screen_summary = format_look_compact(look_resp) if look_resp.get("status") == "ok" else "(look failed)"
     else:
         screen_summary = "(look failed)"
 
