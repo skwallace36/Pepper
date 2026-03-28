@@ -355,15 +355,9 @@ extension ElementDiscoveryBridge {
         }
     }
 
-    /// Strip SF Symbol private-use-area characters (U+100000–U+100FFF) from labels.
-    /// These appear in combined accessibility labels from SwiftUI and are unreadable.
+    /// Sanitize label text — delegates to shared pepperSanitizeLabel().
     private func stripSFSymbols(_ text: String?) -> String? {
-        guard let text = text, !text.isEmpty else { return text }
-        let stripped = text.unicodeScalars.filter { $0.value < 0x100000 || $0.value > 0x100FFF }
-        let result = String(String.UnicodeScalarView(stripped))
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .replacingOccurrences(of: "  +", with: " ", options: .regularExpression)
-        return result.isEmpty ? nil : result
+        pepperSanitizeLabel(text)
     }
 
     /// Extract accessibility info from an NSObject.
@@ -376,8 +370,8 @@ extension ElementDiscoveryBridge {
         {
             label = placeholder
         }
-        let value = element.accessibilityValue
-        let hint = element.accessibilityHint
+        let value = pepperSanitizeLabel(element.accessibilityValue)
+        let hint = pepperSanitizeLabel(element.accessibilityHint)
         let identifier = (element as? UIAccessibilityIdentification)?.accessibilityIdentifier
         var traits = element.accessibilityTraits
         let frame = element.accessibilityFrame

@@ -112,7 +112,7 @@ extension ElementDiscoveryBridge {
             // Dedup: ObjectIdentifier for views + frame overlap for other elements
             guard !dedup.isDuplicate(frame: viewFrame, view: view) else { continue }
 
-            var label = view.accessibilityLabel
+            var label = pepperSanitizeLabel(view.accessibilityLabel)
             // Fall back to placeholder for unlabeled text fields
             if (label == nil || label?.isEmpty == true), let tf = view as? UITextField,
                 let placeholder = tf.placeholder, !placeholder.isEmpty
