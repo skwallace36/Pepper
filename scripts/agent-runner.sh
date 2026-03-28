@@ -213,6 +213,56 @@ if [ "$RUNNING" -ge "$MAX_INSTANCES" ]; then
   exit 1
 fi
 
+# Backoff: skip if this agent type has too many consecutive failures.
+# Prevents rapid retry loops when work is stuck or environment is broken.
+# Same thresholds as heartbeat: 3 consecutive failures → 2.5h cooldown.
+# This check lives here (not just in heartbeat) so that ALL callers —
+# heartbeat, triggers, manual — get backoff protection. See #661.
+BACKOFF_THRESHOLD=3
+BACKOFF_WINDOW=9000  # 2.5 hours (heartbeat: 5 cycles * 1800s)
+
+if [ -f "$EVENTS" ]; then
+  IN_BACKOFF=$(python3 -c "
+import json, sys
+from datetime import datetime, timezone
+agent_type = '$TYPE'
+terminals = []
+try:
+    with open('$EVENTS') as f:
+        for line in f:
+            line = line.strip()
+            if not line: continue
+            try: e = json.loads(line)
+            except: continue
+            if e.get('agent') != agent_type: continue
+            ev = e.get('event','')
+            if ev in ('done','failed','timeout','killed'):
+                terminals.append(e)
+except FileNotFoundError:
+    pass
+if len(terminals) < $BACKOFF_THRESHOLD:
+    print('no')
+    sys.exit(0)
+last_n = terminals[-$BACKOFF_THRESHOLD:]
+if any(e['event'] == 'done' for e in last_n):
+    print('no')
+    sys.exit(0)
+last_ts = last_n[-1].get('ts','')
+try:
+    last_dt = datetime.fromisoformat(last_ts.replace('Z','+00:00'))
+    elapsed = (datetime.now(timezone.utc) - last_dt).total_seconds()
+except:
+    print('no')
+    sys.exit(0)
+print('yes' if elapsed < $BACKOFF_WINDOW else 'no')
+" 2>/dev/null || echo "no")
+  if [ "$IN_BACKOFF" = "yes" ]; then
+    emit "failed" ",\"detail\":\"${TYPE} in backoff (${BACKOFF_THRESHOLD}+ consecutive failures, cooldown ${BACKOFF_WINDOW}s)\""
+    echo "${TYPE} in backoff (${BACKOFF_THRESHOLD}+ consecutive failures) — skipping."
+    exit 0
+  fi
+fi
+
 LOCKFILE="build/logs/.lock-${TYPE}-$$"
 echo $$ > "$LOCKFILE"
 
@@ -666,8 +716,7 @@ if [ "$TYPE" != "pr-verifier" ] && [ "$TYPE" != "pr-responder" ]; then
   done
 fi
 
-# Auto-chaining disabled — let heartbeat control the pace.
-# Heartbeat already launches pr-verifier when awaiting:verifier PRs exist.
-# Re-enable once agent system is running smoothly at higher throughput.
+# No auto-chaining — heartbeat is the sole agent scheduler.
+# Spawning subagents here bypassed heartbeat's backoff logic. See #661.
 
 echo "Done. Transcript: $TRANSCRIPT"
