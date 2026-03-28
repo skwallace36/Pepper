@@ -1,6 +1,6 @@
 """System and utility tool definitions for Pepper MCP.
 
-Tools: push, status, highlight, orientation, locale, gesture, hook, flags, appearance.
+Tools: push, status, highlight, orientation, locale, gesture, hook, flags, appearance, dynamic_type.
 """
 
 from __future__ import annotations
@@ -11,6 +11,7 @@ from pydantic import Field
 
 from .pepper_commands import (
     CMD_APPEARANCE,
+    CMD_DYNAMIC_TYPE,
     CMD_FLAGS,
     CMD_GESTURE,
     CMD_HIGHLIGHT,
@@ -231,3 +232,22 @@ def register_system_tools(mcp, resolve_and_send, act_and_look):
         if mode:
             params["mode"] = mode
         return await resolve_and_send(simulator, CMD_APPEARANCE, params)
+
+    @mcp.tool()
+    async def dynamic_type(
+        simulator: str | None = Field(default=None, description="Simulator UDID"),
+        action: str | None = Field(
+            default=None, description="Action: current (default), set, reset, sizes"
+        ),
+        size: str | None = Field(
+            default=None,
+            description="Content size category for set (e.g. 'extraSmall', 'large', 'accessibilityExtraExtraExtraLarge')",
+        ),
+    ) -> str:
+        """Override Dynamic Type (preferred font size) at runtime to test text scaling and layout."""
+        params: dict = {}
+        if action:
+            params["action"] = action
+        if size:
+            params["size"] = size
+        return await resolve_and_send(simulator, CMD_DYNAMIC_TYPE, params)

@@ -72,6 +72,7 @@
     {"name": "push", "category": "system", "description": "Simulate a push notification"},
     {"name": "orientation", "category": "system", "description": "Get or set device orientation"},
     {"name": "appearance", "category": "system", "description": "Toggle light/dark mode at runtime"},
+    {"name": "dynamic_type", "category": "accessibility", "description": "Override Dynamic Type (font scaling) at runtime"},
     {"name": "status", "category": "system", "description": "Check Pepper connection status"},
     {"name": "wait_for", "category": "system", "description": "Wait for an element to appear"},
     {"name": "wait_idle", "category": "system", "description": "Wait for the app to become idle"},
