@@ -399,7 +399,9 @@ case "$TYPE" in
   pr-responder)      AGENT_NUM=6 ;;
   tester|regression-tester) AGENT_NUM=7 ;;
   conflict-resolver) AGENT_NUM=8 ;;
-  *)                 AGENT_NUM=9 ;;  # spare
+  researcher)        AGENT_NUM=9 ;;
+  groomer)           AGENT_NUM=10 ;;
+  *)                 AGENT_NUM=11 ;;  # spare
 esac
 
 # For multi-instance types, offset by instance count so each gets a unique identity
