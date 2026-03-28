@@ -372,8 +372,72 @@ final class PepperNetworkInterceptor {
         }
     }
 
+    // MARK: - Noise Filtering
+
+    /// Known Apple/system domains that generate telemetry and health-check traffic.
+    /// Matched as case-insensitive substrings against the request URL.
+    static let noiseDomains: [String] = [
+        // Apple telemetry & config
+        "bag.itunes.apple.com",
+        "xp.apple.com",
+        "configuration.apple.com",
+        "gsp-ssl.ls.apple.com",
+        "init.itunes.apple.com",
+        "identity.apple.com",
+        "gsa.apple.com",
+        "gsas.apple.com",
+        "albert.apple.com",
+        "static.ips.apple.com",
+        "mesu.apple.com",
+        "gdmf.apple.com",
+        "pancake.apple.com",
+        "sylvan.apple.com",
+        // Apple push / device management
+        "push.apple.com",
+        "deviceenrollment.apple.com",
+        "mdmenrollment.apple.com",
+        "iprofiles.apple.com",
+        // iCloud system services
+        "gateway.icloud.com",
+        "setup.icloud.com",
+        "mask.icloud.com",
+        "mask-h2.icloud.com",
+        "keyvalueservice.icloud.com",
+        // Analytics SDKs
+        "app-measurement.com",
+        "firebase-settings.crashlytics.com",
+        "firebaseinstallations.googleapis.com",
+        "app.link",           // Branch.io
+        "settings.crashlytics.com",
+        // Apple CDN / software updates
+        "swscan.apple.com",
+        "swcdn.apple.com",
+        "swdist.apple.com",
+        "oscdn.apple.com",
+        "updates.cdn-apple.com",
+        "updates-http.cdn-apple.com",
+    ]
+
+    /// Check whether a URL matches any noise domain pattern.
+    static func isNoise(_ url: String) -> Bool {
+        let lower = url.lowercased()
+        return noiseDomains.contains { lower.contains($0) }
+    }
+
     /// Get recent transactions, optionally filtered by URL substring.
-    func recentTransactions(limit: Int = 50, filter: String? = nil, sinceMs: Int64? = nil) -> [NetworkTransaction] {
+    /// - Parameters:
+    ///   - limit: Maximum number of transactions to return.
+    ///   - filter: Include-only URL substring (case-insensitive).
+    ///   - sinceMs: Only transactions after this epoch-ms timestamp.
+    ///   - hideNoise: When true, excludes known Apple/system telemetry domains (default: true).
+    ///   - exclude: Additional URL substrings to exclude (case-insensitive).
+    func recentTransactions(
+        limit: Int = 50,
+        filter: String? = nil,
+        sinceMs: Int64? = nil,
+        hideNoise: Bool = true,
+        exclude: [String]? = nil
+    ) -> [NetworkTransaction] {
         queue.sync {
             var results = buffer
             if let sinceMs = sinceMs {
@@ -381,6 +445,14 @@ final class PepperNetworkInterceptor {
             }
             if let filter = filter, !filter.isEmpty {
                 results = results.filter { $0.request.url.localizedCaseInsensitiveContains(filter) }
+            }
+            if hideNoise {
+                results = results.filter { !Self.isNoise($0.request.url) }
+            }
+            if let exclude = exclude, !exclude.isEmpty {
+                results = results.filter { tx in
+                    !exclude.contains { tx.request.url.localizedCaseInsensitiveContains($0) }
+                }
             }
             return Array(results.suffix(limit))
         }

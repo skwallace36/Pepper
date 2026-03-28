@@ -27,6 +27,14 @@ def register_network_tools(mcp, resolve_and_send):
             description="Action: start, stop, log, status, clear, simulate, conditions, remove_condition, clear_conditions, mock, mocks, remove_mock, clear_mocks"
         ),
         filter_text: str | None = Field(default=None, description="Filter by URL pattern (for log action)"),
+        hide_noise: bool | None = Field(
+            default=None,
+            description="Hide known Apple/system telemetry traffic (default: true). Set false to see all requests.",
+        ),
+        exclude: str | None = Field(
+            default=None,
+            description="Comma-separated URL patterns to exclude from log (e.g. 'analytics.example.com,tracker.io')",
+        ),
         limit: int | None = Field(default=None, description="Max entries to return (for log action)"),
         include_headers: bool | None = Field(
             default=None,
@@ -70,6 +78,10 @@ def register_network_tools(mcp, resolve_and_send):
         params: dict = {"action": action}
         if filter_text:
             params["filter"] = filter_text
+        if hide_noise is not None:
+            params["hide_noise"] = hide_noise
+        if exclude:
+            params["exclude"] = exclude
         if limit is not None:
             params["limit"] = limit
         if include_headers is not None:
