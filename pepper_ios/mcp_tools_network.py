@@ -71,7 +71,7 @@ def register_network_tools(mcp, resolve_and_send):
         condition_id: str | None = Field(
             default=None, description="Condition ID (for remove_condition, or custom ID for simulate)"
         ),
-        mock_status: int | None = Field(default=None, description="HTTP status code for mock response (default: 200)"),
+        mock_status_code: int | None = Field(default=None, description="HTTP status code for mock response (default: 200)"),
         mock_body: str | None = Field(default=None, description="Response body for mock (JSON string)"),
         mock_id: str | None = Field(default=None, description="Mock ID (for remove_mock, or custom ID for mock)"),
     ) -> str:
@@ -113,8 +113,8 @@ def register_network_tools(mcp, resolve_and_send):
             return "Error: condition_id and mock_id are mutually exclusive — use condition_id for simulate/remove_condition, mock_id for mock/remove_mock."
         if condition_id:
             params["id"] = condition_id
-        if mock_status is not None:
-            params["status"] = mock_status
+        if mock_status_code is not None:
+            params["status"] = mock_status_code
         if mock_body is not None:
             params["body"] = mock_body
         if mock_id:

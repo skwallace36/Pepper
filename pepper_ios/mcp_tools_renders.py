@@ -29,7 +29,7 @@ def register_renders_tools(mcp, resolve_and_send):
             default=None,
             description="Only return events after this Unix timestamp in ms (for log action)",
         ),
-        filter: str | None = Field(
+        filter_text: str | None = Field(
             default=None,
             description="Filter events by view controller type or address (for log action)",
         ),
@@ -45,8 +45,8 @@ def register_renders_tools(mcp, resolve_and_send):
             params["limit"] = limit
         if since_ms is not None:
             params["since_ms"] = since_ms
-        if filter is not None:
-            params["filter"] = filter
+        if filter_text is not None:
+            params["filter"] = filter_text
         if name is not None:
             params["name"] = name
         if sub is not None:
