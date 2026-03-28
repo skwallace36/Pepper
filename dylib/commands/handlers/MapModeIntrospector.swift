@@ -25,6 +25,7 @@ struct MapModeIntrospector {
         let bandSize: CGFloat = CGFloat(command.params?["band"]?.intValue ?? 40)
         let detailMode = command.params?["detail"]?.stringValue ?? "summary"
         let isSummary = detailMode != "full"
+        let enableOCR = command.params?["ocr"]?.boolValue ?? false
 
         // Detect topmost presented modal/sheet. For full-screen modals, scope
         // element collection to that VC's view subtree. For sheets (half-height
@@ -692,6 +693,55 @@ struct MapModeIntrospector {
             detectSelectedByBackground(&mergedInteractive, window: window)
         }
 
+        // Phase 4h: OCR pass (optional) — capture screen, run Vision text recognition,
+        // deduplicate against accessibility elements, and collect survivors into a
+        // separate array. Only runs when the caller passes ocr: true.
+        var ocrResults: [[String: AnyCodable]] = []
+        if enableOCR {
+            let screenSize = UIScreen.main.bounds.size
+            if let cgImage = PepperWindowCapture.captureWindow() {
+                if let observations = PepperOCR.recognizeText(in: cgImage, screenSize: screenSize) {
+                    let ocrObs = observations.map { OCRObservation(text: $0.text, bounds: $0.boundingBox) }
+                    let survivors = deduplicateOCR(
+                        observations: ocrObs,
+                        interactive: mergedInteractive,
+                        nonInteractive: mergedNonInteractive
+                    )
+                    // Serialize OCR survivors with metadata (text, center, confidence, rect).
+                    // Match confidence from original observations by text+center proximity.
+                    for elem in survivors {
+                        let conf = observations.first { obs in
+                            obs.text == elem.label
+                                && abs(obs.boundingBox.midX - elem.center.x) < 2
+                                && abs(obs.boundingBox.midY - elem.center.y) < 2
+                        }?.confidence ?? 0
+                        var entry: [String: AnyCodable] = [
+                            "text": AnyCodable(elem.label ?? ""),
+                            "center": AnyCodable([
+                                "x": AnyCodable(Int(elem.center.x)),
+                                "y": AnyCodable(Int(elem.center.y)),
+                            ] as [String: AnyCodable]),
+                            "confidence": AnyCodable(Double(conf)),
+                        ]
+                        if !isSummary {
+                            entry["rect"] = AnyCodable([
+                                "x": AnyCodable(Int(elem.frame.origin.x)),
+                                "y": AnyCodable(Int(elem.frame.origin.y)),
+                                "w": AnyCodable(Int(elem.frame.width)),
+                                "h": AnyCodable(Int(elem.frame.height)),
+                            ] as [String: AnyCodable])
+                        }
+                        ocrResults.append(entry)
+                    }
+                    logger.info("OCR: \(observations.count) recognized, \(survivors.count) after dedup")
+                } else {
+                    logger.warning("OCR: text recognition failed")
+                }
+            } else {
+                logger.warning("OCR: window capture failed")
+            }
+        }
+
         // Phase 5: Apply spatial filters
         // Scope: resolve an element by label/identifier and use its frame as the filter region.
         let scopeRect: CGRect? = {
@@ -865,6 +915,9 @@ struct MapModeIntrospector {
         if bridge.lastInteractiveTruncated || bridge.lastAccessibilityTruncated {
             data["truncated"] = AnyCodable(true)
             data["element_limit"] = AnyCodable(500)
+        }
+        if !ocrResults.isEmpty {
+            data["ocr_results"] = AnyCodable(ocrResults.map { AnyCodable($0) })
         }
 
         // Keyboard state: surface when keyboard covers the lower screen so agents
