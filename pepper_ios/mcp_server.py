@@ -647,9 +647,11 @@ async def wait_for(
     value: str | None = Field(default=None, description="Expected value (for has_value state)"),
     text: str | None = Field(default=None, description="Wait for text to appear on screen (alternative to element)"),
     screen: str | None = Field(default=None, description="Wait for a specific screen ID (alternative to element)"),
+    predicate: str | None = Field(default=None, description="NSPredicate format string to match elements (e.g. \"label == 'Submit' AND enabled == true\"). Same syntax as find tool."),
+    expect: str | None = Field(default=None, description="For predicate waits: match (default, wait for ≥1 match) or gone (wait for 0 matches)"),
     timeout_ms: int | None = Field(default=None, description="Timeout in milliseconds (default: 5000)"),
 ) -> str:
-    """Wait for a condition — element visible, text appears, or screen changes. Use after actions that trigger async UI updates."""
+    """Wait for a condition — element visible, text appears, screen changes, or predicate match/gone. Use after actions that trigger async UI updates."""
     until: dict = {}
     if element:
         until["element"] = element
@@ -661,8 +663,12 @@ async def wait_for(
         until["text"] = text
     elif screen:
         until["screen"] = screen
+    elif predicate:
+        until["predicate"] = predicate
+        if expect:
+            until["expect"] = expect
     else:
-        return "Error: specify element, text, or screen to wait for"
+        return "Error: specify element, text, screen, or predicate to wait for"
     params: dict = {"until": until}
     if timeout_ms is not None:
         params["timeout_ms"] = timeout_ms

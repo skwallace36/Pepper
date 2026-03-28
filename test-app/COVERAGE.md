@@ -270,13 +270,17 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `webview` | dom | untested |  |  |
 | `appearance` | dark | untested |  |  |
 | `appearance` | light | untested |  |  |
+| `dynamic_type` | current | untested |  |  |
+| `dynamic_type` | set | untested |  |  |
+| `dynamic_type` | reset | untested |  |  |
+| `dynamic_type` | sizes | untested |  |  |
 | `verify` | — | untested | Any state | New command. Explicit pass/fail assertions on screen state. Supports text presence, element state (visible/enabled/value), and screen name checks. Batch mode for multiple assertions in one call. |
 
 ## Summary
 
-**251 test points** across 69 commands.
+**255 test points** across 70 commands.
 
 - pass: 137
 - fail: 3
-- untested: 100
+- untested: 104
 
