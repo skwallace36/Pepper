@@ -210,12 +210,12 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `undo` | undo | untested |  |  |
 | `undo` | redo | untested |  |  |
 | `accessibility_audit` | — | untested | Any state |  |
-| `accessibility_action` | list | untested |  |  |
-| `accessibility_action` | invoke | untested |  |  |
-| `accessibility_action` | escape | untested |  |  |
-| `accessibility_action` | magic_tap | untested |  |  |
-| `accessibility_action` | increment | untested |  |  |
-| `accessibility_action` | decrement | untested |  |  |
+| `accessibility_action` | list | ready | Misc tab → Accessibility Actions Screen | Lists custom actions on a11y_custom_actions (Mark as Read, Archive) and adjustable trait on a11y_adjustable |
+| `accessibility_action` | invoke | ready | Misc tab → Accessibility Actions Screen | Invokes named custom actions on a11y_custom_actions element |
+| `accessibility_action` | escape | ready | Misc tab → Accessibility Actions Screen | Escape via responder chain — works from any screen |
+| `accessibility_action` | magic_tap | ready | Misc tab → Accessibility Actions Screen | VC overrides accessibilityPerformMagicTap(); status label updates to confirm |
+| `accessibility_action` | increment | ready | Misc tab → Accessibility Actions Screen | AdjustableCounterView with .adjustable trait; increments counter from 5 |
+| `accessibility_action` | decrement | ready | Misc tab → Accessibility Actions Screen | AdjustableCounterView with .adjustable trait; decrements counter from 5 |
 | `accessibility_events` | start | untested |  |  |
 | `accessibility_events` | stop | untested |  |  |
 | `accessibility_events` | status | untested |  |  |
@@ -284,5 +284,5 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 
 - pass: 137
 - fail: 3
-- untested: 106
+- untested: 100
 

@@ -1,8 +1,39 @@
 {
   "_comment": "Status data for gen-coverage.py. Keys: 'command' or 'command.variant'. Only non-default entries needed.",
   "accessibility_action": {
-    "notes": "",
-    "status": "not_tested"
+    "notes": "Test surface added: adjustable counter, custom actions, magic tap",
+    "status": "ready",
+    "surface": "Misc tab → Accessibility Actions Screen"
+  },
+  "accessibility_action.list": {
+    "notes": "Lists custom actions on a11y_custom_actions (Mark as Read, Archive) and adjustable trait on a11y_adjustable",
+    "status": "ready",
+    "surface": "Misc tab → Accessibility Actions Screen"
+  },
+  "accessibility_action.invoke": {
+    "notes": "Invokes named custom actions on a11y_custom_actions element",
+    "status": "ready",
+    "surface": "Misc tab → Accessibility Actions Screen"
+  },
+  "accessibility_action.escape": {
+    "notes": "Escape via responder chain — works from any screen",
+    "status": "ready",
+    "surface": "Misc tab → Accessibility Actions Screen"
+  },
+  "accessibility_action.magic_tap": {
+    "notes": "VC overrides accessibilityPerformMagicTap(); status label updates to confirm",
+    "status": "ready",
+    "surface": "Misc tab → Accessibility Actions Screen"
+  },
+  "accessibility_action.increment": {
+    "notes": "AdjustableCounterView with .adjustable trait; increments counter from 5",
+    "status": "ready",
+    "surface": "Misc tab → Accessibility Actions Screen"
+  },
+  "accessibility_action.decrement": {
+    "notes": "AdjustableCounterView with .adjustable trait; decrements counter from 5",
+    "status": "ready",
+    "surface": "Misc tab → Accessibility Actions Screen"
   },
   "accessibility_audit": {
     "notes": "",
