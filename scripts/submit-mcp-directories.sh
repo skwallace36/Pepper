@@ -239,8 +239,8 @@ make setup
 }
 ```
 
-### Tools (47)
-Navigation (14): look, tap, scroll, scroll_to, swipe, gesture, input_text, toggle, navigate, back, dismiss, dismiss_keyboard, dialog, screen
+### Tools (46)
+Navigation (13): look, tap, scroll, swipe, gesture, input_text, toggle, navigate, back, dismiss, dismiss_keyboard, dialog, screen
 Debug (8): layers, console, network, timeline, crash_log, animations, lifecycle, heap
 State (5): vars_inspect, defaults, clipboard, keychain, cookies
 System (13): push, status, highlight, orientation, locale, gesture, hook, find, flags, dialog, toggle, read_element, tree

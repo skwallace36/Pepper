@@ -87,7 +87,7 @@ Extracted from `pepper-mcp` into focused modules. Each is imported by `pepper-mc
 
 | Module | Tools |
 |--------|-------|
-| `mcp_tools_nav.py` | look, tap, scroll, input_text, navigate, back, dismiss, swipe, screen, scroll_to *(deprecated)*, dismiss_keyboard |
+| `mcp_tools_nav.py` | look, tap, scroll, input_text, navigate, back, dismiss, swipe, screen, dismiss_keyboard |
 | `mcp_tools_state.py` | vars_inspect, defaults, clipboard, keychain, cookies |
 | `mcp_tools_debug.py` | layers, console, network, timeline, crash_log, animations, lifecycle, heap |
 | `mcp_tools_system.py` | push, status, highlight, orientation, locale, gesture, hook, find, flags, dialog, toggle, read_element, tree |

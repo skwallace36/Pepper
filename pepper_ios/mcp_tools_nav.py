@@ -384,17 +384,6 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
         return json_dumps(await resolve_and_send(simulator, CMD_SCREEN))
 
     @mcp.tool()
-    async def scroll_to(
-        simulator: str | None = Field(default=None, description="Simulator UDID"),
-        text: str = Field(description="Text to scroll to (scrolls until this text is visible on screen)"),
-        direction: str = Field(default="down", description="Scroll direction: up, down, left, right"),
-        max_scrolls: int | None = Field(default=None, description="Max scroll attempts (default: 10)"),
-    ) -> list:
-        """Deprecated — use scroll with target param instead. Scrolls until text is visible."""
-        _logger.info("scroll_to is deprecated — use scroll(target='%s') instead", text)
-        return await scroll(simulator=simulator, direction=direction, target=text, max_scrolls=max_scrolls)
-
-    @mcp.tool()
     async def dismiss_keyboard(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
     ) -> list:
