@@ -5,7 +5,7 @@ set -euo pipefail
 # Replaces direct TASKS.md editing. Agents call this, not raw gh commands.
 #
 # Usage:
-#   pepper-task next [--area LABEL]     # claim next unassigned task, returns issue JSON
+#   pepper-task next [--area LABEL] [--label LABEL]  # claim next unassigned task, returns issue JSON
 #   pepper-task claim ISSUE_NUM         # assign + label an issue as in-progress
 #   pepper-task done ISSUE_NUM          # mark done (auto-closed by PR "Fixes #N")
 #   pepper-task list [--area LABEL]     # list open tasks
@@ -25,11 +25,13 @@ emit_task() {
 
 case "$CMD" in
   next)
-    # Find next unassigned open issue with 'task' label, optionally filtered by area
+    # Find next unassigned open issue, optionally filtered by area or label
     AREA_FILTER=""
+    LABEL_FLAG=""
     while [ $# -gt 0 ]; do
       case "$1" in
         --area) AREA_FILTER="$2"; shift 2 ;;
+        --label) LABEL_FLAG="$2"; shift 2 ;;
         *) shift ;;
       esac
     done
@@ -38,6 +40,7 @@ case "$CMD" in
     # Priority is encoded in labels as priority:p3, priority:p4, etc.
     LABEL_FILTER=""
     [ -n "$AREA_FILTER" ] && LABEL_FILTER="--label $AREA_FILTER"
+    [ -n "$LABEL_FLAG" ] && LABEL_FILTER="$LABEL_FILTER --label $LABEL_FLAG"
 
     ISSUES=$(gh issue list --repo "$REPO" --state open $LABEL_FILTER --json number,title,labels,body --limit 100 \
       --jq '[.[] | . + {prio: ((.labels // []) | map(select(.name | startswith("priority:"))) | .[0].name // "priority:p99")}] | sort_by(.prio, .number) | .[]' 2>/dev/null)
@@ -51,7 +54,8 @@ case "$CMD" in
       # Skip if already claimed
       LABELS=$(echo "$issue" | jq -r '.labels[].name' 2>/dev/null || true)
       echo "$LABELS" | grep -q "in-progress" && continue
-      echo "$LABELS" | grep -q "^bug$" && continue
+      # Skip bugs unless explicitly requesting them via --label bug
+      [ "$LABEL_FLAG" != "bug" ] && echo "$LABELS" | grep -q "^bug$" && continue
       echo "$LABELS" | grep -q "blocked" && continue
 
       # Check for existing agent branch (by TASK-ID or issue number)
