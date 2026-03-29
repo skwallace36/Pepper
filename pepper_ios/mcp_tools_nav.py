@@ -68,9 +68,9 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
             default=None,
             description="Raw mode only. Comma-separated list of fields to include per element (e.g. fields='label,frame,type'). Reduces output to only the requested keys.",
         ),
-        slim: bool = Field(
+        verbose: bool = Field(
             default=False,
-            description="Stateless flat list: every call returns all elements with tap commands, no y-coordinates or group headers. Best for one-shot observation when you need the full picture.",
+            description="Show y-range group headers and full spatial layout. Useful for human debugging; agents rarely need this.",
         ),
         compact: bool = Field(
             default=False,
@@ -161,12 +161,12 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
             if filter or fields:
                 resp = filter_raw(resp, filter, fields)
             text = json_dumps(resp)
-        elif slim:
-            text = format_look_slim(resp)
         elif compact:
             text = format_look_compact(resp)
-        else:
+        elif verbose:
             text = format_look(resp)
+        else:
+            text = format_look_slim(resp)
 
         result = [TextContent(type="text", text=text)]
         if screenshot_b64:
