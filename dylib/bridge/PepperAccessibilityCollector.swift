@@ -183,15 +183,6 @@ extension ElementDiscoveryBridge {
                 }
             }
 
-            // Enrich with VC context for on-screen elements
-            if onScreen,
-                let hitView = UIWindow.pepper_keyWindow?.hitTest(center, with: nil),
-                let vc = findOwningViewController(for: hitView)
-            {
-                elem.viewController = String(describing: type(of: vc))
-                elem.presentationContext = presentationContext(of: vc)
-            }
-
             annotated.append(elem)
         }
         return annotated
