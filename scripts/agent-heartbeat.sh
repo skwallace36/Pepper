@@ -204,7 +204,7 @@ prs = json.loads(subprocess.check_output(
 claimed_by_pr = set()
 for pr in prs:
     for m in re.findall(r'(?:fixes|closes|resolves)\s+#(\d+)', pr.get('body',''), re.I):
-        claimed_by_pr.add(int(m.group(0).split('#')[1]))
+        claimed_by_pr.add(int(m))
 branches = subprocess.check_output(
     ['gh', 'api', 'repos/skwallace36/Pepper-private/branches', '--jq', '.[].name'], text=True)
 for line in branches.splitlines():
@@ -348,20 +348,26 @@ print(count)
   else
     COMMITS_SINCE=999  # first run — always test
   fi
-  REGRESSION_THRESHOLD=5  # run tests after every 5 commits
+  REGRESSION_THRESHOLD=20  # run tests after every 20 commits (was 5 — too frequent)
   if [ "$COMMITS_SINCE" -ge "$REGRESSION_THRESHOLD" ]; then
-    # Check if a sim is booted (tester needs a running sim)
-    BOOTED_SIMS=$(xcrun simctl list devices booted -j 2>/dev/null | python3 -c "
+    # Skip if a regression-tester PR is already open
+    OPEN_REG_PRS=$(gh pr list --repo skwallace36/Pepper-private --state open --head "agent/tester/" --json number --jq 'length' 2>/dev/null || echo 0)
+    if [ "$OPEN_REG_PRS" -gt 0 ]; then
+      : # silently skip — existing regression PR not yet merged
+    else
+      # Check if a sim is booted (tester needs a running sim)
+      BOOTED_SIMS=$(xcrun simctl list devices booted -j 2>/dev/null | python3 -c "
 import json, sys
 devs = json.load(sys.stdin)['devices']
 print(sum(1 for r in devs.values() for d in r if d['state'] == 'Booted'))
 " 2>/dev/null || echo 0)
-    if [ "$BOOTED_SIMS" -gt 0 ]; then
-      if should_backoff regression-tester; then
-        echo "$(date +%H:%M) regression-tester in backoff — skipping"
-      else
-        echo "$(date +%H:%M) $COMMITS_SINCE commits since last test — launching regression-tester"
-        launch_if_slots regression-tester
+      if [ "$BOOTED_SIMS" -gt 0 ]; then
+        if should_backoff regression-tester; then
+          echo "$(date +%H:%M) regression-tester in backoff — skipping"
+        else
+          echo "$(date +%H:%M) $COMMITS_SINCE commits since last test — launching regression-tester"
+          launch_if_slots regression-tester
+        fi
       fi
     fi
   fi
