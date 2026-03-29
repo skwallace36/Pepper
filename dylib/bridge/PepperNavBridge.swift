@@ -36,6 +36,23 @@ extension UIViewController {
         {
             return displayed.pepper_topMostViewController
         }
+        // SwiftUI embeds UIKit containers (UITabBarController, UINavigationController)
+        // as child VCs rather than as the VC itself. Check children for containers
+        // so we traverse through SwiftUI TabView and NavigationStack hierarchies.
+        for child in children {
+            if let tab = child as? UITabBarController,
+                let selected = tab.selectedViewController
+            {
+                return selected.pepper_topMostViewController
+            }
+        }
+        for child in children {
+            if let nav = child as? UINavigationController,
+                let visible = nav.visibleViewController
+            {
+                return visible.pepper_topMostViewController
+            }
+        }
         return self
     }
 
