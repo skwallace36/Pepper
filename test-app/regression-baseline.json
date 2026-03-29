@@ -1,7 +1,7 @@
 {
   "_comment": "Regression test baseline. Updated by the regression-tester agent. Each key is a test name, value is {status, last_run, notes}.",
   "_last_run": "2026-03-29",
-  "_sha": "44fcae5a6655be0dd0149de9009e4f220b0bc6a7",
+  "_sha": "d7dae2de875778b2aebcbf2b61ac1a49ebf6f5cc",
   "pepper connects": {
     "status": "pass",
     "last_run": "2026-03-29",
@@ -23,9 +23,9 @@
     "notes": "Tapped at (200,400), acknowledged via hid_touch"
   },
   "back navigation": {
-    "status": "fail",
+    "status": "pass",
     "last_run": "2026-03-29",
-    "notes": "back command returns 'Cannot go back: already at root screen' even when on a detail screen pushed via NavigationStack"
+    "notes": "Navigated back from Item 0 detail to List tab. Fix confirmed in #778/#780."
   },
   "input text into field": {
     "status": "pass",
@@ -40,12 +40,12 @@
   "scroll down": {
     "status": "pass",
     "last_run": "2026-03-29",
-    "notes": "Scrolled 200pt on List tab, content shifted from Item 0 to Item 2, element count increased from 15 to 21"
+    "notes": "Scrolled 200pt on List tab, content shifted from Item 0 to Item 2, element count increased from 15 to 20"
   },
   "scroll to element": {
     "status": "fail",
     "last_run": "2026-03-29",
-    "notes": "scroll with target 'Item 40' just scrolls 200pt without seeking the element; pepper-ctl returns 'Element not found'"
+    "notes": "scroll --element 'Item 40' returns 'Element not found'; does not seek off-screen elements"
   },
   "scroll to element (deprecated scroll_to)": {
     "status": "fail",
@@ -55,7 +55,7 @@
   "look scope filtering": {
     "status": "fail",
     "last_run": "2026-03-29",
-    "notes": "scope parameter does not filter output; returns all elements regardless of container"
+    "notes": "scope parameter does not filter output; returns all 18 elements regardless of container"
   },
   "look compact mode": {
     "status": "fail",
@@ -65,7 +65,7 @@
   "find by predicate": {
     "status": "pass",
     "last_run": "2026-03-29",
-    "notes": "Found buttons with type == 'button', all correct type including Tap Me, Reset, etc."
+    "notes": "27 matches for type == 'button', all correct type"
   },
   "read element properties": {
     "status": "fail",
@@ -75,7 +75,7 @@
   "screen name": {
     "status": "pass",
     "last_run": "2026-03-29",
-    "notes": "Returns screen_id, VC type, tab info (3 tabs), navigation stack, can_go_back"
+    "notes": "Returns screen_id, tab info (3 tabs), navigation stack, can_go_back"
   },
   "appearance toggle": {
     "status": "pass",
@@ -85,7 +85,7 @@
   "network monitoring": {
     "status": "pass",
     "last_run": "2026-03-29",
-    "notes": "Captured 1 HTTP request (httpbin.org/json, status 200); start/log/stop all succeeded"
+    "notes": "Captured 1 HTTP transaction (status 200) after tapping Fetch HTTP; start/log/stop all succeeded"
   },
   "console capture": {
     "status": "pass",
@@ -100,22 +100,22 @@
   "vars inspect": {
     "status": "pass",
     "last_run": "2026-03-29",
-    "notes": "2 instances (AppState with tapCount/totalTaps/etc); passed on retry after initial timeout"
+    "notes": "AppState instance with tapCount/totalTaps properties returned"
   },
   "defaults read": {
     "status": "pass",
     "last_run": "2026-03-29",
-    "notes": "793 UserDefaults keys returned"
+    "notes": "200 UserDefaults entries returned"
   },
   "snapshot save and diff": {
     "status": "pass",
     "last_run": "2026-03-29",
-    "notes": "Save captured 18 elements/11 texts. After tapping Tap Me, diff correctly showed Count: 0 → Count: 1. No crash."
+    "notes": "Save captured 18 elements/11 texts. After tapping Tap Me, diff correctly showed Count: 1 → Count: 2."
   },
   "accessibility audit": {
     "status": "pass",
     "last_run": "2026-03-29",
-    "notes": "Returned issues including missing_label and contrast violations, no crash"
+    "notes": "Returned 18 issues, no crash"
   },
   "tree dump": {
     "status": "pass",
