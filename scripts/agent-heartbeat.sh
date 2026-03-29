@@ -317,6 +317,34 @@ print(unclaimed)
     fi
   done
 
+  # Close stale awaiting:human PRs (>7 days with no new comments)
+  STALE_CUTOFF=$(date -v-7d +%s 2>/dev/null || date -d '7 days ago' +%s)
+  for pr_json in $(gh pr list --repo skwallace36/Pepper-private --state open \
+    --label "awaiting:human" --json number,body --jq '.[] | @base64' 2>/dev/null); do
+    PR_NUM=$(echo "$pr_json" | base64 -d | jq -r '.number')
+    # Get the most recent comment timestamp (or empty if no comments)
+    LAST_COMMENT_DATE=$(gh api "repos/skwallace36/Pepper-private/issues/$PR_NUM/comments" \
+      --jq '.[-1].created_at // empty' 2>/dev/null || echo "")
+    if [ -z "$LAST_COMMENT_DATE" ]; then
+      # No comments — use PR updatedAt as the reference point
+      LAST_COMMENT_DATE=$(gh pr view "$PR_NUM" --repo skwallace36/Pepper-private \
+        --json updatedAt --jq '.updatedAt' 2>/dev/null || echo "")
+    fi
+    [ -z "$LAST_COMMENT_DATE" ] && continue
+    COMMENT_EPOCH=$(date -jf "%Y-%m-%dT%H:%M:%SZ" "$LAST_COMMENT_DATE" +%s 2>/dev/null \
+      || date -d "$LAST_COMMENT_DATE" +%s 2>/dev/null || continue)
+    if [ "$COMMENT_EPOCH" -lt "$STALE_CUTOFF" ]; then
+      echo "$(date +%H:%M) Closing stale awaiting:human PR #$PR_NUM (last activity: $LAST_COMMENT_DATE)"
+      gh pr close "$PR_NUM" --repo skwallace36/Pepper-private \
+        --comment "Closing: this PR has been awaiting human review for >7 days with no activity. Reopen if still needed. — pepper-agent/heartbeat" \
+        2>/dev/null || true
+      ISSUE_NUM=$(echo "$pr_json" | base64 -d | jq -r '.body' | grep -oE 'Fixes #[0-9]+' | head -1 | tr -dc '0-9')
+      if [ -n "$ISSUE_NUM" ]; then
+        gh issue edit "$ISSUE_NUM" --repo skwallace36/Pepper-private --remove-label "in-progress" 2>/dev/null || true
+      fi
+    fi
+  done
+
   # Groom backlog — once per day max
   GROOMER_RUNS_TODAY=$(python3 -c "
 import json
