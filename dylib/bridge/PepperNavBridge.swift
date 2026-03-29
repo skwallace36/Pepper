@@ -339,12 +339,17 @@ extension UIWindow {
 extension UIViewController {
 
     /// Find the effective navigation controller for this view controller.
-    /// First checks the standard `navigationController` property (walks up the parent chain).
-    /// If nil, walks the child VC tree to find a SwiftUI-managed UINavigationController
-    /// (SwiftUI NavigationStack creates a UINavigationController as a child, not a parent).
+    /// Tries three strategies:
+    /// 1. Standard `navigationController` property (walks up the parent chain via UIKit internals).
+    /// 2. Walk the child VC tree (SwiftUI NavigationStack creates a UINavigationController as a child).
+    /// 3. Manual parent walk — iOS 26.3+ SwiftUI NavigationStack may not wire standard UIKit
+    ///    containment, so `.navigationController` returns nil even when a UINavigationController
+    ///    is an ancestor. Walk `.parent` explicitly to catch this case.
     var pepper_effectiveNavController: UINavigationController? {
         if let nav = navigationController { return nav }
-        return pepper_findChildNavController()
+        if let nav = pepper_findChildNavController() { return nav }
+        if let nav = pepper_findAncestorNavController() { return nav }
+        return nil
     }
 
     /// Walk child VCs to find a UINavigationController (used for SwiftUI NavigationStack).
@@ -352,6 +357,20 @@ extension UIViewController {
         for child in children {
             if let nav = child as? UINavigationController { return nav }
             if let found = child.pepper_findChildNavController() { return found }
+        }
+        return nil
+    }
+
+    /// Walk the parent VC chain looking for a UINavigationController.
+    /// Unlike `.navigationController` (which requires the VC to be in the nav controller's
+    /// `viewControllers` array via standard UIKit containment), this explicitly walks `.parent`.
+    /// Needed for SwiftUI NavigationStack on iOS 26.3+ where the hosting VC's
+    /// `.navigationController` returns nil despite having a UINavigationController ancestor.
+    private func pepper_findAncestorNavController() -> UINavigationController? {
+        var current = parent
+        while let vc = current {
+            if let nav = vc as? UINavigationController { return nav }
+            current = vc.parent
         }
         return nil
     }
