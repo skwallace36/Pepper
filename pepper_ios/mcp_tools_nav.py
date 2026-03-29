@@ -272,17 +272,31 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
         amount: int | None = Field(default=None, description="Scroll distance in points (default: 200; e.g. 400 for a bigger scroll)"),
         target: str | None = Field(default=None, description="Text to scroll to — scrolls incrementally until visible (e.g. 'Load More', 'Footer'). Direction defaults to 'down'."),
         max_scrolls: int | None = Field(default=None, description="Max scroll attempts when using target (default: 10)"),
+        parent_of: str | None = Field(default=None, description="Scroll within the container that holds this visible text — targets a nested scroll view instead of the outermost one (e.g. 'Share location')"),
+        at_y: int | None = Field(default=None, description="Scroll the innermost container at this Y coordinate (e.g. 748). Ignored when target is set."),
+        axis: str | None = Field(default=None, description="Axis hint: 'horizontal' or 'vertical' — helps find the right nested scroll view when combined with parent_of"),
     ) -> list:
         """Use this to browse content that extends beyond the visible screen area.
-        Scrolls by direction and amount via touch synthesis, or pass target to scroll until specific text is visible. Shows screen state after."""
+        Scrolls by direction and amount via touch synthesis, or pass target to scroll until specific text is visible.
+        Use parent_of to scroll a nested container (e.g. a horizontal list inside a vertical page). Shows screen state after."""
         if target:
             params: dict = {"text": target, "direction": direction}
             if max_scrolls is not None:
                 params["max_scrolls"] = max_scrolls
+            if parent_of is not None:
+                params["parent_of"] = parent_of
+            if axis is not None:
+                params["axis"] = axis
             return await act_and_look(simulator, CMD_SCROLL_TO, params, timeout=15)
         params = {"direction": direction}
         if amount is not None:
             params["amount"] = amount
+        if parent_of is not None:
+            params["parent_of"] = parent_of
+        if at_y is not None:
+            params["at_y"] = at_y
+        if axis is not None:
+            params["axis"] = axis
         return await act_and_look(simulator, CMD_SCROLL, params)
 
     @mcp.tool()

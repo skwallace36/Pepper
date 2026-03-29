@@ -22,10 +22,22 @@ struct ScrollUntilVisibleHandler: PepperHandler {
             return .error(id: command.id, message: "Missing required param: text")
         }
 
-        let direction = (command.params?["direction"]?.value as? String) ?? "down"
+        let explicitDirection = command.params?["direction"]?.value as? String
+        let parentOf = command.params?["parent_of"]?.stringValue
+        let axis = command.params?["axis"]?.value as? String
         let maxScrolls = (command.params?["max_scrolls"]?.value as? Int) ?? 10
         let timeoutMs = (command.params?["timeout_ms"]?.value as? Int) ?? 10000
         let scrollAmount: CGFloat = CGFloat((command.params?["amount"]?.value as? Int) ?? 300)
+
+        // Default direction: explicit param > inferred from axis > "down"
+        let direction: String
+        if let dir = explicitDirection {
+            direction = dir
+        } else if axis == "horizontal" {
+            direction = "right"
+        } else {
+            direction = "down"
+        }
 
         guard let window = UIWindow.pepper_keyWindow else {
             return .error(id: command.id, message: "No key window available")
@@ -49,9 +61,12 @@ struct ScrollUntilVisibleHandler: PepperHandler {
                 ])
         }
 
+        // Determine swipe center — target a specific scroll view if parent_of is set
+        let swipeCenter = resolveSwipeCenter(parentOf: parentOf, axis: axis, in: window)
+        let startX = swipeCenter.x
+        let startY = swipeCenter.y
+
         // Compute swipe vectors (scroll direction is opposite to finger direction)
-        let startX = window.bounds.midX
-        let startY = window.bounds.midY
         let from: CGPoint
         let to: CGPoint
 
@@ -112,6 +127,39 @@ struct ScrollUntilVisibleHandler: PepperHandler {
             query: text,
             suggestion: "Try `look` to see current screen state or increase max_scrolls"
         )
+    }
+
+    // MARK: - Helpers
+
+    private func resolveSwipeCenter(parentOf: String?, axis: String?, in window: UIWindow) -> CGPoint {
+        guard let parentText = parentOf else {
+            return CGPoint(x: window.bounds.midX, y: window.bounds.midY)
+        }
+        let (result, _) = PepperElementResolver.resolve(params: ["text": AnyCodable(parentText)], in: window)
+        guard let result = result,
+            let sv = findAncestorScrollView(of: result.view, axis: axis)
+        else {
+            logger.warning("parent_of '\(parentText)' — no matching scroll view found, using screen center")
+            return CGPoint(x: window.bounds.midX, y: window.bounds.midY)
+        }
+        let center = sv.convert(CGPoint(x: sv.bounds.midX, y: sv.bounds.midY), to: window)
+        logger.info("Targeting scroll view of '\(parentText)' at (\(center.x), \(center.y))")
+        return center
+    }
+
+    private func findAncestorScrollView(of view: UIView, axis: String? = nil) -> UIScrollView? {
+        var current = view.superview
+        while let parent = current {
+            if let scrollView = parent as? UIScrollView {
+                guard let axis = axis else { return scrollView }
+                let scrollsH = scrollView.contentSize.width > scrollView.bounds.width + 1
+                let scrollsV = scrollView.contentSize.height > scrollView.bounds.height + 1
+                if axis == "horizontal" && scrollsH { return scrollView }
+                if axis == "vertical" && scrollsV { return scrollView }
+            }
+            current = parent.superview
+        }
+        return nil
     }
 
     /// Check if text is on screen — its frame must intersect the visible viewport.

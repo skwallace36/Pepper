@@ -208,6 +208,45 @@ struct ScrollHandler: PepperHandler {
 
     // MARK: - Scroll by direction (touch synthesis)
 
+    /// Resolve scroll view targeting params to the center point of the target scroll view.
+    /// Returns nil if no targeting param matched (caller should use screen center).
+    private func resolveScrollTarget(command: PepperCommand, scrollViewID: String?, scrollViewClass: String?, in window: UIWindow) -> CGPoint? {
+        if let id = scrollViewID,
+            let resolved = PepperElementResolver.resolveByID(id, in: window),
+            resolved.tapPoint == nil,
+            let scrollView = resolved.view as? UIScrollView
+        {
+            return scrollView.convert(
+                CGPoint(x: scrollView.bounds.midX, y: scrollView.bounds.midY), to: window)
+        }
+        if let className = scrollViewClass,
+            let scrollView = findScrollViewByClass(className, in: window)
+        {
+            return scrollView.convert(
+                CGPoint(x: scrollView.bounds.midX, y: scrollView.bounds.midY), to: window)
+        }
+        if let parentText = command.params?["parent_of"]?.stringValue {
+            let axis = command.params?["axis"]?.stringValue
+            let (result, _) = PepperElementResolver.resolve(params: ["text": AnyCodable(parentText)], in: window)
+            if let result = result,
+                let sv = findAncestorScrollView(of: result.view, axis: axis)
+            {
+                return sv.convert(
+                    CGPoint(x: sv.bounds.midX, y: sv.bounds.midY), to: window)
+            }
+            logger.warning("parent_of '\(parentText)' — no matching scroll view found")
+        }
+        if let atY = command.params?["at_y"]?.doubleValue {
+            let point = CGPoint(x: window.bounds.midX, y: CGFloat(atY))
+            if let sv = findScrollViewAtPoint(point, in: window) {
+                return sv.convert(
+                    CGPoint(x: sv.bounds.midX, y: sv.bounds.midY), to: window)
+            }
+            logger.warning("at_y \(atY) — no scroll view found at that position")
+        }
+        return nil
+    }
+
     private func scrollByDirection(
         _ direction: String, amount: CGFloat, scrollViewID: String?, scrollViewClass: String?, in window: UIWindow,
         command: PepperCommand
@@ -218,26 +257,9 @@ struct ScrollHandler: PepperHandler {
         var startX = window.bounds.midX
         var startY = window.bounds.midY
 
-        if let id = scrollViewID,
-            let resolved = PepperElementResolver.resolveByID(id, in: window),
-            resolved.tapPoint == nil,
-            let scrollView = resolved.view as? UIScrollView
-        {
-            let center = scrollView.convert(
-                CGPoint(x: scrollView.bounds.midX, y: scrollView.bounds.midY),
-                to: window
-            )
-            startX = center.x
-            startY = center.y
-        } else if let className = scrollViewClass,
-            let scrollView = findScrollViewByClass(className, in: window)
-        {
-            let center = scrollView.convert(
-                CGPoint(x: scrollView.bounds.midX, y: scrollView.bounds.midY),
-                to: window
-            )
-            startX = center.x
-            startY = center.y
+        if let target = resolveScrollTarget(command: command, scrollViewID: scrollViewID, scrollViewClass: scrollViewClass, in: window) {
+            startX = target.x
+            startY = target.y
         }
 
         // Allow explicit start point override
@@ -302,15 +324,37 @@ struct ScrollHandler: PepperHandler {
 
     // MARK: - Helpers
 
-    private func findAncestorScrollView(of view: UIView) -> UIScrollView? {
+    private func findAncestorScrollView(of view: UIView, axis: String? = nil) -> UIScrollView? {
         var current = view.superview
         while let parent = current {
             if let scrollView = parent as? UIScrollView {
-                return scrollView
+                guard let axis = axis else { return scrollView }
+                let scrollsH = scrollView.contentSize.width > scrollView.bounds.width + 1
+                let scrollsV = scrollView.contentSize.height > scrollView.bounds.height + 1
+                if axis == "horizontal" && scrollsH { return scrollView }
+                if axis == "vertical" && scrollsV { return scrollView }
+                // Doesn't match requested axis — continue walking up
             }
             current = parent.superview
         }
         return nil
+    }
+
+    private func findScrollViewAtPoint(_ point: CGPoint, in window: UIWindow) -> UIScrollView? {
+        let scrollViews = ElementDiscoveryBridge.shared.collectScrollViews()
+        var bestMatch: UIScrollView?
+        var bestArea: CGFloat = .greatestFiniteMagnitude
+
+        for info in scrollViews {
+            if info.frameInWindow.contains(point) {
+                let area = info.frameInWindow.width * info.frameInWindow.height
+                if area < bestArea {
+                    bestArea = area
+                    bestMatch = info.scrollView
+                }
+            }
+        }
+        return bestMatch
     }
 
     private func findScrollViewByClass(_ className: String, in view: UIView) -> UIScrollView? {
