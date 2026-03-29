@@ -47,12 +47,7 @@
     "last_run": "2026-03-29",
     "notes": "scroll --element 'Item 40' returns 'Element not found' — lazy list items not in tree until scrolled into view"
   },
-  "scroll to element (deprecated scroll_to)": {
-    "status": "fail",
-    "last_run": "2026-03-29",
-    "notes": "scroll_to command times out (WebSocket connection lost: timed out)"
-  },
-  "look scope filtering": {
+"look scope filtering": {
     "status": "fail",
     "last_run": "2026-03-29",
     "notes": "scope parameter does not filter output; returns 177 elements regardless of container"
