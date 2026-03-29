@@ -396,10 +396,17 @@ struct MiscTab: View {
 
                 // MARK: - Accessibility Audit Testing
                 GroupBox("Accessibility") {
-                    NavigationLink("Accessibility Test Screen") {
-                        AccessibilityTestWrapper()
+                    VStack(spacing: 8) {
+                        NavigationLink("Accessibility Test Screen") {
+                            AccessibilityTestWrapper()
+                        }
+                        .accessibilityIdentifier("accessibility_test_link")
+
+                        NavigationLink("Accessibility Actions Screen") {
+                            AccessibilityActionsWrapper()
+                        }
+                        .accessibilityIdentifier("accessibility_actions_link")
                     }
-                    .accessibilityIdentifier("accessibility_test_link")
                 }
 
                 // MARK: - Context Menu
