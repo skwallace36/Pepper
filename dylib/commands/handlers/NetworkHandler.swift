@@ -227,6 +227,10 @@ struct NetworkHandler: PepperHandler {
         if hideNoise {
             data["noise_filtered"] = AnyCodable(true)
         }
+        if transactions.count > 0 {
+            data["hint"] = AnyCodable(
+                "Use `timeline(last_seconds=30)` for a correlated view of network + console + screen events")
+        }
         return .ok(id: command.id, data: data)
     }
 
