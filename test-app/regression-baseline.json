@@ -1,16 +1,16 @@
 {
   "_comment": "Regression test baseline. Updated by the regression-tester agent. Each key is a test name, value is {status, last_run, notes}.",
   "_last_run": "2026-03-29",
-  "_sha": "d7dae2de875778b2aebcbf2b61ac1a49ebf6f5cc",
+  "_sha": "95f55bc2a0ec23c32c4d9f3839b67e80b2ffc424",
   "pepper connects": {
     "status": "pass",
     "last_run": "2026-03-29",
-    "notes": "ping returns pong, look returns screen data with 17 interactive elements"
+    "notes": "ping returns pong, look returns screen data with 18 interactive elements"
   },
   "look returns elements": {
     "status": "pass",
     "last_run": "2026-03-29",
-    "notes": "17 interactive, 12 text elements on Controls tab"
+    "notes": "18 interactive, 11 text elements on Controls tab"
   },
   "tap by text": {
     "status": "pass",
@@ -25,7 +25,7 @@
   "back navigation": {
     "status": "pass",
     "last_run": "2026-03-29",
-    "notes": "Navigated back from Item 0 detail to List tab. Fix confirmed in #778/#780."
+    "notes": "Navigated to Item 20 detail, back returned to List (can_go_back: false). Fix in #780/#778 confirmed."
   },
   "input text into field": {
     "status": "pass",
@@ -40,17 +40,17 @@
   "scroll down": {
     "status": "pass",
     "last_run": "2026-03-29",
-    "notes": "Scrolled 200pt on List tab, content shifted from Item 0 to Item 2, element count increased from 15 to 20"
+    "notes": "Scrolled 200pt on List tab, content shifted"
   },
   "scroll to element": {
     "status": "fail",
     "last_run": "2026-03-29",
-    "notes": "scroll --element 'Item 40' returns 'Element not found'; does not seek off-screen elements"
+    "notes": "scroll with text 'Item 40' returns 'Element not found by text' — lazy list items not in tree until scrolled into view"
   },
   "scroll to element (deprecated scroll_to)": {
     "status": "fail",
     "last_run": "2026-03-29",
-    "notes": "scroll_to command caused app crash (WebSocket connection lost: timed out)"
+    "notes": "scroll_to command times out (WebSocket connection lost: timed out); batch also times out"
   },
   "look scope filtering": {
     "status": "fail",
@@ -60,22 +60,22 @@
   "look compact mode": {
     "status": "fail",
     "last_run": "2026-03-29",
-    "notes": "Second compact call returns full output, not diff"
+    "notes": "Second compact call returns full output (18 elements, same keys), not diff"
   },
   "find by predicate": {
     "status": "pass",
     "last_run": "2026-03-29",
-    "notes": "27 matches for type == 'button', all correct type"
+    "notes": "Found 36 buttons with type == 'button', all correct type"
   },
   "read element properties": {
     "status": "fail",
     "last_run": "2026-03-29",
-    "notes": "read command requires accessibility ID; test app elements lack explicit accessibility identifiers"
+    "notes": "read command requires 'element' param (accessibility ID); text-based lookup not supported"
   },
   "screen name": {
     "status": "pass",
     "last_run": "2026-03-29",
-    "notes": "Returns screen_id, tab info (3 tabs), navigation stack, can_go_back"
+    "notes": "Returns screen_id, VC type, tab info (3 tabs), navigation stack, can_go_back"
   },
   "appearance toggle": {
     "status": "pass",
@@ -85,7 +85,7 @@
   "network monitoring": {
     "status": "pass",
     "last_run": "2026-03-29",
-    "notes": "Captured 1 HTTP transaction (status 200) after tapping Fetch HTTP; start/log/stop all succeeded"
+    "notes": "Captured 1 HTTP request (httpbin.org/json, status 200); start/log/stop all succeeded"
   },
   "console capture": {
     "status": "pass",
@@ -100,22 +100,22 @@
   "vars inspect": {
     "status": "pass",
     "last_run": "2026-03-29",
-    "notes": "AppState instance with tapCount/totalTaps properties returned"
+    "notes": "2 instances returned"
   },
   "defaults read": {
     "status": "pass",
     "last_run": "2026-03-29",
-    "notes": "200 UserDefaults entries returned"
+    "notes": "793 UserDefaults entries returned (200 per page)"
   },
   "snapshot save and diff": {
     "status": "pass",
     "last_run": "2026-03-29",
-    "notes": "Save captured 18 elements/11 texts. After tapping Tap Me, diff correctly showed Count: 1 → Count: 2."
+    "notes": "Save captured 9 elements/22 texts on Misc tab. After navigating to Controls and tapping, diff showed 16 added/7 removed elements."
   },
   "accessibility audit": {
     "status": "pass",
     "last_run": "2026-03-29",
-    "notes": "Returned 18 issues, no crash"
+    "notes": "6 issues (4 contrast errors, 1 placeholder contrast warning, 1 touch target warning), no crash"
   },
   "tree dump": {
     "status": "pass",
@@ -130,6 +130,6 @@
   "tap nonexistent element": {
     "status": "pass",
     "last_run": "2026-03-29",
-    "notes": "Returns 'Element not found by text' error with clear message, no crash"
+    "notes": "Returns 'Element not found by text' error with clear message and suggestion, no crash"
   }
 }
