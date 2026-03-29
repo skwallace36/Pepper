@@ -1,5 +1,135 @@
 {
   "_comment": "Regression test baseline. Updated by the regression-tester agent. Each key is a test name, value is {status, last_run, notes}.",
-  "_last_run": null,
-  "_sha": null
+  "_last_run": "2026-03-29",
+  "_sha": "5f5dd23ab033b37f6bfad2923c47072ebd4a1559",
+  "pepper connects": {
+    "status": "pass",
+    "last_run": "2026-03-29",
+    "notes": "ping returns pong, look returns screen data"
+  },
+  "look returns elements": {
+    "status": "pass",
+    "last_run": "2026-03-29",
+    "notes": "9 interactive, 22 text elements on Misc tab"
+  },
+  "tap by text": {
+    "status": "pass",
+    "last_run": "2026-03-29",
+    "notes": "Tapped Controls tab, screen changed from Misc to Controls"
+  },
+  "tap by point": {
+    "status": "pass",
+    "last_run": "2026-03-29",
+    "notes": "Tapped at (200,400), acknowledged via hid_touch"
+  },
+  "back navigation": {
+    "status": "fail",
+    "last_run": "2026-03-29",
+    "notes": "back command returns 'Cannot go back: already at root screen' even when on a detail screen pushed via NavigationStack"
+  },
+  "input text into field": {
+    "status": "pass",
+    "last_run": "2026-03-29",
+    "notes": "Text field shows 'test input 123' after input command"
+  },
+  "dismiss keyboard": {
+    "status": "pass",
+    "last_run": "2026-03-29",
+    "notes": "dismiss_keyboard returned {dismissed: true}"
+  },
+  "scroll down": {
+    "status": "pass",
+    "last_run": "2026-03-29",
+    "notes": "Scrolled 200pt, content shifted from Item 0 to Item 2, element count increased from 15 to 21"
+  },
+  "scroll to element": {
+    "status": "fail",
+    "last_run": "2026-03-29",
+    "notes": "scroll --element only finds already-visible elements; returns 'Element not found' for off-screen items"
+  },
+  "scroll to element (deprecated scroll_to)": {
+    "status": "fail",
+    "last_run": "2026-03-29",
+    "notes": "scroll_to via batch caused WebSocket timeout (app crash recovery needed)"
+  },
+  "look scope filtering": {
+    "status": "fail",
+    "last_run": "2026-03-29",
+    "notes": "scope parameter does not filter output; returns all elements regardless of container"
+  },
+  "look compact mode": {
+    "status": "fail",
+    "last_run": "2026-03-29",
+    "notes": "Second compact call returns full output, not diff; batch may not maintain look session state"
+  },
+  "find by predicate": {
+    "status": "pass",
+    "last_run": "2026-03-29",
+    "notes": "Found 27 buttons with type == 'button', all correct type"
+  },
+  "read element properties": {
+    "status": "fail",
+    "last_run": "2026-03-29",
+    "notes": "read command requires accessibility ID; test app elements lack explicit accessibility identifiers"
+  },
+  "screen name": {
+    "status": "pass",
+    "last_run": "2026-03-29",
+    "notes": "Returns screen_id, VC type, tab info, navigation stack, can_go_back"
+  },
+  "appearance toggle": {
+    "status": "pass",
+    "last_run": "2026-03-29",
+    "notes": "dark and light modes switched cleanly, both returned ok"
+  },
+  "network monitoring": {
+    "status": "pass",
+    "last_run": "2026-03-29",
+    "notes": "Captured 1 HTTP request after tapping Fetch HTTP; start/log/stop all succeeded"
+  },
+  "console capture": {
+    "status": "pass",
+    "last_run": "2026-03-29",
+    "notes": "start/log/stop succeeded; 0 lines captured (test app doesn't log on tap, but functional flow works)"
+  },
+  "timeline flight recorder": {
+    "status": "pass",
+    "last_run": "2026-03-29",
+    "notes": "Returned 100 events including screen transitions and commands"
+  },
+  "vars inspect": {
+    "status": "pass",
+    "last_run": "2026-03-29",
+    "notes": "2 instances (NestedState, AppState) with full property listings"
+  },
+  "defaults read": {
+    "status": "pass",
+    "last_run": "2026-03-29",
+    "notes": "792 UserDefaults keys returned"
+  },
+  "snapshot save and diff": {
+    "status": "fail",
+    "last_run": "2026-03-29",
+    "notes": "Batch with snapshot save + tap + snapshot diff caused app crash (WebSocket lost)"
+  },
+  "accessibility audit": {
+    "status": "pass",
+    "last_run": "2026-03-29",
+    "notes": "Returned 18 issues, no crash"
+  },
+  "tree dump": {
+    "status": "pass",
+    "last_run": "2026-03-29",
+    "notes": "Returned 4-node view hierarchy"
+  },
+  "look on empty screen": {
+    "status": "pass",
+    "last_run": "2026-03-29",
+    "notes": "Returns without error on Controls tab"
+  },
+  "tap nonexistent element": {
+    "status": "pass",
+    "last_run": "2026-03-29",
+    "notes": "Returns 'not_in_tree' error with clear message, no crash"
+  }
 }
