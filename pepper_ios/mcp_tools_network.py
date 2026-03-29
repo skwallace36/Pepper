@@ -24,7 +24,7 @@ def register_network_tools(mcp, resolve_and_send):
     async def network(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
         action: str = Field(
-            description="Action: start, stop, log, status, clear, simulate, conditions, remove_condition, clear_conditions, mock, mocks, remove_mock, clear_mocks"
+            description="Action: start, stop, log, status, clear, simulate, presets, conditions, remove_condition, clear_conditions, mock, mocks, remove_mock, clear_mocks"
         ),
         filter_text: str | None = Field(default=None, description="Filter by URL pattern (for log action)"),
         hide_noise: bool | None = Field(
@@ -48,6 +48,10 @@ def register_network_tools(mcp, resolve_and_send):
         max_body: int | None = Field(
             default=None,
             description="Max chars per body when include_body is true (default: 4096). Overrides include_body.",
+        ),
+        preset: str | None = Field(
+            default=None,
+            description="Named condition preset for simulate: 3G, Edge, LTE, WiFi, High Latency DNS, 100% Loss",
         ),
         effect: str | None = Field(
             default=None,
@@ -133,6 +137,8 @@ Parameter relationships:
             params["include_body"] = include_body
         if max_body is not None:
             params["max_body"] = max_body
+        if preset:
+            params["preset"] = preset
         if effect:
             params["effect"] = effect
         if latency_ms is not None:

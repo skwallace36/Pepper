@@ -80,3 +80,58 @@ enum NetworkConditionEffect {
         }
     }
 }
+
+/// Named network condition presets based on Apple's Network Link Conditioner profiles.
+enum NetworkPreset: String, CaseIterable {
+    case threeG = "3G"
+    case edge = "Edge"
+    case lte = "LTE"
+    case wifi = "WiFi"
+    case highLatencyDNS = "High Latency DNS"
+    case totalLoss = "100% Loss"
+
+    /// The individual condition effects that make up this preset.
+    var effects: [(effect: NetworkConditionEffect, description: String)] {
+        switch self {
+        case .threeG:
+            return [
+                (.latency(ms: 100), "3G: 100ms latency"),
+                (.throttle(bytesPerSecond: 97_500), "3G: throttle 780 Kbps"),
+            ]
+        case .edge:
+            return [
+                (.latency(ms: 840), "Edge: 840ms latency"),
+                (.throttle(bytesPerSecond: 30_000), "Edge: throttle 240 Kbps"),
+            ]
+        case .lte:
+            return [
+                (.latency(ms: 50), "LTE: 50ms latency"),
+                (.throttle(bytesPerSecond: 6_250_000), "LTE: throttle 50 Mbps"),
+            ]
+        case .wifi:
+            return [
+                (.latency(ms: 2), "WiFi: 2ms latency"),
+                (.throttle(bytesPerSecond: 5_000_000), "WiFi: throttle 40 Mbps"),
+            ]
+        case .highLatencyDNS:
+            return [
+                (.latency(ms: 3000), "High Latency DNS: 3000ms latency"),
+            ]
+        case .totalLoss:
+            return [
+                (.offline, "100% Loss: offline"),
+            ]
+        }
+    }
+
+    /// Case-insensitive lookup by name.
+    static func named(_ name: String) -> NetworkPreset? {
+        let lower = name.lowercased()
+        return allCases.first { $0.rawValue.lowercased() == lower }
+    }
+
+    /// All preset names for error messages.
+    static var availableNames: String {
+        allCases.map { $0.rawValue }.joined(separator: ", ")
+    }
+}
