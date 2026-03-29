@@ -278,12 +278,11 @@ cat > "$FRAMEWORK_DIR/Info.plist" <<PLIST
 </plist>
 PLIST
 
-# --- Ad-hoc sign for device builds ---
-# Xcode re-signs with the app's identity during embedding, but the binary
-# must be validly signed to pass xcodebuild -create-xcframework checks.
-if [ "$PLATFORM" = "device" ]; then
-    codesign --sign - "$FRAMEWORK_DIR/Pepper"
-fi
+# --- Ad-hoc sign ---
+# Device builds need valid signatures for xcodebuild -create-xcframework.
+# iOS 26.3+ simulator silently rejects DYLD_INSERT_LIBRARIES dylibs that
+# only carry a linker signature, so we sign for all platforms.
+codesign --force --sign - --deep "$FRAMEWORK_DIR"
 
 # --- Report ---
 DYLIB_SIZE=$(stat -f%z "$FRAMEWORK_DIR/Pepper" 2>/dev/null || stat --printf='%s' "$FRAMEWORK_DIR/Pepper" 2>/dev/null)
