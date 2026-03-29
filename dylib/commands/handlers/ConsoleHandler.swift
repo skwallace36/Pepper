@@ -84,6 +84,10 @@ struct ConsoleHandler: PepperHandler {
             if hideNoise {
                 data["noise_filtered"] = AnyCodable(true)
             }
+            if lines.count > 0 {
+                data["hint"] = AnyCodable(
+                    "Use `timeline(last_seconds=30)` for a correlated view of console + network + screen events")
+            }
             return .ok(id: command.id, data: data)
 
         case "clear":

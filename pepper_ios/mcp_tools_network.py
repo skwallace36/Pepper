@@ -75,7 +75,7 @@ def register_network_tools(mcp, resolve_and_send):
         mock_body: str | None = Field(default=None, description="Response body for mock (JSON string)"),
         mock_id: str | None = Field(default=None, description="Mock ID (for remove_mock, or custom ID for mock)"),
     ) -> str:
-        """Monitor HTTP traffic, simulate network conditions (latency, errors, throttle, offline), and mock API responses.
+        """Monitor HTTP traffic, simulate network conditions (latency, errors, throttle, offline), and mock API responses. Tip: use `timeline(last_seconds=30)` to see network events correlated with console and screen transitions.
 
 Common recipes (copy-paste ready):
 
