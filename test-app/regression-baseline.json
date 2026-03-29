@@ -1,21 +1,21 @@
 {
   "_comment": "Regression test baseline. Updated by the regression-tester agent. Each key is a test name, value is {status, last_run, notes}.",
   "_last_run": "2026-03-29",
-  "_sha": "5f5dd23ab033b37f6bfad2923c47072ebd4a1559",
+  "_sha": "44fcae5a6655be0dd0149de9009e4f220b0bc6a7",
   "pepper connects": {
     "status": "pass",
     "last_run": "2026-03-29",
-    "notes": "ping returns pong, look returns screen data"
+    "notes": "ping returns pong, look returns screen data with 17 interactive elements"
   },
   "look returns elements": {
     "status": "pass",
     "last_run": "2026-03-29",
-    "notes": "9 interactive, 22 text elements on Misc tab"
+    "notes": "17 interactive, 12 text elements on Controls tab"
   },
   "tap by text": {
     "status": "pass",
     "last_run": "2026-03-29",
-    "notes": "Tapped Controls tab, screen changed from Misc to Controls"
+    "notes": "Tapped List tab, screen changed from Controls to List view with items"
   },
   "tap by point": {
     "status": "pass",
@@ -40,17 +40,17 @@
   "scroll down": {
     "status": "pass",
     "last_run": "2026-03-29",
-    "notes": "Scrolled 200pt, content shifted from Item 0 to Item 2, element count increased from 15 to 21"
+    "notes": "Scrolled 200pt on List tab, content shifted from Item 0 to Item 2, element count increased from 15 to 21"
   },
   "scroll to element": {
     "status": "fail",
     "last_run": "2026-03-29",
-    "notes": "scroll --element only finds already-visible elements; returns 'Element not found' for off-screen items"
+    "notes": "scroll with target 'Item 40' just scrolls 200pt without seeking the element; pepper-ctl returns 'Element not found'"
   },
   "scroll to element (deprecated scroll_to)": {
     "status": "fail",
     "last_run": "2026-03-29",
-    "notes": "scroll_to via batch caused WebSocket timeout (app crash recovery needed)"
+    "notes": "scroll_to command caused app crash (WebSocket connection lost: timed out)"
   },
   "look scope filtering": {
     "status": "fail",
@@ -60,12 +60,12 @@
   "look compact mode": {
     "status": "fail",
     "last_run": "2026-03-29",
-    "notes": "Second compact call returns full output, not diff; batch may not maintain look session state"
+    "notes": "Second compact call returns full output, not diff"
   },
   "find by predicate": {
     "status": "pass",
     "last_run": "2026-03-29",
-    "notes": "Found 27 buttons with type == 'button', all correct type"
+    "notes": "Found buttons with type == 'button', all correct type including Tap Me, Reset, etc."
   },
   "read element properties": {
     "status": "fail",
@@ -75,22 +75,22 @@
   "screen name": {
     "status": "pass",
     "last_run": "2026-03-29",
-    "notes": "Returns screen_id, VC type, tab info, navigation stack, can_go_back"
+    "notes": "Returns screen_id, VC type, tab info (3 tabs), navigation stack, can_go_back"
   },
   "appearance toggle": {
     "status": "pass",
     "last_run": "2026-03-29",
-    "notes": "dark and light modes switched cleanly, both returned ok"
+    "notes": "dark and light modes switched cleanly, both returned mode confirmation"
   },
   "network monitoring": {
     "status": "pass",
     "last_run": "2026-03-29",
-    "notes": "Captured 1 HTTP request after tapping Fetch HTTP; start/log/stop all succeeded"
+    "notes": "Captured 1 HTTP request (httpbin.org/json, status 200); start/log/stop all succeeded"
   },
   "console capture": {
     "status": "pass",
     "last_run": "2026-03-29",
-    "notes": "start/log/stop succeeded; 0 lines captured (test app doesn't log on tap, but functional flow works)"
+    "notes": "start/log/stop succeeded; 0 lines captured (test app doesn't log, but functional flow works)"
   },
   "timeline flight recorder": {
     "status": "pass",
@@ -100,36 +100,36 @@
   "vars inspect": {
     "status": "pass",
     "last_run": "2026-03-29",
-    "notes": "2 instances (NestedState, AppState) with full property listings"
+    "notes": "2 instances (AppState with tapCount/totalTaps/etc); passed on retry after initial timeout"
   },
   "defaults read": {
     "status": "pass",
     "last_run": "2026-03-29",
-    "notes": "792 UserDefaults keys returned"
+    "notes": "793 UserDefaults keys returned"
   },
   "snapshot save and diff": {
-    "status": "fail",
+    "status": "pass",
     "last_run": "2026-03-29",
-    "notes": "Batch with snapshot save + tap + snapshot diff caused app crash (WebSocket lost)"
+    "notes": "Save captured 18 elements/11 texts. After tapping Tap Me, diff correctly showed Count: 0 → Count: 1. No crash."
   },
   "accessibility audit": {
     "status": "pass",
     "last_run": "2026-03-29",
-    "notes": "Returned 18 issues, no crash"
+    "notes": "Returned issues including missing_label and contrast violations, no crash"
   },
   "tree dump": {
     "status": "pass",
     "last_run": "2026-03-29",
-    "notes": "Returned 4-node view hierarchy"
+    "notes": "Returned 4-node view hierarchy (UIWindow → UITransitionView → UIDropShadowView → _UIHostingView)"
   },
   "look on empty screen": {
     "status": "pass",
     "last_run": "2026-03-29",
-    "notes": "Returns without error on Controls tab"
+    "notes": "Returns without error on Controls tab, 18 interactive elements"
   },
   "tap nonexistent element": {
     "status": "pass",
     "last_run": "2026-03-29",
-    "notes": "Returns 'not_in_tree' error with clear message, no crash"
+    "notes": "Returns 'Element not found by text' error with clear message, no crash"
   }
 }
