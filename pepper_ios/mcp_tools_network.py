@@ -75,7 +75,47 @@ def register_network_tools(mcp, resolve_and_send):
         mock_body: str | None = Field(default=None, description="Response body for mock (JSON string)"),
         mock_id: str | None = Field(default=None, description="Mock ID (for remove_mock, or custom ID for mock)"),
     ) -> str:
-        """Monitor HTTP traffic, simulate network conditions (latency, errors, throttle, offline), and mock API responses."""
+        """Monitor HTTP traffic, simulate network conditions (latency, errors, throttle, offline), and mock API responses.
+
+Common recipes (copy-paste ready):
+
+1. Monitor traffic:
+   action="start"
+   action="log"                                          → last 10 requests (URL, status, duration)
+   action="log", filter_text="api.example.com", limit=50 → filter by URL substring
+   action="log", include_headers=True, include_body=True  → full request/response details
+   action="status"                                        → interception state + active conditions/mocks
+
+2. Mock an API endpoint:
+   action="mock", url="api.example.com/users", mock_body='{"users": []}'
+   action="mock", url="api.example.com/users", mock_status_code=201, mock_body='{"id": 1}', method="POST"
+   action="mocks"              → list active mocks
+   action="remove_mock", mock_id="<id from mock call>"
+   action="clear_mocks"        → remove all mocks
+
+3. Simulate slow network (3G-like):
+   action="simulate", effect="throttle", bytes_per_second=50000
+   action="simulate", effect="latency", latency_ms=300
+   → Combine both for realistic 3G. Each creates a separate condition; use action="conditions" to list them.
+
+4. Fail a specific URL:
+   action="simulate", effect="fail_status", status_code=500, url="api.example.com/checkout"
+   action="simulate", effect="fail_error", error_code=-1009, url="api.example.com"  → NSURLErrorNotConnectedToInternet
+   action="simulate", effect="offline"                                                → all requests fail
+
+5. Clean up:
+   action="conditions"          → list active conditions (latency/throttle/fail)
+   action="remove_condition", condition_id="<id>"
+   action="clear_conditions"    → remove all conditions
+   action="clear"               → clear captured traffic log
+   action="stop"                → stop interception entirely
+
+Parameter relationships:
+- mock_status_code, mock_body, mock_id → only with action="mock"
+- effect, latency_ms, status_code, error_domain, error_code, bytes_per_second → only with action="simulate"
+- condition_id → action="simulate" (custom ID) or action="remove_condition"
+- filter_text, limit, offset, include_headers, include_body, max_body, hide_noise, exclude → only with action="log"
+- url, method → used by both action="simulate" and action="mock" to match requests"""
         params: dict = {"action": action}
         if filter_text:
             params["filter"] = filter_text
