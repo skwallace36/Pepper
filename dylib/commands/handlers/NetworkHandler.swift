@@ -16,6 +16,13 @@ import os
 ///   {"cmd":"network", "params":{"action":"log", "include_body":true}}                    // include bodies (up to 4096 chars)
 ///   {"cmd":"network", "params":{"action":"log", "include_body":true, "max_body":1024}}   // include bodies, truncate to 1KB
 ///   {"cmd":"network", "params":{"action":"clear"}}
+///   {"cmd":"network", "params":{"action":"simulate", "preset":"3G"}}
+///   {"cmd":"network", "params":{"action":"simulate", "preset":"Edge", "url":"api.example.com"}}
+///   {"cmd":"network", "params":{"action":"simulate", "preset":"LTE"}}
+///   {"cmd":"network", "params":{"action":"simulate", "preset":"WiFi"}}
+///   {"cmd":"network", "params":{"action":"simulate", "preset":"High Latency DNS"}}
+///   {"cmd":"network", "params":{"action":"simulate", "preset":"100% Loss"}}
+///   {"cmd":"network", "params":{"action":"presets"}}
 ///   {"cmd":"network", "params":{"action":"simulate", "effect":"latency", "latency_ms":500}}
 ///   {"cmd":"network", "params":{"action":"simulate", "effect":"latency", "latency_ms":2000, "url":"images.example.com"}}
 ///   {"cmd":"network", "params":{"action":"simulate", "effect":"offline"}}
@@ -41,7 +48,7 @@ struct NetworkHandler: PepperHandler {
             return .error(
                 id: command.id,
                 message:
-                    "Missing 'action' param. Available: start, stop, status, log, clear, simulate, conditions, remove_condition, clear_conditions, mock, mocks, remove_mock, clear_mocks, ws_log, ws_status, ws_clear"
+                    "Missing 'action' param. Available: start, stop, status, log, clear, simulate, presets, conditions, remove_condition, clear_conditions, mock, mocks, remove_mock, clear_mocks, ws_log, ws_status, ws_clear"
             )
         }
 
@@ -87,6 +94,20 @@ struct NetworkHandler: PepperHandler {
         case "simulate":
             return handleSimulate(command)
 
+        case "presets":
+            let presets = NetworkPreset.allCases.map { preset -> [String: AnyCodable] in
+                [
+                    "name": AnyCodable(preset.rawValue),
+                    "effects": AnyCodable(preset.effects.map { ["effect": $0.effect.name, "description": $0.description] }),
+                ]
+            }
+            return .ok(
+                id: command.id,
+                data: [
+                    "count": AnyCodable(presets.count),
+                    "presets": AnyCodable(presets.map { AnyCodable($0) }),
+                ])
+
         case "conditions":
             let conditions = interceptor.activeConditions
             return .ok(
@@ -125,7 +146,7 @@ struct NetworkHandler: PepperHandler {
             return .error(
                 id: command.id,
                 message:
-                    "Unknown action '\(action)'. Available: start, stop, status, log, clear, simulate, conditions, remove_condition, clear_conditions, mock, mocks, remove_mock, clear_mocks, ws_log, ws_status, ws_clear"
+                    "Unknown action '\(action)'. Available: start, stop, status, log, clear, simulate, presets, conditions, remove_condition, clear_conditions, mock, mocks, remove_mock, clear_mocks, ws_log, ws_status, ws_clear"
             )
         }
     }
@@ -237,10 +258,15 @@ struct NetworkHandler: PepperHandler {
     // MARK: - Simulate
 
     private func handleSimulate(_ command: PepperCommand) -> PepperResponse {
+        // Preset takes priority — applies a bundle of conditions
+        if let presetName = command.params?["preset"]?.stringValue {
+            return handlePreset(presetName, command)
+        }
+
         guard let effectName = command.params?["effect"]?.stringValue else {
             return .error(
                 id: command.id,
-                message: "Missing 'effect' param. Available: latency, fail_status, fail_error, throttle, offline")
+                message: "Missing 'effect' or 'preset' param. Effects: latency, fail_status, fail_error, throttle, offline. Presets: \(NetworkPreset.availableNames)")
         }
 
         let interceptor = PepperNetworkInterceptor.shared
@@ -320,6 +346,60 @@ struct NetworkHandler: PepperHandler {
                 "condition_id": AnyCodable(conditionId),
                 "effect": AnyCodable(effectName),
                 "description": AnyCodable(description),
+                "active_conditions": AnyCodable(interceptor.activeConditions.count),
+            ])
+    }
+
+    // MARK: - Preset
+
+    private func handlePreset(_ presetName: String, _ command: PepperCommand) -> PepperResponse {
+        guard let preset = NetworkPreset.named(presetName) else {
+            return .error(
+                id: command.id,
+                message: "Unknown preset '\(presetName)'. Available: \(NetworkPreset.availableNames)")
+        }
+
+        let interceptor = PepperNetworkInterceptor.shared
+
+        // Build matcher (optional — nil means match all)
+        let urlPattern = command.params?["url"]?.stringValue
+        let methodFilter = command.params?["method"]?.stringValue
+        var matcher: RequestMatcher?
+        if urlPattern != nil || methodFilter != nil {
+            matcher = RequestMatcher(urlContains: urlPattern, method: methodFilter)
+        }
+
+        // Auto-start interception if not already active
+        if !interceptor.isIntercepting {
+            interceptor.install()
+        }
+
+        let baseId = command.params?["id"]?.stringValue ?? "preset-\(preset.rawValue.lowercased().replacingOccurrences(of: " ", with: "-"))"
+        var conditionIds: [String] = []
+
+        for (index, entry) in preset.effects.enumerated() {
+            var desc = entry.description
+            if let u = urlPattern { desc += " [url~\(u)]" }
+            if let m = methodFilter { desc += " [\(m)]" }
+            if matcher == nil { desc += " [all requests]" }
+
+            let conditionId = preset.effects.count == 1 ? baseId : "\(baseId)-\(index)"
+            let condition = PepperNetworkCondition(
+                id: conditionId,
+                matcher: matcher,
+                effect: entry.effect,
+                description: desc
+            )
+            interceptor.addCondition(condition)
+            conditionIds.append(conditionId)
+        }
+
+        return .ok(
+            id: command.id,
+            data: [
+                "preset": AnyCodable(preset.rawValue),
+                "condition_ids": AnyCodable(conditionIds),
+                "conditions_applied": AnyCodable(conditionIds.count),
                 "active_conditions": AnyCodable(interceptor.activeConditions.count),
             ])
     }

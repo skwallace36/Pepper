@@ -70,6 +70,7 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `network` | log | pass | After start + Fetch HTTP button | Returns {count:N, transactions:[...]}. Each transaction has request (method, url, headers), response (status_code, headers, body, content_length), timing, and id. Captured GET https://httpbin.org/json → 200 with full JSON body. Limit param works correctly. |
 | `network` | clear | pass | After log capture | Returns {cleared:true}. Verified buffer_count drops to 0 after clear, total_recorded preserved. |
 | `network` | simulate | untested |  |  |
+| `network` | presets | untested |  |  |
 | `network` | conditions | untested | After network.simulate | List active conditions. Verify condition appears after simulate latency/offline/etc. |
 | `network` | remove_condition | untested | After network.simulate | Remove specific condition, confirm behavior reverts to normal. |
 | `network` | clear_conditions | untested | After network.simulate | Clear all conditions, confirm all simulate variants deactivated. |
@@ -279,9 +280,9 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 
 ## Summary
 
-**256 test points** across 71 commands.
+**257 test points** across 71 commands.
 
 - pass: 137
 - fail: 3
-- untested: 105
+- untested: 106
 
