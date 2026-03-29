@@ -261,6 +261,48 @@ def _scroll_indicator_lines(
     return [dim(f"  >> {hidden_str}{hint_str} — scroll to reveal")]
 
 
+def filter_raw(resp: dict, filter_type: str | None, fields_csv: str | None) -> dict:
+    """Post-process raw look response: filter elements by type and/or project fields.
+
+    Args:
+        resp: Full JSON response from the dylib.
+        filter_type: Case-insensitive substring match against element ``type``.
+        fields_csv: Comma-separated field names to keep per element.
+    """
+    import copy
+
+    resp = copy.deepcopy(resp)
+    data = resp.get("data", resp)
+
+    type_needle = filter_type.lower() if filter_type else None
+    field_set = {f.strip() for f in fields_csv.split(",") if f.strip()} if fields_csv else None
+
+    def _matches(el: dict) -> bool:
+        if type_needle is None:
+            return True
+        return type_needle in (el.get("type") or "").lower()
+
+    def _project(el: dict) -> dict:
+        if field_set is None:
+            return el
+        return {k: v for k, v in el.items() if k in field_set}
+
+    if "rows" in data:
+        for row in data["rows"]:
+            if "elements" in row:
+                row["elements"] = [_project(e) for e in row["elements"] if _matches(e)]
+        data["rows"] = [r for r in data["rows"] if r.get("elements")]
+
+    if "non_interactive" in data:
+        data["non_interactive"] = [_project(e) for e in data["non_interactive"] if _matches(e)]
+
+    total = sum(len(r.get("elements", [])) for r in data.get("rows", []))
+    total += len(data.get("non_interactive", []))
+    data["element_count"] = total
+
+    return resp
+
+
 def format_look(resp: dict) -> str:
     """Format introspect mode:map response as compact readable summary.
 

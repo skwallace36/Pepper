@@ -33,7 +33,7 @@ from .pepper_commands import (
     CMD_TAP,
 )
 from .pepper_common import discover_instance, json_dumps
-from .pepper_format import format_look, format_look_compact, format_look_slim
+from .pepper_format import filter_raw, format_look, format_look_compact, format_look_slim
 
 _logger = logging.getLogger(__name__)
 
@@ -60,6 +60,14 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
             description="Filter to elements in a y-range. Pass 'minY-maxY' (e.g. region='390-532'). For exact box use raw JSON: {\"x\":0,\"y\":390,\"w\":390,\"h\":142}.",
         ),
         raw: bool = Field(default=False, description="Return raw JSON instead of formatted summary"),
+        filter: str | None = Field(
+            default=None,
+            description="Raw mode only. Filter elements by type (e.g. filter='button', filter='staticText'). Case-insensitive substring match against element type.",
+        ),
+        fields: str | None = Field(
+            default=None,
+            description="Raw mode only. Comma-separated list of fields to include per element (e.g. fields='label,frame,type'). Reduces output to only the requested keys.",
+        ),
         slim: bool = Field(
             default=False,
             description="Stateless flat list: every call returns all elements with tap commands, no y-coordinates or group headers. Best for one-shot observation when you need the full picture.",
@@ -150,6 +158,8 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
             }
 
         if raw:
+            if filter or fields:
+                resp = filter_raw(resp, filter, fields)
             text = json_dumps(resp)
         elif slim:
             text = format_look_slim(resp)
