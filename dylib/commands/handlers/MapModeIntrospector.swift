@@ -220,9 +220,13 @@ struct MapModeIntrospector {
             // Skip center duplicates
             guard !coveredCenters.contains(x: centerX, y: centerY) else { continue }
 
-            // Compute visibility for text elements
+            // Compute visibility for text elements.
+            // Skip expensive grid hit-test when annotateDepth already confirmed
+            // the element via fingerprint set membership — it's known visible.
             var textVisible: Float = -1
-            if let window = UIWindow.pepper_keyWindow {
+            if acc.depthConfirmed {
+                textVisible = 1.0
+            } else if let window = UIWindow.pepper_keyWindow {
                 textVisible = bridge.checkFrameVisibility(frame: acc.frame, in: window)
             }
 

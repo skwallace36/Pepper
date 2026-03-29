@@ -170,7 +170,9 @@ extension ElementDiscoveryBridge {
             // If we have a reachable set, check membership.
             if onScreen, let reachable = topmostElements {
                 if let fp = ElementFingerprint(from: elem) {
-                    elem.hitReachable = reachable.contains(fp)
+                    let inSet = reachable.contains(fp)
+                    elem.hitReachable = inSet
+                    elem.depthConfirmed = inSet
                 } else {
                     // Element has no label/id — can't fingerprint. Use frame containment
                     // against the topmost view.
