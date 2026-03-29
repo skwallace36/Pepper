@@ -79,6 +79,9 @@ struct PepperAccessibilityElement {
 
     /// Depth-awareness: element is topmost at its center point (not behind a modal/sheet).
     var hitReachable: Bool = true
+    /// True when annotateDepth actively confirmed this element via fingerprint set membership.
+    /// Elements with this flag can skip expensive checkFrameVisibility grid sampling.
+    var depthConfirmed: Bool = false
     /// Fraction of grid sample points that pass hit-test (0.0–1.0). -1 = not computed.
     var visible: Float = -1
 
