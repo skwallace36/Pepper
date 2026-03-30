@@ -1,0 +1,29 @@
+name: inspect-app-state
+description: >
+  Use vars_inspect to read app state, modify it, and verify the change.
+  Tests state inspection workflow without rebuilding.
+requires_simulator: true
+deploy_test_app: true
+
+goal: |
+  You are connected to PepperTestApp running in the iOS simulator.
+  Your task:
+  1. Use vars_inspect to discover available state properties
+  2. Read the current value of a counter or toggle property
+  3. Modify that property using vars_inspect set
+  4. Verify the change took effect (look at the screen or read the value again)
+
+  Use Pepper MCP tools: vars_inspect, look. Do NOT rebuild the app.
+
+success:
+  pepper_tools_called: [vars_inspect, look]
+
+anti_patterns:
+  - name: rebuilt-unnecessarily
+    description: Should not rebuild the app to change state
+  - name: excessive-tool-calls
+    rule: tool_call_count > 15
+
+budget_usd: 1.00
+timeout_s: 120
+tags: [state, vars, simulator, quick]

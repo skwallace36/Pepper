@@ -368,6 +368,30 @@ commands-check:
 ## docs: Regenerate all auto-generated docs
 docs: coverage commands
 
+# ============================================================
+# Eval
+# ============================================================
+
+## eval-score: Score an agent verbose log (LOG=path/to/verbose.log)
+eval-score:
+	@python3 scripts/eval/eval_score.py --log "$(LOG)"
+
+## eval-run: Run a single eval task (TASK=path/to/task.yaml PROMPT=path/to/variant.md)
+eval-run:
+	@python3 scripts/eval/eval_run.py --task "$(TASK)" $(if $(PROMPT),--prompt "$(PROMPT)") $(if $(MODE),--mode "$(MODE)") $(if $(FIXTURE),--fixture "$(FIXTURE)")
+
+## eval-compare: Compare baseline vs variant scores (A=score.json B=score.json)
+eval-compare:
+	@python3 scripts/eval/eval_compare.py --baseline "$(A)" --variant "$(B)"
+
+## eval-batch: Run task x variant matrix (TASKS=dir PROMPTS=dir RUNS=N)
+eval-batch:
+	@python3 scripts/eval/eval_batch.py --tasks "$(or $(TASKS),eval/tasks)" --prompts "$(or $(PROMPTS),eval/prompts)" --runs "$(or $(RUNS),1)"
+
+## eval-record: Extract replay fixture from a verbose log (LOG=path OUTPUT=path)
+eval-record:
+	@python3 scripts/eval/eval_record.py --log "$(LOG)" --output "$(OUTPUT)"
+
 ## clean: Clean build artifacts
 clean:
 	@echo "Cleaning build artifacts..."

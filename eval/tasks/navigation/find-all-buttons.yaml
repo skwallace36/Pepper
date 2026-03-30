@@ -1,0 +1,29 @@
+name: find-all-buttons
+description: >
+  Find and list all tappable elements on the Controls tab.
+  Tests effective use of look, find, and tree tools.
+requires_simulator: true
+deploy_test_app: true
+
+goal: |
+  You are connected to PepperTestApp running in the iOS simulator.
+  Your task:
+  1. Observe the Controls tab
+  2. Identify ALL tappable elements (buttons, toggles, navigation links)
+  3. Report them as a complete list with their labels
+
+  Use Pepper MCP tools. You may use look, find, tree, or read_element.
+
+success:
+  pepper_tools_called: [look]
+  output_contains: ["button", "toggle"]
+
+anti_patterns:
+  - name: excessive-tool-calls
+    rule: tool_call_count > 12
+  - name: no-look-first
+    rule: look_before_act < 1.0
+
+budget_usd: 0.50
+timeout_s: 90
+tags: [observation, simulator, quick]

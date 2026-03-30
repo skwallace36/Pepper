@@ -263,7 +263,7 @@ except:
 print('yes' if elapsed < $BACKOFF_WINDOW else 'no')
 " 2>/dev/null || echo "no")
   if [ "$IN_BACKOFF" = "yes" ]; then
-    emit "failed" ",\"detail\":\"${TYPE} in backoff (${BACKOFF_THRESHOLD}+ consecutive failures, cooldown ${BACKOFF_WINDOW}s)\""
+    emit "skipped" ",\"detail\":\"${TYPE} in backoff (${BACKOFF_THRESHOLD}+ consecutive failures, cooldown ${BACKOFF_WINDOW}s)\""
     echo "${TYPE} in backoff (${BACKOFF_THRESHOLD}+ consecutive failures) — skipping."
     exit 0
   fi
