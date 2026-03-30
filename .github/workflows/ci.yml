@@ -49,40 +49,7 @@ jobs:
             exit 1
           fi
 
-  # --- macOS runner: Swift compile + SwiftLint (10x multiplier) ---
-  build:
-    runs-on: macos-15
-    timeout-minutes: 5
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Install SwiftLint
-        run: brew install swiftlint
-
-      - name: SwiftLint
-        run: make lint
-
-      - name: Build dylib
-        run: make build
-
-  # --- macOS runner: smoke tests (requires simulator) ---
-  smoke-generic:
-    runs-on: macos-15
-    timeout-minutes: 15
-    needs: [lint, build]
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Generic-mode smoke tests
-        run: ./scripts/ci.sh --suite scripts/smoke-generic.json
-
-      - name: Upload results
-        if: always()
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
-        with:
-          name: generic-smoke-results
-          path: build/ci-results/
+  # --- macOS jobs disabled to conserve free-tier Actions minutes ---
+  # build (SwiftLint + dylib compile) and smoke-generic (simulator tests)
+  # cost 10x minutes on macos runners. Re-enable when we have a paid plan.
+  # Build/lint is validated locally by pre-commit hooks and agents.
