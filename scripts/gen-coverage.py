@@ -52,6 +52,14 @@ def parse_registered_commands():
     for m in re.finditer(r'register\("(\w+)"\)', body):
         commands.append(m.group(1))
 
+    # Eager direct: handlers["ping"] = ClosureHandler(...)
+    for m in re.finditer(r'handlers\["(\w+)"\]\s*=', body):
+        commands.append(m.group(1))
+
+    # Lazy-registered: registerLazy("name") { ... }
+    for m in re.finditer(r'registerLazy\("(\w+)"\)', body):
+        commands.append(m.group(1))
+
     # Handler-based: register(FooHandler(...))
     for m in re.finditer(r"register\((\w+Handler)\(", body):
         handler_class = m.group(1)

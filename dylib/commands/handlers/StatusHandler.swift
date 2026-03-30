@@ -32,6 +32,8 @@ struct StatusHandler: PepperHandler {
                 "connections": AnyCodable(PepperPlane.shared.connectionCount),
                 "connectionDetails": AnyCodable(PepperPlane.shared.connectionDetails),
                 "commands": AnyCodable(PepperPlane.shared.commandDispatcher.registeredCommands.count),
+                "registration_ms": AnyCodable(
+                    String(format: "%.2f", PepperPlane.shared.commandDispatcher.registrationTimeMs)),
                 "hid_available": AnyCodable(HIDEventAPI.isAvailable),
                 "swizzles": AnyCodable("\(swizzleOk)/\(swizzleCount)"),
                 "swizzle_health": AnyCodable(
