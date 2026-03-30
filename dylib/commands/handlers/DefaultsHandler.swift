@@ -78,6 +78,18 @@ struct DefaultsHandler: PepperHandler {
             return .error(id: command.id, message: "Key '\(key)' not found.")
         }
 
+        // Return decoded JSON structure for Data values
+        if let data = value as? Data, let decoded = decodeDataAsJSON(data) {
+            return .ok(
+                id: command.id,
+                data: [
+                    "key": AnyCodable(key),
+                    "type": AnyCodable("data:json"),
+                    "value": AnyCodable(decoded),
+                    "bytes": AnyCodable(data.count),
+                ])
+        }
+
         return .ok(
             id: command.id,
             data: [
@@ -127,13 +139,19 @@ struct DefaultsHandler: PepperHandler {
 
     // MARK: - Value helpers
 
+    private func decodeDataAsJSON(_ data: Data) -> Any? {
+        guard data.count > 0, data.count <= 1_048_576 else { return nil }
+        return try? JSONSerialization.jsonObject(with: data, options: .fragmentsAllowed)
+    }
+
     private func typeLabel(_ value: Any) -> String {
         switch value {
         case is Bool: return "bool"
         case is Int, is Int64, is UInt: return "int"
         case is Float, is Double: return "float"
         case is String: return "string"
-        case is Data: return "data"
+        case let d as Data:
+            return decodeDataAsJSON(d) != nil ? "data:json" : "data"
         case is Date: return "date"
         case is [Any]: return "array"
         case is [String: Any]: return "dict"
@@ -146,6 +164,9 @@ struct DefaultsHandler: PepperHandler {
         case let b as Bool:
             return b ? "true" : "false"
         case let d as Data:
+            if let decoded = decodeDataAsJSON(d) {
+                return summarize(decoded)
+            }
             return "<\(d.count) bytes>"
         case let date as Date:
             let fmt = ISO8601DateFormatter()

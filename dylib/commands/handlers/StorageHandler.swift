@@ -357,6 +357,11 @@ struct StorageHandler: PepperHandler {
         case let s as String:
             return s.count > 200 ? String(s.prefix(200)) + "..." : s
         case let d as Data:
+            if d.count > 0, d.count <= 1_048_576,
+               let obj = try? JSONSerialization.jsonObject(with: d, options: .fragmentsAllowed) {
+                let s = String(describing: obj)
+                return s.count > 200 ? String(s.prefix(200)) + "..." : s
+            }
             return "<\(d.count) bytes>"
         case let date as Date:
             return ISO8601DateFormatter().string(from: date)
