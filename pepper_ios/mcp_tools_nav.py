@@ -354,7 +354,14 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
             params["deeplink"] = deeplink
         elif tab is not None:
             if isinstance(tab, int):
-                params["tab"] = tab
+                # Resolve integer index to tab name via screen command so we use
+                # the same reliable name-based path that string tabs use.
+                screen_data = await resolve_and_send(simulator, CMD_SCREEN)
+                tabs_list = screen_data.get("tabs", [])
+                if tab < 0 or tab >= len(tabs_list):
+                    count = len(tabs_list)
+                    return [TextContent(type="text", text=f"Error: tab index {tab} out of range ({count} tabs found)")]
+                params["to"] = tabs_list[tab]["name"]
             else:
                 # String tab name — resolve via the "to" param which supports name lookup
                 params["to"] = tab
