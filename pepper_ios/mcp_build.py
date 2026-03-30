@@ -26,6 +26,43 @@ SendFn = Callable[..., "asyncio.Future[dict]"]
 # This way multiple Claude sessions building for different sims don't clobber each other.
 _sim_build_state: dict[str, str] = {}
 
+
+def _extract_build_errors(output: str, label: str = "BUILD FAILED") -> str:
+    """Extract error details from xcodebuild output.
+
+    For package resolution failures, includes the full block of detail lines
+    that follow the error (they don't contain 'error:' themselves).
+    For other failures, deduplicates lines containing 'error:'.
+    """
+    lines = output.split("\n")
+
+    # Check for package resolution failure — grab the error line and all
+    # subsequent non-blank lines that form the dependency detail block.
+    for i, line in enumerate(lines):
+        if "could not resolve package dependencies" in line.lower():
+            block = [line.strip()]
+            for j in range(i + 1, len(lines)):
+                stripped = lines[j].strip()
+                if not stripped:
+                    break
+                block.append(stripped)
+            return f"{label}\n" + "\n".join(block[:40])
+
+    # General case: deduplicate error: lines
+    error_lines: list[str] = []
+    seen: set[str] = set()
+    for line in lines:
+        if "error:" in line.lower():
+            normalized = line.strip()
+            if normalized not in seen:
+                seen.add(normalized)
+                error_lines.append(normalized)
+    if error_lines:
+        return f"{label}\n" + "\n".join(error_lines[:20])
+
+    # Last resort: tail of output
+    return f"{label}\n" + "\n".join(l.strip() for l in lines[-20:])
+
 # Session-sticky simulator: once this MCP server process resolves a simulator,
 # it remembers and reuses it for all subsequent calls. Prevents accidentally
 # grabbing another Claude session's sim when auto-resolving.
@@ -270,21 +307,7 @@ async def build_app(
         summary = "\n".join(lines[-3:]) if len(lines) > 3 else output.strip()
         return True, f"BUILD SUCCEEDED\n{summary}"
     else:
-        # Extract and deduplicate errors
-        error_lines = []
-        seen = set()
-        for line in output.split("\n"):
-            if "error:" in line.lower():
-                # Normalize whitespace for dedup
-                normalized = line.strip()
-                if normalized not in seen:
-                    seen.add(normalized)
-                    error_lines.append(normalized)
-        if error_lines:
-            return False, "BUILD FAILED\n" + "\n".join(error_lines[:20])
-        # Fall back to last 20 lines
-        lines = output.strip().split("\n")
-        return False, "BUILD FAILED\n" + "\n".join(lines[-20:])
+        return False, _extract_build_errors(output, "BUILD FAILED")
 
 
 async def deploy_app(
@@ -527,18 +550,7 @@ async def build_app_device(
         summary = "\n".join(lines[-3:]) if len(lines) > 3 else output.strip()
         return True, f"BUILD SUCCEEDED (device)\n{summary}"
     else:
-        error_lines = []
-        seen = set()
-        for line in output.split("\n"):
-            if "error:" in line.lower():
-                normalized = line.strip()
-                if normalized not in seen:
-                    seen.add(normalized)
-                    error_lines.append(normalized)
-        if error_lines:
-            return False, "BUILD FAILED (device)\n" + "\n".join(error_lines[:20])
-        lines = output.strip().split("\n")
-        return False, "BUILD FAILED (device)\n" + "\n".join(lines[-20:])
+        return False, _extract_build_errors(output, "BUILD FAILED (device)")
 
 
 async def install_on_device(devicectl_uuid: str, app_path: str) -> tuple[bool, str]:
