@@ -107,10 +107,11 @@ struct DynamicTypeHandler: PepperHandler {
 
     private func handleSizes(_ command: PepperCommand) -> PepperResponse {
         let sizes = Self.allCategories.map { (name, category) -> AnyCodable in
-            AnyCodable([
-                "name": AnyCodable(name),
-                "value": AnyCodable(category.rawValue),
-            ] as [String: AnyCodable])
+            AnyCodable(
+                [
+                    "name": AnyCodable(name),
+                    "value": AnyCodable(category.rawValue),
+                ] as [String: AnyCodable])
         }
 
         return .ok(

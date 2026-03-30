@@ -50,6 +50,17 @@ elif ! command -v swiftlint &>/dev/null; then
     warn "SwiftLint not installed — skipping (brew install swiftlint)"
 fi
 
+# 2b. SwiftFormat check (staged Swift files only)
+if [ -n "$STAGED_SWIFT" ]; then
+    FMT_OUTPUT=$(make -C "$REPO_DIR" fmt-check 2>&1)
+    if [ $? -eq 0 ]; then
+        pass "SwiftFormat"
+    else
+        fail "SwiftFormat violations — run 'make fmt' to fix"
+        echo "$FMT_OUTPUT" | grep "error:" | head -10
+    fi
+fi
+
 # 3. Python syntax check (pepper-mcp, pepper-ctl)
 for py_file in tools/pepper-mcp tools/pepper-ctl tools/pepper-stream tools/pepper-context; do
     if [ -f "$REPO_DIR/$py_file" ]; then
