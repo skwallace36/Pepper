@@ -377,6 +377,12 @@ def format_look(resp: dict) -> str:
         header += f"  [{mem:.0f}MB]"
     lines = [header]
 
+    # Scope resolution failure
+    scope_error = data.get("scope_error")
+    if scope_error:
+        lines.append(f"  !! SCOPE ERROR: {scope_error}")
+        lines.append("")
+
     # System dialog warning
     dialog_data = data.get("system_dialog_blocking")
     if dialog_data:
@@ -573,6 +579,12 @@ def format_look_slim(resp: dict) -> str:
     if mem:
         header += f"  [{mem:.0f}MB]"
     lines = [header, ""]
+
+    # Scope resolution failure
+    scope_error = data.get("scope_error")
+    if scope_error:
+        lines.append(f"  !! SCOPE ERROR: {scope_error}")
+        lines.append("")
 
     # System dialog warning
     dialog_data = data.get("system_dialog_blocking")
@@ -918,6 +930,12 @@ def format_look_compact(resp: dict) -> str:
     if mem:
         header += f"  [{mem:.0f}MB]"
     lines = [header]
+
+    # Scope resolution failure
+    scope_error = data.get("scope_error")
+    if scope_error:
+        lines.append(f"  !! SCOPE ERROR: {scope_error}")
+        lines.append("")
 
     # System dialog warning (compact but present)
     dialog_data = data.get("system_dialog_blocking")

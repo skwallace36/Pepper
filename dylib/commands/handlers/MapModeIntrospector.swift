@@ -769,8 +769,9 @@ struct MapModeIntrospector {
 
         // Phase 5: Apply spatial filters
         // Scope: resolve an element by label/identifier and use its frame as the filter region.
+        let requestedScope = command.params?["scope"]?.stringValue
         let scopeRect: CGRect? = {
-            guard let scopeID = command.params?["scope"]?.stringValue,
+            guard let scopeID = requestedScope,
                 let window = UIWindow.pepper_keyWindow
             else { return nil }
             // Try accessibility identifier first
@@ -785,7 +786,14 @@ struct MapModeIntrospector {
             guard let tr = textResult, tr.tapPoint == nil else { return nil }
             return tr.view.convert(tr.view.bounds, to: nil)
         }()
-        if let rect = scopeRect {
+        // If scope was requested but didn't resolve, return an error instead of
+        // silently falling back to all elements.
+        let scopeFailed = requestedScope != nil && scopeRect == nil
+        if scopeFailed, let scopeID = requestedScope {
+            logger.warning("Scope '\(scopeID)' did not match any element")
+            mergedInteractive.removeAll()
+            mergedNonInteractive.removeAll()
+        } else if let rect = scopeRect {
             mergedInteractive = mergedInteractive.filter { rect.contains($0.center) }
             mergedNonInteractive = mergedNonInteractive.filter { rect.contains($0.center) }
         }
@@ -854,7 +862,9 @@ struct MapModeIntrospector {
                     ))
             }
         }
-        if let rect = scopeRect {
+        if scopeFailed {
+            textForOutput.removeAll()
+        } else if let rect = scopeRect {
             textForOutput = textForOutput.filter { rect.contains($0.center) }
         }
         if let regionRect = parseRegion(from: command.params) {
@@ -890,6 +900,12 @@ struct MapModeIntrospector {
             "rows": AnyCodable(rows),
             "non_interactive": AnyCodable(nonInteractiveSerialized),
         ]
+        if scopeFailed, let scopeID = requestedScope {
+            data["scope_error"] = AnyCodable(
+                "No element matching scope '\(scopeID)' found. Results are empty. "
+                + "Use look without scope to see available elements, then retry with a matching label or identifier."
+            )
+        }
         if !isSummary {
             data["screen_size"] = AnyCodable([
                 "w": AnyCodable(Int(screenSize.width)),
