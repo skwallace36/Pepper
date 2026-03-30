@@ -471,6 +471,14 @@ struct MiscTab: View {
                     .accessibilityIdentifier("appearance_link")
                 }
 
+                // MARK: - Render Tracking
+                GroupBox("Render Tracking") {
+                    NavigationLink("Render Tracking Screen") {
+                        RenderTrackingView()
+                    }
+                    .accessibilityIdentifier("render_tracking_link")
+                }
+
                 // MARK: - Context Menu
                 GroupBox("Context Menu") {
                     Text("Long press me")
