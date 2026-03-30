@@ -386,6 +386,14 @@ struct MiscTab: View {
                     .accessibilityIdentifier("file_manager_link")
                 }
 
+                // MARK: - Sandbox Browser
+                GroupBox("Sandbox Browser") {
+                    NavigationLink("Sandbox Browser Screen") {
+                        SandboxBrowserView()
+                    }
+                    .accessibilityIdentifier("sandbox_browser_link")
+                }
+
                 // MARK: - Undo Demo (for undo_manager testing)
                 GroupBox("Undo Manager") {
                     NavigationLink("Undo Demo Screen") {
