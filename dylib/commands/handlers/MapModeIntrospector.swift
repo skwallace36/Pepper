@@ -1,4 +1,5 @@
 import UIKit
+import WebKit
 import os
 
 /// Owns the "map" mode introspection pipeline — the engine behind the `look` command.
@@ -990,6 +991,38 @@ struct MapModeIntrospector {
             data["screen_key"] = AnyCodable(screenKey)
         }
 
+        // WKWebView detection: when look finds few native elements but the screen
+        // contains a WKWebView, hint that the `webview` tool should be used instead.
+        let webViews = Self.collectWebViews(
+            in: modalRootView ?? UIWindow.pepper_keyWindow?.rootViewController?.view)
+        if !webViews.isEmpty && mergedInteractive.count <= 2 {
+            var webviewInfos: [[String: AnyCodable]] = []
+            for (i, wv) in webViews.enumerated() {
+                var info: [String: AnyCodable] = ["index": AnyCodable(i)]
+                if let url = wv.url?.absoluteString {
+                    info["url"] = AnyCodable(url)
+                }
+                if let title = wv.title, !title.isEmpty {
+                    info["title"] = AnyCodable(title)
+                }
+                info["loading"] = AnyCodable(wv.isLoading)
+                webviewInfos.append(info)
+            }
+            data["webview_detected"] = AnyCodable([
+                "warning": AnyCodable("\u{26a0}\u{fe0f} webview_content"),
+                "description": AnyCodable(
+                    "Screen content is inside a WKWebView. Native introspection cannot see web elements. "
+                    + "Use the `webview` tool to inspect and interact with the content."
+                ),
+                "webviews": AnyCodable(webviewInfos.map { AnyCodable($0) }),
+                "suggested_actions": AnyCodable([
+                    AnyCodable("webview url — see loaded URL and state"),
+                    AnyCodable("webview dom — list DOM elements"),
+                    AnyCodable("webview evaluate script='...' — run JavaScript"),
+                ]),
+            ] as [String: AnyCodable])
+        }
+
         // System dialog detection: warn agents when a modal dialog is blocking interaction.
         // Pending dialogs (permission prompts, alerts) overlay the app and prevent taps
         // from reaching underlying elements. Surface this prominently so agents don't
@@ -1048,6 +1081,21 @@ struct MapModeIntrospector {
         }
 
         return .ok(id: command.id, data: data)
+    }
+
+    // MARK: - WKWebView Discovery
+
+    /// Recursively collects WKWebView instances from the view hierarchy.
+    private static func collectWebViews(in view: UIView?) -> [WKWebView] {
+        guard let view = view else { return [] }
+        var result: [WKWebView] = []
+        if let wk = view as? WKWebView {
+            result.append(wk)
+        }
+        for subview in view.subviews {
+            result += collectWebViews(in: subview)
+        }
+        return result
     }
 
 }
