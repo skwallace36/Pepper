@@ -26,6 +26,6 @@ weights:
   tool_usage: 0.25
   compliance: 0.15
 
-budget_usd: 3.00
+budget_usd: 1.00
 timeout_s: 600
 tags: [regression, full-workflow, simulator]

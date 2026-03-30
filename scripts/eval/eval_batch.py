@@ -170,7 +170,7 @@ def main() -> None:
     parser.add_argument("--runs", type=int, default=1, help="Runs per combination")
     parser.add_argument("--mode", choices=["live", "replay"], default="live")
     parser.add_argument("--fixtures", help="Fixture directory for replay mode")
-    parser.add_argument("--model", default="sonnet")
+    parser.add_argument("--model", default="haiku", help="Model (default: haiku for cost efficiency)")
     parser.add_argument("--output", help="Output directory")
     args = parser.parse_args()
 

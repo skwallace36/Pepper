@@ -41,15 +41,19 @@ def _load_task(path: str) -> dict:
         return json.loads(text)
 
 
-def _build_prompt(task: dict, prompt_file: str | None) -> str:
+def _build_system_prompt(prompt_file: str | None) -> str:
+    """Build the system prompt (stable across tasks — maximizes prompt caching)."""
     parts = []
     if prompt_file:
         parts.append(Path(prompt_file).read_text())
-    goal = task.get("goal", "")
-    if goal:
-        parts.append(f"\n## Your Task\n\n{goal}")
     parts.append(SELF_REPORT_SUFFIX)
     return "\n".join(parts)
+
+
+def _build_user_prompt(task: dict) -> str:
+    """Build the user message (varies per task — not cached)."""
+    goal = task.get("goal", "")
+    return f"Complete the following task.\n\n{goal}" if goal else "Complete the task."
 
 
 def _build_mcp_config(mode: str, fixture: str | None) -> str | None:
@@ -85,7 +89,7 @@ def run_eval(
     output_dir: str | None = None,
     mode: str = "live",
     fixture: str | None = None,
-    model: str = "sonnet",
+    model: str = "haiku",
 ) -> dict:
     task = _load_task(task_path)
 
@@ -95,9 +99,15 @@ def run_eval(
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
 
-    prompt = _build_prompt(task, prompt_file)
+    # Split prompt: system prompt (stable, cached) + user message (varies per task)
+    system_prompt = _build_system_prompt(prompt_file)
+    user_prompt = _build_user_prompt(task)
     budget = task.get("budget_usd", 2.00)
     timeout = task.get("timeout_s", 300)
+
+    # Replay mode is cheaper — tighten budget automatically
+    if mode == "replay":
+        budget = min(budget, 0.50)
 
     verbose_log = out / "verbose.log"
     manifest = {
@@ -111,8 +121,11 @@ def run_eval(
         "started_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }
 
+    # System prompt goes in --append-system-prompt (cached across runs with same variant).
+    # Task goal goes in -p user message (varies per task, not cached).
     cmd = [
-        "claude", "-p", f"Complete the following task.\n\n{prompt}",
+        "claude", "-p", user_prompt,
+        "--append-system-prompt", system_prompt,
         "--model", model,
         "--max-budget-usd", str(budget),
         "--output-format", "stream-json",
@@ -171,7 +184,7 @@ def main() -> None:
     parser.add_argument("--output", help="Output directory for results")
     parser.add_argument("--mode", choices=["live", "replay"], default="live")
     parser.add_argument("--fixture", help="Recording fixture for replay mode")
-    parser.add_argument("--model", default="sonnet", help="Model to use")
+    parser.add_argument("--model", default="haiku", help="Model to use (default: haiku for cost efficiency)")
     args = parser.parse_args()
 
     run_eval(
