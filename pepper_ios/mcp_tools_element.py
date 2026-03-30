@@ -1,13 +1,13 @@
 """Element inspection and control tool definitions for Pepper MCP.
 
-Tool definitions for: toggle, read_element, tree, find, verify.
+Tool definitions for: toggle, read_element, tree, find, verify, pepper_assert.
 """
 
 from __future__ import annotations
 
 from pydantic import Field
 
-from .pepper_commands import CMD_FIND, CMD_READ, CMD_TOGGLE, CMD_TREE, CMD_VERIFY
+from .pepper_commands import CMD_ASSERT, CMD_FIND, CMD_READ, CMD_TOGGLE, CMD_TREE, CMD_VERIFY
 
 
 def register_element_tools(mcp, resolve_and_send, act_and_look):
@@ -140,3 +140,56 @@ def register_element_tools(mcp, resolve_and_send, act_and_look):
             if exact is not None:
                 params["exact"] = exact
         return await resolve_and_send(simulator, CMD_VERIFY, params)
+
+    @mcp.tool()
+    async def pepper_assert(
+        simulator: str | None = Field(default=None, description="Simulator UDID"),
+        element: str | None = Field(
+            default=None,
+            description="Accessibility ID to assert on",
+        ),
+        text: str | None = Field(
+            default=None,
+            description="Assert this text is visible on screen",
+        ),
+        predicate: str | None = Field(
+            default=None,
+            description="NSPredicate for count assertions (use with expected param)",
+        ),
+        state: str = Field(
+            default="exists",
+            description="State to check: exists, not_exists, visible, enabled, disabled, selected, has_value",
+        ),
+        value: str | None = Field(
+            default=None,
+            description="Expected value (use with state=has_value)",
+        ),
+        expected: int | None = Field(
+            default=None,
+            description="Expected count (use with predicate param)",
+        ),
+        compare: str | None = Field(
+            default=None,
+            description="Count comparison: eq (default), gte, lte, gt, lt",
+        ),
+    ) -> str:
+        """Assert element state, text presence, or element count. Returns {passed: true/false} for CI-readable results.
+
+        Element: pepper_assert element="Save" state=exists
+        Text: pepper_assert text="Welcome"
+        Count: pepper_assert predicate="type == 'button'" expected=3"""
+        params: dict = {}
+        if element is not None:
+            params["element"] = element
+            params["state"] = state
+        if text is not None:
+            params["text"] = text
+        if predicate is not None:
+            params["predicate"] = predicate
+        if value is not None:
+            params["value"] = value
+        if expected is not None:
+            params["expected"] = expected
+        if compare is not None:
+            params["compare"] = compare
+        return await resolve_and_send(simulator, CMD_ASSERT, params)

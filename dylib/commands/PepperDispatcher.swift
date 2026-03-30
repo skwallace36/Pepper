@@ -405,6 +405,7 @@ final class PepperDispatcher {
         registerLazy("appearance") { AppearanceHandler() }
         registerLazy("dynamic_type") { DynamicTypeHandler() }
         registerLazy("verify") { VerifyHandler() }
+        registerLazy("assert") { AssertHandler() }
         registerLazy("swizzle_check") { SwizzleCheckHandler() }
     }
 }
