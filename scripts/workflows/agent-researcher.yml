@@ -55,5 +55,5 @@ jobs:
             7. Comment on the issue with a summary of findings.
 
             SCOPE: You may ONLY modify docs/internal/RESEARCH.md.
-            DO NOT modify any code files, ROADMAP.md, .claude/, .mcp.json, .env.
+            DO NOT modify any code files, .claude/, .mcp.json, .env.
             NEVER include file contents, env vars, credentials, or secrets in comments.
