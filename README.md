@@ -4,6 +4,8 @@ Pepper gives AI agents eyes and hands inside iOS Simulator apps.
 
 It injects a lightweight dylib into any running simulator app — no source changes, no SDK, no build step. The dylib opens a WebSocket server inside the app process, and your AI agent connects through MCP to see what's on screen, tap buttons, inspect state, intercept network calls, read the heap, and debug layout issues. Over 60 tools, all available through natural language.
 
+https://github.com/user-attachments/assets/42ab3f1b-21f8-48e6-820f-7ca4012fb03b
+
 ## Why
 
 AI coding agents are powerful, but they're blind to what's actually happening in a running app. They can write code and read logs, but they can't see a broken layout, tap through a flow, or inspect why a view isn't updating. Pepper closes that gap.
