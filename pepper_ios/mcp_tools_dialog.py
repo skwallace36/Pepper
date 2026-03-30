@@ -65,14 +65,26 @@ def _infer_permissions(text: str) -> list[str]:
 
 async def _dismiss_system_dialog(simulator, resolve_and_send, resolve_simulator):
     """Detect and dismiss a system dialog via simctl privacy grant + button click fallback."""
-    # Step 1: Detect system dialog
+    # Step 1: Detect system dialog — combine in-process (dylib) + AX (macOS) detection,
+    # same as the detect_system MCP action.  Previously this only checked the dylib,
+    # so SpringBoard-rendered dialogs (permissions, tracking) were invisible here.
     detect_resp = await resolve_and_send(simulator, CMD_DIALOG, {"action": "detect_system"})
 
     if detect_resp.get("status") == "error":
         return detect_resp
 
     data = detect_resp.get("data", detect_resp)
-    if not data.get("detected"):
+    dylib_detected = data.get("detected", False)
+
+    # Also check via macOS Accessibility API (catches SpringBoard dialogs)
+    ax_result = {"detected": False, "buttons": [], "pids": []}
+    if not dylib_detected:
+        try:
+            ax_result = await asyncio.get_running_loop().run_in_executor(None, _ax_detect)
+        except Exception:
+            pass
+
+    if not dylib_detected and not ax_result.get("detected", False):
         return {"status": "ok", "dismissed": False, "reason": "No system dialog detected"}
 
     # Step 2: Resolve simulator + bundle ID for simctl
@@ -114,10 +126,16 @@ async def _dismiss_system_dialog(simulator, resolve_and_send, resolve_simulator)
     # Brief wait for dialog to clear
     await asyncio.sleep(0.5)
 
-    # Step 5: Re-detect
+    # Step 5: Re-detect (dylib + AX, same merged approach)
     recheck_resp = await resolve_and_send(simulator, CMD_DIALOG, {"action": "detect_system"})
     recheck_data = recheck_resp.get("data", recheck_resp)
-    recheck_detected = recheck_data.get("detected", True)
+    recheck_detected = recheck_data.get("detected", False)
+    if not recheck_detected:
+        try:
+            ax_recheck = await asyncio.get_running_loop().run_in_executor(None, _ax_detect)
+            recheck_detected = ax_recheck.get("detected", False)
+        except Exception:
+            pass
 
     if not recheck_detected:
         return {
