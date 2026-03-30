@@ -8,9 +8,83 @@ import UIKit
 enum PepperScreenRegistry {
 
     /// Get the screen ID for a given view controller instance.
+    ///
+    /// Uses the best available signal:
+    /// 1. Class-name-derived ID (if specific enough)
+    /// 2. Navigation bar title (when the class name produces a generic result)
+    /// 3. Falls back to the generic class-based ID
     static func screenID(for viewController: UIViewController) -> String {
-        let typeName = String(describing: type(of: viewController))
-        return deriveScreenID(from: typeName)
+        let classBasedID = deriveScreenID(from: String(describing: type(of: viewController)))
+
+        if isSpecificScreenID(classBasedID) {
+            return classBasedID
+        }
+
+        // Class name was too generic — try the navigation title
+        if let title = bestTitle(for: viewController), !title.isEmpty {
+            let titleID = titleToScreenID(title)
+            if !titleID.isEmpty && titleID != classBasedID {
+                return titleID
+            }
+        }
+
+        return classBasedID
+    }
+
+    /// Check whether a derived screen ID is specific enough to be useful.
+    /// Short names, underscore-prefixed names, and known generic patterns indicate
+    /// the class name didn't carry meaningful identity.
+    private static func isSpecificScreenID(_ id: String) -> Bool {
+        if id.count <= 3 { return false }
+        if id.hasPrefix("_") { return false }
+        let genericIDs: Set<String> = [
+            "presentation", "hosting", "navigation", "web", "content",
+            "any_view", "view", "body",
+        ]
+        return !genericIDs.contains(id)
+    }
+
+    /// Extract the best available title from a view controller's navigation context.
+    /// Checks navigationItem.title, the navigation bar's topItem title, and the VC's
+    /// own title property.
+    private static func bestTitle(for viewController: UIViewController) -> String? {
+        // Direct navigationItem title (set by the VC itself)
+        if let title = viewController.navigationItem.title, !title.isEmpty {
+            return title
+        }
+        // Navigation bar's visible title (may differ from navigationItem.title in SwiftUI)
+        if let nav = viewController.navigationController
+            ?? viewController.pepper_effectiveNavController
+        {
+            if let title = nav.navigationBar.topItem?.title, !title.isEmpty {
+                return title
+            }
+        }
+        // VC's own title property
+        if let title = viewController.title, !title.isEmpty {
+            return title
+        }
+        return nil
+    }
+
+    /// Convert a human-readable title like "Pack Settings" to a snake_case screen ID.
+    private static func titleToScreenID(_ title: String) -> String {
+        let lowered = title.lowercased()
+        // Replace whitespace and hyphens with underscores
+        var result = ""
+        for char in lowered {
+            if char.isWhitespace || char == "-" {
+                result.append("_")
+            } else if char.isLetter || char.isNumber || char == "_" {
+                result.append(char)
+            }
+        }
+        // Collapse multiple underscores and trim
+        while result.contains("__") {
+            result = result.replacingOccurrences(of: "__", with: "_")
+        }
+        result = result.trimmingCharacters(in: CharacterSet(charactersIn: "_"))
+        return result
     }
 
     /// Derive a snake_case screen ID from a class name.
