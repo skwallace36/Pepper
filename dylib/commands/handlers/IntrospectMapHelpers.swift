@@ -215,14 +215,12 @@ extension MapModeIntrospector {
 
         if !summary {
             dict["center"] = AnyCodable([AnyCodable(Int(elem.center.x)), AnyCodable(Int(elem.center.y))])
-            if verboseFields.contains("frame") {
-                dict["frame"] = AnyCodable([
-                    AnyCodable(Int(elem.frame.origin.x)),
-                    AnyCodable(Int(elem.frame.origin.y)),
-                    AnyCodable(Int(elem.frame.size.width)),
-                    AnyCodable(Int(elem.frame.size.height)),
-                ])
-            }
+            dict["frame"] = AnyCodable([
+                AnyCodable(Int(elem.frame.origin.x)),
+                AnyCodable(Int(elem.frame.origin.y)),
+                AnyCodable(Int(elem.frame.size.width)),
+                AnyCodable(Int(elem.frame.size.height)),
+            ])
             if verboseFields.contains("hit_reachable") {
                 dict["hit_reachable"] = AnyCodable(elem.hitReachable)
             }
@@ -618,7 +616,7 @@ extension MapModeIntrospector {
 
     /// Serialize non-interactive elements for JSON, marking volatile positions.
     /// When `summary` is true, returns only type, label, and value.
-    /// `verboseFields` controls opt-in heavyweight fields (frame, visible, label_source).
+    /// Full mode includes center and frame. `verboseFields` controls opt-in heavyweight fields (visible, label_source).
     func serializeNonInteractive(_ elements: [MapElement], volatileKeys: Set<String>, summary: Bool = false,
                                  verboseFields: Set<String> = []) -> [AnyCodable] {
         elements.map { elem in
@@ -630,14 +628,12 @@ extension MapModeIntrospector {
 
             if !summary {
                 dict["center"] = AnyCodable([AnyCodable(Int(elem.center.x)), AnyCodable(Int(elem.center.y))])
-                if verboseFields.contains("frame") {
-                    dict["frame"] = AnyCodable([
-                        AnyCodable(Int(elem.frame.origin.x)),
-                        AnyCodable(Int(elem.frame.origin.y)),
-                        AnyCodable(Int(elem.frame.size.width)),
-                        AnyCodable(Int(elem.frame.size.height)),
-                    ])
-                }
+                dict["frame"] = AnyCodable([
+                    AnyCodable(Int(elem.frame.origin.x)),
+                    AnyCodable(Int(elem.frame.origin.y)),
+                    AnyCodable(Int(elem.frame.size.width)),
+                    AnyCodable(Int(elem.frame.size.height)),
+                ])
                 if verboseFields.contains("visible"), elem.visible >= 0 {
                     dict["visible"] = AnyCodable(Double(round(elem.visible * 100) / 100))
                 }
