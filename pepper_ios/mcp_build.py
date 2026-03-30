@@ -61,7 +61,7 @@ def _extract_build_errors(output: str, label: str = "BUILD FAILED") -> str:
         return f"{label}\n" + "\n".join(error_lines[:20])
 
     # Last resort: tail of output
-    return f"{label}\n" + "\n".join(l.strip() for l in lines[-20:])
+    return f"{label}\n" + "\n".join(line.strip() for line in lines[-20:])
 
 # Session-sticky simulator: once this MCP server process resolves a simulator,
 # it remembers and reuses it for all subsequent calls. Prevents accidentally
