@@ -6,9 +6,15 @@ It injects a lightweight dylib into any running simulator app — no source chan
 
 https://github.com/user-attachments/assets/42ab3f1b-21f8-48e6-820f-7ca4012fb03b
 
+*Claude navigating and inspecting [Ice Cubes](https://github.com/Dimillian/IceCubesApp) (Mastodon client) with zero source access.*
+
+Works with Claude Code · Cursor · Claude Desktop · any MCP client
+
 ## Why
 
 AI coding agents are powerful, but they're blind to what's actually happening in a running app. They can write code and read logs, but they can't see a broken layout, tap through a flow, or inspect why a view isn't updating. Pepper closes that gap.
+
+Screenshots and vision models can show an agent what's on screen, but that's expensive in tokens and lossy in detail. Pepper returns structured data — every element, its type, its tap command — in a few hundred tokens instead of thousands. And because it runs inside the app process, it can do things vision never could: inspect live objects, intercept network calls, read the keychain, capture console output, profile performance.
 
 It's also built for a second audience: developers who build surprisingly complex apps with AI but hit a wall when something breaks. If you've never opened Instruments or typed an LLDB command, Pepper gives you visibility into your app without learning traditional debugging tools.
 
@@ -57,6 +63,30 @@ Once connected, your agent can:
 - **Control the environment** — change locale, push notifications, toggle dark mode, rotate the device, simulate network conditions, manage the simulator lifecycle.
 
 Parameter docs are built into every tool — your MCP client surfaces them automatically.
+
+```
+$ pepper-ctl look
+Screen: navigation_stack  (9 interactive, 4 text)
+
+       seg  "Trending"                       → tap text:"Trending"
+       btn  "Sheryl Weikal, Right wing tech bros: we love St..."
+                                              → tap text:"Sheryl Weikal, Right wing tech bros: we ..."
+       btn  "Michael W Lucas, Anthropic lost a class action ..."
+                                              → tap text:"Michael W Lucas, Anthropic lost a class ..."
+       seg  "Timeline"                       → tap text:"Timeline"
+       seg  "Settings"                       → tap text:"Settings"
+
+$ pepper-ctl tap --text "Settings"
+Action: Tapped Settings
+Screen: navigation_stack  Title: "Settings"  (15 interactive, 3 text)
+
+       btn  "App Icon"                       → tap text:"App Icon"
+       btn  "Display Settings"              → tap text:"Display Settings"
+       btn  "Content Settings"              → tap text:"Content Settings"
+       ...
+```
+
+Every element comes with its tap command. The agent sees the screen, acts on it, and gets the new state back — all in one round trip.
 
 ## How It Works
 
