@@ -211,9 +211,21 @@ extension ElementDiscoveryBridge {
     /// Tracks seen elements for deduplication across discovery phases.
     /// Uses ObjectIdentifier for view-backed elements (definitive) and frame overlap
     /// for accessibility/layer elements (80% area intersection threshold).
+    ///
+    /// Frame overlap uses a spatial hash (grid cells keyed by frame center) so
+    /// each check only examines frames in the same or adjacent cells — O(1)
+    /// amortized instead of O(n) linear scan.
     struct ElementDedup {
         var seenViewIDs = Set<ObjectIdentifier>()
-        var coveredFrames: [CGRect] = []
+        private var zeroCenters = SpatialHash(cellSize: 5)
+        private var frameCells: [Int64: [CGRect]] = [:]
+        private let cellSize: CGFloat = 44
+
+        private func cellKey(x: CGFloat, y: CGFloat) -> Int64 {
+            let cx = Int32(floor(x / cellSize))
+            let cy = Int32(floor(y / cellSize))
+            return Int64(cx) << 32 | Int64(bitPattern: UInt64(UInt32(bitPattern: cy)))
+        }
 
         /// Check if a new element at the given frame is a duplicate of an already-seen element.
         func isDuplicate(frame: CGRect, view: UIView? = nil) -> Bool {
@@ -223,23 +235,29 @@ extension ElementDiscoveryBridge {
             }
 
             let area = frame.width * frame.height
-            // For zero-size frames: center proximity fallback
+            // For zero-size frames: center proximity fallback via SpatialHash
             if area < 1 {
-                return coveredFrames.contains { existing in
-                    abs(existing.midX - frame.midX) < 5 && abs(existing.midY - frame.midY) < 5
-                }
+                return zeroCenters.contains(x: frame.midX, y: frame.midY)
             }
 
-            // Frame overlap: intersection area > 80% of BOTH elements.
-            // Using only the smaller area caused cells to dedup with buttons inside them.
-            for existing in coveredFrames {
-                let intersection = existing.intersection(frame)
-                guard !intersection.isNull else { continue }
-                let intersectionArea = intersection.width * intersection.height
-                let existingArea = existing.width * existing.height
-                let largerArea = max(existingArea, area)
-                if largerArea > 0 && intersectionArea / largerArea > 0.8 {
-                    return true
+            // Frame overlap: intersection area > 80% of the larger element.
+            // Only check frames in the same and neighboring grid cells.
+            let cx = Int32(floor(frame.midX / cellSize))
+            let cy = Int32(floor(frame.midY / cellSize))
+            for dx: Int32 in -1...1 {
+                for dy: Int32 in -1...1 {
+                    let k = Int64(cx + dx) << 32 | Int64(bitPattern: UInt64(UInt32(bitPattern: cy + dy)))
+                    guard let bucket = frameCells[k] else { continue }
+                    for existing in bucket {
+                        let intersection = existing.intersection(frame)
+                        guard !intersection.isNull else { continue }
+                        let intersectionArea = intersection.width * intersection.height
+                        let existingArea = existing.width * existing.height
+                        let largerArea = max(existingArea, area)
+                        if largerArea > 0 && intersectionArea / largerArea > 0.8 {
+                            return true
+                        }
+                    }
                 }
             }
             return false
@@ -250,7 +268,13 @@ extension ElementDiscoveryBridge {
             if let view = view {
                 seenViewIDs.insert(ObjectIdentifier(view))
             }
-            coveredFrames.append(frame)
+            let area = frame.width * frame.height
+            if area < 1 {
+                zeroCenters.insert(x: frame.midX, y: frame.midY)
+            } else {
+                let k = cellKey(x: frame.midX, y: frame.midY)
+                frameCells[k, default: []].append(frame)
+            }
         }
     }
 
