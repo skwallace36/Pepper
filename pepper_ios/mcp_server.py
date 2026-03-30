@@ -259,81 +259,123 @@ async def resolve_and_send_json(
     return json_dumps(resp)
 
 
+# Monitors known to be active, updated each act_and_look cycle.
+# None means unknown (first call); after that, a frozenset of active monitor names.
+_known_active_monitors: frozenset[str] | None = None
+
+# Monitor definitions: (name, count_key_in_response, count_key_in_result, active_key_in_result)
+_MONITOR_DEFS = (
+    ("network", "total_recorded", "net_total", "net_active"),
+    ("console", "total_captured", "console_total", "console_active"),
+    ("renders", "event_count", "render_events", "renders_active"),
+    ("notifications", "total_tracked", "notif_total", "notif_active"),
+    ("timers", "total_tracked", "timer_total", "timers_active"),
+)
+
+
 async def _snapshot_counts(port: int, send_fn) -> dict:
-    """Snapshot network + console + render + notification + timer counts + memory before an action."""
-    net_resp, console_resp, mem_resp, renders_resp, notif_resp, timers_resp = await asyncio.gather(
-        send_fn(port, "network", {"action": "status"}, timeout=2),
-        send_fn(port, "console", {"action": "status"}, timeout=2),
-        send_fn(port, "memory", timeout=2),
-        send_fn(port, "renders", {"action": "status"}, timeout=2),
-        send_fn(port, "notifications", {"action": "status"}, timeout=2),
-        send_fn(port, "timers", {"action": "status"}, timeout=2),
-        return_exceptions=True,
-    )
-    net_total = 0
-    console_total = 0
-    mem_mb = 0.0
-    render_events = 0
-    notif_total = 0
-    timer_total = 0
-    if isinstance(net_resp, dict) and net_resp.get("status") == "ok":
-        net_total = net_resp.get("data", {}).get("total_recorded", 0)
-    if isinstance(console_resp, dict) and console_resp.get("status") == "ok":
-        console_total = console_resp.get("data", {}).get("total_captured", 0)
+    """Snapshot counts for active monitors + memory before an action.
+
+    On the first call, queries all monitors to discover which are active.
+    On subsequent calls, skips monitors known to be inactive.
+    """
+    global _known_active_monitors
+
+    # Decide which monitors to query
+    to_query = {name for name, *_ in _MONITOR_DEFS} if _known_active_monitors is None else set(_known_active_monitors)
+
+    # Build concurrent queries — only active monitors + memory (always useful)
+    coro_keys: list[str] = []
+    coros: list = []
+    for name, *_ in _MONITOR_DEFS:
+        if name in to_query:
+            coro_keys.append(name)
+            coros.append(send_fn(port, name, {"action": "status"}, timeout=2))
+    coro_keys.append("memory")
+    coros.append(send_fn(port, "memory", timeout=2))
+
+    results = await asyncio.gather(*coros, return_exceptions=True)
+    resp_map = dict(zip(coro_keys, results))
+
+    # Extract counts and active flags
+    counts: dict = {"mem_mb": 0.0}
+    active_set: set[str] = set()
+    for name, count_key, result_key, active_key in _MONITOR_DEFS:
+        r = resp_map.get(name)
+        if isinstance(r, dict) and r.get("status") == "ok":
+            data = r.get("data", {})
+            counts[result_key] = data.get(count_key, 0)
+            is_active = data.get("active", False)
+            counts[active_key] = is_active
+            if is_active:
+                active_set.add(name)
+        else:
+            counts[result_key] = 0
+            counts[active_key] = False
+
+    mem_resp = resp_map.get("memory")
     if isinstance(mem_resp, dict) and mem_resp.get("status") == "ok":
-        mem_mb = mem_resp.get("data", {}).get("resident_mb", 0.0)
-    if isinstance(renders_resp, dict) and renders_resp.get("status") == "ok":
-        render_events = renders_resp.get("data", {}).get("event_count", 0)
-    if isinstance(notif_resp, dict) and notif_resp.get("status") == "ok":
-        notif_total = notif_resp.get("data", {}).get("total_tracked", 0)
-    if isinstance(timers_resp, dict) and timers_resp.get("status") == "ok":
-        timer_total = timers_resp.get("data", {}).get("total_tracked", 0)
-    return {
-        "net_total": net_total,
-        "console_total": console_total,
-        "mem_mb": mem_mb,
-        "render_events": render_events,
-        "notif_total": notif_total,
-        "timer_total": timer_total,
-    }
+        counts["mem_mb"] = mem_resp.get("data", {}).get("resident_mb", 0.0)
+
+    _known_active_monitors = frozenset(active_set)
+    return counts
 
 
 async def _gather_telemetry(port: int, pre_counts: dict, send_fn) -> str:
     """Gather ambient telemetry and format as compact summary.
+
     Compares current counts against pre-action snapshot to show only new activity.
-    Tracks: network, console, renders, notifications, timers, idle state, memory."""
-    lines = []
+    Skips WebSocket queries for monitors that weren't active in the pre-action snapshot.
+    Tracks: network, console, renders, notifications, timers, idle state, memory.
+    """
+    lines: list[str] = []
 
-    # Fire all telemetry queries concurrently
-    net_task = asyncio.create_task(send_fn(port, "network", {"action": "log", "limit": 10}, timeout=2))
-    net_status_task = asyncio.create_task(send_fn(port, "network", {"action": "status"}, timeout=2))
-    console_task = asyncio.create_task(send_fn(port, "console", {"action": "log", "limit": 10}, timeout=2))
-    console_status_task = asyncio.create_task(send_fn(port, "console", {"action": "status"}, timeout=2))
-    idle_task = asyncio.create_task(send_fn(port, "wait_idle", {"debug": True}, timeout=2))
-    mem_task = asyncio.create_task(send_fn(port, "memory", timeout=2))
-    renders_task = asyncio.create_task(send_fn(port, "renders", {"action": "status"}, timeout=2))
-    notif_task = asyncio.create_task(send_fn(port, "notifications", {"action": "status"}, timeout=2))
-    timers_task = asyncio.create_task(send_fn(port, "timers", {"action": "status"}, timeout=2))
+    net_active = pre_counts.get("net_active", False)
+    console_active = pre_counts.get("console_active", False)
+    renders_active = pre_counts.get("renders_active", False)
+    notif_active = pre_counts.get("notif_active", False)
+    timers_active = pre_counts.get("timers_active", False)
 
-    (
-        net_resp, net_status, console_resp, console_status, idle_resp, mem_resp,
-        renders_resp, notif_resp, timers_resp,
-    ) = await asyncio.gather(
-        net_task,
-        net_status_task,
-        console_task,
-        console_status_task,
-        idle_task,
-        mem_task,
-        renders_task,
-        notif_task,
-        timers_task,
-        return_exceptions=True,
-    )
+    # Build queries — only for active monitors + always-on idle/memory
+    coro_keys: list[str] = []
+    coros: list = []
+
+    if net_active:
+        coro_keys += ["net_resp", "net_status"]
+        coros += [
+            send_fn(port, "network", {"action": "log", "limit": 10}, timeout=2),
+            send_fn(port, "network", {"action": "status"}, timeout=2),
+        ]
+    if console_active:
+        coro_keys += ["console_resp", "console_status"]
+        coros += [
+            send_fn(port, "console", {"action": "log", "limit": 10}, timeout=2),
+            send_fn(port, "console", {"action": "status"}, timeout=2),
+        ]
+
+    coro_keys.append("idle_resp")
+    coros.append(send_fn(port, "wait_idle", {"debug": True}, timeout=2))
+    coro_keys.append("mem_resp")
+    coros.append(send_fn(port, "memory", timeout=2))
+
+    if renders_active:
+        coro_keys.append("renders_resp")
+        coros.append(send_fn(port, "renders", {"action": "status"}, timeout=2))
+    if notif_active:
+        coro_keys.append("notif_resp")
+        coros.append(send_fn(port, "notifications", {"action": "status"}, timeout=2))
+    if timers_active:
+        coro_keys.append("timers_resp")
+        coros.append(send_fn(port, "timers", {"action": "status"}, timeout=2))
+
+    results = await asyncio.gather(*coros, return_exceptions=True)
+    r = dict(zip(coro_keys, results))
 
     # Network requests that fired during the action
+    net_status = r.get("net_status")
     if isinstance(net_status, dict) and net_status.get("status") == "ok":
         new_count = net_status.get("data", {}).get("total_recorded", 0) - pre_counts.get("net_total", 0)
+        net_resp = r.get("net_resp")
         if new_count > 0 and isinstance(net_resp, dict) and net_resp.get("status") == "ok":
             txns = net_resp.get("data", {}).get("transactions", [])
             # Take only the newest N that appeared during the action
@@ -357,8 +399,7 @@ async def _gather_telemetry(port: int, pre_counts: dict, send_fn) -> str:
                 if len(txns) > 5:
                     lines.append(f"  ... +{len(txns) - 5} more")
 
-    # Duplicate request warnings (from network interceptor)
-    if isinstance(net_status, dict) and net_status.get("status") == "ok":
+        # Duplicate request warnings (from network interceptor)
         dupes = net_status.get("data", {}).get("duplicate_warnings", [])
         for d in dupes:
             if d.get("seconds_ago", 999) < 10:  # Only show recent duplicates
@@ -368,8 +409,10 @@ async def _gather_telemetry(port: int, pre_counts: dict, send_fn) -> str:
                 lines.append(f"\u26a0 overfiring: {endpoint} called {count}x in {window}ms")
 
     # Console output during the action
+    console_status = r.get("console_status")
     if isinstance(console_status, dict) and console_status.get("status") == "ok":
         new_count = console_status.get("data", {}).get("total_captured", 0) - pre_counts.get("console_total", 0)
+        console_resp = r.get("console_resp")
         if new_count > 0 and isinstance(console_resp, dict) and console_resp.get("status") == "ok":
             entries = console_resp.get("data", {}).get("lines", [])
             entries = entries[-new_count:] if new_count <= len(entries) else entries
@@ -384,6 +427,7 @@ async def _gather_telemetry(port: int, pre_counts: dict, send_fn) -> str:
                     lines.append(f"  ... +{len(entries) - 3} more")
 
     # Idle state — only surface when something is actively blocking or many requests in-flight
+    idle_resp = r.get("idle_resp")
     if isinstance(idle_resp, dict) and idle_resp.get("status") == "ok":
         data = idle_resp.get("data", {})
         is_idle = data.get("is_idle", True)
@@ -400,6 +444,7 @@ async def _gather_telemetry(port: int, pre_counts: dict, send_fn) -> str:
                 lines.append(f"settling: {', '.join(blockers)}")
 
     # Render count delta — only when tracking is active and renders occurred
+    renders_resp = r.get("renders_resp")
     if isinstance(renders_resp, dict) and renders_resp.get("status") == "ok":
         rdata = renders_resp.get("data", {})
         if rdata.get("active"):
@@ -411,6 +456,7 @@ async def _gather_telemetry(port: int, pre_counts: dict, send_fn) -> str:
                 lines.append(render_str)
 
     # Notification delta — only when tracking is active
+    notif_resp = r.get("notif_resp")
     if isinstance(notif_resp, dict) and notif_resp.get("status") == "ok":
         ndata = notif_resp.get("data", {})
         if ndata.get("active"):
@@ -419,6 +465,7 @@ async def _gather_telemetry(port: int, pre_counts: dict, send_fn) -> str:
                 lines.append(f"notifications: {new_notifs} posted")
 
     # Timer delta — only when tracking is active
+    timers_resp = r.get("timers_resp")
     if isinstance(timers_resp, dict) and timers_resp.get("status") == "ok":
         tdata = timers_resp.get("data", {})
         if tdata.get("active"):
@@ -427,6 +474,7 @@ async def _gather_telemetry(port: int, pre_counts: dict, send_fn) -> str:
                 lines.append(f"timers: {new_timers} created")
 
     # Memory delta — only show when significant (>= 5MB change or >= 50MB spike warning)
+    mem_resp = r.get("mem_resp")
     if isinstance(mem_resp, dict) and mem_resp.get("status") == "ok":
         current_mb = mem_resp.get("data", {}).get("resident_mb", 0.0)
         pre_mb = pre_counts.get("mem_mb", 0.0)
