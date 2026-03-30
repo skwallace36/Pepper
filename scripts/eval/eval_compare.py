@@ -20,15 +20,18 @@ YELLOW = "\033[33m"
 NC = "\033[0m"
 
 COMPARE_METRICS = [
-    ("look_before_act", "higher", "Tool Usage"),
-    ("consecutive_actions", "lower", "Tool Usage"),
-    ("error_recovery", "higher", "Tool Usage"),
-    ("pepper_tool_diversity", "higher", "Tool Usage"),
-    ("tool_call_count", "lower", "Efficiency"),
+    ("look_before_act", "higher", "Tool Quality"),
+    ("consecutive_actions", "lower", "Tool Quality"),
+    ("error_recovery", "higher", "Tool Quality"),
+    ("pepper_tool_diversity", "higher", "Tool Quality"),
     ("wasted_calls", "lower", "Efficiency"),
     ("reread_ratio", "lower", "Efficiency"),
     ("cost_usd", "lower", "Efficiency"),
-    ("composite_score", "higher", "Overall"),
+    ("tool_call_count", "lower", "Efficiency"),
+    ("tool_quality_score", "higher", "Scores"),
+    ("completion_score", "higher", "Scores"),
+    ("efficiency_score", "higher", "Scores"),
+    ("composite_score", "higher", "Scores"),
 ]
 
 
