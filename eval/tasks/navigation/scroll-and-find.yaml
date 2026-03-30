@@ -1,0 +1,30 @@
+name: scroll-and-find
+description: >
+  Navigate to the List tab, scroll to find a specific item, and read its details.
+  Tests scroll workflow: look -> scroll -> verify -> read.
+requires_simulator: true
+deploy_test_app: true
+
+goal: |
+  You are connected to PepperTestApp running in the iOS simulator.
+  Your task:
+  1. Navigate to the List tab
+  2. The list has 30 items. Find item #25
+  3. You may need to scroll down to find it
+  4. Once found, report the item's text
+
+  Use Pepper MCP tools: look, tap, scroll (or scroll_to), find.
+
+success:
+  pepper_tools_called: [look, scroll]
+  output_contains: ["25"]
+
+anti_patterns:
+  - name: no-look-before-scroll
+    rule: look_before_act < 1.0
+  - name: excessive-scrolling
+    rule: tool_call_count > 20
+
+budget_usd: 1.00
+timeout_s: 120
+tags: [scrolling, list, simulator]

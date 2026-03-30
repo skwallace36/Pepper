@@ -1,0 +1,31 @@
+name: reach-detail-screen
+description: >
+  Navigate from the Controls tab to a detail view and return.
+  Tests basic look -> tap -> verify -> back workflow.
+requires_simulator: true
+deploy_test_app: true
+
+goal: |
+  You are connected to PepperTestApp running in the iOS simulator.
+  Your task:
+  1. Observe the current screen
+  2. Navigate to a detail screen (look for navigation-related buttons)
+  3. Verify you reached the detail screen
+  4. Go back to the original screen
+  5. Verify you're back
+
+  Use Pepper MCP tools (look, tap, back) to accomplish this.
+
+success:
+  pepper_tools_called: [look, tap, back]
+  min_look_calls: 3
+
+anti_patterns:
+  - name: no-look-before-tap
+    rule: look_before_act < 1.0
+  - name: excessive-tool-calls
+    rule: tool_call_count > 20
+
+budget_usd: 1.00
+timeout_s: 120
+tags: [navigation, simulator, quick]

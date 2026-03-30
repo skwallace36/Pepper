@@ -1,0 +1,31 @@
+name: core-smoke
+agent_type: regression-tester
+description: >
+  Run the critical-priority regression tests and report results.
+  Tests the regression-tester's end-to-end workflow.
+requires_simulator: true
+deploy_test_app: true
+
+goal: |
+  Run the critical-priority tests from test-app/regression-tests.yaml.
+  Report pass/fail for each test with brief notes.
+
+success:
+  pepper_tools_called: [status, look, tap, back]
+  output_contains: ["pass", "fail"]
+
+anti_patterns:
+  - name: no-look-before-tap
+    rule: look_before_act < 1.0
+  - name: skipped-verification
+    description: Must verify each test outcome with look
+
+weights:
+  success: 0.35
+  efficiency: 0.25
+  tool_usage: 0.25
+  compliance: 0.15
+
+budget_usd: 3.00
+timeout_s: 600
+tags: [regression, full-workflow, simulator]
