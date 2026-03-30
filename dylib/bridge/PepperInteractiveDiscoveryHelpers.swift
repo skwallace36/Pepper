@@ -61,12 +61,15 @@ extension ElementDiscoveryBridge {
     /// (adaptive density based on element size) and returns (reachable, visible fraction).
     /// `reachable` is true if ANY point passes. `visible` is 0.0–1.0 ratio of passing points.
     func checkVisibility(for element: PepperInteractiveElement, in window: UIWindow) -> (
-        reachable: Bool, visible: Float
+        reachable: Bool, visible: Float, centerHitView: UIView?
     ) {
+        let center = CGPoint(x: element.frame.midX, y: element.frame.midY)
+        let centerHitView = window.hitTest(center, with: nil)
+
         guard let grid = sampleGrid(for: element.frame) else {
             let ok = checkSinglePointHitTest(
-                at: CGPoint(x: element.frame.midX, y: element.frame.midY), for: element, in: window)
-            return (ok, ok ? 1.0 : 0.0)
+                at: center, hitView: centerHitView, for: element, in: window)
+            return (ok, ok ? 1.0 : 0.0, centerHitView)
         }
 
         var passed = 0
@@ -75,7 +78,7 @@ extension ElementDiscoveryBridge {
                 passed += 1
             }
         }
-        return (passed > 0, Float(passed) / Float(grid.total))
+        return (passed > 0, Float(passed) / Float(grid.total), centerHitView)
     }
 
     /// Frame-only visibility check for non-interactive elements (static text, images).
@@ -101,7 +104,15 @@ extension ElementDiscoveryBridge {
     /// Returns true if the hit view is the element itself, an ancestor, or a descendant.
     func checkSinglePointHitTest(at point: CGPoint, for element: PepperInteractiveElement, in window: UIWindow) -> Bool
     {
-        guard let hitView = window.hitTest(point, with: nil) else { return false }
+        return checkSinglePointHitTest(at: point, hitView: window.hitTest(point, with: nil), for: element, in: window)
+    }
+
+    /// Check reachability using a pre-fetched hit view (avoids redundant `window.hitTest` when
+    /// the caller already has the result, e.g. the center-point hit cached during visibility check).
+    func checkSinglePointHitTest(
+        at point: CGPoint, hitView: UIView?, for element: PepperInteractiveElement, in window: UIWindow
+    ) -> Bool {
+        guard let hitView = hitView else { return false }
 
         // For layer-sourced elements (e.g., CALayer capsule toggles), the hit view
         // is the hosting UIView that contains the layer. If any view responds to
