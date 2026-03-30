@@ -502,6 +502,17 @@ def _ax_detect_safe() -> dict | None:
         return None
 
 
+def _look_error_reason(resp) -> str | None:
+    """Extract an error reason from a look response, or None if it succeeded."""
+    if isinstance(resp, Exception):
+        return f"{type(resp).__name__}: {resp}"
+    if not isinstance(resp, dict):
+        return "unexpected response type"
+    if resp.get("status") == "ok":
+        return None
+    return resp.get("error") or resp.get("data", {}).get("message") or "unknown error"
+
+
 async def act_and_look(simulator: str | None, cmd: str, params: dict | None = None, timeout: float = 10) -> str:
     """Send a command, then automatically run look to show screen state after the action.
     Returns: action result + screen summary + telemetry. Forces the check-act-verify loop."""
@@ -543,7 +554,11 @@ async def act_and_look(simulator: str | None, cmd: str, params: dict | None = No
         if "not found" in err.lower() or "no hit-reachable" in err.lower():
             await asyncio.sleep(0.2)
             look_resp = await bound_fn(port, "look", {}, timeout=5)
-            screen_summary = format_look_slim(look_resp) if look_resp.get("status") == "ok" else "(look failed)"
+            if look_resp.get("status") == "ok":
+                screen_summary = format_look_slim(look_resp)
+            else:
+                reason = _look_error_reason(look_resp)
+                screen_summary = f"(look failed: {reason})"
             return [TextContent(type="text", text=f"Error: {err}\n--- What's actually on screen ---\n{screen_summary}")]
 
         # Connection error
@@ -576,6 +591,20 @@ async def act_and_look(simulator: str | None, cmd: str, params: dict | None = No
 
     look_resp, telemetry = await asyncio.gather(look_task, telemetry_task, return_exceptions=True)
 
+    # Detect look failure and extract reason for diagnostics
+    look_error_reason = _look_error_reason(look_resp)
+
+    # Retry once if look failed — animation/transition may still be in progress
+    if look_error_reason is not None:
+        logger.warning("Auto-look failed after %s: %s — retrying in 500ms", cmd, look_error_reason)
+        await asyncio.sleep(0.5)
+        try:
+            look_resp = await bound_fn(port, "look", {}, timeout=8)
+            retry_err = _look_error_reason(look_resp)
+            look_error_reason = None if retry_err is None else f"{look_error_reason} (retry also failed: {retry_err})"
+        except Exception as e:
+            look_error_reason = f"{look_error_reason} (retry exception: {e})"
+
     # Collect AX probe result for SpringBoard dialog detection
     try:
         ax_result = await asyncio.wait_for(ax_task, timeout=0.3)
@@ -596,9 +625,12 @@ async def act_and_look(simulator: str | None, cmd: str, params: dict | None = No
                     "dialog detect_system",
                 ],
             }
-        screen_summary = format_look_compact(look_resp) if look_resp.get("status") == "ok" else "(look failed)"
+        if look_resp.get("status") == "ok":
+            screen_summary = format_look_compact(look_resp)
+        else:
+            screen_summary = f"(look failed: {look_error_reason})"
     else:
-        screen_summary = "(look failed)"
+        screen_summary = f"(look failed: {look_error_reason or 'no response from dylib'})"
 
     if isinstance(telemetry, Exception):
         telemetry = ""
