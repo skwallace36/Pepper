@@ -479,6 +479,14 @@ struct MiscTab: View {
                     .accessibilityIdentifier("render_tracking_link")
                 }
 
+                // MARK: - Core Data CRUD
+                GroupBox("Core Data") {
+                    NavigationLink("Core Data Screen") {
+                        CoreDataView()
+                    }
+                    .accessibilityIdentifier("coredata_link")
+                }
+
                 // MARK: - Context Menu
                 GroupBox("Context Menu") {
                     Text("Long press me")
