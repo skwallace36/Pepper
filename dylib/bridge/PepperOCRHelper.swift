@@ -14,8 +14,8 @@ enum PepperOCR {
         let confidence: Float
     }
 
-    /// Minimum confidence to include a result. Vision's `.fast` level is noisy below this.
-    static let confidenceThreshold: Float = 0.3
+    /// Minimum confidence to include a result. Below 0.7, misreadings are common.
+    static let confidenceThreshold: Float = 0.7
 
     /// Recognize text in `image` and return observations with bounding boxes
     /// converted to screen coordinates.
@@ -44,8 +44,11 @@ enum PepperOCR {
             }
         }
 
-        request.recognitionLevel = .fast
-        request.usesLanguageCorrection = false
+        request.recognitionLevel = .accurate
+        request.usesLanguageCorrection = true
+        if #available(iOS 16.0, *) {
+            request.revision = VNRecognizeTextRequestRevision3
+        }
 
         let handler = VNImageRequestHandler(cgImage: image, options: [:])
         do {
