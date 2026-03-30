@@ -1,23 +1,25 @@
 # Pepper
 
-MCP server for iOS Simulator apps. Injects a dylib via `DYLD_INSERT_LIBRARIES`, starts a WebSocket server inside the app process, and exposes 50+ tools — view hierarchy, touch input, network interception, heap inspection.
+Pepper gives AI agents eyes and hands inside iOS Simulator apps.
 
-> **How to use this project:** Clone it, rip it apart, and make it work for you. The value is in giving agents access to all the runtime information they need to work on complex apps. Fork it, gut what you don't need, adapt the rest to your app and workflow.
+It injects a lightweight dylib into any running simulator app — no source changes, no SDK, no build step. The dylib opens a WebSocket server inside the app process, and your AI agent connects through MCP to see what's on screen, tap buttons, inspect state, intercept network calls, read the heap, and debug layout issues. Over 60 tools, all available through natural language.
 
-## Quick Start
+## Why
+
+AI coding agents are powerful, but they're blind to what's actually happening in a running app. They can write code and read logs, but they can't see a broken layout, tap through a flow, or inspect why a view isn't updating. Pepper closes that gap.
+
+It's also built for a second audience: developers who build surprisingly complex apps with AI but hit a wall when something breaks. If you've never opened Instruments or typed an LLDB command, Pepper gives you visibility into your app without learning traditional debugging tools.
+
+## Install
 
 ```bash
 pip install pepper-ios
 ```
 
-Installs `pepper-mcp` (MCP server) and `pepper-ctl` (CLI). Claude Code users with the repo cloned are ready — `.mcp.json` handles config automatically.
-
-Then ask your agent to `look` at the screen.
+This gives you `pepper-mcp` (the MCP server) and `pepper-ctl` (a CLI). If you're using Claude Code with the repo cloned, `.mcp.json` handles config automatically.
 
 <details>
-<summary>Manual MCP config (Cursor, Claude Desktop, other clients)</summary>
-
-Add to your MCP client config:
+<summary>Other MCP clients (Cursor, Claude Desktop, etc.)</summary>
 
 ```json
 {
@@ -32,9 +34,7 @@ Add to your MCP client config:
 </details>
 
 <details>
-<summary>Alternative installs (Homebrew, from source)</summary>
-
-**Homebrew:**
+<summary>Homebrew</summary>
 
 ```bash
 brew install --HEAD skwallace36/pepper/pepper
@@ -42,39 +42,34 @@ brew install --HEAD skwallace36/pepper/pepper
 
 Tap: [`skwallace36/homebrew-pepper`](https://github.com/skwallace36/homebrew-pepper)
 
-**From source:**
-
-```bash
-git clone https://github.com/skwallace36/Pepper.git
-cd Pepper
-make setup
-```
-
 </details>
+
+## What It Can Do
+
+Once connected, your agent can:
+
+- **See the screen** — structured view hierarchy, not just a screenshot. The agent knows every label, button, and text field, their frames, traits, and accessibility identifiers.
+- **Interact like a user** — tap, scroll, swipe, type, toggle switches, dismiss keyboards. All touch input goes through IOHIDEvent injection, the same path real fingers take. Works identically for UIKit and SwiftUI.
+- **Inspect runtime state** — read and mutate properties on live objects with `vars_inspect`. Check Core Data stores, UserDefaults, keychain entries, cookies, clipboard contents.
+- **Debug what went wrong** — capture console output, intercept network traffic, read crash logs, profile performance, inspect the responder chain, audit accessibility, visualize view layers and constraints.
+- **Control the environment** — change locale, push notifications, toggle dark mode, rotate the device, simulate network conditions, manage the simulator lifecycle.
+
+Parameter docs are built into every tool — your MCP client surfaces them automatically.
 
 ## How It Works
 
-All touch input goes through IOHIDEvent injection — the same path real fingers take. `tap`, `scroll`, `swipe`, and `gesture` work identically for UIKit and SwiftUI without knowing which framework rendered the view.
+Pepper uses `DYLD_INSERT_LIBRARIES` to load a dylib into the simulator process at launch. The dylib starts a WebSocket server on a local port. The MCP server (`pepper-mcp`) connects to that WebSocket and translates MCP tool calls into commands the dylib executes inside the app.
 
-## Tools
-
-`look` · `tap` · `scroll` · `scroll_to` · `swipe` · `gesture` · `input_text` · `toggle` · `navigate` · `back` · `dismiss` · `dismiss_keyboard` · `dialog` · `screen` · `screenshot` · `snapshot` · `diff` · `find` · `read_element` · `tree` · `layers` · `highlight` · `vars_inspect` · `heap` · `console` · `network` · `crash_log` · `timeline` · `animations` · `lifecycle` · `concurrency` · `constraints` · `responder_chain` · `notifications` · `timers` · `defaults` · `clipboard` · `keychain` · `cookies` · `coredata` · `storage` · `sandbox` · `undo_manager` · `locale` · `flags` · `push` · `orientation` · `status` · `wait_for` · `wait_idle` · `record` · `deploy_sim` · `build_sim` · `build_hardware` · `iterate` · `simulator` · `raw` · `hook` · `perf` · `renders` · `accessibility_action` · `accessibility_audit` · `accessibility_events` · `webview`
-
-Parameter docs are built into each tool — your MCP client surfaces them automatically.
+Because it runs inside the process, Pepper has access to everything the app can see: the full view hierarchy, the Objective-C runtime, live object graphs, network delegates, and the HID event system. No private APIs, no entitlements, no jailbreak — just `dyld`.
 
 ## Adapters
 
-Optional app-specific modules for deep link routes, icon mappings, custom tab bar detection. Set `APP_ADAPTER_TYPE` and `ADAPTER_PATH` in `.env`. Without an adapter, Pepper runs in generic mode.
+Adapters are optional app-specific modules — deep link routes, icon mappings, custom tab bar detection. Without one, Pepper runs in generic mode and works with any app. Set `APP_ADAPTER_TYPE` and `ADAPTER_PATH` in `.env` to load one.
 
 ## Development
 
-```bash
-make help          # list all targets
-make setup         # install deps, git hooks, venv
-make test-deploy   # build test app + inject Pepper
-make ping          # health check
-make smoke         # run smoke tests
-make demo          # interactive demo walkthrough
-```
-
 Architecture guide: [`dylib/DYLIB.md`](dylib/DYLIB.md) · Tool reference: [`tools/TOOLS.md`](tools/TOOLS.md) · Troubleshooting: [`TROUBLESHOOTING.md`](TROUBLESHOOTING.md)
+
+## About This Project
+
+Pepper is an open-source tool and a learning piece. It's built to be useful to the iOS community and to demonstrate what's possible when you give AI agents deep runtime access to native apps. Fork it, rip it apart, adapt it to your workflow.
