@@ -241,6 +241,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
         text: str | None = Field(default=None, description="Visible text or label to match (e.g. 'Save', 'Settings', 'Log Out')"),
         icon_name: str | None = Field(default=None, description="Icon asset name from look output (e.g. 'gift-fill-icon', 'close-icon')"),
         heuristic: str | None = Field(default=None, description="Semantic role from look output (e.g. 'close_button', 'back_button', 'menu_button')"),
+        index: int | None = Field(default=None, description="1-based index to disambiguate when multiple elements share the same text/icon/heuristic (e.g. index=2 taps the second match)"),
         point: str | None = Field(default=None, description="Raw screen coordinates 'x,y' — use when element has no label (e.g. '200,400')"),
         double: bool = Field(default=False, description="Double-tap — two rapid taps for zoom, like, or select"),
         duration: float | None = Field(default=None, description="Hold duration in seconds (>0.5 for long press, e.g. 1.0 for context menu)"),
@@ -266,6 +267,9 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
                 return [TextContent(type="text", text="Error: point must be x,y (e.g. 200,400)")]
         else:
             return [TextContent(type="text", text="Error: specify one of text, icon_name, heuristic, or point")]
+        if index is not None:
+            # look output uses 1-based indices; dylib handlers use 0-based
+            params["index"] = index - 1
         if double:
             params["double"] = True
         if duration is not None:

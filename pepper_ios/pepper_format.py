@@ -429,14 +429,16 @@ def format_look(resp: dict) -> str:
             idx = e.get("index")
             value = e.get("value", "")
             if icon and not label:
-                desc = f"[{icon}]"
+                idx_suffix = f" [{idx}]" if idx else ""
+                desc = f"[{icon}]{idx_suffix}"
             elif label:
                 disp = label if len(label) <= 50 else label[:47] + "..."
                 idx_suffix = f" [{idx}]" if idx else ""
                 val_suffix = f" = {value}" if value and etype in ("textField", "searchField", "textView") else ""
                 desc = f'"{disp}"{idx_suffix}{val_suffix}'
             else:
-                desc = f"({heuristic or etype})"
+                idx_suffix = f" [{idx}]" if idx else ""
+                desc = f"({heuristic or etype}){idx_suffix}"
 
             # Type prefix
             prefix = badge if badge else _TYPE_ABBREV.get(etype, etype[:4])
@@ -453,9 +455,9 @@ def format_look(resp: dict) -> str:
                     prefix = label[:47] + "..."
                     tap = f'tap text:"{prefix}"'
             elif tap_cmd == "icon_name" and (icon or suggested):
-                tap = f"tap icon:{icon or suggested}"
+                tap = f"tap icon:{icon or suggested}" + (f" index:{idx}" if idx else "")
             elif tap_cmd == "heuristic" and (heuristic or suggested):
-                tap = f"tap heuristic:{suggested or heuristic}"
+                tap = f"tap heuristic:{suggested or heuristic}" + (f" index:{idx}" if idx else "")
             else:
                 cx, cy = e.get("center", [0, 0])
                 tap = f"tap point:{cx},{cy}"
@@ -612,14 +614,16 @@ def format_look_slim(resp: dict) -> str:
         idx = e.get("index")
         value = e.get("value", "")
         if icon and not label:
-            desc = f"[{icon}]"
+            idx_suffix = f" [{idx}]" if idx else ""
+            desc = f"[{icon}]{idx_suffix}"
         elif label:
             disp = label if len(label) <= 50 else label[:47] + "..."
             idx_suffix = f" [{idx}]" if idx else ""
             val_suffix = f" = {value}" if value and etype in ("textField", "searchField", "textView") else ""
             desc = f'"{disp}"{idx_suffix}{val_suffix}'
         else:
-            desc = f"({heuristic or etype})"
+            idx_suffix = f" [{idx}]" if idx else ""
+            desc = f"({heuristic or etype}){idx_suffix}"
 
         prefix = badge if badge else _TYPE_ABBREV.get(etype, etype[:4])
 
@@ -628,16 +632,16 @@ def format_look_slim(resp: dict) -> str:
             lbl = label if len(label) <= 40 else label[:40] + "..."
             tap = f'tap text:"{lbl}"' + (f" index:{idx}" if idx else "")
         elif tap_cmd == "icon_name" and (icon or suggested):
-            tap = f"tap icon:{icon or suggested}"
+            tap = f"tap icon:{icon or suggested}" + (f" index:{idx}" if idx else "")
         elif tap_cmd == "heuristic" and (heuristic or suggested):
-            tap = f"tap heuristic:{suggested or heuristic}"
+            tap = f"tap heuristic:{suggested or heuristic}" + (f" index:{idx}" if idx else "")
         elif label:
             lbl = label if len(label) <= 40 else label[:40] + "..."
             tap = f'tap text:"{lbl}"' + (f" index:{idx}" if idx else "")
         elif icon:
-            tap = f"tap icon:{icon}"
+            tap = f"tap icon:{icon}" + (f" index:{idx}" if idx else "")
         elif heuristic or suggested:
-            tap = f"tap heuristic:{suggested or heuristic}"
+            tap = f"tap heuristic:{suggested or heuristic}" + (f" index:{idx}" if idx else "")
         else:
             cx, cy = e.get("center", [0, 0])
             tap = f"tap point:{cx},{cy}"
@@ -776,14 +780,16 @@ def _compact_element_line(e: dict, prefix_char: str = " ") -> str:
     idx = e.get("index")
     value = e.get("value", "")
     if icon and not label:
-        desc = f"[{icon}]"
+        idx_suffix = f" [{idx}]" if idx else ""
+        desc = f"[{icon}]{idx_suffix}"
     elif label:
         disp = label if len(label) <= 50 else label[:47] + "..."
         idx_suffix = f" [{idx}]" if idx else ""
         val_suffix = f" = {value}" if value and etype in ("textField", "searchField", "textView") else ""
         desc = f'"{disp}"{idx_suffix}{val_suffix}'
     else:
-        desc = f"({heuristic or etype})"
+        idx_suffix = f" [{idx}]" if idx else ""
+        desc = f"({heuristic or etype}){idx_suffix}"
 
     type_abbrev = badge if badge else _TYPE_ABBREV.get(etype, etype[:4])
 
@@ -794,16 +800,16 @@ def _compact_element_line(e: dict, prefix_char: str = " ") -> str:
         lbl = label if len(label) <= 40 else label[:40] + "..."
         tap = f'tap text:"{lbl}"' + (f" index:{idx}" if idx else "")
     elif tap_cmd == "icon_name" and (icon or suggested):
-        tap = f"tap icon:{icon or suggested}"
+        tap = f"tap icon:{icon or suggested}" + (f" index:{idx}" if idx else "")
     elif tap_cmd == "heuristic" and (heuristic or suggested):
-        tap = f"tap heuristic:{suggested or heuristic}"
+        tap = f"tap heuristic:{suggested or heuristic}" + (f" index:{idx}" if idx else "")
     elif label:
         lbl = label if len(label) <= 40 else label[:40] + "..."
         tap = f'tap text:"{lbl}"' + (f" index:{idx}" if idx else "")
     elif icon:
-        tap = f"tap icon:{icon}"
+        tap = f"tap icon:{icon}" + (f" index:{idx}" if idx else "")
     elif heuristic or suggested:
-        tap = f"tap heuristic:{suggested or heuristic}"
+        tap = f"tap heuristic:{suggested or heuristic}" + (f" index:{idx}" if idx else "")
     else:
         cx, cy = e.get("center", [0, 0])
         tap = f"tap point:{cx},{cy}"
