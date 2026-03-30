@@ -183,4 +183,22 @@ if [ "$TOOL" = "Write" ] || [ "$TOOL" = "Edit" ]; then
   esac
 fi
 
+# --- Drift/loop detection (warn then block) ---
+if [ -n "$EVENTS_LOG" ]; then
+  DRIFT_CMD="$(cd "$(dirname "$0")" && pwd)/agent-drift-detector.sh"
+  if [ -x "$DRIFT_CMD" ]; then
+    DRIFT_EXIT=0
+    DRIFT_MSG=$("$DRIFT_CMD" check 2>/dev/null) || DRIFT_EXIT=$?
+    if [ "$DRIFT_EXIT" -ne 0 ] && [ -n "$DRIFT_MSG" ]; then
+      # Hard block — agent exceeded kill threshold after warning
+      [ -n "$EVENTS_LOG" ] && echo "{\"ts\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"agent\":\"${AGENT_TYPE}\",\"event\":\"guardrail-block\",\"tool\":\"${TOOL}\",\"detail\":\"drift-kill\"}" >> "$EVENTS_LOG"
+      echo "BLOCKED: $DRIFT_MSG"
+      exit 2
+    elif [ -n "$DRIFT_MSG" ]; then
+      # Soft warning — tool proceeds, agent sees the message
+      echo "$DRIFT_MSG"
+    fi
+  fi
+fi
+
 exit 0
