@@ -143,6 +143,213 @@
       params: { action: "stop" }
   verify: at least 1 request captured with URL and status
 
+- name: network simulate latency
+  priority: medium
+  steps:
+    - tool: network
+      params: { action: "start" }
+    - tool: network
+      params: { action: "simulate", effect: "latency", latency_ms: 2000 }
+    - note: tap "Timed Request" button on MiscTab (slow_request_button)
+    - tool: tap
+      params: { id: "slow_request_button" }
+    - tool: wait_for
+      params: { id: "network_elapsed", timeout: 10 }
+    - tool: read_element
+      params: { id: "network_elapsed" }
+    - tool: network
+      params: { action: "clear_conditions" }
+    - tool: network
+      params: { action: "stop" }
+  verify: elapsed time label shows >= 2000ms, confirming latency was injected
+
+- name: network simulate fail_status
+  priority: medium
+  steps:
+    - tool: network
+      params: { action: "start" }
+    - tool: network
+      params: { action: "simulate", effect: "fail_status", status_code: 500 }
+    - tool: tap
+      params: { id: "error_request_button" }
+    - tool: wait_for
+      params: { id: "network_status_code", timeout: 10 }
+    - tool: read_element
+      params: { id: "network_status_code" }
+    - tool: network
+      params: { action: "clear_conditions" }
+    - tool: network
+      params: { action: "stop" }
+  verify: network_status_code label shows "HTTP 500"
+
+- name: network simulate fail_error
+  priority: medium
+  steps:
+    - tool: network
+      params: { action: "start" }
+    - tool: network
+      params: { action: "simulate", effect: "fail_error", error_domain: "NSURLErrorDomain", error_code: -1009 }
+    - tool: tap
+      params: { id: "error_request_button" }
+    - tool: wait_for
+      params: { id: "network_error", timeout: 10 }
+    - tool: read_element
+      params: { id: "network_error" }
+    - tool: network
+      params: { action: "clear_conditions" }
+    - tool: network
+      params: { action: "stop" }
+  verify: network_error label shows NSURLErrorDomain/-1009
+
+- name: network simulate throttle
+  priority: medium
+  steps:
+    - tool: network
+      params: { action: "start" }
+    - tool: network
+      params: { action: "simulate", effect: "throttle", bytes_per_second: 256 }
+    - tool: tap
+      params: { id: "slow_request_button" }
+    - tool: wait_for
+      params: { id: "network_elapsed", timeout: 30 }
+    - tool: read_element
+      params: { id: "network_elapsed" }
+    - tool: network
+      params: { action: "clear_conditions" }
+    - tool: network
+      params: { action: "stop" }
+  verify: elapsed time significantly higher than unthrottled baseline (~1s)
+
+- name: network simulate offline
+  priority: medium
+  steps:
+    - tool: network
+      params: { action: "start" }
+    - tool: network
+      params: { action: "simulate", effect: "offline" }
+    - tool: tap
+      params: { id: "offline_request_button" }
+    - tool: wait_for
+      params: { id: "network_error", timeout: 10 }
+    - tool: read_element
+      params: { id: "network_error" }
+    - tool: network
+      params: { action: "clear_conditions" }
+    - tool: network
+      params: { action: "stop" }
+  verify: network_error label shows offline-related NSError
+
+- name: network simulate presets
+  priority: medium
+  steps:
+    - tool: network
+      params: { action: "presets" }
+  verify: returns list of named presets (3G, Edge, LTE, WiFi, High Latency DNS, 100% Loss)
+
+- name: network conditions lifecycle
+  priority: medium
+  steps:
+    - tool: network
+      params: { action: "start" }
+    - tool: network
+      params: { action: "simulate", effect: "latency", latency_ms: 100, id: "test-cond-1" }
+    - tool: network
+      params: { action: "conditions" }
+    - note: verify test-cond-1 appears in active conditions list
+    - tool: network
+      params: { action: "remove_condition", id: "test-cond-1" }
+    - tool: network
+      params: { action: "conditions" }
+    - note: verify conditions list is now empty
+    - tool: network
+      params: { action: "simulate", effect: "offline", id: "test-cond-2" }
+    - tool: network
+      params: { action: "simulate", effect: "latency", latency_ms: 500, id: "test-cond-3" }
+    - tool: network
+      params: { action: "clear_conditions" }
+    - tool: network
+      params: { action: "conditions" }
+    - tool: network
+      params: { action: "stop" }
+  verify: conditions list shows entries after simulate, empty after remove/clear
+
+- name: network mock lifecycle
+  priority: medium
+  steps:
+    - tool: network
+      params: { action: "start" }
+    - tool: network
+      params: { action: "mock", url: "pepper.test/mock", status: 200, body: '{"mocked":true}' }
+    - tool: network
+      params: { action: "mocks" }
+    - note: verify mock entry for pepper.test/mock appears
+    - tool: tap
+      params: { id: "mock_request_button" }
+    - tool: wait_for
+      params: { id: "network_body_preview", timeout: 10 }
+    - tool: read_element
+      params: { id: "network_body_preview" }
+    - note: verify body preview shows mocked content
+    - tool: network
+      params: { action: "mocks" }
+    - note: get mock id from list
+    - tool: network
+      params: { action: "remove_mock", id: "<mock_id from mocks list>" }
+    - tool: network
+      params: { action: "mocks" }
+    - note: verify mocks list is empty
+    - tool: network
+      params: { action: "stop" }
+  verify: mock_request_button returns mocked body, mocks list shows/removes entries correctly
+
+- name: network clear mocks
+  priority: medium
+  steps:
+    - tool: network
+      params: { action: "start" }
+    - tool: network
+      params: { action: "mock", url: "pepper.test/mock", status: 201, body: '{"a":1}' }
+    - tool: network
+      params: { action: "mock", url: "example.com/other", status: 404, body: '{"b":2}' }
+    - tool: network
+      params: { action: "mocks" }
+    - note: verify 2 mocks active
+    - tool: network
+      params: { action: "clear_mocks" }
+    - tool: network
+      params: { action: "mocks" }
+    - tool: network
+      params: { action: "stop" }
+  verify: mocks count goes from 2 to 0 after clear_mocks
+
+- name: network websocket log and status
+  priority: low
+  steps:
+    - tool: network
+      params: { action: "start" }
+    - note: navigate to WebSocket Client screen and connect
+    - tool: tap
+      params: { text: "WebSocket Client" }
+    - tool: tap
+      params: { id: "websocket_connect_button" }
+    - tool: wait_for
+      params: { id: "websocket_status_label", text: "connected", timeout: 10 }
+    - tool: network
+      params: { action: "ws_status" }
+    - note: verify active connections count >= 1
+    - tool: network
+      params: { action: "ws_log" }
+    - tool: network
+      params: { action: "ws_clear" }
+    - tool: network
+      params: { action: "ws_log" }
+    - tool: tap
+      params: { id: "websocket_disconnect_button" }
+    - tool: back
+    - tool: network
+      params: { action: "stop" }
+  verify: ws_status shows active connection, ws_log returns frames, ws_clear empties buffer
+
 - name: console capture
   priority: medium
   steps:

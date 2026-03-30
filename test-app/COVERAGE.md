@@ -70,28 +70,28 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `network` | status | pass | Any state | Returns active, buffer_size, buffer_count, total_recorded. All fields accurate across start/stop/clear lifecycle. |
 | `network` | log | pass | After start + Fetch HTTP button | Returns {count:N, transactions:[...]}. Each transaction has request (method, url, headers), response (status_code, headers, body, content_length), timing, and id. Captured GET https://httpbin.org/json → 200 with full JSON body. Limit param works correctly. |
 | `network` | clear | pass | After log capture | Returns {cleared:true}. Verified buffer_count drops to 0 after clear, total_recorded preserved. |
-| `network` | simulate | untested |  |  |
-| `network` | presets | untested |  |  |
-| `network` | conditions | untested | After network.simulate | List active conditions. Verify condition appears after simulate latency/offline/etc. |
-| `network` | remove_condition | untested | After network.simulate | Remove specific condition, confirm behavior reverts to normal. |
-| `network` | clear_conditions | untested | After network.simulate | Clear all conditions, confirm all simulate variants deactivated. |
+| `network` | simulate | ready | MiscTab Network buttons (slow_request_button, error_request_button, offline_request_button) | Parent action for effect-based conditions (latency, fail_status, fail_error, throttle, offline) and preset-based simulation. Auto-starts interception. All 5 effects have regression tests. |
+| `network` | presets | ready | Any state | Regression test: call presets → verify returns named presets (3G, Edge, LTE, WiFi, High Latency DNS, 100% Loss) with effect descriptions. |
+| `network` | conditions | ready | After network.simulate | Regression test: simulate latency with known id → call conditions → verify entry appears. Part of conditions lifecycle test. |
+| `network` | remove_condition | ready | After network.simulate | Regression test: simulate with known id → remove_condition by id → verify conditions list empty. Part of conditions lifecycle test. |
+| `network` | clear_conditions | ready | After network.simulate | Regression test: add 2 conditions → clear_conditions → verify conditions count drops to 0. Part of conditions lifecycle test. |
 | `network` | latency | untested |  |  |
 | `network` | fail_status | untested |  |  |
 | `network` | fail_error | untested |  |  |
 | `network` | throttle | untested |  |  |
 | `network` | offline | untested |  |  |
-| `network` | mock | untested | Mock Test button (MiscTab Network → https://pepper.test/mock) | Set mock via network mock, tap 'Mock Test'. Status label shows injected status + body preview. |
-| `network` | mocks | untested | After network.mock | List active mocks. Verify entry for https://pepper.test/mock. |
-| `network` | remove_mock | untested | After network.mock | Remove mock by URL, confirm 'Mock Test' button returns error or real response. |
-| `network` | clear_mocks | untested | After network.mock | Clear all mocks, confirm subsequent 'Mock Test' is unaffected. |
-| `network` | ws_log | untested |  |  |
-| `network` | ws_status | untested |  |  |
-| `network` | ws_clear | untested |  |  |
-| `network` | simulate.fail_error | untested | Error Request button (MiscTab Network) | Tap 'Error Request' with network simulate fail_error active. Status label shows NSError domain/code. |
-| `network` | simulate.fail_status | untested | Error Request button (MiscTab Network) | Tap 'Error Request' with network simulate fail_status 500. Status label shows injected status code. |
-| `network` | simulate.latency | untested | Slow Request button (MiscTab Network) | Tap 'Slow Request', then use network simulate latency <ms>. Status label shows elapsed time. |
-| `network` | simulate.offline | untested | Offline Test button (MiscTab Network) | Tap 'Offline Test' with network simulate offline true. Status label shows NSError (network offline). |
-| `network` | simulate.throttle | untested | Slow Request button (MiscTab Network) | Tap 'Slow Request' with network simulate throttle active. Observe increased elapsed time. |
+| `network` | mock | ready | Mock Test button (MiscTab Network → mock_request_button → https://pepper.test/mock) | Regression test: mock pepper.test/mock with status 200 + JSON body → tap Mock Test → verify network_body_preview shows mocked content. Auto-starts interception. |
+| `network` | mocks | ready | After network.mock | Regression test: add mock → call mocks → verify entry appears with url pattern and status code. Part of mock lifecycle test. |
+| `network` | remove_mock | ready | After network.mock | Regression test: add mock → remove_mock by id → verify mocks list empty. Part of mock lifecycle test. |
+| `network` | clear_mocks | ready | After network.mock | Regression test: add 2 mocks → clear_mocks → verify mocks count drops to 0. Dedicated clear_mocks regression test. |
+| `network` | ws_log | ready | WebSocket Client screen (websocket_connect_button) | Regression test: connect WebSocket → ws_log → verify frames returned. Supports limit, filter, direction params. Part of WebSocket lifecycle test. |
+| `network` | ws_status | ready | WebSocket Client screen (websocket_connect_button) | Regression test: connect WebSocket → ws_status → verify active connections >= 1. Returns active, buffer_size, frame_count, total_recorded, active_connections. |
+| `network` | ws_clear | ready | WebSocket Client screen (websocket_connect_button) | Regression test: connect WebSocket → ws_clear → verify ws_log returns 0 frames. Part of WebSocket lifecycle test. |
+| `network` | simulate.fail_error | ready | Error Request button (MiscTab Network → error_request_button) | Regression test: simulate fail_error NSURLErrorDomain/-1009 → tap Error Request → verify network_error shows domain/code. Cleans up via clear_conditions. |
+| `network` | simulate.fail_status | ready | Error Request button (MiscTab Network → error_request_button) | Regression test: simulate fail_status 500 → tap Error Request → verify network_status_code shows HTTP 500. Cleans up via clear_conditions. |
+| `network` | simulate.latency | ready | Slow Request button (MiscTab Network → slow_request_button) | Regression test: simulate latency 2000ms → tap Timed Request → verify elapsed >= 2000ms. Auto-starts interception. Cleans up via clear_conditions. |
+| `network` | simulate.offline | ready | Offline Test button (MiscTab Network → offline_request_button) | Regression test: simulate offline → tap Offline Test → verify network_error shows offline NSError. Cleans up via clear_conditions. |
+| `network` | simulate.throttle | ready | Slow Request button (MiscTab Network → slow_request_button) | Regression test: simulate throttle 256 bytes/s → tap Timed Request → verify elapsed significantly > unthrottled baseline. Cleans up via clear_conditions. |
 | `test` | start | pass | Any state | Starts test session with test_id. Returns {test_id, status:'started'}. Missing test_id returns proper error. |
 | `test` | result | pass | After start | Records test result. Tested: result with test_id='task024', status='pass', notes='All good'. Returns {test_id, timestamp, status:'pass'}. |
 | `test` | reset | pass | After result | Resets test state. Returns {reset:true}. Works both with and without active test session. |
@@ -285,5 +285,5 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 
 - pass: 138
 - fail: 3
-- untested: 100
+- untested: 83
 
