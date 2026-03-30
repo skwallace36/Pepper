@@ -170,15 +170,20 @@ extension ElementDiscoveryBridge {
         discoverLayerControls(in: walkRoot, window: window, dedup: &dedup, results: &results, maxElements: maxElements)
 
         // Phase 4: Hit-test filter + visibility scoring + scroll context enrichment
+        // Cache center-point hit views for reuse in Phase 5 (VC enrichment).
+        var centerHitViews: [Int: UIView] = [:]
         if hitTestFilter {
             for i in results.indices {
                 // Layer-sourced elements bypass hit-test — SwiftUI routes taps
                 // internally (not through UIKit's hit-test chain), so ImageLayers
                 // for .onTapGesture buttons always fail UIKit hit-test.
                 if results[i].source == "layer" { continue }
-                let (reachable, vis) = checkVisibility(for: results[i], in: window)
+                let (reachable, vis, hitView) = checkVisibility(for: results[i], in: window)
                 results[i].hitReachable = reachable
                 results[i].visible = vis
+                if let hitView = hitView {
+                    centerHitViews[i] = hitView
+                }
             }
         }
         for i in results.indices {
@@ -186,8 +191,10 @@ extension ElementDiscoveryBridge {
         }
 
         // Phase 5: Enrich with view controller context
+        // Reuse center hit views cached in Phase 4 to avoid redundant hit-tests.
         for i in results.indices {
-            if let hitView = window.hitTest(results[i].center, with: nil),
+            let hitView = centerHitViews[i] ?? window.hitTest(results[i].center, with: nil)
+            if let hitView = hitView,
                 let vc = findOwningViewController(for: hitView)
             {
                 results[i].viewController = String(describing: type(of: vc))
