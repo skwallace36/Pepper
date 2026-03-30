@@ -45,6 +45,8 @@ map_tool_name() {
     read_element)  echo "read" ;;
     undo_manager)  echo "undo" ;;
     vars_inspect)  echo "vars" ;;
+    look)          echo "introspect" ;;
+    pepper_assert) echo "assert" ;;
     *)             echo "$1" ;;
   esac
 }
