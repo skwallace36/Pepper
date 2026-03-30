@@ -32,6 +32,7 @@
 		A1000018 /* UndoDemoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000018; };
 		A1000019 /* AccessibilityTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000019; };
 		A100001A /* AppearanceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A200001A; };
+		A100001B /* NestedScrollView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A200001B; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -61,6 +62,7 @@
 		A2000018 /* UndoDemoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UndoDemoView.swift; sourceTree = "<group>"; };
 		A2000019 /* AccessibilityTestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityTestView.swift; sourceTree = "<group>"; };
 		A200001A /* AppearanceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppearanceView.swift; sourceTree = "<group>"; };
+		A200001B /* NestedScrollView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NestedScrollView.swift; sourceTree = "<group>"; };
 		A3000001 /* PepperTestApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PepperTestApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -112,6 +114,7 @@
 				A2000018 /* UndoDemoView.swift */,
 				A2000019 /* AccessibilityTestView.swift */,
 				A200001A /* AppearanceView.swift */,
+				A200001B /* NestedScrollView.swift */,
 			);
 			path = PepperTestApp;
 			sourceTree = "<group>";
@@ -212,6 +215,7 @@
 				A1000018 /* UndoDemoView.swift in Sources */,
 				A1000019 /* AccessibilityTestView.swift in Sources */,
 				A100001A /* AppearanceView.swift in Sources */,
+				A100001B /* NestedScrollView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
