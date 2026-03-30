@@ -111,6 +111,10 @@ struct AnyCodable: Codable {
             self.value = array
         case let array as [Any]:
             self.value = array.map { AnyCodable($0) }
+        case let int64 as Int64:
+            // Normalize Int64 → Int so encode() handles it.
+            // Safe on all 64-bit Apple platforms where Int is 64-bit.
+            self.value = Int(int64)
         default:
             self.value = value
         }
