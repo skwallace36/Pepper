@@ -50,6 +50,11 @@
     "status": "untested",
     "surface": "Any state"
   },
+  "assert": {
+    "notes": "New command. Assertion primitives for agent-driven testing. Supports element state, text presence, and count assertions.",
+    "status": "untested",
+    "surface": "Any state"
+  },
   "animations.scan": {
     "notes": "BUG-009 fix (icon catalog background thread crash) was unrelated to this failure. 'Response lost in transit' issue persists \u2014 server logs success but client never receives response. trace and speed actions work fine. New issue: #267.",
     "status": "fail",
