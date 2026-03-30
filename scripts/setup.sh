@@ -164,6 +164,16 @@ else
     pass "Pre-push hook installed (just now)"
 fi
 
+# Post-checkout hook (prevent agents from leaving main on primary worktree)
+CHECKOUT_HOOK_PATH="$REPO_DIR/.git/hooks/post-checkout"
+CHECKOUT_SCRIPT_PATH="../../scripts/hooks/post-checkout-guard.sh"
+if [ -L "$CHECKOUT_HOOK_PATH" ] && [ "$(readlink "$CHECKOUT_HOOK_PATH")" = "$CHECKOUT_SCRIPT_PATH" ]; then
+    pass "Post-checkout hook installed (agent guard)"
+else
+    ln -sf "$CHECKOUT_SCRIPT_PATH" "$CHECKOUT_HOOK_PATH"
+    pass "Post-checkout hook installed (just now)"
+fi
+
 echo ""
 
 # --- Build test ---
