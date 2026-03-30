@@ -334,6 +334,9 @@ export PEPPER_AGENT_TYPE="$TYPE"
 # shows which agent owns which sim.
 export PEPPER_SESSION_LABEL="${PEPPER_SESSION_LABEL:-agent-${TYPE}}"
 
+# Reset drift detection state for this session
+"$REPO_ROOT/scripts/hooks/agent-drift-detector.sh" reset 2>/dev/null || true
+
 # Disable auto-memory — agents don't need user preferences or project memories
 export CLAUDE_CODE_DISABLE_AUTO_MEMORY=1
 

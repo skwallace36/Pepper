@@ -18,6 +18,12 @@ emit() {
   echo "{\"ts\":\"${TS}\",\"agent\":\"${AGENT}\",$1}" >> "$EVENTS_LOG"
 }
 
+# Drift detector path (no-op if script missing or env vars unset)
+DRIFT_CMD="$(cd "$(dirname "$0")" && pwd)/agent-drift-detector.sh"
+drift() {
+  [ -x "$DRIFT_CMD" ] && "$DRIFT_CMD" track "$@" 2>/dev/null || true
+}
+
 # --- Context tracking (Read, Edit, Write, Grep, Glob) ---
 
 if [ "$TOOL" = "Read" ]; then
@@ -25,12 +31,14 @@ if [ "$TOOL" = "Read" ]; then
   RESPONSE=$(echo "$INPUT" | jq -r '.tool_response // empty')
   BYTES=${#RESPONSE}
   emit "\"event\":\"read\",\"file\":$(printf '%s' "$FILE" | jq -Rs '.'),\"bytes\":${BYTES}"
+  drift Read --file "$FILE"
   exit 0
 fi
 
 if [ "$TOOL" = "Edit" ]; then
   FILE=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')
   emit "\"event\":\"edit\",\"file\":$(printf '%s' "$FILE" | jq -Rs '.')"
+  drift Edit --write
   exit 0
 fi
 
@@ -39,6 +47,7 @@ if [ "$TOOL" = "Write" ]; then
   CONTENT=$(echo "$INPUT" | jq -r '.tool_input.content // empty')
   BYTES=${#CONTENT}
   emit "\"event\":\"write\",\"file\":$(printf '%s' "$FILE" | jq -Rs '.'),\"bytes\":${BYTES}"
+  drift Write --write
   exit 0
 fi
 
@@ -47,6 +56,7 @@ if [ "$TOOL" = "Grep" ]; then
   RESPONSE=$(echo "$INPUT" | jq -r '.tool_response // empty')
   BYTES=${#RESPONSE}
   emit "\"event\":\"grep\",\"pattern\":$(printf '%s' "$PATTERN" | jq -Rs '.'),\"bytes\":${BYTES}"
+  drift Grep
   exit 0
 fi
 
@@ -55,6 +65,7 @@ if [ "$TOOL" = "Glob" ]; then
   RESPONSE=$(echo "$INPUT" | jq -r '.tool_response // empty')
   BYTES=${#RESPONSE}
   emit "\"event\":\"glob\",\"pattern\":$(printf '%s' "$PATTERN" | jq -Rs '.'),\"bytes\":${BYTES}"
+  drift Glob
   exit 0
 fi
 
@@ -132,6 +143,13 @@ fi
 if echo "$CMD" | grep -qE 'pepper-ctl'; then
   SUBCMD=$(echo "$CMD" | grep -oE 'pepper-ctl [a-z_]+' | awk '{print $2}')
   [ -n "$SUBCMD" ] && emit "\"event\":\"pepper\",\"detail\":\"${SUBCMD}\",\"bytes\":${BYTES}"
+fi
+
+# --- Drift tracking for Bash ---
+if [ "$EXIT_CODE" != "0" ]; then
+  drift Bash --error
+elif echo "$CMD" | grep -qE 'git (commit|push)|make.*(build|deploy)|gh pr (create|merge)'; then
+  drift Bash --write
 fi
 
 exit 0
