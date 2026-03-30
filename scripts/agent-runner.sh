@@ -48,7 +48,7 @@ OUR_WORKTREE=""  # Track which worktree belongs to THIS agent
 START=""  # Set before agent launch; empty means pre-launch exit (no safety net needed)
 TRANSCRIPT=""
 CLAIMED_SIM=""
-SIMS_BEFORE=""
+SIM_WAS_BOOTED=""  # "yes" if sim was already booted when we claimed it
 LOCKFILE=""  # Set after capacity check passes; empty means pre-launch exit
 CLAIMED_ISSUE=""  # Issue number claimed by this agent (for cleanup on timeout)
 
@@ -95,30 +95,18 @@ cleanup() {
     fi
   fi
 
-  # Release claimed simulator — terminate app first so the port-based
-  # liveness check doesn't keep the session alive after we release it.
+  # Release claimed simulator — terminate app, release session, shut down.
+  # Sims should only be booted while actively in use.
   if [ -n "$CLAIMED_SIM" ]; then
     BID="${APP_BUNDLE_ID:-com.pepper.testapp}"
     xcrun simctl terminate "$CLAIMED_SIM" "$BID" 2>/dev/null || true
     python3 -c "
-import sys; sys.path.insert(0, '$REPO_ROOT/tools')
+import sys; sys.path.insert(0, '$REPO_ROOT/pepper_ios')
 from pepper_sessions import release_simulator
 release_simulator('$CLAIMED_SIM', pid=$$)
 " 2>/dev/null || true
-  fi
-
-  # Sim cleanup — shut down any sims this agent booted
-  if [ -n "$SIMS_BEFORE" ]; then
-    SIMS_AFTER=$(xcrun simctl list devices booted -j 2>/dev/null | python3 -c "
-import json, sys
-devs = json.load(sys.stdin)['devices']
-print(' '.join(d['udid'] for r in devs.values() for d in r if d['state'] == 'Booted'))
-" 2>/dev/null || true)
-    for sim in $SIMS_AFTER; do
-      if ! echo "$SIMS_BEFORE" | grep -q "$sim"; then
-        xcrun simctl shutdown "$sim" 2>/dev/null || true
-      fi
-    done
+    # Shut down the sim — no sim should stay booted idle
+    xcrun simctl shutdown "$CLAIMED_SIM" 2>/dev/null || true
   fi
   git worktree prune 2>/dev/null || true
 
@@ -347,18 +335,53 @@ export PEPPER_SESSION_LABEL="${PEPPER_SESSION_LABEL:-agent-${TYPE}}"
 # Disable auto-memory — agents don't need user preferences or project memories
 export CLAUDE_CODE_DISABLE_AUTO_MEMORY=1
 
-# Claim a simulator via pepper_sessions (flock-based, multi-agent safe)
-# 30s timeout prevents hanging if xcrun is stuck
-CLAIMED_SIM=$(python3 -c "
-import sys, signal; sys.path.insert(0, '$REPO_ROOT/tools')
+# Claim a simulator — only for agent types that need one.
+# Other agents (conflict-resolver, groomer, pr-responder) skip this entirely.
+NEEDS_SIM=false
+case "$TYPE" in
+  pr-verifier|verifier|regression-tester|tester|bugfix) NEEDS_SIM=true ;;
+esac
+
+if [ "$NEEDS_SIM" = true ]; then
+  # 30s timeout prevents hanging if xcrun is stuck
+  CLAIMED_SIM=$(python3 -c "
+import sys, signal; sys.path.insert(0, '$REPO_ROOT/pepper_ios')
 signal.alarm(30)
 from pepper_sessions import find_available_simulator, claim_simulator
 udid = find_available_simulator()
 claim_simulator(udid, label='agent-${TYPE}', pid=$$)
 print(udid)
 " 2>/dev/null || true)
-if [ -n "$CLAIMED_SIM" ]; then
-  export SIMULATOR_ID="$CLAIMED_SIM"
+  if [ -n "$CLAIMED_SIM" ]; then
+    export SIMULATOR_ID="$CLAIMED_SIM"
+    # Boot the sim if not already booted
+    SIM_STATE=$(xcrun simctl list devices -j 2>/dev/null | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+for rt, devs in data.get('devices', {}).items():
+    for d in devs:
+        if d.get('udid') == '$CLAIMED_SIM':
+            print(d.get('state', 'Unknown'))
+            sys.exit(0)
+print('Unknown')
+" 2>/dev/null || echo "Unknown")
+    if [ "$SIM_STATE" = "Booted" ]; then
+      SIM_WAS_BOOTED=yes
+    else
+      SIM_WAS_BOOTED=no
+      echo "Booting sim $CLAIMED_SIM..."
+      xcrun simctl boot "$CLAIMED_SIM" 2>/dev/null || true
+      # Wait for boot to complete (max 30s)
+      xcrun simctl bootstatus "$CLAIMED_SIM" -b 2>/dev/null &
+      _boot_pid=$!
+      for _i in $(seq 1 30); do
+        kill -0 "$_boot_pid" 2>/dev/null || break
+        sleep 1
+      done
+      kill "$_boot_pid" 2>/dev/null || true
+      wait "$_boot_pid" 2>/dev/null || true
+    fi
+  fi
 fi
 
 # Sim health check — verify the claimed sim is responsive before launching.
@@ -459,13 +482,6 @@ fi
 # Ensure agent pushes and gh CLI target the private repo.
 # origin should already point to Pepper-private, but GH_REPO is explicit.
 export GH_REPO="skwallace36/Pepper-private"
-
-# Snapshot booted sims before agent runs — shut down any new ones in cleanup
-SIMS_BEFORE=$(xcrun simctl list devices booted -j 2>/dev/null | python3 -c "
-import json, sys
-devs = json.load(sys.stdin)['devices']
-print(' '.join(d['udid'] for r in devs.values() for d in r if d['state'] == 'Booted'))
-" 2>/dev/null || true)
 
 START=$(date +%s)
 TRANSCRIPT="build/logs/transcript-${TYPE}-${START}.json"
