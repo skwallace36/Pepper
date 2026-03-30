@@ -185,7 +185,7 @@ extension PepperServer: TransportDelegate {
         let id = connection.connectionId
         pepperLog.info("New connection: \(id)", category: .server)
 
-        // Register in connection manager with send callbacks routed to the transport connection
+        // Register in connection manager with callbacks routed to the transport connection
         connectionManager.addConnection(
             id: id,
             send: { [weak connection] data in
@@ -193,6 +193,9 @@ extension PepperServer: TransportDelegate {
             },
             sendBinary: { [weak connection] data in
                 connection?.sendBinary(data)
+            },
+            close: { [weak connection] in
+                connection?.close()
             }
         )
     }
