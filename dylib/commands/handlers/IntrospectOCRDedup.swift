@@ -40,6 +40,10 @@ extension MapModeIntrospector {
             let ocrCenter = CGPoint(x: obs.bounds.midX, y: obs.bounds.midY)
             let isDuplicate = existingNormalized.contains { existing in
                 guard Self.ocrTextMatches(normalized, existing.normalized) else { return false }
+                // Exact match: deduplicate regardless of position.
+                // Substring match: require spatial proximity (20pt) to avoid
+                // removing unrelated text that happens to share a substring.
+                if normalized == existing.normalized { return true }
                 let dx = abs(ocrCenter.x - existing.center.x)
                 let dy = abs(ocrCenter.y - existing.center.y)
                 return dx <= 20 && dy <= 20
