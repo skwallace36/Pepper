@@ -99,6 +99,9 @@ final class PepperNetworkInterceptor {
                 self.swizzleApplied = true
             }
 
+            // Install background session monitoring (swizzle applied once, idempotent)
+            PepperBackgroundSessionMonitor.shared.install()
+
             URLProtocol.registerClass(PepperNetworkProtocol.self)
             self.isActive = true
             self.logger.info("Network interception started (buffer: \(self.bufferSize))")

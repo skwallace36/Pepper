@@ -158,6 +158,7 @@ struct NetworkHandler: PepperHandler {
         let dupes = interceptor.recentDuplicates(limit: 5)
         let conditions = interceptor.activeConditions
         let mocks = interceptor.activeMocks
+        let bgMonitor = PepperBackgroundSessionMonitor.shared
         var statusData: [String: AnyCodable] = [
             "active": AnyCodable(interceptor.isIntercepting),
             "buffer_size": AnyCodable(interceptor.bufferSize),
@@ -166,6 +167,8 @@ struct NetworkHandler: PepperHandler {
             "total_dropped": AnyCodable(interceptor.totalDropped),
             "conditions_count": AnyCodable(conditions.count),
             "mocks_count": AnyCodable(mocks.count),
+            "background_sessions_tracked": AnyCodable(bgMonitor.trackedSessions),
+            "background_transactions_recorded": AnyCodable(bgMonitor.totalRecorded),
         ]
         if !dupes.isEmpty {
             statusData["duplicate_warnings"] = AnyCodable(
