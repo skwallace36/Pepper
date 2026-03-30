@@ -191,19 +191,27 @@ def check_anti_patterns(
 
 @dataclass
 class EvalScore:
+    # Tool quality metrics (prompt-dependent — "how well did the agent use tools?")
     look_before_act: float
     consecutive_actions: int
     error_recovery: float
     pepper_tool_diversity: int
+    wasted_calls: int
+    reread_ratio: float
+    # Efficiency metrics
     turn_count: int
     cost_usd: float
     tool_call_count: int
-    wasted_calls: int
-    reread_ratio: float
+    # Task completion (infrastructure-dependent — "did the agent finish?")
     task_success: dict[str, bool] | None = None
     anti_pattern_violations: list[str] = field(default_factory=list)
+    # Qualitative
     self_report: dict | None = None
-    composite_score: float = 0.0
+    # Two independent scores (0-100)
+    tool_quality_score: float = 0.0       # Prompt-dependent: how well tools were used
+    completion_score: float = 0.0         # Infrastructure-dependent: did it finish the task
+    efficiency_score: float = 0.0         # Cost and speed
+    composite_score: float = 0.0          # Weighted blend (kept for backwards compat)
 
     def to_dict(self) -> dict:
         return {
@@ -219,6 +227,9 @@ class EvalScore:
             "task_success": self.task_success,
             "anti_pattern_violations": self.anti_pattern_violations,
             "self_report": self.self_report,
+            "tool_quality_score": self.tool_quality_score,
+            "completion_score": self.completion_score,
+            "efficiency_score": self.efficiency_score,
             "composite_score": self.composite_score,
         }
 
@@ -281,33 +292,44 @@ def compute_score(
     n_rr = _normalize("reread_ratio", reread_ratio)
     n_cost = _normalize("cost_usd", transcript.total_cost_usd, budget)
 
-    if task:
-        weights = task.get("weights", {})
-        w_success = weights.get("success", 0.35)
-        w_efficiency = weights.get("efficiency", 0.25)
-        w_tool = weights.get("tool_usage", 0.25)
-        w_compliance = weights.get("compliance", 0.15)
+    # ── Tool Quality Score (prompt-dependent) ──
+    # Measures HOW WELL the agent used tools, independent of whether it finished.
+    # This is what prompt changes should move.
+    tool_score = (n_lba + n_ca + n_er + n_pd) / 4
 
-        if task_success:
-            passed = sum(1 for v in task_success.values() if v)
-            success_score = (passed / max(1, len(task_success))) * 100
-        else:
-            success_score = 50.0
+    # ── Efficiency Score ──
+    # Cost, speed, waste. Affected by both prompt and infrastructure.
+    eff_score = (n_wc + n_rr + n_cost) / 3
 
-        tool_score = (n_lba + n_ca + n_er + n_pd) / 4
-        efficiency_score = (n_wc + n_rr + n_cost) / 3
-        compliance_score = max(0, 100 - len(anti_violations) * 25)
-
-        composite = (
-            success_score * w_success
-            + efficiency_score * w_efficiency
-            + tool_score * w_tool
-            + compliance_score * w_compliance
-        )
+    # ── Completion Score (infrastructure-dependent) ──
+    # Did the agent achieve the goal? Affected by auth, sim health, timeouts.
+    if task and task_success:
+        passed = sum(1 for v in task_success.values() if v)
+        comp_score = (passed / max(1, len(task_success))) * 100
     else:
-        tool_score = (n_lba + n_ca + n_er + n_pd) / 4
-        efficiency_score = (n_wc + n_rr + n_cost) / 3
-        composite = tool_score * 0.40 + efficiency_score * 0.60
+        # No task criteria — use a heuristic: did the agent produce output?
+        has_output = len(transcript.text_blocks) > 0
+        has_commits = any(
+            "git commit" in tc.tool_input.get("command", "")
+            for tc in transcript.tool_calls
+            if tc.tool_name == "Bash" and not tc.is_error
+        )
+        has_pr = any(
+            "gh pr create" in tc.tool_input.get("command", "")
+            for tc in transcript.tool_calls
+            if tc.tool_name == "Bash" and not tc.is_error
+        )
+        comp_score = 50.0  # baseline
+        if has_output:
+            comp_score += 20
+        if has_commits:
+            comp_score += 15
+        if has_pr:
+            comp_score += 15
+
+    # ── Composite (backwards-compatible blend) ──
+    compliance_score = max(0, 100 - len(anti_violations) * 25)
+    composite = tool_score * 0.35 + eff_score * 0.25 + comp_score * 0.25 + compliance_score * 0.15
 
     return EvalScore(
         look_before_act=lba,
@@ -322,6 +344,9 @@ def compute_score(
         task_success=task_success,
         anti_pattern_violations=anti_violations,
         self_report=extract_self_report(transcript),
+        tool_quality_score=round(tool_score, 1),
+        completion_score=round(comp_score, 1),
+        efficiency_score=round(eff_score, 1),
         composite_score=round(composite, 1),
     )
 
@@ -386,8 +411,16 @@ def print_score(score: EvalScore, transcript: EvalTranscript) -> None:
         for key, val in score.self_report.items():
             print(f"  {key}: {val}")
 
+    # Split scores
+    print(f"\n{BOLD}Scores{NC}")
+    tq = score.tool_quality_score
+    cs = score.completion_score
+    es = score.efficiency_score
+    print(f"  Tool Quality  {_color_score(tq)}{_bar(tq)}{NC}  {tq:.0f}/100  (prompt-dependent)")
+    print(f"  Completion    {_color_score(cs)}{_bar(cs)}{NC}  {cs:.0f}/100  (infra-dependent)")
+    print(f"  Efficiency    {_color_score(es)}{_bar(es)}{NC}  {es:.0f}/100")
     c = _color_score(score.composite_score)
-    print(f"\n{BOLD}Composite: {c}{score.composite_score:.0f}/100{NC}\n")
+    print(f"  {BOLD}Composite   {c}{_bar(score.composite_score)}{NC}  {score.composite_score:.0f}/100{NC}\n")
 
 
 # ─── CLI ─────────────────────────────────────────────────────────────
