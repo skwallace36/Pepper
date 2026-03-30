@@ -551,18 +551,18 @@
     "surface": "After log capture"
   },
   "network.clear_conditions": {
-    "notes": "Clear all conditions, confirm all simulate variants deactivated.",
-    "status": "untested",
+    "notes": "Regression test: add 2 conditions \u2192 clear_conditions \u2192 verify conditions count drops to 0. Part of conditions lifecycle test.",
+    "status": "ready",
     "surface": "After network.simulate"
   },
   "network.clear_mocks": {
-    "notes": "Clear all mocks, confirm subsequent 'Mock Test' is unaffected.",
-    "status": "untested",
+    "notes": "Regression test: add 2 mocks \u2192 clear_mocks \u2192 verify mocks count drops to 0. Dedicated clear_mocks regression test.",
+    "status": "ready",
     "surface": "After network.mock"
   },
   "network.conditions": {
-    "notes": "List active conditions. Verify condition appears after simulate latency/offline/etc.",
-    "status": "untested",
+    "notes": "Regression test: simulate latency with known id \u2192 call conditions \u2192 verify entry appears. Part of conditions lifecycle test.",
+    "status": "ready",
     "surface": "After network.simulate"
   },
   "network.log": {
@@ -571,49 +571,49 @@
     "surface": "After start + Fetch HTTP button"
   },
   "network.mock": {
-    "notes": "Set mock via network mock, tap 'Mock Test'. Status label shows injected status + body preview.",
-    "status": "untested",
-    "surface": "Mock Test button (MiscTab Network \u2192 https://pepper.test/mock)"
+    "notes": "Regression test: mock pepper.test/mock with status 200 + JSON body \u2192 tap Mock Test \u2192 verify network_body_preview shows mocked content. Auto-starts interception.",
+    "status": "ready",
+    "surface": "Mock Test button (MiscTab Network \u2192 mock_request_button \u2192 https://pepper.test/mock)"
   },
   "network.mocks": {
-    "notes": "List active mocks. Verify entry for https://pepper.test/mock.",
-    "status": "untested",
+    "notes": "Regression test: add mock \u2192 call mocks \u2192 verify entry appears with url pattern and status code. Part of mock lifecycle test.",
+    "status": "ready",
     "surface": "After network.mock"
   },
   "network.remove_condition": {
-    "notes": "Remove specific condition, confirm behavior reverts to normal.",
-    "status": "untested",
+    "notes": "Regression test: simulate with known id \u2192 remove_condition by id \u2192 verify conditions list empty. Part of conditions lifecycle test.",
+    "status": "ready",
     "surface": "After network.simulate"
   },
   "network.remove_mock": {
-    "notes": "Remove mock by URL, confirm 'Mock Test' button returns error or real response.",
-    "status": "untested",
+    "notes": "Regression test: add mock \u2192 remove_mock by id \u2192 verify mocks list empty. Part of mock lifecycle test.",
+    "status": "ready",
     "surface": "After network.mock"
   },
   "network.simulate.fail_error": {
-    "notes": "Tap 'Error Request' with network simulate fail_error active. Status label shows NSError domain/code.",
-    "status": "untested",
-    "surface": "Error Request button (MiscTab Network)"
+    "notes": "Regression test: simulate fail_error NSURLErrorDomain/-1009 → tap Error Request → verify network_error shows domain/code. Cleans up via clear_conditions.",
+    "status": "ready",
+    "surface": "Error Request button (MiscTab Network → error_request_button)"
   },
   "network.simulate.fail_status": {
-    "notes": "Tap 'Error Request' with network simulate fail_status 500. Status label shows injected status code.",
-    "status": "untested",
-    "surface": "Error Request button (MiscTab Network)"
+    "notes": "Regression test: simulate fail_status 500 → tap Error Request → verify network_status_code shows HTTP 500. Cleans up via clear_conditions.",
+    "status": "ready",
+    "surface": "Error Request button (MiscTab Network → error_request_button)"
   },
   "network.simulate.latency": {
-    "notes": "Tap 'Slow Request', then use network simulate latency <ms>. Status label shows elapsed time.",
-    "status": "untested",
-    "surface": "Slow Request button (MiscTab Network)"
+    "notes": "Regression test: simulate latency 2000ms → tap Timed Request → verify elapsed >= 2000ms. Auto-starts interception. Cleans up via clear_conditions.",
+    "status": "ready",
+    "surface": "Slow Request button (MiscTab Network → slow_request_button)"
   },
   "network.simulate.offline": {
-    "notes": "Tap 'Offline Test' with network simulate offline true. Status label shows NSError (network offline).",
-    "status": "untested",
-    "surface": "Offline Test button (MiscTab Network)"
+    "notes": "Regression test: simulate offline → tap Offline Test → verify network_error shows offline NSError. Cleans up via clear_conditions.",
+    "status": "ready",
+    "surface": "Offline Test button (MiscTab Network → offline_request_button)"
   },
   "network.simulate.throttle": {
-    "notes": "Tap 'Slow Request' with network simulate throttle active. Observe increased elapsed time.",
-    "status": "untested",
-    "surface": "Slow Request button (MiscTab Network)"
+    "notes": "Regression test: simulate throttle 256 bytes/s → tap Timed Request → verify elapsed significantly > unthrottled baseline. Cleans up via clear_conditions.",
+    "status": "ready",
+    "surface": "Slow Request button (MiscTab Network → slow_request_button)"
   },
   "network.start": {
     "notes": "Returns {active:true, buffer_size:500}. Accepts buffer_size param. URLProtocol-based interception activates correctly.",
@@ -629,6 +629,31 @@
     "notes": "Returns {active:false, transactions_captured:N}. Correctly deactivates interception.",
     "status": "pass",
     "surface": "After start"
+  },
+  "network.simulate": {
+    "notes": "Parent action for effect-based conditions (latency, fail_status, fail_error, throttle, offline) and preset-based simulation. Auto-starts interception. All 5 effects have regression tests.",
+    "status": "ready",
+    "surface": "MiscTab Network buttons (slow_request_button, error_request_button, offline_request_button)"
+  },
+  "network.presets": {
+    "notes": "Regression test: call presets \u2192 verify returns named presets (3G, Edge, LTE, WiFi, High Latency DNS, 100% Loss) with effect descriptions.",
+    "status": "ready",
+    "surface": "Any state"
+  },
+  "network.ws_clear": {
+    "notes": "Regression test: connect WebSocket \u2192 ws_clear \u2192 verify ws_log returns 0 frames. Part of WebSocket lifecycle test.",
+    "status": "ready",
+    "surface": "WebSocket Client screen (websocket_connect_button)"
+  },
+  "network.ws_log": {
+    "notes": "Regression test: connect WebSocket \u2192 ws_log \u2192 verify frames returned. Supports limit, filter, direction params. Part of WebSocket lifecycle test.",
+    "status": "ready",
+    "surface": "WebSocket Client screen (websocket_connect_button)"
+  },
+  "network.ws_status": {
+    "notes": "Regression test: connect WebSocket \u2192 ws_status \u2192 verify active connections >= 1. Returns active, buffer_size, frame_count, total_recorded, active_connections.",
+    "status": "ready",
+    "surface": "WebSocket Client screen (websocket_connect_button)"
   },
   "notifications": {
     "notes": "Surface added (TASK-316). NSNotificationCenter inspector \u2014 register_observer_button, post_notification_button, remove_observer_button, and notification_received_count label all available.",
