@@ -1,8 +1,10 @@
 import Foundation
 import os
 
-/// Handles {"cmd": "snapshot"} commands for screen state diffing.
+/// Handles {"cmd": "snapshot"} commands for named screen state baselines.
 ///
+/// Use `snapshot` for named baselines you want to compare later or assert on
+/// with `assert_no_diff`. For quick one-off checks, use `diff` instead.
 /// Captures structured `look` (introspect map) output as a named baseline,
 /// then diffs the current screen state against it.
 ///

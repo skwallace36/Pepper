@@ -1,9 +1,10 @@
 import Foundation
 import os
 
-/// Handles {"cmd": "diff"} commands for quick view hierarchy comparison.
+/// Handles {"cmd": "diff"} commands for quick one-off view hierarchy comparison.
 ///
-/// A simplified interface for comparing screen state before and after actions.
+/// Use `diff` for quick inline checks — start a baseline, act, then show changes.
+/// For named baselines you want to compare later or assert on, use `snapshot`.
 /// Delegates to `SnapshotHandler` under the hood with a reserved baseline name.
 ///
 /// Actions:

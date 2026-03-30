@@ -405,7 +405,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
             default=False, description="Return error if any diff is detected (for regression testing)"
         ),
     ) -> str:
-        """Capture screen state as a named snapshot, then diff against it later to see what changed."""
+        """Save a named baseline of screen state and compare later. Use snapshot for named baselines you want to compare later or assert on with assert_no_diff."""
         return json_dumps(
             await resolve_and_send(
                 simulator,
@@ -427,5 +427,5 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
             description="Action: 'start' (capture baseline), 'show' (compare to baseline), 'clear' (discard baseline)",
         ),
     ) -> str:
-        """Quick view hierarchy diff — start a baseline, perform actions, then show to see only added/removed/changed elements."""
+        """Quick one-off view hierarchy diff — start a baseline, perform actions, then show to see added/removed/changed elements. Use diff for quick inline checks; use snapshot for named baselines you want to compare later."""
         return json_dumps(await resolve_and_send(simulator, CMD_DIFF, {"action": action}))
