@@ -294,14 +294,16 @@ agent-trigger:
 agents-install:
 	@ln -sf ../../scripts/hooks/post-merge-trigger.sh .git/hooks/post-merge
 	@ln -sf ../../scripts/hooks/pre-push-rebase.sh .git/hooks/pre-push
+	@ln -sf ../../scripts/hooks/post-checkout-guard.sh .git/hooks/post-checkout
 	@echo "Installed:"
 	@echo "  Post-merge: code changes → trigger tester"
 	@echo "  Pre-push: auto-rebase agent branches"
+	@echo "  Post-checkout: prevent agents from leaving main on primary worktree"
 	@echo "  Auto-chain: agent opens PR → verifier launches"
 
 ## agents-uninstall: Remove hooks
 agents-uninstall:
-	@rm -f .git/hooks/post-merge .git/hooks/pre-push
+	@rm -f .git/hooks/post-merge .git/hooks/pre-push .git/hooks/post-checkout
 	@echo "Agent hooks uninstalled."
 
 ## coordinator: Pre-provision sims for multi-agent work (e.g. make coordinator WORKERS=3)
