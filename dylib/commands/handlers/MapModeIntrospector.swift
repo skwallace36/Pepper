@@ -27,6 +27,14 @@ struct MapModeIntrospector {
         let isSummary = detailMode != "full"
         let enableOCR = command.params?["ocr"]?.boolValue ?? false
 
+        // Opt-in heavyweight fields (frame, visible, hit_reachable, label_source).
+        // Omitted by default to reduce WebSocket payload; callers request them via
+        // comma-separated "verbose_fields" param.
+        let verboseCSV = command.params?["verbose_fields"]?.stringValue ?? ""
+        let verboseFields: Set<String> = verboseCSV.isEmpty
+            ? []
+            : Set(verboseCSV.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) })
+
         // Detect topmost presented modal/sheet. For full-screen modals, scope
         // element collection to that VC's view subtree. For sheets (half-height
         // overlays), collect from the full window since both parent and sheet
@@ -802,7 +810,8 @@ struct MapModeIntrospector {
         // duplicate labels, then group into rows by Y-band
         mergedInteractive.sort { $0.center.y < $1.center.y }
         assignOrdinalIndices(&mergedInteractive)
-        let rows = groupIntoRows(mergedInteractive, bandSize: bandSize, summary: isSummary)
+        let rows = groupIntoRows(mergedInteractive, bandSize: bandSize, summary: isSummary,
+                                 verboseFields: verboseFields)
 
         // Phase 7a: Extract screen info + nav bar title (needed before text serialization)
         let screenID: String
@@ -853,7 +862,8 @@ struct MapModeIntrospector {
         }
         textForOutput.sort { $0.center.y < $1.center.y }
         let volatileKeys = Self.trackVolatileText(&textForOutput)
-        let nonInteractiveSerialized = serializeNonInteractive(textForOutput, volatileKeys: volatileKeys, summary: isSummary)
+        let nonInteractiveSerialized = serializeNonInteractive(textForOutput, volatileKeys: volatileKeys,
+                                                              summary: isSummary, verboseFields: verboseFields)
         let screenSize = UIScreen.main.bounds.size
 
         logger.info(

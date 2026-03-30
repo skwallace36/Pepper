@@ -116,6 +116,15 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
         if detail == "full":
             look_params["detail"] = "full"
 
+        # Opt-in verbose fields: frame, label_source, visible, hit_reachable are
+        # omitted from the dylib response by default to reduce WebSocket payload.
+        # Pass them through when the caller explicitly requests them via raw+fields.
+        _VERBOSE_FIELDS = {"frame", "label_source", "visible", "hit_reachable"}
+        if raw and fields:
+            requested_verbose = _VERBOSE_FIELDS & {f.strip() for f in fields.split(",")}
+            if requested_verbose:
+                look_params["verbose_fields"] = ",".join(sorted(requested_verbose))
+
         # Always run the AX probe in parallel with the dylib command.
         # It checks for SpringBoard dialogs (permission prompts, etc.) that
         # the in-process dylib cannot see.

@@ -158,7 +158,8 @@ extension MapModeIntrospector {
     }
 
     /// Group elements into rows by Y-band proximity.
-    func groupIntoRows(_ elements: [MapElement], bandSize: CGFloat, summary: Bool = false) -> [AnyCodable] {
+    func groupIntoRows(_ elements: [MapElement], bandSize: CGFloat, summary: Bool = false,
+                       verboseFields: Set<String> = []) -> [AnyCodable] {
         guard !elements.isEmpty else { return [] }
 
         var rows: [AnyCodable] = []
@@ -169,13 +170,13 @@ extension MapModeIntrospector {
             if element.center.y - rowMinY <= bandSize {
                 currentRow.append(element)
             } else {
-                rows.append(serializeRow(currentRow, summary: summary))
+                rows.append(serializeRow(currentRow, summary: summary, verboseFields: verboseFields))
                 currentRow = [element]
                 rowMinY = element.center.y
             }
         }
         if !currentRow.isEmpty {
-            rows.append(serializeRow(currentRow, summary: summary))
+            rows.append(serializeRow(currentRow, summary: summary, verboseFields: verboseFields))
         }
 
         return rows
@@ -184,12 +185,13 @@ extension MapModeIntrospector {
     /// Serialize a row of elements for JSON output.
     /// When `summary` is true, omits frames, traits, heuristics, scroll_context,
     /// and other verbose fields to reduce token count for agent use.
-    func serializeRow(_ elements: [MapElement], summary: Bool = false) -> AnyCodable {
+    func serializeRow(_ elements: [MapElement], summary: Bool = false,
+                      verboseFields: Set<String> = []) -> AnyCodable {
         let minY = elements.map { $0.frame.origin.y }.min() ?? 0
         let maxY = elements.map { $0.frame.origin.y + $0.frame.size.height }.max() ?? 0
 
         let serialized: [AnyCodable] = elements.sorted(by: { $0.center.x < $1.center.x }).map {
-            serializeElement($0, summary: summary)
+            serializeElement($0, summary: summary, verboseFields: verboseFields)
         }
 
         var row: [String: AnyCodable] = [
@@ -202,21 +204,29 @@ extension MapModeIntrospector {
     }
 
     /// Serialize a single interactive element to a JSON dictionary.
-    private func serializeElement(_ elem: MapElement, summary: Bool) -> AnyCodable {
+    /// `verboseFields` controls which heavyweight fields to include (frame, visible,
+    /// hit_reachable, label_source). These are omitted by default to reduce payload size;
+    /// callers opt in by naming the fields they need.
+    private func serializeElement(_ elem: MapElement, summary: Bool,
+                                  verboseFields: Set<String> = []) -> AnyCodable {
         var dict: [String: AnyCodable] = [
             "type": AnyCodable(elem.type),
         ]
 
         if !summary {
             dict["center"] = AnyCodable([AnyCodable(Int(elem.center.x)), AnyCodable(Int(elem.center.y))])
-            dict["frame"] = AnyCodable([
-                AnyCodable(Int(elem.frame.origin.x)),
-                AnyCodable(Int(elem.frame.origin.y)),
-                AnyCodable(Int(elem.frame.size.width)),
-                AnyCodable(Int(elem.frame.size.height)),
-            ])
-            dict["hit_reachable"] = AnyCodable(elem.hitReachable)
-            if elem.visible >= 0 {
+            if verboseFields.contains("frame") {
+                dict["frame"] = AnyCodable([
+                    AnyCodable(Int(elem.frame.origin.x)),
+                    AnyCodable(Int(elem.frame.origin.y)),
+                    AnyCodable(Int(elem.frame.size.width)),
+                    AnyCodable(Int(elem.frame.size.height)),
+                ])
+            }
+            if verboseFields.contains("hit_reachable") {
+                dict["hit_reachable"] = AnyCodable(elem.hitReachable)
+            }
+            if verboseFields.contains("visible"), elem.visible >= 0 {
                 dict["visible"] = AnyCodable(Double(round(elem.visible * 100) / 100))
             }
         }
@@ -238,7 +248,9 @@ extension MapModeIntrospector {
 
         if !summary {
             if !elem.traits.isEmpty { dict["traits"] = AnyCodable(elem.traits.map { AnyCodable($0) }) }
-            if let ls = elem.labelSource { dict["label_source"] = AnyCodable(ls) }
+            if verboseFields.contains("label_source"), let ls = elem.labelSource {
+                dict["label_source"] = AnyCodable(ls)
+            }
             if let sc = elem.scrollContext {
                 dict["scroll_context"] = AnyCodable(
                     [
@@ -606,9 +618,9 @@ extension MapModeIntrospector {
 
     /// Serialize non-interactive elements for JSON, marking volatile positions.
     /// When `summary` is true, returns only type, label, and value.
-    func serializeNonInteractive(_ elements: [MapElement], volatileKeys: Set<String>, summary: Bool = false)
-        -> [AnyCodable]
-    {
+    /// `verboseFields` controls opt-in heavyweight fields (frame, visible, label_source).
+    func serializeNonInteractive(_ elements: [MapElement], volatileKeys: Set<String>, summary: Bool = false,
+                                 verboseFields: Set<String> = []) -> [AnyCodable] {
         elements.map { elem in
             var dict: [String: AnyCodable] = [
                 "type": AnyCodable(elem.type),
@@ -618,14 +630,20 @@ extension MapModeIntrospector {
 
             if !summary {
                 dict["center"] = AnyCodable([AnyCodable(Int(elem.center.x)), AnyCodable(Int(elem.center.y))])
-                dict["frame"] = AnyCodable([
-                    AnyCodable(Int(elem.frame.origin.x)),
-                    AnyCodable(Int(elem.frame.origin.y)),
-                    AnyCodable(Int(elem.frame.size.width)),
-                    AnyCodable(Int(elem.frame.size.height)),
-                ])
-                if elem.visible >= 0 { dict["visible"] = AnyCodable(Double(round(elem.visible * 100) / 100)) }
-                if let ls = elem.labelSource { dict["label_source"] = AnyCodable(ls) }
+                if verboseFields.contains("frame") {
+                    dict["frame"] = AnyCodable([
+                        AnyCodable(Int(elem.frame.origin.x)),
+                        AnyCodable(Int(elem.frame.origin.y)),
+                        AnyCodable(Int(elem.frame.size.width)),
+                        AnyCodable(Int(elem.frame.size.height)),
+                    ])
+                }
+                if verboseFields.contains("visible"), elem.visible >= 0 {
+                    dict["visible"] = AnyCodable(Double(round(elem.visible * 100) / 100))
+                }
+                if verboseFields.contains("label_source"), let ls = elem.labelSource {
+                    dict["label_source"] = AnyCodable(ls)
+                }
                 if volatileKeys.contains(Self.posKey(elem.center)) { dict["volatile"] = AnyCodable(true) }
             }
 
