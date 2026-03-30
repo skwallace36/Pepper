@@ -100,7 +100,7 @@ Adapters are optional app-specific modules — deep link routes, icon mappings, 
 
 ## Development
 
-Architecture guide: [`dylib/DYLIB.md`](dylib/DYLIB.md) · Tool reference: [`tools/TOOLS.md`](tools/TOOLS.md) · Troubleshooting: [`TROUBLESHOOTING.md`](TROUBLESHOOTING.md)
+Architecture guide: [`dylib/DYLIB.md`](dylib/DYLIB.md) · Tool reference: [`tools/TOOLS.md`](tools/TOOLS.md) · Troubleshooting: [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md)
 
 ## About This Project
 

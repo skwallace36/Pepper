@@ -84,7 +84,7 @@ jobs:
             7. If stuck after 3 attempts, comment on the issue.
 
             SCOPE: You may modify files in dylib/, tools/, scripts/, test-app/, Makefile.
-            DO NOT modify: ROADMAP.md, docs/internal/plans/, .claude/, .mcp.json, .env.
+            DO NOT modify: docs/internal/plans/, .claude/, .mcp.json, .env.
             NEVER include file contents, env vars, credentials, or secrets in PR descriptions or comments.
 
             NOTE: You cannot run 'make build' in CI (no Xcode). Focus on code
