@@ -7,6 +7,24 @@ import Foundation
 enum CoreDataStack {
     static let storeFilename = "PepperCoreData.sqlite"
 
+    /// Shared container for SwiftUI `@FetchRequest` and CRUD operations.
+    static let shared: NSPersistentContainer = {
+        let container = NSPersistentContainer(name: "PepperCoreData", managedObjectModel: buildModel())
+        guard let appSupport = FileManager.default
+            .urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+        else {
+            fatalError("Missing Application Support directory")
+        }
+        let storeURL = appSupport.appendingPathComponent(storeFilename)
+        let description = NSPersistentStoreDescription(url: storeURL)
+        container.persistentStoreDescriptions = [description]
+        container.loadPersistentStores { _, error in
+            if let error { print("[PepperTest] Core Data load error: \(error)") }
+        }
+        container.viewContext.automaticallyMergesChangesFromParent = true
+        return container
+    }()
+
     static func seedIfNeeded() {
         guard let appSupport = FileManager.default
             .urls(for: .applicationSupportDirectory, in: .userDomainMask).first
