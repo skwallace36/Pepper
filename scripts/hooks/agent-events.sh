@@ -14,8 +14,14 @@ INPUT=$(cat)
 TOOL=$(echo "$INPUT" | jq -r '.tool_name // empty')
 TS=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
+# Per-session sequence number for tool-call ordering
+SEQ_FILE="/tmp/pepper-eval-seq-${PEPPER_AGENT_PID:-$$}"
+SEQ=$(cat "$SEQ_FILE" 2>/dev/null || echo 0)
+SEQ=$((SEQ + 1))
+echo "$SEQ" > "$SEQ_FILE"
+
 emit() {
-  echo "{\"ts\":\"${TS}\",\"agent\":\"${AGENT}\",$1}" >> "$EVENTS_LOG"
+  echo "{\"ts\":\"${TS}\",\"agent\":\"${AGENT}\",\"seq\":${SEQ},$1}" >> "$EVENTS_LOG"
 }
 
 # Drift detector path (no-op if script missing or env vars unset)
@@ -75,7 +81,22 @@ if echo "$TOOL" | grep -qE '^mcp__pepper__'; then
   SUBCMD=$(echo "$TOOL" | sed 's/^mcp__pepper__//')
   RESPONSE=$(echo "$INPUT" | jq -r '.tool_response // empty')
   BYTES=${#RESPONSE}
-  emit "\"event\":\"pepper\",\"detail\":\"${SUBCMD}\",\"bytes\":${BYTES}"
+
+  # Extract key params for eval scoring (tap target, scroll direction, etc.)
+  PARAMS=$(echo "$INPUT" | jq -c '[.tool_input | to_entries[] | select(.key != "simulator") | "\(.key)=\(.value)"] | join(",")' 2>/dev/null | head -c 200)
+
+  # Detect errors in response
+  IS_ERR="false"
+  if echo "$RESPONSE" | grep -qiE '"status":\s*"error"|"error":|Element not found|APP CRASHED'; then
+    IS_ERR="true"
+  fi
+
+  # Extract screen name from action responses (tap, scroll, navigate include it)
+  SCREEN=$(echo "$RESPONSE" | grep -oE '"screen":\s*"[^"]*"' | head -1 | sed 's/"screen":\s*"//' | sed 's/"$//' || true)
+  SCREEN_FIELD=""
+  [ -n "$SCREEN" ] && SCREEN_FIELD=",\"screen\":\"${SCREEN}\""
+
+  emit "\"event\":\"pepper\",\"detail\":\"${SUBCMD}\",\"params\":${PARAMS:-\"\"}\",\"is_error\":${IS_ERR},\"bytes\":${BYTES}${SCREEN_FIELD}"
   exit 0
 fi
 
@@ -142,7 +163,19 @@ fi
 # pepper-ctl via Bash
 if echo "$CMD" | grep -qE 'pepper-ctl'; then
   SUBCMD=$(echo "$CMD" | grep -oE 'pepper-ctl [a-z_]+' | awk '{print $2}')
-  [ -n "$SUBCMD" ] && emit "\"event\":\"pepper\",\"detail\":\"${SUBCMD}\",\"bytes\":${BYTES}"
+  # Extract key flags: --text, --point, --direction, --element, --action, etc.
+  PARAMS=$(echo "$CMD" | grep -oE '\-\-(text|point|direction|element|action|scope|predicate) [^ ]+' | tr '\n' ',' | sed 's/,$//' | head -c 200)
+  # Detect errors
+  IS_ERR="false"
+  if [ "$EXIT_CODE" != "0" ] || echo "$STDOUT" | grep -qiE '"status":\s*"error"|Element not found|APP CRASHED'; then
+    IS_ERR="true"
+  fi
+  # Extract screen from response
+  SCREEN=$(echo "$STDOUT" | grep -oE '"screen":\s*"[^"]*"' | head -1 | sed 's/"screen":\s*"//' | sed 's/"$//' || true)
+  SCREEN_FIELD=""
+  [ -n "$SCREEN" ] && SCREEN_FIELD=",\"screen\":\"${SCREEN}\""
+
+  [ -n "$SUBCMD" ] && emit "\"event\":\"pepper\",\"detail\":\"${SUBCMD}\",\"params\":$(printf '%s' "${PARAMS:-}" | jq -Rs '.'),\"is_error\":${IS_ERR},\"bytes\":${BYTES}${SCREEN_FIELD}"
 fi
 
 # --- Drift tracking for Bash ---
