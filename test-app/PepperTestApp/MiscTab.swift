@@ -417,6 +417,14 @@ struct MiscTab: View {
                     }
                 }
 
+                // MARK: - Appearance (dark/light mode testing)
+                GroupBox("Appearance") {
+                    NavigationLink("Appearance Screen") {
+                        AppearanceView()
+                    }
+                    .accessibilityIdentifier("appearance_link")
+                }
+
                 // MARK: - Context Menu
                 GroupBox("Context Menu") {
                     Text("Long press me")
