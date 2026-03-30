@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import shutil
 import subprocess
 import tempfile
 from collections.abc import Callable
@@ -148,6 +149,55 @@ def resolve_simulator(simulator: str | None = None) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Prebuilt artifact fixup (Xcode 26.3+)
+# ---------------------------------------------------------------------------
+
+
+def _fix_prebuilt_artifacts(derived_data: str) -> None:
+    """Copy prebuilt package artifacts from standard DerivedData if missing.
+
+    Xcode 26.3+ may not extract prebuilt modules (e.g. swift-syntax) into
+    non-standard DerivedData paths set via -derivedDataPath. When empty
+    artifact bundles are detected, this copies populated versions from
+    ~/Library/Developer/Xcode/DerivedData/.
+    """
+    artifacts_dir = os.path.join(derived_data, "SourcePackages", "artifacts")
+    if not os.path.isdir(artifacts_dir):
+        return
+
+    # Find artifact packages with empty directories (resolved but not extracted)
+    empty_pkgs = []
+    for name in os.listdir(artifacts_dir):
+        pkg_path = os.path.join(artifacts_dir, name)
+        if os.path.isdir(pkg_path) and not any(f for _, _, files in os.walk(pkg_path) for f in files):
+            empty_pkgs.append(name)
+
+    if not empty_pkgs:
+        return
+
+    # Search standard DerivedData for populated copies
+    std_dd = os.path.expanduser("~/Library/Developer/Xcode/DerivedData")
+    if not os.path.isdir(std_dd):
+        return
+
+    for entry in os.listdir(std_dd):
+        std_artifacts = os.path.join(std_dd, entry, "SourcePackages", "artifacts")
+        if not os.path.isdir(std_artifacts):
+            continue
+        for pkg_name in list(empty_pkgs):
+            src = os.path.join(std_artifacts, pkg_name)
+            if not os.path.isdir(src):
+                continue
+            if any(f for _, _, files in os.walk(src) for f in files):
+                dst = os.path.join(artifacts_dir, pkg_name)
+                shutil.rmtree(dst)
+                shutil.copytree(src, dst)
+                empty_pkgs.remove(pkg_name)
+        if not empty_pkgs:
+            break
+
+
+# ---------------------------------------------------------------------------
 # Simulator build & deploy
 # ---------------------------------------------------------------------------
 
@@ -195,13 +245,14 @@ async def build_app(
     ]
 
     # If wrapper doesn't exist, fall back to raw xcodebuild with manual DerivedData isolation
+    custom_derived_data = None
     if not os.path.exists(wrapper):
         cmd[0] = "xcodebuild"
         # Add worktree-aware DerivedData path manually
         ws_dir = os.path.dirname(os.path.abspath(ws))
         worktree_name = os.path.basename(ws_dir)
-        derived_data = f"/tmp/DerivedData-{worktree_name}"
-        cmd.extend(["-derivedDataPath", derived_data])
+        custom_derived_data = f"/tmp/DerivedData-{worktree_name}"
+        cmd.extend(["-derivedDataPath", custom_derived_data])
 
     proc = await asyncio.create_subprocess_exec(
         *cmd,
@@ -213,6 +264,8 @@ async def build_app(
 
     if proc.returncode == 0:
         _sim_build_state[sim_udid] = ws  # remember workspace per sim for deploy
+        if custom_derived_data:
+            _fix_prebuilt_artifacts(custom_derived_data)
         lines = output.strip().split("\n")
         summary = "\n".join(lines[-3:]) if len(lines) > 3 else output.strip()
         return True, f"BUILD SUCCEEDED\n{summary}"
@@ -451,12 +504,13 @@ async def build_app_device(
     ]
 
     # Fall back to raw xcodebuild with manual DerivedData isolation
+    custom_derived_data = None
     if not os.path.exists(wrapper):
         cmd[0] = "xcodebuild"
         ws_dir = os.path.dirname(os.path.abspath(ws))
         worktree_name = os.path.basename(ws_dir)
-        derived_data = f"/tmp/DerivedData-{worktree_name}"
-        cmd.extend(["-derivedDataPath", derived_data])
+        custom_derived_data = f"/tmp/DerivedData-{worktree_name}"
+        cmd.extend(["-derivedDataPath", custom_derived_data])
 
     proc = await asyncio.create_subprocess_exec(
         *cmd,
@@ -467,6 +521,8 @@ async def build_app_device(
     output = stdout.decode("utf-8", errors="replace")
 
     if proc.returncode == 0:
+        if custom_derived_data:
+            _fix_prebuilt_artifacts(custom_derived_data)
         lines = output.strip().split("\n")
         summary = "\n".join(lines[-3:]) if len(lines) > 3 else output.strip()
         return True, f"BUILD SUCCEEDED (device)\n{summary}"
