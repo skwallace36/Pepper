@@ -18,8 +18,13 @@ enum PepperPredicateQuery {
     static func toDictionary(_ el: PepperInteractiveElement) -> NSDictionary {
         let dict = NSMutableDictionary()
 
-        // String properties (nil-safe — NSPredicate handles NSNull/missing keys)
-        dict["label"] = el.label as NSString? ?? NSNull()
+        // Sanitize label the same way `look` does so predicates like
+        // `label == ''` match elements that look displays as unlabeled.
+        // Raw labels may contain whitespace-only strings or SF Symbol chars
+        // that pepperSanitizeLabel strips; nil/empty both become "" so
+        // `label == ''` works for all unlabeled elements.
+        let sanitizedLabel = pepperSanitizeLabel(el.label)
+        dict["label"] = (sanitizedLabel ?? "") as NSString
         dict["className"] = el.className as NSString
         dict["source"] = el.source as NSString
         dict["heuristic"] = el.heuristic as NSString? ?? NSNull()
@@ -35,7 +40,8 @@ enum PepperPredicateQuery {
         // Boolean properties
         dict["interactive"] = NSNumber(value: el.isControl || !el.gestures.isEmpty || el.traits.contains("button"))
         dict["hitReachable"] = NSNumber(value: el.hitReachable)
-        dict["labeled"] = NSNumber(value: el.labeled)
+        // Derive `labeled` from sanitized label so it agrees with `label == ''`.
+        dict["labeled"] = NSNumber(value: sanitizedLabel?.isEmpty == false)
         dict["isControl"] = NSNumber(value: el.isControl)
         dict["enabled"] = NSNumber(value: !el.traits.contains("notEnabled"))
 
@@ -135,11 +141,12 @@ enum PepperPredicateQuery {
 
     /// Serialize a match to a compact dictionary for JSON response.
     static func serializeMatch(_ el: PepperInteractiveElement) -> [String: AnyCodable] {
+        let label = pepperSanitizeLabel(el.label)
         var dict: [String: AnyCodable] = [
             "type": AnyCodable(inferType(el)),
             "center": AnyCodable([AnyCodable(Int(el.center.x)), AnyCodable(Int(el.center.y))]),
         ]
-        if let label = el.label {
+        if let label = label, !label.isEmpty {
             dict["label"] = AnyCodable(label)
         }
         if !el.hitReachable {
@@ -155,7 +162,7 @@ enum PepperPredicateQuery {
             dict["traits"] = AnyCodable(el.traits.map { AnyCodable($0) })
         }
         // Include tap command hint
-        if let label = el.label, !label.isEmpty {
+        if let label = label, !label.isEmpty {
             dict["tap_cmd"] = AnyCodable("text:\(label)")
         } else if let h = el.heuristic {
             dict["tap_cmd"] = AnyCodable("heuristic:\(h)")
