@@ -80,6 +80,24 @@ if [ "$TOOL" = "Bash" ]; then
     deny "agents cannot modify git config."
   fi
 
+  # Block pepper-ctl raw (sim-facing agents only) — use MCP tools directly
+  if echo "$CMD" | grep -qE 'pepper-ctl raw'; then
+    case "$AGENT_TYPE" in
+      regression-tester|pr-verifier|verifier|tester)
+        deny "Use MCP tools (look, tap, scroll, etc.) directly instead of pepper-ctl raw."
+        ;;
+    esac
+  fi
+
+  # Block pepper-ctl command chaining with && (sim-facing agents only) — one action at a time
+  if echo "$CMD" | grep -qE 'pepper-ctl .+&&.*pepper-ctl'; then
+    case "$AGENT_TYPE" in
+      regression-tester|pr-verifier|verifier|tester)
+        deny "One action at a time. Don't chain pepper-ctl commands with &&. Use MCP tools individually."
+        ;;
+    esac
+  fi
+
   # Block PR merge when diff touches protected paths
   if echo "$CMD" | grep -qE 'gh pr merge'; then
     PR_NUM=$(echo "$CMD" | grep -oE '[0-9]+' | head -1)
