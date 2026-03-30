@@ -158,9 +158,11 @@ release_simulator('$CLAIMED_SIM', pid=$$)
 
   # Transcript retention: keep last 20 per type
   local transcripts
-  transcripts=$(ls -1t build/logs/transcript-${TYPE}-*.json 2>/dev/null || true)
-  local count
-  count=$(echo "$transcripts" | grep -c . 2>/dev/null || echo 0)
+  transcripts=$(ls -1t build/logs/transcript-${TYPE}-*.json 2>/dev/null) || true
+  local count=0
+  if [ -n "$transcripts" ]; then
+    count=$(echo "$transcripts" | wc -l | tr -d ' ')
+  fi
   if [ "$count" -gt 20 ]; then
     echo "$transcripts" | tail -n +21 | xargs rm -f
   fi
@@ -405,9 +407,13 @@ if [ -n "$CLAIMED_SIM" ]; then
     sleep 3
   fi
 
+  # Agents always use the test app — never a real app.
+  # This prevents agents from interacting with apps on other machines or work apps.
+  export APP_BUNDLE_ID="com.pepper.testapp"
+  BUNDLE_ID="com.pepper.testapp"
+
   # Grant ALL permissions at once — covers every service simctl supports.
   # "grant all" is simpler and future-proof vs maintaining a perm list.
-  BUNDLE_ID="${APP_BUNDLE_ID:-com.pepper.testapp}"
   xcrun simctl privacy "$CLAIMED_SIM" grant all "$BUNDLE_ID" 2>/dev/null || true
 fi
 

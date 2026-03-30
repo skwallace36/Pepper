@@ -110,6 +110,20 @@ if [ "$TOOL" = "Bash" ]; then
   fi
 fi
 
+# --- MCP tool guardrails: block hardware/remote device access ---
+if echo "$TOOL" | grep -qE '^mcp__pepper__'; then
+  # Block build_hardware entirely — agents only use simulators
+  if [ "$TOOL" = "mcp__pepper__build_hardware" ]; then
+    deny "agents cannot build for hardware devices. Use build_sim only."
+  fi
+
+  # Block any MCP tool targeting a non-local simulator
+  SIM_PARAM=$(echo "$INPUT" | jq -r '.tool_input.simulator // .tool_input.udid // empty' 2>/dev/null)
+  if [ -n "$SIM_PARAM" ] && [ -n "${SIMULATOR_ID:-}" ] && [ "$SIM_PARAM" != "$SIMULATOR_ID" ]; then
+    deny "agents can only use their claimed simulator ($SIMULATOR_ID). Got: $SIM_PARAM"
+  fi
+fi
+
 # --- Read tool guardrails: block reading secrets ---
 if [ "$TOOL" = "Read" ]; then
   FILE=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty' 2>/dev/null)

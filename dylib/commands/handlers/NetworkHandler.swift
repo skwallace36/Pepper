@@ -98,7 +98,11 @@ struct NetworkHandler: PepperHandler {
             let presets = NetworkPreset.allCases.map { preset -> [String: AnyCodable] in
                 [
                     "name": AnyCodable(preset.rawValue),
-                    "effects": AnyCodable(preset.effects.map { ["effect": $0.effect.name, "description": $0.description] }),
+                    "effects": AnyCodable(
+                        preset.effects.map {
+                            ["effect": $0.effect.name, "description": $0.description]
+                        }
+                    ),
                 ]
             }
             return .ok(
@@ -269,7 +273,9 @@ struct NetworkHandler: PepperHandler {
         guard let effectName = command.params?["effect"]?.stringValue else {
             return .error(
                 id: command.id,
-                message: "Missing 'effect' or 'preset' param. Effects: latency, fail_status, fail_error, throttle, offline. Presets: \(NetworkPreset.availableNames)")
+                message: "Missing 'effect' or 'preset' param. "
+                    + "Effects: latency, fail_status, fail_error, throttle, offline. "
+                    + "Presets: \(NetworkPreset.availableNames)")
         }
 
         let interceptor = PepperNetworkInterceptor.shared
@@ -377,7 +383,8 @@ struct NetworkHandler: PepperHandler {
             interceptor.install()
         }
 
-        let baseId = command.params?["id"]?.stringValue ?? "preset-\(preset.rawValue.lowercased().replacingOccurrences(of: " ", with: "-"))"
+        let fallback = "preset-\(preset.rawValue.lowercased().replacingOccurrences(of: " ", with: "-"))"
+        let baseId = command.params?["id"]?.stringValue ?? fallback
         var conditionIds: [String] = []
 
         for (index, entry) in preset.effects.enumerated() {
