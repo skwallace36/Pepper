@@ -28,6 +28,29 @@ if [ "$NEW_STATE" = "awaiting:responder" ] && [ -z "$COMMENT" ]; then
   exit 1
 fi
 
+# Sim proof requirement: PRs touching dylib/test-app Swift/ObjC files
+# must have verifier proof (look output, crash_log, screenshots) in PR
+# comments before transitioning to verified or awaiting:human.
+if [ "$NEW_STATE" = "verified" ] || [ "$NEW_STATE" = "awaiting:human" ]; then
+  # Check if PR has dylib/test-app changes
+  NEEDS_SIM=$(gh pr diff "$PR" --repo "$REPO" --name-only 2>/dev/null | \
+    grep -cE '^(dylib/|test-app/).*\.(swift|m|mm|c|h)$' || echo 0)
+
+  if [ "$NEEDS_SIM" -gt 0 ]; then
+    # Check PR comments for proof of sim testing
+    HAS_PROOF=$(gh api "repos/$REPO/issues/$PR/comments" \
+      --jq '[.[] | .body] | join("\n")' 2>/dev/null | \
+      grep -ciE 'Screen:|interactive.*elements|SYSTEM DIALOG|crash_log|no crash|app is running|deployed|look.*output|screenshot|\.jpg|\.png|pepper-agent/pr-verifier' || echo 0)
+
+    if [ "$HAS_PROOF" -eq 0 ]; then
+      echo "Error: PR #$PR touches dylib/test-app files but has no sim test proof." >&2
+      echo "The verifier must deploy, crash-check, and post look/crash_log output before transitioning." >&2
+      echo "Post proof as a PR comment first, then retry this transition." >&2
+      exit 1
+    fi
+  fi
+fi
+
 # All valid state labels
 STATES="awaiting:verifier awaiting:responder awaiting:human verified"
 
