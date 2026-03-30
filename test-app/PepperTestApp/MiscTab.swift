@@ -287,12 +287,17 @@ struct MiscTab: View {
                         }
                         .accessibilityIdentifier("curl_requests_link")
 
+                        NavigationLink("WebSocket Client") {
+                            WebSocketView()
+                        }
+                        .accessibilityIdentifier("websocket_link")
+
                         Button("Fetch HTTP") {
                             state.fetchHTTP()
                         }
                         .accessibilityIdentifier("fetch_button")
 
-                        Button("Slow Request") {
+                        Button("Timed Request") {
                             state.fetchSlowRequest()
                         }
                         .accessibilityIdentifier("slow_request_button")
@@ -312,10 +317,43 @@ struct MiscTab: View {
                         }
                         .accessibilityIdentifier("mock_request_button")
 
-                        Text(state.networkResponse.isEmpty ? "No request yet" : state.networkResponse)
-                            .font(.caption.monospacedDigit())
-                            .foregroundStyle(.secondary)
-                            .accessibilityIdentifier("network_status")
+                        // Detail labels
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(state.networkResponse.isEmpty ? "No request yet" : state.networkResponse)
+                                .font(.caption.monospacedDigit())
+                                .foregroundStyle(.secondary)
+                                .accessibilityIdentifier("network_status")
+
+                            if let elapsed = state.networkElapsedMs {
+                                Text("Elapsed: \(elapsed)ms")
+                                    .font(.caption.monospacedDigit())
+                                    .foregroundStyle(.secondary)
+                                    .accessibilityIdentifier("network_elapsed")
+                            }
+
+                            if !state.networkStatusCode.isEmpty {
+                                Text("HTTP \(state.networkStatusCode)")
+                                    .font(.caption.monospacedDigit())
+                                    .foregroundStyle(.secondary)
+                                    .accessibilityIdentifier("network_status_code")
+                            }
+
+                            if !state.networkError.isEmpty {
+                                Text("Error: \(state.networkError)")
+                                    .font(.caption.monospacedDigit())
+                                    .foregroundStyle(.red)
+                                    .accessibilityIdentifier("network_error")
+                            }
+
+                            if !state.networkBodyPreview.isEmpty {
+                                Text("Body: \(state.networkBodyPreview)")
+                                    .font(.caption.monospacedDigit())
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(2)
+                                    .accessibilityIdentifier("network_body_preview")
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
 
