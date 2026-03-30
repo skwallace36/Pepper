@@ -1,7 +1,7 @@
 {
   "name": "pepper",
   "display_name": "Pepper",
-  "description": "Runtime control for iOS simulator apps. Dylib injected at launch — no source modifications needed. 64 MCP tools for navigation, debugging, state inspection, and automation.",
+  "description": "Runtime control for iOS simulator apps. Dylib injected at launch — no source modifications needed. 67 MCP tools for navigation, debugging, state inspection, and automation.",
   "repository": "https://github.com/skwallace36/Pepper",
   "homepage": "https://github.com/skwallace36/Pepper",
   "license": "MIT",
@@ -60,6 +60,7 @@
     {"name": "find", "category": "system", "description": "Search the view hierarchy for elements matching a query"},
     {"name": "read_element", "category": "system", "description": "Read detailed properties of a specific element"},
     {"name": "tree", "category": "system", "description": "Dump the raw accessibility tree"},
+    {"name": "verify", "category": "system", "description": "Verify an element exists and matches expected properties"},
     {"name": "highlight", "category": "system", "description": "Highlight an element on screen for visual debugging"},
     {"name": "hook", "category": "system", "description": "Hook an ObjC method to log calls or modify behavior"},
     {"name": "defaults", "category": "state", "description": "Read/write NSUserDefaults"},

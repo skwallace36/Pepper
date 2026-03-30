@@ -8,9 +8,9 @@ Source of truth for dylib code is `dylib/`. Config via `.env` (see `.env.example
 
 ## MCP Tools
 
-Tools defined in `.mcp.json`. Docstrings and parameters live in `tools/pepper-mcp`. `look` is the primary observation tool — it's an MCP tool (and also available via `pepper-ctl look` on the CLI). Under the hood it's an alias for `introspect map`.
+Tool definitions and docstrings live in `pepper_ios/mcp_tools_*.py` modules. `.mcp.json` configures how to launch the MCP server; `tools/pepper-mcp` is the entry script. `look` is the primary observation tool — it's an MCP tool (and also available via `pepper-ctl look` on the CLI). It sends the `introspect` command with `mode=map`.
 
-look, tap, scroll, swipe, gesture, input_text, toggle, navigate, back, dismiss, dismiss_keyboard, dialog, screen, screenshot, snapshot, diff, vars_inspect, heap, layers, console, network, timeline, crash_log, animations, lifecycle, find, read_element, tree, highlight, hook, defaults, clipboard, keychain, cookies, locale, flags, push, orientation, appearance, dynamic_type, status, wait_for, wait_idle, record, raw, simulator, build_sim, build_hardware, deploy_sim, iterate, constraints, accessibility_action, accessibility_audit, accessibility_events, concurrency, coredata, notifications, perf, renders, responder_chain, sandbox, storage, timers, undo_manager, webview
+look, tap, scroll, swipe, gesture, input_text, toggle, navigate, back, dismiss, dismiss_keyboard, dialog, screen, screenshot, snapshot, diff, vars_inspect, heap, layers, console, network, timeline, crash_log, animations, lifecycle, find, read_element, tree, verify, highlight, hook, defaults, clipboard, keychain, cookies, locale, flags, push, orientation, appearance, dynamic_type, status, wait_for, wait_idle, record, raw, simulator, build_sim, build_hardware, deploy_sim, iterate, constraints, accessibility_action, accessibility_audit, accessibility_events, concurrency, coredata, notifications, perf, renders, responder_chain, sandbox, storage, timers, undo_manager, webview
 
 ## Conventions
 
