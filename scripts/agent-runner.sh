@@ -161,7 +161,12 @@ print(' '.join(d['udid'] for r in devs.values() for d in r if d['state'] == 'Boo
     else
       reason="no transcript file created"
     fi
-    emit "failed" ",\"detail\":\"${reason}\",\"cost_usd\":${cost},\"duration_s\":${dur}"
+    # Auth failures aren't the agent's fault — don't count toward backoff
+    if echo "$reason" | grep -qi "Not logged in\|Please run /login"; then
+      emit "auth-retry" ",\"detail\":\"${reason}\",\"cost_usd\":${cost},\"duration_s\":${dur}"
+    else
+      emit "failed" ",\"detail\":\"${reason}\",\"cost_usd\":${cost},\"duration_s\":${dur}"
+    fi
   fi
 
   # Transcript retention: keep last 20 per type
@@ -528,7 +533,11 @@ if ! kill -0 "$AGENT_PID" 2>/dev/null; then
   DURATION=$((END - START))
   COST=$(jq -r '.total_cost_usd // .cost_usd // 0' "$TRANSCRIPT" 2>/dev/null || echo 0)
   DETAIL=$(head -c 200 "$VERBOSE_LOG" 2>/dev/null | tr '\n' ' ' || echo "agent died immediately")
-  emit_final "failed" ",\"detail\":\"agent died in <3s (auth? crash?): $(echo "$DETAIL" | jq -Rs '.'| head -c 150)\",\"cost_usd\":${COST},\"duration_s\":${DURATION}"
+  if echo "$DETAIL" | grep -qi "Not logged in"; then
+    emit "auth-retry" ",\"detail\":\"Claude CLI auth expired on startup\",\"cost_usd\":${COST},\"duration_s\":${DURATION}"
+  else
+    emit_final "failed" ",\"detail\":\"agent died in <3s (auth? crash?): $(echo "$DETAIL" | jq -Rs '.'| head -c 150)\",\"cost_usd\":${COST},\"duration_s\":${DURATION}"
+  fi
   echo "Agent died immediately. Transcript: $TRANSCRIPT"
   exit 1
 fi
