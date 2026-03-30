@@ -22,6 +22,7 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 |---------|---------|--------|-------------|-------|
 | `ping` | — | pass | Any state |  |
 | `help` | — | pass | Any state | Returns list of 50 available server commands. Tested via pepper-ctl and direct WebSocket. |
+| `look` | — | pass | Any screen | Alias for introspect map |
 | `tap` | element | pass | Buttons with a11y IDs | BUG-006 FIXED: PepperElementResolver now falls back to PepperSwiftUIBridge.collectAccessibilityElements() when UIView hierarchy lookup fails. SwiftUI .accessibilityIdentifier() elements (e.g. tap_button) are now discoverable via the accessibility tree. |
 | `tap` | heuristic | pass | Slider element on Controls tab | Tapped slider via heuristic:'slider'. Found at (116,790). Error case also tested: nonexistent heuristic returns proper error. |
 | `tap` | icon_name | untested | Custom icon asset buttons (pepper-home, pepper-camera, pepper-search) | Custom icon assets added to test app asset catalog. Icon-only buttons displayed on Controls tab. Ready for testing with tap icon_name=pepper-home. |
@@ -280,9 +281,9 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 
 ## Summary
 
-**257 test points** across 71 commands.
+**258 test points** across 72 commands.
 
-- pass: 137
+- pass: 138
 - fail: 3
 - untested: 100
 
