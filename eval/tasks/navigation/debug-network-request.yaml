@@ -28,6 +28,6 @@ anti_patterns:
   - name: excessive-tool-calls
     rule: tool_call_count > 25
 
-budget_usd: 1.50
+budget_usd: 0.35
 timeout_s: 180
 tags: [debugging, network, simulator]

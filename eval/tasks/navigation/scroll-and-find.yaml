@@ -25,6 +25,6 @@ anti_patterns:
   - name: excessive-scrolling
     rule: tool_call_count > 20
 
-budget_usd: 1.00
+budget_usd: 0.25
 timeout_s: 120
 tags: [scrolling, list, simulator]

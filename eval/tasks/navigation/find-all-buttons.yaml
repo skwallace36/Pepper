@@ -24,6 +24,6 @@ anti_patterns:
   - name: no-look-first
     rule: look_before_act < 1.0
 
-budget_usd: 0.50
+budget_usd: 0.15
 timeout_s: 90
 tags: [observation, simulator, quick]
