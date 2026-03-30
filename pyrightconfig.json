@@ -1,5 +1,11 @@
 {
   "typeCheckingMode": "basic",
   "include": ["tools/", "scripts/"],
-  "exclude": [".venv"]
+  "exclude": [
+    ".venv",
+    "scripts/agent-dashboard.py",
+    "scripts/create-agent.py",
+    "tools/test-client.py",
+    "tools/tests/"
+  ]
 }
