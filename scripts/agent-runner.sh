@@ -271,7 +271,7 @@ print('yes' if elapsed < $BACKOFF_WINDOW else 'no')
   fi
 fi
 
-LOCKFILE="build/logs/.lock-${TYPE}-$$"
+LOCKFILE="$REPO_ROOT/build/logs/.lock-${TYPE}-$$"
 lockfile_write "$LOCKFILE"
 
 if ! gh auth status &>/dev/null; then
