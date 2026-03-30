@@ -22,16 +22,20 @@ final class PepperConnectionInfo {
     /// Callback to send a binary frame to this connection.
     let sendBinary: (Data) -> Void
 
+    /// Callback to close the underlying transport connection.
+    let close: () -> Void
+
     /// Timestamps of recent messages for rate limiting (sliding window).
     private var recentMessages: [Date] = []
 
-    init(id: String, send: @escaping (Data) -> Void, sendBinary: @escaping (Data) -> Void) {
+    init(id: String, send: @escaping (Data) -> Void, sendBinary: @escaping (Data) -> Void, close: @escaping () -> Void) {
         self.id = id
         self.connectedAt = Date()
         self.lastActivity = Date()
         self.subscriptions = []
         self.send = send
         self.sendBinary = sendBinary
+        self.close = close
     }
 
     func touchActivity() {
@@ -84,23 +88,36 @@ final class PepperConnectionManager {
     /// JSON encoder shared across broadcasts.
     private let encoder = JSONEncoder()
 
+    /// Maximum number of simultaneous connections. When exceeded, the oldest
+    /// idle connection is evicted to make room.
+    private static let maxConnections = 20
+
     // MARK: - Connection Lifecycle
 
     /// Register a new connection.
-    /// - Parameters:
-    ///   - id: Unique connection identifier.
-    ///   - send: Callback to deliver text data to this connection.
-    ///   - sendBinary: Callback to deliver binary data to this connection.
-    /// - Returns: The created connection info.
     @discardableResult
-    func addConnection(id: String, send: @escaping (Data) -> Void, sendBinary: @escaping (Data) -> Void)
+    func addConnection(id: String, send: @escaping (Data) -> Void, sendBinary: @escaping (Data) -> Void, close: @escaping () -> Void)
         -> PepperConnectionInfo
     {
-        let info = PepperConnectionInfo(id: id, send: send, sendBinary: sendBinary)
-        queue.sync {
+        let info = PepperConnectionInfo(id: id, send: send, sendBinary: sendBinary, close: close)
+        let evicted: PepperConnectionInfo? = queue.sync {
+            // Evict oldest idle connection if at capacity
+            if connections.count >= Self.maxConnections,
+               let oldest = connections.values.min(by: { $0.lastActivity < $1.lastActivity })
+            {
+                connections.removeValue(forKey: oldest.id)
+                return oldest
+            }
             connections[id] = info
+            return nil
         }
-        pepperLog.info("Connection added: \(id)", category: .server)
+        if let evicted = evicted {
+            pepperLog.info("Evicted oldest connection \(evicted.id) (cap=\(Self.maxConnections))", category: .server)
+            evicted.close()
+            // Insert after eviction (outside the sync that found the victim)
+            queue.sync { connections[id] = info }
+        }
+        pepperLog.info("Connection added: \(id) (total: \(connectionCount))", category: .server)
         return info
     }
 
@@ -230,16 +247,18 @@ final class PepperConnectionManager {
     }
 
     /// Remove connections that have been inactive longer than the given interval.
+    /// Closes the underlying transport connection so both layers are cleaned up.
     func cleanupStale(olderThan interval: TimeInterval) {
         let cutoff = Date().addingTimeInterval(-interval)
-        let staleIDs: [String] = queue.sync {
-            connections.filter { $0.value.lastActivity < cutoff }.map { $0.key }
+        let stale: [PepperConnectionInfo] = queue.sync {
+            connections.filter { $0.value.lastActivity < cutoff }.map { $0.value }
         }
-        for id in staleIDs {
-            removeConnection(id: id)
+        for info in stale {
+            removeConnection(id: info.id)
+            info.close()
         }
-        if !staleIDs.isEmpty {
-            pepperLog.info("Cleaned up \(staleIDs.count) stale connection(s)", category: .server)
+        if !stale.isEmpty {
+            pepperLog.info("Cleaned up \(stale.count) stale connection(s)", category: .server)
         }
     }
 
