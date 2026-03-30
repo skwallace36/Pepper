@@ -534,6 +534,11 @@ sleep 2
 WORKTREES_AFTER=$(git worktree list --porcelain 2>/dev/null | grep "^worktree .*/\.claude/worktrees/" | sed 's/^worktree //' | sort || true)
 OUR_WORKTREE=$(comm -13 <(echo "$WORKTREES_BEFORE") <(echo "$WORKTREES_AFTER") | head -1)
 
+# Symlink .venv into worktree so MCP servers can resolve ./.venv/bin/python3
+if [ -n "$OUR_WORKTREE" ] && [ -d "$REPO_ROOT/.venv" ] && [ ! -e "$OUR_WORKTREE/.venv" ]; then
+  ln -s "$REPO_ROOT/.venv" "$OUR_WORKTREE/.venv"
+fi
+
 # Wait with timeout
 TIMED_OUT=false
 ELAPSED=0
