@@ -94,6 +94,14 @@ struct MiscTab: View {
                     .accessibilityIdentifier("horizontal_scroll")
                 }
 
+                // MARK: - Nested Scroll (for scoped scroll testing)
+                GroupBox("Nested Scroll") {
+                    NavigationLink("Nested Scroll Screen") {
+                        NestedScrollView()
+                    }
+                    .accessibilityIdentifier("nested_scroll_link")
+                }
+
                 // MARK: - Feature Flags (for defaults/flags/network testing)
                 GroupBox("Feature Flags") {
                     VStack(alignment: .leading, spacing: 12) {
