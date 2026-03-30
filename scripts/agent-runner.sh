@@ -66,10 +66,21 @@ emit_final() {
 cleanup() {
   local exit_code=$?
 
-  # Release lockfile FIRST — before any slow operations (gh API calls, sim
-  # cleanup, worktree removal). If cleanup gets killed mid-way (e.g. by
-  # heartbeat SIGKILL after 2s grace), a stale lockfile blocks future launches.
+  # Release lockfile and sim FIRST — before any slow operations.
+  # If cleanup gets killed mid-way (heartbeat SIGKILL after 2s grace),
+  # these are the most important resources to release.
   rm -f "$LOCKFILE" 2>/dev/null || true
+
+  # Shut down sim immediately — don't let it idle with dialogs open
+  if [ -n "$CLAIMED_SIM" ]; then
+    xcrun simctl terminate "$CLAIMED_SIM" "${APP_BUNDLE_ID:-com.pepper.testapp}" 2>/dev/null || true
+    xcrun simctl shutdown "$CLAIMED_SIM" 2>/dev/null || true
+    python3 -c "
+import sys; sys.path.insert(0, '$REPO_ROOT/pepper_ios')
+from pepper_sessions import release_simulator
+release_simulator('$CLAIMED_SIM', pid=$$)
+" 2>/dev/null || true
+  fi
 
   # Kill the agent process tree if still running
   if [ -n "$AGENT_PID" ] && kill -0 "$AGENT_PID" 2>/dev/null; then
@@ -95,19 +106,7 @@ cleanup() {
     fi
   fi
 
-  # Release claimed simulator — terminate app, release session, shut down.
-  # Sims should only be booted while actively in use.
-  if [ -n "$CLAIMED_SIM" ]; then
-    BID="${APP_BUNDLE_ID:-com.pepper.testapp}"
-    xcrun simctl terminate "$CLAIMED_SIM" "$BID" 2>/dev/null || true
-    python3 -c "
-import sys; sys.path.insert(0, '$REPO_ROOT/pepper_ios')
-from pepper_sessions import release_simulator
-release_simulator('$CLAIMED_SIM', pid=$$)
-" 2>/dev/null || true
-    # Shut down the sim — no sim should stay booted idle
-    xcrun simctl shutdown "$CLAIMED_SIM" 2>/dev/null || true
-  fi
+  # Sim already released at top of cleanup (before agent kill)
   git worktree prune 2>/dev/null || true
 
   # Clean up per-agent credential script
