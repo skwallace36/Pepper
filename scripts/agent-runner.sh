@@ -184,7 +184,7 @@ fi
 # Max concurrent instances per agent type
 case "$TYPE" in
   bugfix)                MAX_INSTANCES=1 ;;
-  pr-verifier|verifier)  MAX_INSTANCES=1 ;;
+  pr-verifier|verifier)  MAX_INSTANCES=2 ;;
   builder)               MAX_INSTANCES=2 ;;
   pr-responder)          MAX_INSTANCES=1 ;;
   tester)                MAX_INSTANCES=0 ;;  # paused — use regression-tester instead
@@ -426,15 +426,15 @@ source_env
 
 # Map agent type → machine user number (1-indexed)
 case "$TYPE" in
-  bugfix)            AGENT_NUM=1 ;;
-  builder)           AGENT_NUM=2 ;;
-  pr-verifier)       AGENT_NUM=3 ;;  # instances 2,3 get AGENT_NUM 4,5
-  pr-responder)      AGENT_NUM=6 ;;
-  tester|regression-tester) AGENT_NUM=7 ;;
-  conflict-resolver) AGENT_NUM=8 ;;
-  researcher)        AGENT_NUM=9 ;;
-  groomer)           AGENT_NUM=10 ;;
-  *)                 AGENT_NUM=11 ;;  # spare
+  bugfix)            AGENT_NUM=1 ;;  # 1 instance  → account 1
+  builder)           AGENT_NUM=2 ;;  # 2 instances → accounts 2,3
+  pr-verifier)       AGENT_NUM=4 ;;  # 2 instances → accounts 4,5
+  pr-responder)      AGENT_NUM=6 ;;  # 1 instance  → account 6
+  tester|regression-tester) AGENT_NUM=7 ;;  # 1 instance  → account 7
+  conflict-resolver) AGENT_NUM=8 ;;  # 1 instance  → account 8
+  researcher)        AGENT_NUM=9 ;;  # 1 instance  → account 9
+  groomer)           AGENT_NUM=10 ;; # 1 instance  → account 10
+  *)                 AGENT_NUM=10 ;; # fallback shares groomer
 esac
 
 # For multi-instance types, offset by instance count so each gets a unique identity
