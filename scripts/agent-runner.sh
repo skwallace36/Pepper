@@ -66,6 +66,11 @@ emit_final() {
 cleanup() {
   local exit_code=$?
 
+  # Release lockfile FIRST — before any slow operations (gh API calls, sim
+  # cleanup, worktree removal). If cleanup gets killed mid-way (e.g. by
+  # heartbeat SIGKILL after 2s grace), a stale lockfile blocks future launches.
+  rm -f "$LOCKFILE" 2>/dev/null || true
+
   # Kill the agent process tree if still running
   if [ -n "$AGENT_PID" ] && kill -0 "$AGENT_PID" 2>/dev/null; then
     echo "Cleaning up agent process $AGENT_PID..."
@@ -158,9 +163,6 @@ print(' '.join(d['udid'] for r in devs.values() for d in r if d['state'] == 'Boo
     fi
     emit "failed" ",\"detail\":\"${reason}\",\"cost_usd\":${cost},\"duration_s\":${dur}"
   fi
-
-  # Release lockfile
-  rm -f "$LOCKFILE" 2>/dev/null || true
 
   # Transcript retention: keep last 20 per type
   local transcripts
