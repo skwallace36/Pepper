@@ -27,6 +27,18 @@ enum AppSeeding {
         defaults.set(42, forKey: "pepper_score")
         defaults.set(true, forKey: "pepper_onboarded")
         defaults.set(["red", "green", "blue"], forKey: "pepper_colors")
+
+        // JSON-encoded Data value for testing auto-decode in defaults handler
+        let events: [[String: Any]] = [
+            ["event": "app_launch", "ts": 1711700000],
+            ["event": "screen_view", "ts": 1711700060, "screen": "home"],
+        ]
+        if let jsonData = try? JSONSerialization.data(withJSONObject: events) {
+            defaults.set(jsonData, forKey: "pepper_analytics_events")
+        }
+        // Non-JSON binary Data value to verify fallback
+        defaults.set(Data([0x89, 0x50, 0x4E, 0x47]), forKey: "pepper_binary_blob")
+
         defaults.set(seededKey, forKey: seededKey)
 
         print("[PepperTest] UserDefaults seeded")
