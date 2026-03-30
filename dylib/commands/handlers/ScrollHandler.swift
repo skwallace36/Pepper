@@ -6,6 +6,9 @@ import os
 ///   {"cmd": "scroll", "params": {"element": "accessibility_id"}} -- scroll element into view by a11y ID
 ///   {"cmd": "scroll", "params": {"direction": "down", "distance": 300}}
 ///   {"cmd": "scroll", "params": {"position": "top"}}
+///
+/// Amount defaults to 200pt (~¼ screen on iPhone 16 Pro, 852pt tall).
+/// Fine: 50–100pt. Coarse: 400–600pt. Full screen: ~750–850pt depending on device.
 struct ScrollHandler: PepperHandler {
     let commandName = "scroll"
     private var logger: Logger { PepperLogger.logger(category: "scroll") }

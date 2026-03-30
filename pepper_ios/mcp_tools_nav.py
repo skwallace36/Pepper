@@ -269,7 +269,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
     async def scroll(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
         direction: str = Field(default="down", description="Scroll direction: up, down, left, right (e.g. 'down' to see content below)"),
-        amount: int | None = Field(default=None, description="Scroll distance in points (default: 200; e.g. 400 for a bigger scroll)"),
+        amount: int | None = Field(default=None, description="Scroll distance in points. Default: 200 (~¼ screen on iPhone 16 Pro). Fine: 50–100. Coarse: 400–600. One full screen ≈ 750–850 depending on device."),
         target: str | None = Field(default=None, description="Text to scroll to — scrolls incrementally until visible (e.g. 'Load More', 'Footer'). Direction defaults to 'down'."),
         max_scrolls: int | None = Field(default=None, description="Max scroll attempts when using target (default: 10)"),
         parent_of: str | None = Field(default=None, description="Scroll within the container that holds this visible text — targets a nested scroll view instead of the outermost one (e.g. 'Share location')"),
