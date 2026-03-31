@@ -6,9 +6,18 @@ pepper-mcp, pepper-ctl, pepper-stream, and test-client.py.
 
 import asyncio
 import json
+import logging
+import time
 import uuid
 
 from .pepper_ws_raw import RawWebSocket
+
+logger = logging.getLogger("pepper_ws")
+
+# Retryable errors: transient connection problems where the server may
+# come back (e.g. app backgrounded briefly, network hiccup).
+# CrashError is NOT retried — it means the app is gone.
+_RETRYABLE = (ConnectionRefusedError, ConnectionResetError, TimeoutError, OSError)
 
 
 def make_command(cmd, params=None):
@@ -38,7 +47,6 @@ def _send_command_sync(host, port, msg, timeout=10, on_event=None):
     ws = RawWebSocket.connect(host, port, timeout=timeout)
     try:
         ws.send(json.dumps(msg))
-        import time
 
         deadline = time.monotonic() + timeout
         while True:
@@ -59,15 +67,45 @@ def _send_command_sync(host, port, msg, timeout=10, on_event=None):
         ws.close()
 
 
-async def send_command(host, port, msg, timeout=10, on_event=None, close_timeout=2):
+def _send_with_retry(host, port, msg, timeout=10, on_event=None, retries=0):
+    """Send with retry for transient connection failures.
+
+    Retries on ConnectionRefusedError, ConnectionResetError, TimeoutError,
+    and OSError. CrashError (mid-command connection loss) is never retried.
+    Uses exponential backoff: 0.5s, 1s, 2s, ...
+    """
+    last_err = None
+    for attempt in range(1 + retries):
+        try:
+            return _send_command_sync(host, port, msg, timeout, on_event)
+        except CrashError:
+            raise  # App crashed — don't retry
+        except _RETRYABLE as e:
+            last_err = e
+            if attempt < retries:
+                delay = 0.5 * (2 ** attempt)
+                logger.debug(
+                    "retry %d/%d for cmd=%s after %s (delay=%.1fs)",
+                    attempt + 1, retries, msg.get("cmd"), type(e).__name__, delay,
+                )
+                time.sleep(delay)
+    raise last_err  # type: ignore[misc]
+
+
+async def send_command(host, port, msg, timeout=10, on_event=None, close_timeout=2, retries=0):
     """Open a connection, send *msg*, and return the matching response.
 
     Uses a raw stdlib WebSocket client (no external library dependency).
+
+    Args:
+        retries: Number of retry attempts for transient connection failures
+                 (ConnectionRefusedError, TimeoutError, etc.). Default 0 (no retry).
+                 CrashError is never retried.
 
     Raises ``CrashError`` on connection loss.
     Raises ``ConnectionRefusedError`` if the server is unreachable.
     Raises ``asyncio.TimeoutError`` if no response within *timeout*.
     """
     return await asyncio.get_running_loop().run_in_executor(
-        None, lambda: _send_command_sync(host, port, msg, timeout, on_event)
+        None, lambda: _send_with_retry(host, port, msg, timeout, on_event, retries)
     )

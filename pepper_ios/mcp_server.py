@@ -183,18 +183,21 @@ def load_adapter_preamble() -> str:
 
 
 async def send_command(
-    port: int, cmd: str, params: dict | None = None, timeout: float = 10, host: str = "localhost"
+    port: int, cmd: str, params: dict | None = None, timeout: float = 10, host: str = "localhost", retries: int = 0
 ) -> dict:
     """Send a command to Pepper's WebSocket server and return the response.
 
     Wraps pepper_websocket.send_command with MCP-appropriate error handling
     (returns error dicts instead of raising).
+
+    Args:
+        retries: Number of retry attempts for transient connection failures. Default 0.
     """
     msg = make_command(cmd, params)
     addr = f"{host}:{port}"
-    logger.debug("send cmd=%s params=%s addr=%s timeout=%s", cmd, params, addr, timeout)
+    logger.debug("send cmd=%s params=%s addr=%s timeout=%s retries=%d", cmd, params, addr, timeout, retries)
     try:
-        result = await ws_send_command(host, port, msg, timeout=timeout)
+        result = await ws_send_command(host, port, msg, timeout=timeout, retries=retries)
         if result.get("status") != "ok":
             logger.warning("cmd=%s error=%s", cmd, result.get("error", result.get("data")))
         return result
@@ -262,6 +265,17 @@ async def resolve_and_send_json(
 # Monitors known to be active, updated each act_and_look cycle.
 # None means unknown (first call); after that, a frozenset of active monitor names.
 _known_active_monitors: frozenset[str] | None = None
+
+
+def reset_monitor_state():
+    """Reset cached monitor state.
+
+    Call after deploy or reconnection so stale monitor status from a
+    previous app session doesn't leak into the new one. The next
+    _snapshot_counts call will re-probe all monitors.
+    """
+    global _known_active_monitors
+    _known_active_monitors = None
 
 # Monitor definitions: (name, count_key_in_response, count_key_in_result, active_key_in_result)
 _MONITOR_DEFS = (

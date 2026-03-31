@@ -421,6 +421,9 @@ async def deploy_app(
                     screen_summary = (
                         format_look(look_resp) if look_resp.get("status") == "ok" else "(look not ready yet)"
                     )
+                    # Reset monitor state so stale data from previous session doesn't leak
+                    from .mcp_server import reset_monitor_state
+                    reset_monitor_state()
                     # Claim this simulator for our session
                     pepper_sessions.claim_simulator(simulator, bundle_id=bid, port=port)
                     return f"Deployed to {simulator} (PID {pid}, port {port}). Pepper is connected.\n--- Screen ---\n{screen_summary}"
