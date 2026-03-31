@@ -1,9 +1,63 @@
 #!/usr/bin/env python3
-"""Thin wrapper for development — delegates to pepper_ios package."""
+"""Thin wrapper for development — delegates to pepper_ios package.
+
+Run with --check to verify the MCP server can start and list tools
+without entering the stdio event loop (useful for diagnosing registration
+failures like GitHub issue #954).
+"""
 import os
 import sys
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from pepper_ios.mcp_server import main
+_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, _root)
 
-main()
+
+def _check():
+    """Validate that the MCP server can import and register all tools."""
+    errors = []
+
+    # 1. Check venv / Python environment
+    venv = os.path.join(_root, ".venv")
+    if not os.path.isdir(venv):
+        errors.append(f".venv not found at {venv}")
+
+    # 2. Check critical dependencies
+    for mod in ("mcp", "pydantic", "websockets"):
+        try:
+            __import__(mod)
+        except ImportError:
+            errors.append(f"Missing dependency: {mod}  (pip install {mod})")
+
+    # 3. Try importing the MCP server (registers all tools at import time)
+    try:
+        from pepper_ios import mcp_server  # noqa: F401
+    except Exception as e:
+        errors.append(f"Import failed: {e}")
+        for err in errors:
+            print(f"FAIL  {err}", file=sys.stderr)
+        sys.exit(1)
+
+    # 4. Count registered tools
+    tool_count = len(mcp_server.mcp._tool_manager._tools)
+    if tool_count == 0:
+        errors.append("No tools registered on FastMCP instance")
+
+    if errors:
+        for err in errors:
+            print(f"FAIL  {err}", file=sys.stderr)
+        sys.exit(1)
+
+    print(f"OK  pepper MCP server ready — {tool_count} tools registered")
+    sys.exit(0)
+
+
+if "--check" in sys.argv:
+    _check()
+else:
+    try:
+        from pepper_ios.mcp_server import main
+    except Exception as e:
+        # Surface import errors clearly on stderr so MCP clients can log them
+        print(f"pepper-mcp: failed to start — {e}", file=sys.stderr)
+        sys.exit(1)
+    main()
