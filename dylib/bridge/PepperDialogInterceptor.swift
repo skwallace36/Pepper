@@ -107,28 +107,19 @@ final class PepperDialogInterceptor {
         let replacementIMP = method_getImplementation(swizzledMethod)
         let typeEncoding = method_getTypeEncoding(swizzledMethod)
 
-        let baseCls: AnyClass = UNUserNotificationCenter.self
+        // Use the C helper to enumerate subclasses. This avoids Swift type
+        // introspection (swift_dynamicCast) which crashes on iOS 26.3 when
+        // encountering __NSGenericDeallocHandler during class enumeration.
+        // See BUG-766.
+        let basePtr = unsafeBitCast(UNUserNotificationCenter.self as AnyClass, to: UnsafeRawPointer.self)
+        var subclassesPtr: UnsafeMutablePointer<UnsafeRawPointer>?
+        var count: Int32 = 0
+        guard pepper_find_subclasses(basePtr, &subclassesPtr, &count) == 0,
+              let subclassesPtr, count > 0 else { return }
+        defer { free(subclassesPtr) }
 
-        // Enumerate all registered ObjC classes to find every
-        // UNUserNotificationCenter subclass (private class-cluster internals
-        // like _UNUserNotificationCenterInternal). class_replaceMethod adds
-        // the method if absent on the subclass, or replaces the existing
-        // override — either way, requestAuthorization is intercepted.
-        var classCount: UInt32 = 0
-        guard let classList = objc_copyClassList(&classCount) else { return }
-        defer { free(UnsafeMutableRawPointer(classList)) }
-
-        for i in 0..<Int(classCount) {
-            let cls: AnyClass = classList[i]
-            guard cls !== baseCls else { continue }
-            // Walk the superclass chain — only swizzle direct descendants
-            var ancestor: AnyClass? = class_getSuperclass(cls)
-            while let a = ancestor {
-                if a === baseCls { break }
-                ancestor = class_getSuperclass(a)
-            }
-            guard ancestor != nil else { continue }
-
+        for i in 0..<Int(count) {
+            let cls: AnyClass = unsafeBitCast(subclassesPtr[i], to: AnyClass.self)
             class_replaceMethod(cls, originalSel, replacementIMP, typeEncoding)
             pepperLog.info(
                 "Notification authorization reinforced on subclass \(cls)", category: .lifecycle)
@@ -510,6 +501,18 @@ final class PepperDialogInterceptor {
         }
     }
 }
+
+// MARK: - C bridge for safe class enumeration (BUG-766)
+
+/// Finds all ObjC runtime subclasses of `base_class` using pure C runtime
+/// functions, avoiding Swift type introspection that crashes on iOS 26.3.
+/// Uses UnsafeRawPointer for ABI-safe bridging (same pattern as PepperHeapScan).
+@_silgen_name("pepper_find_subclasses")
+private func pepper_find_subclasses(
+    _ baseClass: UnsafeRawPointer,
+    _ outClasses: UnsafeMutablePointer<UnsafeMutablePointer<UnsafeRawPointer>?>,
+    _ outCount: UnsafeMutablePointer<Int32>
+) -> Int32
 
 // MARK: - PHPhotoLibrary swizzle
 

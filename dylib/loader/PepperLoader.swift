@@ -62,13 +62,12 @@ public func pepperBootstrap() {
         // UNUserNotificationCenter subclass now that the runtime is fully
         // initialized. The base-class swizzle (installed at constructor time)
         // covers the common case, but private subclasses that override
-        // DISABLED: reinforceNotificationSwizzle() crashes on iOS 26 with
-        // EXC_BREAKPOINT in swift_dynamicCast when hitting __NSGenericDeallocHandler
-        // during ObjC class enumeration. See memory: project_ios26_swizzle_crash.
-        // Dialog detection is handled by AX dismiss from the MCP server side.
-        // if ProcessInfo.processInfo.environment["PEPPER_SKIP_PERMISSIONS"] != "1" {
-        //     PepperDialogInterceptor.reinforceNotificationSwizzle()
-        // }
+        // requestAuthorization need individual swizzling.
+        // Class enumeration uses a C helper to avoid swift_dynamicCast crash
+        // on iOS 26.3 (BUG-766).
+        if ProcessInfo.processInfo.environment["PEPPER_SKIP_PERMISSIONS"] != "1" {
+            PepperDialogInterceptor.reinforceNotificationSwizzle()
+        }
 
         // Resolve port: PEPPER_PORT env var > PepperPort Info.plist key > auto-detect from UDID > default 8765
         let port: UInt16
