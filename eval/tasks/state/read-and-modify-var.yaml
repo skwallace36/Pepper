@@ -1,0 +1,27 @@
+name: read-and-modify-var
+description: >
+  Read a @Published property via vars_inspect, modify it, and verify
+  the UI updates to reflect the new value. Tests observe-mutate-verify loop.
+requires_simulator: true
+deploy_test_app: true
+
+goal: |
+  1. Use look to observe the current screen.
+  2. Use vars_inspect to read a @Published property from a visible ViewModel.
+  3. Use vars_inspect to change that property's value.
+  4. Use look again to confirm the UI updated to reflect the change.
+  Report the property name, old value, new value, and whether the UI updated.
+
+success:
+  pepper_tools_called: [look, vars_inspect]
+  min_look_calls: 2
+
+anti_patterns:
+  - name: no-look-before-mutate
+    rule: look_before_act < 1.0
+  - name: blind-mutation
+    rule: consecutive_actions > 1
+
+budget_usd: 0.25
+timeout_s: 120
+tags: [state, vars, quick]

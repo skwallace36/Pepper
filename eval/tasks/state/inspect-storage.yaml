@@ -1,0 +1,26 @@
+name: inspect-storage
+description: >
+  Enumerate all persistence layers (UserDefaults, Keychain, Core Data)
+  and report a summary of what the app stores. Tests breadth of state tools.
+requires_simulator: true
+deploy_test_app: true
+
+goal: |
+  1. Use look to confirm the app is running.
+  2. Use storage to get a unified view of all persistence layers.
+  3. Use defaults to list UserDefaults keys and values.
+  4. Use keychain to inspect stored credentials or tokens.
+  Report a summary: how many keys in defaults, how many keychain items,
+  Core Data entity count, and any interesting values found.
+
+success:
+  pepper_tools_called: [look, storage]
+  min_look_calls: 1
+
+anti_patterns:
+  - name: no-look-before-inspect
+    rule: look_before_act < 1.0
+
+budget_usd: 0.25
+timeout_s: 120
+tags: [state, storage, quick]

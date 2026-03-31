@@ -1,0 +1,36 @@
+name: memory-leak-hunt
+agent_type: tester
+description: >
+  Use heap baselining to detect memory leaks across a navigation cycle.
+  Tests the memory debugging workflow.
+requires_simulator: true
+deploy_test_app: true
+
+goal: |
+  Hunt for memory leaks using heap baselining:
+
+  1. Use look to observe the starting screen.
+  2. Use heap with action=baseline to capture initial memory state.
+  3. Navigate to a detail screen (tap an item in a list).
+  4. Use look to confirm you're on the detail screen.
+  5. Go back to the previous screen using back.
+  6. Use look to confirm you returned.
+  7. Use heap with action=check to compare against baseline.
+  8. Report any new objects that weren't released (potential leaks).
+
+  If leaks found, report the class names and counts.
+  If no leaks, report that the navigation cycle is clean.
+
+success:
+  pepper_tools_called: [look, heap, tap, back]
+  min_look_calls: 3
+
+anti_patterns:
+  - name: no-look-before-navigate
+    rule: look_before_act < 1.0
+  - name: excessive-consecutive-actions
+    rule: consecutive_actions > 2
+
+budget_usd: 0.50
+timeout_s: 180
+tags: [workflow, tester, memory, medium]

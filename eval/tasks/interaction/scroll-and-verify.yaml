@@ -1,0 +1,28 @@
+name: scroll-and-verify
+description: >
+  Scroll to find a specific target element and assert it's visible.
+  Tests scroll discipline — look after scrolling, don't over-scroll.
+requires_simulator: true
+deploy_test_app: true
+
+goal: |
+  1. Use look to observe the current screen. Find a scrollable list.
+  2. Scroll down to find an item that isn't currently visible.
+  3. After each scroll, use look to check if the target appeared.
+  4. Once found, use verify or read_element to confirm the element's properties.
+  Do NOT scroll more than 2 times without looking. Report the element found
+  and how many scrolls it took.
+
+success:
+  pepper_tools_called: [look, scroll]
+  min_look_calls: 2
+
+anti_patterns:
+  - name: no-look-after-scroll
+    rule: look_before_act < 1.0
+  - name: blind-scrolling
+    rule: consecutive_actions > 2
+
+budget_usd: 0.25
+timeout_s: 120
+tags: [interaction, scroll, quick]
