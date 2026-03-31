@@ -26,9 +26,9 @@ source "$REPO_ROOT/scripts/lib/lockfile.sh"
 
 PIDFILE="build/logs/heartbeat.pid"
 EVENTS="$REPO_ROOT/build/logs/events.jsonl"
-INTERVAL=300          # 5 min between cycles — each cycle is ~60s of actual work, rest is sleep
+INTERVAL=600          # 10 min between cycles — conserve tokens, babysit catches issues
 BACKOFF_THRESHOLD=3   # consecutive failures before backing off
-BACKOFF_CYCLES=5      # cycles to skip (5 * 300s = 25 min)
+BACKOFF_CYCLES=2      # cycles to skip (2 * 600s = 20 min)
 LOCKFILE="build/logs/heartbeat.lock"
 
 mkdir -p build/logs
