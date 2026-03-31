@@ -513,7 +513,7 @@ def _look_error_reason(resp) -> str | None:
     return resp.get("error") or resp.get("data", {}).get("message") or "unknown error"
 
 
-async def act_and_look(simulator: str | None, cmd: str, params: dict | None = None, timeout: float = 10) -> str:
+async def act_and_look(simulator: str | None, cmd: str, params: dict | None = None, timeout: float = 10) -> list:
     """Send a command, then automatically run look to show screen state after the action.
     Returns: action result + screen summary + telemetry. Forces the check-act-verify loop."""
     from .pepper_format import format_look_compact, format_look_slim

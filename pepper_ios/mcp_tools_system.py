@@ -161,7 +161,7 @@ def register_system_tools(mcp, resolve_and_send, act_and_look):
         angle: float | None = Field(default=None, description="Rotation angle in degrees (for rotate; e.g. 90 for quarter turn, -45 for reverse)"),
         center_x: float | None = Field(default=None, description="Center X coordinate — defaults to screen center (e.g. 200.0)"),
         center_y: float | None = Field(default=None, description="Center Y coordinate — defaults to screen center (e.g. 400.0)"),
-    ) -> str:
+    ) -> list:
         """Use this for multi-touch gestures like pinch-to-zoom or two-finger rotation on maps, images, or zoomable views.
         Synthesizes two-finger touch events via HID injection. Shows screen state after."""
         params: dict = {"type": type}
