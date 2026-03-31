@@ -3,6 +3,9 @@
 # Each test: steps to execute, then verification.
 # Tests are ordered by priority — run top-down, stop at budget.
 
+# ── Reliability: call `test reset` between unrelated test sections ──
+# See test-app/TEST-RELIABILITY.md for timeout and retry guidance.
+
 # ── Core: if these fail, Pepper is broken ──
 
 - name: pepper connects
