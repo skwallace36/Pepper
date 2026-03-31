@@ -25,6 +25,17 @@ emit_task() {
 
 case "$CMD" in
   next)
+    # Serialize task claims — prevents two builders from claiming the same issue
+    CLAIM_LOCK="build/logs/.task-claim.lock"
+    mkdir -p build/logs
+    exec 8>"$CLAIM_LOCK"
+    if command -v flock &>/dev/null; then
+      flock -w 30 8 || { echo "Error: could not acquire task claim lock" >&2; exit 1; }
+    else
+      # macOS: lockf on fd
+      lockf -s -t 30 8 || { echo "Error: could not acquire task claim lock" >&2; exit 1; }
+    fi
+
     # Find next unassigned open issue, optionally filtered by area or label
     AREA_FILTER=""
     LABEL_FLAG=""
