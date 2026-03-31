@@ -10,6 +10,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import signal
@@ -22,6 +23,33 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 from eval_score import compute_score, print_score
 from eval_transcript import parse_verbose_log
+
+
+def _git_sha() -> str:
+    try:
+        return subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], stderr=subprocess.DEVNULL, text=True
+        ).strip()
+    except Exception:
+        return ""
+
+
+def _git_branch() -> str:
+    try:
+        return subprocess.check_output(
+            ["git", "branch", "--show-current"], stderr=subprocess.DEVNULL, text=True
+        ).strip()
+    except Exception:
+        return ""
+
+
+def _file_hash(path: str) -> str:
+    try:
+        content = Path(path).resolve().read_bytes()
+        return hashlib.sha256(content).hexdigest()[:16]
+    except Exception:
+        return ""
+
 
 SELF_REPORT_SUFFIX = """
 ## Eval Self-Report (REQUIRED)
@@ -163,13 +191,23 @@ def run_eval(
             os.unlink(mcp_config)
 
     manifest["finished_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-    (out / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
 
     try:
         transcript = parse_verbose_log(str(verbose_log))
         score = compute_score(transcript, task)
         score_dict = score.to_dict()
         (out / "score.json").write_text(json.dumps(score_dict, indent=2) + "\n")
+        (out / "transcript.json").write_text(json.dumps(transcript.to_dict(), indent=2) + "\n")
+
+        # Enrich manifest with post-run metadata
+        manifest["model_id"] = transcript.model or model
+        manifest["duration_ms"] = transcript.duration_ms
+        manifest["git_sha"] = _git_sha()
+        manifest["git_branch"] = _git_branch()
+        if prompt_file:
+            manifest["prompt_hash"] = _file_hash(prompt_file)
+        (out / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
+
         print_score(score, transcript)
         return score_dict
     except Exception as e:
