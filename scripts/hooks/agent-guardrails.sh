@@ -80,6 +80,11 @@ if [ "$TOOL" = "Bash" ]; then
     deny "agents cannot modify git config."
   fi
 
+  # Block git stash — agents work in isolated worktrees, never stash
+  if echo "$CMD" | grep -qE '(^|[;&|]\s*)git\s+stash'; then
+    deny "agents must not use git stash. Commit or discard changes in your worktree."
+  fi
+
   # Block pepper-ctl raw (sim-facing agents only) — use MCP tools directly
   if echo "$CMD" | grep -qE 'pepper-ctl raw'; then
     case "$AGENT_TYPE" in
