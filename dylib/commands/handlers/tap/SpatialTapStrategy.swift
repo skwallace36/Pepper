@@ -141,11 +141,12 @@ struct SpatialTapStrategy: TapStrategy {
         }
 
         guard screen.contains(tapPoint) else {
-            return .response(.error(
-                id: command.id,
-                message:
-                    "Spatial tap target off screen for \(direction.rawValue.replacingOccurrences(of: "_", with: " ")) '\(anchorText)'"
-            ))
+            return .response(
+                .error(
+                    id: command.id,
+                    message:
+                        "Spatial tap target off screen for \(direction.rawValue.replacingOccurrences(of: "_", with: " ")) '\(anchorText)'"
+                ))
         }
 
         let desc = "\(direction.rawValue) '\(anchorText)' (edge fallback)"

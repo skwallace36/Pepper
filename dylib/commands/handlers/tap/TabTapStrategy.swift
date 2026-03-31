@@ -25,16 +25,17 @@ struct TabTapStrategy: TapStrategy {
         if let errorMsg = errorMsg, errorMsg.hasPrefix("__tab_selected__:") {
             let idx = String(errorMsg.dropFirst("__tab_selected__:".count))
             logger.warning("Tab \(idx) selected programmatically — no tab bar button found for touch synthesis")
-            return .response(.ok(
-                id: command.id,
-                data: [
-                    "strategy": AnyCodable("tab_index"),
-                    "description": AnyCodable("tab[\(idx)]"),
-                    "type": AnyCodable("tab"),
-                    "programmatic": AnyCodable(true),
-                    "warning": AnyCodable(
-                        "Fell back to programmatic tab selection — tab bar buttons not found in view hierarchy"),
-                ]))
+            return .response(
+                .ok(
+                    id: command.id,
+                    data: [
+                        "strategy": AnyCodable("tab_index"),
+                        "description": AnyCodable("tab[\(idx)]"),
+                        "type": AnyCodable("tab"),
+                        "programmatic": AnyCodable(true),
+                        "warning": AnyCodable(
+                            "Fell back to programmatic tab selection — tab bar buttons not found in view hierarchy"),
+                    ]))
         }
 
         if let result = result {
@@ -67,13 +68,14 @@ struct TabTapStrategy: TapStrategy {
         guard knownTabs.contains(normalized) else { return nil }
 
         if tabBar.pepper_selectTab(named: text) {
-            return .response(.ok(
-                id: command.id,
-                data: [
-                    "strategy": AnyCodable("tab_index"),
-                    "description": AnyCodable("tab:\(text)"),
-                    "type": AnyCodable("programmatic_tab"),
-                ]))
+            return .response(
+                .ok(
+                    id: command.id,
+                    data: [
+                        "strategy": AnyCodable("tab_index"),
+                        "description": AnyCodable("tab:\(text)"),
+                        "type": AnyCodable("programmatic_tab"),
+                    ]))
         }
 
         return nil

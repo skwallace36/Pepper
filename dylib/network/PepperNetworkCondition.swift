@@ -115,11 +115,11 @@ enum NetworkPreset: String, CaseIterable {
             ]
         case .highLatencyDNS:
             return [
-                (.latency(ms: 3000), "High Latency DNS: 3000ms latency"),
+                (.latency(ms: 3000), "High Latency DNS: 3000ms latency")
             ]
         case .totalLoss:
             return [
-                (.offline, "100% Loss: offline"),
+                (.offline, "100% Loss: offline")
             ]
         }
     }

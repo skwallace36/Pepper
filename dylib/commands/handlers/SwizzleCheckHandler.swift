@@ -23,11 +23,13 @@ struct SwizzleCheckHandler: PepperHandler {
     func handle(_ command: PepperCommand) throws -> PepperResponse {
         // If permission swizzles were skipped, report that instead of failing
         if ProcessInfo.processInfo.environment["PEPPER_SKIP_PERMISSIONS"] == "1" {
-            return .result(id: command.id, [
-                "pass": AnyCodable(true),
-                "skipped": AnyCodable(true),
-                "reason": AnyCodable("Authorization swizzles disabled (PEPPER_SKIP_PERMISSIONS=1)"),
-            ])
+            return .result(
+                id: command.id,
+                [
+                    "pass": AnyCodable(true),
+                    "skipped": AnyCodable(true),
+                    "reason": AnyCodable("Authorization swizzles disabled (PEPPER_SKIP_PERMISSIONS=1)"),
+                ])
         }
 
         var results: [[String: AnyCodable]] = []
@@ -44,13 +46,15 @@ struct SwizzleCheckHandler: PepperHandler {
         let passed = results.filter { ($0["pass"]?.value as? Bool) == true }.count
         let failed = results.count - passed
 
-        return .result(id: command.id, [
-            "pass": AnyCodable(failed == 0),
-            "passed": AnyCodable(passed),
-            "failed": AnyCodable(failed),
-            "total": AnyCodable(results.count),
-            "results": AnyCodable(results.map { AnyCodable($0) }),
-        ])
+        return .result(
+            id: command.id,
+            [
+                "pass": AnyCodable(failed == 0),
+                "passed": AnyCodable(passed),
+                "failed": AnyCodable(failed),
+                "total": AnyCodable(results.count),
+                "results": AnyCodable(results.map { AnyCodable($0) }),
+            ])
     }
 
     // MARK: - Individual Checks
@@ -66,9 +70,10 @@ struct SwizzleCheckHandler: PepperHandler {
         if granted == true && err == nil {
             return passed("notifications", detail: "requestAuthorization auto-granted")
         }
-        return failed("notifications",
-                       reason: "Completion not called synchronously — swizzle did not intercept",
-                       detail: "granted=\(granted.map(String.init(describing:)) ?? "nil")")
+        return failed(
+            "notifications",
+            reason: "Completion not called synchronously — swizzle did not intercept",
+            detail: "granted=\(granted.map(String.init(describing:)) ?? "nil")")
     }
 
     /// Calls requestAuthorization(for:handler:) and checks .authorized returned synchronously.
@@ -80,9 +85,10 @@ struct SwizzleCheckHandler: PepperHandler {
         if status == .authorized {
             return passed("photos", detail: "requestAuthorization auto-granted")
         }
-        return failed("photos",
-                       reason: "Completion not called synchronously — swizzle did not intercept",
-                       detail: "status=\(status.map { String($0.rawValue) } ?? "nil")")
+        return failed(
+            "photos",
+            reason: "Completion not called synchronously — swizzle did not intercept",
+            detail: "status=\(status.map { String($0.rawValue) } ?? "nil")")
     }
 
     /// Calls requestTrackingAuthorization and checks .authorized returned synchronously.
@@ -94,9 +100,10 @@ struct SwizzleCheckHandler: PepperHandler {
         if status == .authorized {
             return passed("tracking", detail: "ATT auto-granted")
         }
-        return failed("tracking",
-                       reason: "Completion not called synchronously — swizzle did not intercept",
-                       detail: "status=\(status.map { String($0.rawValue) } ?? "nil")")
+        return failed(
+            "tracking",
+            reason: "Completion not called synchronously — swizzle did not intercept",
+            detail: "status=\(status.map { String($0.rawValue) } ?? "nil")")
     }
 
     /// Calls requestAccess(for:completionHandler:) and checks true returned synchronously.
@@ -108,9 +115,10 @@ struct SwizzleCheckHandler: PepperHandler {
         if granted == true {
             return passed("camera", detail: "Camera access auto-granted")
         }
-        return failed("camera",
-                       reason: "Completion not called synchronously — swizzle did not intercept",
-                       detail: "granted=\(granted.map(String.init(describing:)) ?? "nil")")
+        return failed(
+            "camera",
+            reason: "Completion not called synchronously — swizzle did not intercept",
+            detail: "granted=\(granted.map(String.init(describing:)) ?? "nil")")
     }
 
     /// Calls requestAccess(for:completionHandler:) and checks true returned synchronously.
@@ -124,9 +132,10 @@ struct SwizzleCheckHandler: PepperHandler {
         if granted == true && err == nil {
             return passed("contacts", detail: "Contacts access auto-granted")
         }
-        return failed("contacts",
-                       reason: "Completion not called synchronously — swizzle did not intercept",
-                       detail: "granted=\(granted.map(String.init(describing:)) ?? "nil")")
+        return failed(
+            "contacts",
+            reason: "Completion not called synchronously — swizzle did not intercept",
+            detail: "granted=\(granted.map(String.init(describing:)) ?? "nil")")
     }
 
     /// Checks location swizzle — the swizzle is a no-op that suppresses the system dialog.
@@ -138,7 +147,7 @@ struct SwizzleCheckHandler: PepperHandler {
         let swizzledSel = #selector(CLLocationManager.pepper_requestWhenInUseAuthorization)
 
         guard let originalMethod = class_getInstanceMethod(cls, originalSel),
-              let swizzledMethod = class_getInstanceMethod(cls, swizzledSel)
+            let swizzledMethod = class_getInstanceMethod(cls, swizzledSel)
         else {
             return failed("location", reason: "Could not resolve method selectors")
         }
@@ -151,8 +160,9 @@ struct SwizzleCheckHandler: PepperHandler {
         if originalIMP == swizzledIMP {
             return passed("location", detail: "requestWhenInUseAuthorization replaced with no-op")
         }
-        return failed("location",
-                       reason: "IMP mismatch — swizzle may not have been applied")
+        return failed(
+            "location",
+            reason: "IMP mismatch — swizzle may not have been applied")
     }
 
     /// Calls requestFullAccessToEvents and checks true returned synchronously.
@@ -166,9 +176,10 @@ struct SwizzleCheckHandler: PepperHandler {
         if granted == true && err == nil {
             return passed("eventkit_events", detail: "Full events access auto-granted")
         }
-        return failed("eventkit_events",
-                       reason: "Completion not called synchronously — swizzle did not intercept",
-                       detail: "granted=\(granted.map(String.init(describing:)) ?? "nil")")
+        return failed(
+            "eventkit_events",
+            reason: "Completion not called synchronously — swizzle did not intercept",
+            detail: "granted=\(granted.map(String.init(describing:)) ?? "nil")")
     }
 
     /// Calls requestFullAccessToReminders and checks true returned synchronously.
@@ -182,9 +193,10 @@ struct SwizzleCheckHandler: PepperHandler {
         if granted == true && err == nil {
             return passed("eventkit_reminders", detail: "Full reminders access auto-granted")
         }
-        return failed("eventkit_reminders",
-                       reason: "Completion not called synchronously — swizzle did not intercept",
-                       detail: "granted=\(granted.map(String.init(describing:)) ?? "nil")")
+        return failed(
+            "eventkit_reminders",
+            reason: "Completion not called synchronously — swizzle did not intercept",
+            detail: "granted=\(granted.map(String.init(describing:)) ?? "nil")")
     }
 
     // MARK: - Result Helpers

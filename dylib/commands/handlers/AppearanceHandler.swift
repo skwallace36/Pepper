@@ -25,9 +25,11 @@ struct AppearanceHandler: PepperHandler {
         }
 
         let current = currentModeName()
-        return .result(id: command.id, [
-            "mode": AnyCodable(current),
-        ])
+        return .result(
+            id: command.id,
+            [
+                "mode": AnyCodable(current)
+            ])
     }
 
     private func parseStyle(_ mode: String) -> UIUserInterfaceStyle? {

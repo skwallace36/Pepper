@@ -101,7 +101,7 @@ struct PepperAccessibilityElement {
     /// Serialize to a dictionary for JSON transmission.
     func toDictionary() -> [String: AnyCodable] {
         var dict: [String: AnyCodable] = [
-            "type": AnyCodable(type),
+            "type": AnyCodable(type)
         ]
 
         if let label = label, !label.isEmpty {
@@ -180,7 +180,7 @@ struct PepperInteractiveElement {
 
     func toDictionary() -> [String: AnyCodable] {
         var dict: [String: AnyCodable] = [
-            "center": AnyCodable([AnyCodable(Int(center.x)), AnyCodable(Int(center.y))]),
+            "center": AnyCodable([AnyCodable(Int(center.x)), AnyCodable(Int(center.y))])
         ]
 
         if let label = label {

@@ -21,9 +21,10 @@ struct IconTapStrategy: TapStrategy {
             return .response(.error(id: command.id, message: msg))
         }
         guard index < matches.count else {
-            return .response(.error(
-                id: command.id,
-                message: "Icon '\(iconName)' has \(matches.count) match(es), index \(index) out of range"))
+            return .response(
+                .error(
+                    id: command.id,
+                    message: "Icon '\(iconName)' has \(matches.count) match(es), index \(index) out of range"))
         }
 
         let match = matches[index]

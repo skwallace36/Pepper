@@ -132,7 +132,8 @@ struct ScrollHandler: PepperHandler {
             return .action(
                 id: command.id, action: "scroll", target: "'\(text)' (already visible)",
                 extra: [
-                    "description": AnyCodable("'\(text)' already visible at (\(Int(elementCenter.x)),\(Int(elementCenter.y)))"),
+                    "description": AnyCodable(
+                        "'\(text)' already visible at (\(Int(elementCenter.x)),\(Int(elementCenter.y)))"),
                     "already_visible": AnyCodable(true),
                     "center": AnyCodable([
                         "x": AnyCodable(Double(elementCenter.x)),
@@ -213,7 +214,9 @@ struct ScrollHandler: PepperHandler {
 
     /// Resolve scroll view targeting params to the center point of the target scroll view.
     /// Returns nil if no targeting param matched (caller should use screen center).
-    private func resolveScrollTarget(command: PepperCommand, scrollViewID: String?, scrollViewClass: String?, in window: UIWindow) -> CGPoint? {
+    private func resolveScrollTarget(
+        command: PepperCommand, scrollViewID: String?, scrollViewClass: String?, in window: UIWindow
+    ) -> CGPoint? {
         if let id = scrollViewID,
             let resolved = PepperElementResolver.resolveByID(id, in: window),
             resolved.tapPoint == nil,
@@ -260,7 +263,9 @@ struct ScrollHandler: PepperHandler {
         var startX = window.bounds.midX
         var startY = window.bounds.midY
 
-        if let target = resolveScrollTarget(command: command, scrollViewID: scrollViewID, scrollViewClass: scrollViewClass, in: window) {
+        if let target = resolveScrollTarget(
+            command: command, scrollViewID: scrollViewID, scrollViewClass: scrollViewClass, in: window)
+        {
             startX = target.x
             startY = target.y
         }
