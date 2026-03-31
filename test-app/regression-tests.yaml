@@ -524,3 +524,85 @@
     - tool: tap
       params: { text: "THIS_ELEMENT_DOES_NOT_EXIST_12345" }
   verify: returns clear "not found" error, not a crash
+
+# ── Feature flags ──
+
+- name: flags CRUD lifecycle
+  priority: medium
+  steps:
+    - tool: flags
+      params: { action: "list" }
+    - tool: flags
+      params: { action: "set", key: "test_flag_bool", value: true }
+    - tool: flags
+      params: { action: "get", key: "test_flag_bool" }
+    - tool: flags
+      params: { action: "set", key: "test_flag_string", value: "hello" }
+    - tool: flags
+      params: { action: "list" }
+    - note: verify list shows 2 overrides (test_flag_bool, test_flag_string)
+    - tool: flags
+      params: { action: "clear", key: "test_flag_bool" }
+    - tool: flags
+      params: { action: "get", key: "test_flag_bool" }
+    - note: verify has_override is false
+    - tool: flags
+      params: { action: "clear" }
+    - tool: flags
+      params: { action: "list" }
+  verify: set stores values, get reads them, clear by key removes one, clear all removes all, list count matches
+
+# ── Responder chain ──
+
+- name: responder chain dump
+  priority: medium
+  steps:
+    - tool: look
+    - note: pick a button element from look output
+    - tool: responder_chain
+      params: { text: "Tap Me" }
+  verify: response contains gesture_recognizers array, responder_chain with view and viewController entries, hit_test_path with is_hit_target marker
+
+# ── Notifications ──
+
+- name: notifications lifecycle
+  priority: medium
+  steps:
+    - tool: notifications
+      params: { action: "start" }
+    - note: navigate to Misc tab notifications section
+    - tool: tap
+      params: { id: "register_observer_button" }
+    - tool: notifications
+      params: { action: "list" }
+    - note: verify observer_count > 0
+    - tool: notifications
+      params: { action: "counts" }
+    - note: verify PepperTestNotification appears
+    - tool: tap
+      params: { id: "post_notification_button" }
+    - tool: notifications
+      params: { action: "events" }
+    - note: verify events include add and post entries
+    - tool: notifications
+      params: { action: "clear" }
+    - tool: notifications
+      params: { action: "status" }
+    - note: verify observer_count and event_count are 0
+    - tool: notifications
+      params: { action: "stop" }
+    - tool: notifications
+      params: { action: "status" }
+  verify: start enables tracking, list shows registered observer, counts shows notification name, events show timeline, clear resets, stop disables
+
+# ── Heap snapshot check ──
+
+- name: heap snapshot check
+  priority: medium
+  steps:
+    - tool: heap_snapshot
+      params: { action: "snapshot" }
+    - note: wait a few seconds for warmup period to pass
+    - tool: heap_snapshot
+      params: { action: "check" }
+  verify: returns leak_count, verdict, and severity classifications (high/medium/low counts)

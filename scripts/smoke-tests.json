@@ -24,6 +24,22 @@
     {"name": "deeplinks lists routes", "cmd": "deeplinks", "expect": {"has_keys": ["deeplinks", "count"]}},
     {"name": "heap lists controllers", "cmd": "heap", "params": {"action": "controllers"}, "expect": {"has_keys": ["count", "controllers"]}},
     {"name": "dismiss_keyboard is safe no-op", "cmd": "dismiss_keyboard"},
-    {"name": "wait_idle completes", "cmd": "wait_idle", "params": {"timeout_ms": 5000}}
+    {"name": "wait_idle completes", "cmd": "wait_idle", "params": {"timeout_ms": 5000}},
+
+    {"name": "flags list returns overrides", "cmd": "flags", "params": {"action": "list"}, "expect": {"has_keys": ["count", "overrides"]}},
+    {"name": "flags set stores value", "cmd": "flags", "params": {"action": "set", "key": "pepper_smoke_test_flag", "value": true}, "expect": {"has_keys": ["key", "value", "ok"]}},
+    {"name": "flags get reads value", "cmd": "flags", "params": {"action": "get", "key": "pepper_smoke_test_flag"}, "expect": {"has_keys": ["key", "value", "has_override"]}},
+    {"name": "flags clear removes all", "cmd": "flags", "params": {"action": "clear"}, "expect": {"has_keys": ["cleared"]}},
+
+    {"name": "responder chain on element", "cmd": "responder_chain", "params": {"point": {"x": 200, "y": 400}}, "expect": {"has_keys": ["responder_chain", "hit_test_path"]}},
+
+    {"name": "notifications start tracking", "cmd": "notifications", "params": {"action": "start"}, "expect": {"has_keys": ["active"]}},
+    {"name": "notifications status shows active", "cmd": "notifications", "params": {"action": "status"}, "expect": {"has_keys": ["active", "observer_count"]}},
+    {"name": "notifications list observers", "cmd": "notifications", "params": {"action": "list"}, "expect": {"has_keys": ["count", "observers"]}},
+    {"name": "notifications clear tracked data", "cmd": "notifications", "params": {"action": "clear"}, "expect": {"has_keys": ["cleared"]}},
+    {"name": "notifications stop tracking", "cmd": "notifications", "params": {"action": "stop"}, "expect": {"has_keys": ["active"]}},
+
+    {"name": "heap_snapshot baseline", "cmd": "heap_snapshot", "params": {"action": "snapshot"}, "expect": {"has_keys": ["total_classes", "total_instances"]}},
+    {"name": "heap_snapshot check for leaks", "cmd": "heap_snapshot", "params": {"action": "check"}, "expect": {"has_keys": ["leak_count", "verdict"]}}
   ]
 }
