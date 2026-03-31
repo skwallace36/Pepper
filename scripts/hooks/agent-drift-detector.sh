@@ -22,21 +22,13 @@ EVENTS_LOG="${PEPPER_EVENTS_LOG:-}"
 LOG_DIR=$(dirname "$EVENTS_LOG")
 STATE_DIR="$LOG_DIR/drift-$AGENT"
 
-# --- Thresholds (per-type) ---
-# Builder/researcher need more room to explore before writing.
-# Bugfix/tester should act fast — if they're reading 20+ files, they're lost.
-case "$AGENT" in
-  builder|researcher)
-    READ_WARN=25
-    READ_KILL=40
-    REREAD_WARN=12
-    ;;
-  *)
-    READ_WARN=15
-    READ_KILL=25
-    REREAD_WARN=8
-    ;;
-esac
+# --- Thresholds ---
+# Unified for all types — complex tasks (bugfix, builder, researcher) all
+# need room to explore. The reread ratio catches actual loops better than
+# a low read-streak cap.
+READ_WARN=25          # consecutive read-only ops → warning
+READ_KILL=50          # consecutive read-only ops → block (after warning)
+REREAD_WARN=12        # re-reads of same files → warning
 ERROR_WARN=5          # consecutive errors → warning
 ERROR_KILL=10         # consecutive errors → block (after warning)
 
@@ -115,6 +107,16 @@ if [ "$MODE" = "track" ]; then
     exit 0
   fi
 
+  # --- Bash commands: productive work, reset read streak ---
+  # Running builds, git ops, tests, etc. means the agent is actively working,
+  # not stuck in a read-only loop.
+  case "$TOOL" in
+    Bash)
+      write_counter "read_streak" "0"
+      exit 0
+      ;;
+  esac
+
   # --- Read-only ops: increment streak, track re-reads ---
   case "$TOOL" in
     Read|Grep|Glob)
@@ -156,7 +158,24 @@ if [ "$MODE" = "check" ]; then
   fi
 
   # --- Read-only streak: kill ---
+  # Only kill if the agent is actually looping (re-reading same files).
+  # High unique-file counts mean productive research, not drift.
   if [ "$READ_STREAK" -ge "$READ_KILL" ] && [ -f "$STATE_DIR/warned_read" ]; then
+    # Check reread ratio — if most reads are unique files, agent is exploring
+    TOTAL_READS=$(wc -l < "$STATE_DIR/reads.log" 2>/dev/null | tr -d ' ')
+    UNIQUE_READS=$(sort -u "$STATE_DIR/reads.log" 2>/dev/null | wc -l | tr -d ' ')
+    TOTAL_READS=${TOTAL_READS:-0}
+    UNIQUE_READS=${UNIQUE_READS:-0}
+    # Kill only if >40% of reads are re-reads (actually looping)
+    if [ "$TOTAL_READS" -gt 0 ] && [ "$REREAD_COUNT" -gt 0 ]; then
+      REREAD_PCT=$(( REREAD_COUNT * 100 / TOTAL_READS ))
+      if [ "$REREAD_PCT" -lt 40 ]; then
+        # Mostly unique reads — agent is exploring, not looping. Warn again but don't kill.
+        emit_drift_event "warn" "read_streak=$READ_STREAK,rereads=$REREAD_COUNT,unique=$UNIQUE_READS,pct=$REREAD_PCT — exploring, not looping"
+        echo "NOTE: $READ_STREAK read-only ops but only ${REREAD_PCT}% re-reads — you're exploring, not looping. Keep going but start making changes soon."
+        exit 0
+      fi
+    fi
     emit_drift_event "kill" "read_streak=$READ_STREAK,rereads=$REREAD_COUNT"
     echo "You have done $READ_STREAK consecutive read-only operations ($REREAD_COUNT re-reads) without any writes. Stopping to prevent further drift. Comment on the issue with what you tried and exit."
     exit 2
