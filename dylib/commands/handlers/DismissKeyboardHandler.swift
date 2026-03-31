@@ -6,21 +6,19 @@ struct DismissKeyboardHandler: PepperHandler {
     let commandName = "dismiss_keyboard"
 
     func handle(_ command: PepperCommand) -> PepperResponse {
-        do {
-            guard let window = UIWindow.pepper_keyWindow else {
-                throw PepperHandlerError.noKeyWindow
-            }
+        // Use sendAction to resign the first responder through the standard responder
+        // chain. This avoids calling endEditing on pepper_keyWindow which, when the
+        // keyboard is visible, can resolve to the system UIRemoteKeyboardWindow —
+        // calling endEditing on that system window crashes UIKit internals.
+        let dismissed = UIApplication.shared.sendAction(
+            #selector(UIResponder.resignFirstResponder),
+            to: nil, from: nil, for: nil
+        )
 
-            // Send resignFirstResponder through the responder chain
-            window.endEditing(true)
-
-            return .ok(
-                id: command.id,
-                data: [
-                    "dismissed": AnyCodable(true)
-                ])
-        } catch {
-            return .error(id: command.id, message: "[dismiss_keyboard] \(error.localizedDescription)")
-        }
+        return .ok(
+            id: command.id,
+            data: [
+                "dismissed": AnyCodable(dismissed)
+            ])
     }
 }

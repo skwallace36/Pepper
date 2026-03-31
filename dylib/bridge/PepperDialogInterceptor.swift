@@ -115,7 +115,8 @@ final class PepperDialogInterceptor {
         var subclassesPtr: UnsafeMutablePointer<UnsafeRawPointer>?
         var count: Int32 = 0
         guard pepper_find_subclasses(basePtr, &subclassesPtr, &count) == 0,
-              let subclassesPtr, count > 0 else { return }
+            let subclassesPtr, count > 0
+        else { return }
         defer { free(subclassesPtr) }
 
         for i in 0..<Int(count) {
