@@ -1,6 +1,6 @@
 """Performance and profiling tool definitions for Pepper MCP.
 
-Tool definitions for: perf, animations, heap.
+Tool definitions for: perf, animations, heap, hangs.
 """
 
 from __future__ import annotations
@@ -105,3 +105,26 @@ def register_perf_tools(mcp, resolve_and_send):
         if offset is not None:
             params["offset"] = offset
         return await resolve_and_send(simulator, CMD_HEAP, params)
+
+    @mcp.tool()
+    async def hangs(
+        simulator: str | None = Field(default=None, description="Simulator UDID"),
+        action: str = Field(
+            default="status",
+            description="Action: start, stop, status, hangs, clear",
+        ),
+        threshold_ms: int | None = Field(
+            default=None,
+            description="Hang threshold in ms (for start action; default: 250)",
+        ),
+        limit: int | None = Field(
+            default=None, description="Max hang events to return (for hangs action; default: 20)"
+        ),
+    ) -> str:
+        """Detect main thread hangs and capture symbolicated stack traces of the blocking operation."""
+        params: dict = {"action": action}
+        if threshold_ms is not None:
+            params["threshold_ms"] = threshold_ms
+        if limit is not None:
+            params["limit"] = limit
+        return await resolve_and_send(simulator, "hangs", params, timeout=15)

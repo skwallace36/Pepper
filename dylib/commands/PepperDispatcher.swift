@@ -398,6 +398,7 @@ final class PepperDispatcher {
         registerLazy("concurrency") { ConcurrencyHandler() }
         registerLazy("timers") { TimersHandler() }
         registerLazy("perf") { PerfHandler() }
+        registerLazy("hangs") { HangDetectorHandler() }
         registerLazy("screenshot") { ScreenshotHandler() }
         registerLazy("storage") { StorageHandler() }
         registerLazy("coredata") { CoreDataHandler() }

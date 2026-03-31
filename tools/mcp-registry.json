@@ -92,6 +92,7 @@
     {"name": "concurrency", "category": "debug", "description": "Inspect Swift concurrency state (tasks, actors)"},
     {"name": "coredata", "category": "state", "description": "Inspect Core Data persistent stores and entities"},
     {"name": "notifications", "category": "debug", "description": "Monitor NSNotificationCenter activity"},
+    {"name": "hangs", "category": "debug", "description": "Detect main thread hangs with symbolicated stack traces"},
     {"name": "perf", "category": "debug", "description": "Measure performance metrics (CPU, FPS, hangs)"},
     {"name": "renders", "category": "debug", "description": "Track view render counts and off-screen renders"},
     {"name": "responder_chain", "category": "debug", "description": "Dump the UIResponder chain"},

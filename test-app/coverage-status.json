@@ -300,6 +300,11 @@
     "status": "pass",
     "surface": "Misc tab \u2013 Rotation Gesture GroupBox"
   },
+  "hangs": {
+    "notes": "Main thread hang detection with symbolicated stack capture via Mach thread APIs. Actions: start, stop, status, hangs, clear. Configurable threshold_ms (default 250).",
+    "status": "untested",
+    "surface": "Any state"
+  },
   "heap.classes": {
     "notes": "Pattern 'State' found 501 classes (showing 100). Pattern 'PepperTest' found 32 app-specific classes. Pattern 'Controller' with limit=10 correctly capped results. Missing pattern param returns proper error.",
     "status": "pass",
