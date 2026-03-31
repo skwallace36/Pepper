@@ -152,7 +152,7 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `heap` | classes | pass | ObjC runtime class enumeration | Pattern 'State' found 501 classes (showing 100). Pattern 'PepperTest' found 32 app-specific classes. Pattern 'Controller' with limit=10 correctly capped results. Missing pattern param returns proper error. |
 | `heap` | controllers | pass | Full VC hierarchy from key window | Returns 11 controllers: root UIHostingController, UIKitTabBarController (3 tabs, selected=0), 3 TabHostingControllers, 3 UIKitNavigationControllers (stack_count=1 each), 3 NavigationStackHostingControllers. Shows depth, isVisible, title, and tab/nav metadata. |
 | `heap_snapshot` | diff | pass | Take 2 snapshots, diff | Compares current heap to baseline. After ~10s found 7 growing classes (CString +10, Endpoint +8, etc.) with verdict '7 class(es) growing — potential leaks'. Returns growing/shrinking arrays with before/after/delta. No-baseline error handled properly. |
-| `heap_snapshot` | check | untested |  |  |
+| `heap_snapshot` | check | ready | Any state (after snapshot baseline) | Automatic leak detection with severity classification (high/medium/low). Takes baseline first, then check compares. Smoke test verifies leak_count and verdict keys. |
 | `heap_snapshot` | clear | pass | After snapshot | Clears saved snapshot. Returns {cleared:true}. Confirmed status returns has_snapshot=false after clear, and diff returns proper 'No baseline snapshot' error. |
 | `heap_snapshot` | status | pass | Any state | Without snapshot: returns {has_snapshot:false}. After snapshot: returns has_snapshot=true, class_count=115, taken_at ISO8601 timestamp, seconds_ago. |
 | `heap_snapshot` | snapshot | pass | Any state | Scans heap via malloc zone enumeration. Returns total_classes=115, total_instances, top_30 by count, memory info (resident_mb, virtual_mb). Top classes: AccessibilityGeometryStorage (342), AccessibilityNode (185), _LocaleICU (152). |
@@ -175,10 +175,10 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `find` | count | pass | Controls tab with type=='button' predicate | Returned count=27 for type=='button'. Also tested label CONTAINS 'Tap' (count=1). Correct counts for known elements. |
 | `find` | first | pass | Controls tab with type=='button' predicate | Returns first matching element with label, type, center, traits, tap_cmd, view_controller, total_matches=27. No-match predicate returns proper 'No elements match predicate' error. |
 | `find` | list | pass | Controls tab with type=='button' limit=5 | Returns array of matches with count and per-element details (label, center, type, traits, tap_cmd). Limit param works correctly, capping results at 5. |
-| `flags` | list | untested |  |  |
-| `flags` | get | untested |  |  |
-| `flags` | set | untested |  |  |
-| `flags` | clear | untested |  |  |
+| `flags` | list | ready | Any state | Returns count and overrides array. Smoke test verifies has_keys: count, overrides. |
+| `flags` | get | ready | Any state | Returns key, value, has_override. Smoke test sets then gets pepper_smoke_test_flag. |
+| `flags` | set | ready | Any state | Stores override in UserDefaults. Returns key, value, ok. Smoke test sets boolean flag. |
+| `flags` | clear | ready | Any state | Clears one or all overrides. Without key returns cleared count. Smoke test clears all after set. |
 | `hook` | install | pass | UIKitControlsViewController ObjC methods | Installed hook on PepperTestApp.UIKitControlsViewController viewDidAppear:. Returns {hook_id:'hook_1', class, method, class_method:false}. System classes (UIViewController) are properly rejected with safety error. Missing class/method params return proper errors. |
 | `hook` | remove | pass | After install | Removes hook by ID. Returns {removed:'hook_1'}. Subsequent list confirms hook removed (count=0). Nonexistent hook ID returns proper 'Hook not found' error. |
 | `hook` | remove_all | pass | After install | Installed 2 hooks (viewDidAppear: and viewWillAppear:), then remove_all. Returns {removed:'all'}. Subsequent list confirms count=0. |
@@ -189,15 +189,15 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `timeline` | status | pass | Any state | Returns recording, buffer_size, buffer_count, total_recorded, enabled_types. Always-on flight recorder starts automatically. Default enabled_types: network, screen, command, console. |
 | `timeline` | config | pass | Any state | Accepts buffer_size, recording (bool), enabled_types params. Tested: buffer_size 2000→5000 (verified via subsequent status). recording=false pauses recording. Note: config response returns pre-update values due to async barrier dispatch — subsequent status shows correct values. |
 | `timeline` | clear | pass | Any state | Returns {cleared:true}. Verified buffer_count drops to 0 after clear. total_recorded preserved (historical count). Error case: unknown action returns proper error listing available actions. |
-| `responder_chain` | — | untested | Any interactive element | New command. Dumps gesture recognizer stack, responder chain, and hit-test path for a given point or element. |
+| `responder_chain` | — | ready | Any interactive element (Controls tab button for regression) | Dumps gesture recognizers, responder chain, and hit-test path. Smoke test hits point (200,400). Regression test uses text='Tap Me'. |
 | `notifications` | start | ready | Misc tab — NSNotificationCenter Observers section | Surface added (TASK-316). register_observer_button registers an observer for PepperTestNotification. notifications start then list/counts shows the observer. |
-| `notifications` | stop | untested |  |  |
-| `notifications` | status | untested |  |  |
-| `notifications` | list | untested |  |  |
+| `notifications` | stop | ready | Misc tab — NSNotificationCenter Observers section | Stops tracking. Returns active=false. Smoke test verifies has_keys: active. |
+| `notifications` | status | ready | Misc tab — NSNotificationCenter Observers section | Returns active, observer_count, event_count, total_tracked. Smoke test verifies active and observer_count keys. |
+| `notifications` | list | ready | Misc tab — NSNotificationCenter Observers section | Lists observers with filter/limit support. Returns count and observers array. |
 | `notifications` | counts | ready | Misc tab — NSNotificationCenter Observers section | Surface added (TASK-316). After registering observer, counts shows PepperTestNotification observer entry. |
 | `notifications` | post | ready | Misc tab — NSNotificationCenter Observers section | Surface added (TASK-316). post_notification_button triggers PepperTestNotification. notification_received_count label increments on receive. Also testable via notifications post name=PepperTestNotification. |
 | `notifications` | events | ready | Misc tab — NSNotificationCenter Observers section | Surface added (TASK-316). Events logged after post. Shows add/remove/post timeline. |
-| `notifications` | clear | untested |  |  |
+| `notifications` | clear | ready | Misc tab — NSNotificationCenter Observers section | Clears all tracked observers and events. Returns cleared=true. |
 | `snapshot` | save | regression | MiscTab > Snapshot Test Screen | Captures current look/introspect map output as a named baseline for later diffing. Regression test: save and verify element_count > 0. |
 | `snapshot` | diff | regression | MiscTab > Snapshot Test Screen (after save) | Compares current screen state against saved snapshot. Returns added/removed/changed elements and text. Supports ignore_transient and assert_no_diff. Regression tests: no-change diff, post-mutation diff, assert_no_diff, ignore_transient. |
 | `snapshot` | list | regression | MiscTab > Snapshot Test Screen | Lists all saved snapshot names. Regression test: verified in lifecycle and clear tests. |
@@ -291,5 +291,5 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 
 - pass: 138
 - fail: 3
-- untested: 84
+- untested: 74
 
