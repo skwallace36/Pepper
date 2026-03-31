@@ -129,11 +129,10 @@ enum PepperElementResolver {
             var candidates: [(view: UIView, tapPoint: CGPoint?, strategy: Strategy)] = []
 
             // Interactive elements (discoverInteractiveElements) — ranked highest by pickBestCandidate
-            let lower = text.lowercased()
             let screenBounds = UIScreen.main.bounds
             let interactiveElements = PepperSwiftUIBridge.shared.discoverInteractiveElements(
                 hitTestFilter: true, maxElements: 500)
-            let matches = interactiveElements.filter { $0.hitReachable && $0.label?.lowercased() == lower }
+            let matches = interactiveElements.filter { $0.hitReachable && ($0.label?.pepperEquals(text) == true) }
             if let match = pickBestInteractiveElement(matches, screenBounds: screenBounds) {
                 candidates.append((window, match.center, .interactiveText))
             }
