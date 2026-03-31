@@ -221,9 +221,9 @@
     "surface": "Share button (icon-only SF Symbol)"
   },
   "diff": {
-    "notes": "Quick view hierarchy diff. Delegates to snapshot infrastructure with reserved baseline.",
-    "status": "untested",
-    "surface": "Any screen"
+    "notes": "Quick view hierarchy diff. Delegates to snapshot infrastructure with reserved baseline. Regression test: diff start/show/clear lifecycle on Snapshot Test Screen.",
+    "status": "regression",
+    "surface": "MiscTab > Snapshot Test Screen"
   },
   "dynamic_type": {
     "notes": "New command. Overrides UIContentSizeCategory via traitOverrides on all visible windows. Same runtime override pattern as appearance/locale.",
@@ -805,28 +805,28 @@
     "surface": "List tab"
   },
   "snapshot.clear": {
-    "notes": "New command. Deletes all saved snapshots.",
-    "status": "untested",
+    "notes": "Deletes all saved snapshots. Regression test: save two snapshots, clear, verify list empty.",
+    "status": "regression",
     "surface": "MiscTab > Snapshot Test Screen (after save)"
   },
   "snapshot.delete": {
-    "notes": "New command. Deletes a saved snapshot by name.",
-    "status": "untested",
+    "notes": "Deletes a saved snapshot by name. Regression test: save, delete, verify removed from list.",
+    "status": "regression",
     "surface": "MiscTab > Snapshot Test Screen (after save)"
   },
   "snapshot.diff": {
-    "notes": "New command. Compares current screen state against saved snapshot. Returns added/removed/changed elements and text. Supports ignore_transient and assert_no_diff.",
-    "status": "untested",
+    "notes": "Compares current screen state against saved snapshot. Returns added/removed/changed elements and text. Supports ignore_transient and assert_no_diff. Regression tests: no-change diff, post-mutation diff, assert_no_diff, ignore_transient.",
+    "status": "regression",
     "surface": "MiscTab > Snapshot Test Screen (after save)"
   },
   "snapshot.list": {
-    "notes": "New command. Lists all saved snapshot names.",
-    "status": "untested",
+    "notes": "Lists all saved snapshot names. Regression test: verified in lifecycle and clear tests.",
+    "status": "regression",
     "surface": "MiscTab > Snapshot Test Screen"
   },
   "snapshot.save": {
-    "notes": "New command. Captures current look/introspect map output as a named baseline for later diffing.",
-    "status": "untested",
+    "notes": "Captures current look/introspect map output as a named baseline for later diffing. Regression test: save and verify element_count > 0.",
+    "status": "regression",
     "surface": "MiscTab > Snapshot Test Screen"
   },
   "status": {

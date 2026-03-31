@@ -385,15 +385,115 @@
       params: { action: "list" }
   verify: returns UserDefaults keys
 
-- name: snapshot save and diff
+- name: snapshot full lifecycle
   priority: medium
+  surface: MiscTab > Snapshot Test Screen
+  steps:
+    - tool: navigate
+      params: { screen: "MiscTab" }
+    - tool: tap
+      params: { text: "Snapshot & Diff" }
+    - tool: snapshot
+      params: { action: "save", name: "lifecycle_test" }
+    - tool: snapshot
+      params: { action: "list" }
+    - tool: snapshot
+      params: { action: "diff", name: "lifecycle_test" }
+    - note: diff with no changes should report has_changes=false
+    - tool: tap
+      params: { text: "Increment" }
+    - tool: snapshot
+      params: { action: "diff", name: "lifecycle_test" }
+    - note: diff after increment should report has_changes=true with changed elements
+    - tool: snapshot
+      params: { action: "delete", name: "lifecycle_test" }
+    - tool: snapshot
+      params: { action: "list" }
+    - note: lifecycle_test should no longer appear in list
+  verify: >
+    save returns element_count > 0; list includes lifecycle_test;
+    diff with no changes has has_changes=false; diff after increment has has_changes=true
+    with changed elements; delete succeeds; list no longer includes lifecycle_test
+
+- name: snapshot clear
+  priority: medium
+  surface: MiscTab > Snapshot Test Screen
   steps:
     - tool: snapshot
-      params: { action: "save", name: "regression_baseline" }
-    - note: make a small UI change
+      params: { action: "save", name: "clear_test_1" }
     - tool: snapshot
-      params: { action: "diff", name: "regression_baseline" }
-  verify: diff shows the change
+      params: { action: "save", name: "clear_test_2" }
+    - tool: snapshot
+      params: { action: "list" }
+    - tool: snapshot
+      params: { action: "clear" }
+    - tool: snapshot
+      params: { action: "list" }
+  verify: list shows both snapshots before clear; list shows none after clear
+
+- name: snapshot assert_no_diff
+  priority: medium
+  surface: MiscTab > Snapshot Test Screen
+  steps:
+    - tool: navigate
+      params: { screen: "MiscTab" }
+    - tool: tap
+      params: { text: "Snapshot & Diff" }
+    - tool: snapshot
+      params: { action: "save", name: "assert_test" }
+    - tool: snapshot
+      params: { action: "diff", name: "assert_test", assert_no_diff: true }
+    - note: should succeed with no error since nothing changed
+    - tool: tap
+      params: { text: "Increment" }
+    - tool: snapshot
+      params: { action: "diff", name: "assert_test", assert_no_diff: true }
+    - note: should return error because screen state changed
+    - tool: snapshot
+      params: { action: "clear" }
+  verify: >
+    assert_no_diff with no changes succeeds; assert_no_diff after mutation
+    returns an error indicating differences were detected
+
+- name: snapshot ignore_transient
+  priority: medium
+  surface: MiscTab > Snapshot Test Screen
+  steps:
+    - tool: navigate
+      params: { screen: "MiscTab" }
+    - tool: tap
+      params: { text: "Snapshot & Diff" }
+    - tool: snapshot
+      params: { action: "save", name: "transient_test" }
+    - tool: snapshot
+      params: { action: "diff", name: "transient_test", ignore_transient: true }
+    - tool: snapshot
+      params: { action: "clear" }
+  verify: diff with ignore_transient=true succeeds and filters transient elements
+
+- name: diff start and show
+  priority: medium
+  surface: MiscTab > Snapshot Test Screen
+  steps:
+    - tool: navigate
+      params: { screen: "MiscTab" }
+    - tool: tap
+      params: { text: "Snapshot & Diff" }
+    - tool: diff
+      params: { action: "start" }
+    - tool: diff
+      params: { action: "show" }
+    - note: show with no changes should report has_changes=false
+    - tool: tap
+      params: { text: "Increment" }
+    - tool: diff
+      params: { action: "show" }
+    - note: show after increment should report has_changes=true
+    - tool: diff
+      params: { action: "clear" }
+  verify: >
+    start captures baseline with element_count > 0; show with no changes has
+    has_changes=false; show after increment has has_changes=true; clear succeeds
 
 # ── Accessibility ──
 
