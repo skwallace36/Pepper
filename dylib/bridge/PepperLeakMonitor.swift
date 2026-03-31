@@ -36,11 +36,22 @@ final class PepperLeakMonitor {
     /// Consecutive growth counter: (screen_key, class_name) → count of consecutive positive deltas
     private var growthStreaks: [String: Int] = [:]
 
+    /// Tracks whether a class has ever shrunk back on a given screen.
+    /// Classes that shrink are transients, not true leaks.
+    private var everShrunk: Set<String> = []
+
+    /// Per-screen baseline: captured after warmup, used to suppress transients
+    /// that hover around baseline levels.
+    private var screenBaselines: [String: [String: Int]] = [:]
+
     /// Minimum delta for a single-observation spike to be reported
     private let spikeThreshold = 20
 
     /// Number of consecutive positive-delta observations before sustained growth is reported
     private let sustainedGrowthCount = 3
+
+    /// Tolerance band around baseline — growth within ± this percentage is suppressed
+    private let baselineTolerancePct = 0.15
 
     /// Accumulated leak warnings (ring buffer, newest first)
     private var warnings: [LeakWarning] = []
@@ -102,77 +113,137 @@ final class PepperLeakMonitor {
         }
     }
 
+    /// Classification result for a single class delta observation.
+    private enum ClassVerdict {
+        case skip
+        case suppressed
+        case confirmed(streak: Int)
+        case suspicious
+    }
+
+    /// Update growth tracking for a class and return whether it should be reported.
+    /// Must be called inside queue.sync.
+    private func classifyDelta(
+        screenKey: String,
+        cls: String,
+        currentCount: Int,
+        prevCount: Int
+    ) -> ClassVerdict {
+        let delta = currentCount - prevCount
+        let streakKey = "\(screenKey)|\(cls)"
+
+        // Track consecutive growth streaks
+        if delta > 0 {
+            growthStreaks[streakKey, default: 0] += 1
+        } else {
+            growthStreaks[streakKey] = 0
+            if delta < 0 { everShrunk.insert(streakKey) }
+        }
+
+        // Suppress classes within baseline tolerance band
+        if let baseline = screenBaselines[screenKey]?[cls], baseline > 0 {
+            let tolerance = Int(Double(baseline) * baselineTolerancePct)
+            if abs(currentCount - baseline) <= max(tolerance, 3) { return .suppressed }
+        }
+
+        let isSpike = delta >= spikeThreshold
+        let streak = growthStreaks[streakKey] ?? 0
+        let isSustained = streak >= sustainedGrowthCount && delta > 0
+        guard isSpike || isSustained else { return .skip }
+
+        // Classes that have ever shrunk back are transients
+        if everShrunk.contains(streakKey) { return .suppressed }
+
+        return isSustained ? .confirmed(streak: streak) : .suspicious
+    }
+
     /// Diff against the previous snapshot for this screen key using the
     /// most recent async scan result. Never blocks main thread.
     /// Kicks off a new async scan for future calls.
+    ///
+    /// Returns only confirmed or suspicious leaks. Transients and
+    /// baseline-level fluctuations are suppressed but counted.
     func scanAndDiff(screenKey: String) -> [[String: AnyCodable]] {
         triggerAsyncScan()
         let current = latestScanResult
         guard !current.isEmpty else { return [] }
 
         return queue.sync {
-            var leaks: [[String: AnyCodable]] = []
+            var confirmed: [[String: AnyCodable]] = []
+            var suspicious: [[String: AnyCodable]] = []
+            var suppressedCount = 0
 
             screenObservations[screenKey, default: 0] += 1
             let observations = screenObservations[screenKey] ?? 1
             let inWarmup = observations <= HeapExclusions.warmupObservations
 
+            // Capture baseline at end of warmup
+            if observations == HeapExclusions.warmupObservations {
+                screenBaselines[screenKey] = current
+            }
+
             if let previous = screenSnapshots[screenKey] {
                 for (cls, currentCount) in current {
                     if HeapExclusions.isBenign(cls) { continue }
                     let prevCount = previous[cls] ?? 0
-                    let delta = currentCount - prevCount
-                    let streakKey = "\(screenKey)|\(cls)"
 
-                    // Track consecutive growth streaks
-                    if delta > 0 {
-                        growthStreaks[streakKey, default: 0] += 1
-                    } else {
-                        growthStreaks[streakKey] = 0
-                    }
+                    let verdict = classifyDelta(
+                        screenKey: screenKey, cls: cls,
+                        currentCount: currentCount, prevCount: prevCount
+                    )
 
                     // During warmup, only track — don't report
                     if inWarmup { continue }
 
-                    // Report if: large single spike OR sustained growth over multiple observations
-                    let isSpike = delta >= spikeThreshold
-                    let isSustained = (growthStreaks[streakKey] ?? 0) >= sustainedGrowthCount && delta > 0
-                    guard isSpike || isSustained else { continue }
-
-                    var entry: [String: AnyCodable] = [
-                        "class": AnyCodable(cls),
-                        "before": AnyCodable(prevCount),
-                        "after": AnyCodable(currentCount),
-                        "delta": AnyCodable(delta),
-                    ]
-                    if isSustained && !isSpike {
-                        entry["sustained"] = AnyCodable(true)
-                        entry["streak"] = AnyCodable(growthStreaks[streakKey] ?? 0)
+                    switch verdict {
+                    case .skip: continue
+                    case .suppressed:
+                        suppressedCount += 1
+                        continue
+                    case .confirmed(let streak):
+                        var entry = makeEntry(cls: cls, prevCount: prevCount, currentCount: currentCount)
+                        entry["severity"] = AnyCodable("confirmed")
+                        entry["streak"] = AnyCodable(streak)
+                        confirmed.append(entry)
+                    case .suspicious:
+                        var entry = makeEntry(cls: cls, prevCount: prevCount, currentCount: currentCount)
+                        entry["severity"] = AnyCodable("suspicious")
+                        suspicious.append(entry)
                     }
-                    leaks.append(entry)
 
-                    let warning = LeakWarning(
-                        screenKey: screenKey,
-                        className: cls,
-                        before: prevCount,
-                        after: currentCount,
-                        timestamp: Date()
-                    )
-                    warnings.insert(warning, at: 0)
-                    if warnings.count > maxWarnings {
-                        warnings.removeLast()
-                    }
+                    recordWarning(screenKey: screenKey, cls: cls, before: prevCount, after: currentCount)
                 }
 
-                leaks.sort { a, b in
-                    (a["delta"]?.intValue ?? 0) > (b["delta"]?.intValue ?? 0)
-                }
+                confirmed.sort { ($0["delta"]?.intValue ?? 0) > ($1["delta"]?.intValue ?? 0) }
+                suspicious.sort { ($0["delta"]?.intValue ?? 0) > ($1["delta"]?.intValue ?? 0) }
             }
 
             screenSnapshots[screenKey] = current
 
-            return leaks
+            var result = confirmed + suspicious
+            if suppressedCount > 0 {
+                result.append(["_suppressed": AnyCodable(suppressedCount)])
+            }
+            return result
         }
+    }
+
+    private func makeEntry(cls: String, prevCount: Int, currentCount: Int) -> [String: AnyCodable] {
+        [
+            "class": AnyCodable(cls),
+            "before": AnyCodable(prevCount),
+            "after": AnyCodable(currentCount),
+            "delta": AnyCodable(currentCount - prevCount),
+        ]
+    }
+
+    private func recordWarning(screenKey: String, cls: String, before: Int, after: Int) {
+        let warning = LeakWarning(
+            screenKey: screenKey, className: cls,
+            before: before, after: after, timestamp: Date()
+        )
+        warnings.insert(warning, at: 0)
+        if warnings.count > maxWarnings { warnings.removeLast() }
     }
 
     /// Get recent leak warnings (for telemetry/status queries).
@@ -197,12 +268,18 @@ final class PepperLeakMonitor {
             screenSnapshots.removeAll()
             screenObservations.removeAll()
             growthStreaks.removeAll()
+            everShrunk.removeAll()
+            screenBaselines.removeAll()
             warnings.removeAll()
             latestScanResult.removeAll()
         }
     }
 
     // MARK: - Heap scan via C bridge
+
+    /// Tracks which module each class came from (populated during scan).
+    /// Used for module-aware filtering — system module classes get higher thresholds.
+    private var classModules: [String: String] = [:]
 
     private func runHeapScan() -> [String: Int] {
         let prefixes =
@@ -231,16 +308,31 @@ final class PepperLeakMonitor {
         defer { free(entries) }
 
         var counts: [String: Int] = [:]
+        var modules: [String: String] = [:]
         for i in 0..<Int(count) {
             let entry = entries[i]
             guard let namePtr = entry.class_name else { continue }
-            var name = String(cString: namePtr)
-            if let dotIdx = name.lastIndex(of: ".") {
-                name = String(name[name.index(after: dotIdx)...])
+            let fullName = String(cString: namePtr)
+
+            var shortName = fullName
+            var moduleName: String?
+            if let dotIdx = fullName.lastIndex(of: ".") {
+                moduleName = String(fullName[..<dotIdx])
+                shortName = String(fullName[fullName.index(after: dotIdx)...])
             }
-            counts[name, default: 0] += Int(entry.count)
+
+            // Skip classes from known system modules entirely
+            if let mod = moduleName, HeapExclusions.systemModules.contains(mod) {
+                continue
+            }
+
+            if let mod = moduleName {
+                modules[shortName] = mod
+            }
+            counts[shortName, default: 0] += Int(entry.count)
         }
 
+        queue.sync { classModules = modules }
         return counts
     }
 }

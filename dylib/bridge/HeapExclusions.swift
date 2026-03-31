@@ -42,6 +42,26 @@ enum HeapExclusions {
         // Foundation transient objects
         "NSKeyValueObservance",
         "NSConcreteValue",
+        "CString",
+        // Network.framework transients (grow during requests, settle on their own)
+        "Endpoint",
+        "ProtocolStack",
+        "MutableParametersStorage",
+        "ParametersStorage",
+        "NWConnection",
+        "NWEndpoint",
+        "NWPath",
+        // URL loading transients
+        "URLSessionTask",
+        "HTTPURLResponse",
+    ]
+
+    /// Known system module prefixes. Classes from these modules get higher
+    /// thresholds and are auto-suppressed as transients in the leak monitor.
+    static let systemModules: Set<String> = [
+        "Foundation", "Network", "UIKit", "SwiftUI", "Combine",
+        "os", "dispatch", "CoreFoundation", "CoreGraphics",
+        "CoreAnimation", "AVFoundation", "MapKit", "WebKit",
     ]
 
     /// Substrings indicating benign growth when found anywhere in a class name.
@@ -64,8 +84,9 @@ enum HeapExclusions {
     static let warmupSeconds: Int = 5
 
     /// Minimum screen observations in PepperLeakMonitor before reporting.
-    /// The first N visits build a stable baseline.
-    static let warmupObservations: Int = 2
+    /// The first N visits build a stable baseline. Set to 5 for a more
+    /// stable baseline that filters out initial transients.
+    static let warmupObservations: Int = 5
 
     /// Returns true if the class name matches a known-benign growth pattern.
     static func isBenign(_ className: String) -> Bool {
