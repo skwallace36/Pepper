@@ -28,7 +28,8 @@ final class PepperConnectionInfo {
     /// Timestamps of recent messages for rate limiting (sliding window).
     private var recentMessages: [Date] = []
 
-    init(id: String, send: @escaping (Data) -> Void, sendBinary: @escaping (Data) -> Void, close: @escaping () -> Void) {
+    init(id: String, send: @escaping (Data) -> Void, sendBinary: @escaping (Data) -> Void, close: @escaping () -> Void)
+    {
         self.id = id
         self.connectedAt = Date()
         self.lastActivity = Date()
@@ -96,14 +97,16 @@ final class PepperConnectionManager {
 
     /// Register a new connection.
     @discardableResult
-    func addConnection(id: String, send: @escaping (Data) -> Void, sendBinary: @escaping (Data) -> Void, close: @escaping () -> Void)
+    func addConnection(
+        id: String, send: @escaping (Data) -> Void, sendBinary: @escaping (Data) -> Void, close: @escaping () -> Void
+    )
         -> PepperConnectionInfo
     {
         let info = PepperConnectionInfo(id: id, send: send, sendBinary: sendBinary, close: close)
         let evicted: PepperConnectionInfo? = queue.sync {
             // Evict oldest idle connection if at capacity
             if connections.count >= Self.maxConnections,
-               let oldest = connections.values.min(by: { $0.lastActivity < $1.lastActivity })
+                let oldest = connections.values.min(by: { $0.lastActivity < $1.lastActivity })
             {
                 connections.removeValue(forKey: oldest.id)
                 return oldest

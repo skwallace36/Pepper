@@ -99,7 +99,8 @@ struct AssertHandler: PepperHandler {
             guard let r = resolved else {
                 return fail(command.id, details(element, state), actual: "not found")
             }
-            let isVisible = r.tapPoint != nil
+            let isVisible =
+                r.tapPoint != nil
                 || (!r.view.isHidden && r.view.alpha > 0 && r.view.window != nil)
             if isVisible {
                 return pass(command.id, details(element, state))
@@ -157,7 +158,8 @@ struct AssertHandler: PepperHandler {
         default:
             return .error(
                 id: command.id,
-                message: "Unknown state: \(state). Use: exists, not_exists, visible, enabled, disabled, selected, has_value"
+                message:
+                    "Unknown state: \(state). Use: exists, not_exists, visible, enabled, disabled, selected, has_value"
             )
         }
     }

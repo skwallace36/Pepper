@@ -410,7 +410,7 @@ final class PepperNetworkInterceptor {
         "app-measurement.com",
         "firebase-settings.crashlytics.com",
         "firebaseinstallations.googleapis.com",
-        "app.link",           // Branch.io
+        "app.link",  // Branch.io
         "settings.crashlytics.com",
         // Apple CDN / software updates
         "swscan.apple.com",

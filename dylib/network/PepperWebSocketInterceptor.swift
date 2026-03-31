@@ -187,13 +187,17 @@ final class PepperWebSocketInterceptor {
     // MARK: - Queries
 
     /// Get recent frames, optionally filtered.
-    func recentFrames(limit: Int = 50, connectionFilter: String? = nil, directionFilter: String? = nil) -> [WebSocketFrame] {
+    func recentFrames(limit: Int = 50, connectionFilter: String? = nil, directionFilter: String? = nil)
+        -> [WebSocketFrame]
+    {
         queue.sync {
             var results = frameBuffer
             if let connFilter = connectionFilter, !connFilter.isEmpty {
                 // Filter by connection URL substring
-                let connIds = connections.filter { $0.value.url.localizedCaseInsensitiveContains(connFilter) }.map(\.value.id)
-                let closedIds = closedConnections.filter { $0.url.localizedCaseInsensitiveContains(connFilter) }.map(\.id)
+                let connIds = connections.filter { $0.value.url.localizedCaseInsensitiveContains(connFilter) }.map(
+                    \.value.id)
+                let closedIds = closedConnections.filter { $0.url.localizedCaseInsensitiveContains(connFilter) }.map(
+                    \.id)
                 let allIds = Set(connIds + closedIds)
                 results = results.filter { allIds.contains($0.connectionId) }
             }
@@ -245,7 +249,8 @@ final class PepperWebSocketInterceptor {
 
         switch frameType {
         case .text:
-            let text = String(data: effectiveData, encoding: .utf8)
+            let text =
+                String(data: effectiveData, encoding: .utf8)
                 ?? String(data: effectiveData, encoding: .ascii)
             return (text, nil, truncated, originalSize)
         case .binary, .ping, .pong:
@@ -257,9 +262,11 @@ final class PepperWebSocketInterceptor {
 
     /// Swizzle URLSessionWebSocketTask send/receive methods to capture frame traffic.
     private func applySwizzles() {
-        guard let wsTaskClass = NSClassFromString("__NSCFURLSessionWebSocketTask")
-            ?? NSClassFromString("NSURLSessionWebSocketTask")
-            ?? NSClassFromString("URLSessionWebSocketTask") else {
+        guard
+            let wsTaskClass = NSClassFromString("__NSCFURLSessionWebSocketTask")
+                ?? NSClassFromString("NSURLSessionWebSocketTask")
+                ?? NSClassFromString("URLSessionWebSocketTask")
+        else {
             // Try the public class directly
             let cls: AnyClass = URLSessionWebSocketTask.self
             swizzleClass(cls)
@@ -289,7 +296,8 @@ final class PepperWebSocketInterceptor {
         typealias SendFunc = @convention(c) (AnyObject, Selector, AnyObject, AnyObject?) -> Void
         let original = unsafeBitCast(originalIMP, to: SendFunc.self)
 
-        let block: @convention(block) (AnyObject, AnyObject, AnyObject?) -> Void = { [weak self] task, message, completion in
+        let block: @convention(block) (AnyObject, AnyObject, AnyObject?) -> Void = {
+            [weak self] task, message, completion in
             if let self = self, self.isIntercepting, let wsTask = task as? URLSessionWebSocketTask {
                 let taskKey = "\(ObjectIdentifier(wsTask))"
 

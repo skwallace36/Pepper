@@ -158,8 +158,10 @@ extension MapModeIntrospector {
     }
 
     /// Group elements into rows by Y-band proximity.
-    func groupIntoRows(_ elements: [MapElement], bandSize: CGFloat, summary: Bool = false,
-                       verboseFields: Set<String> = []) -> [AnyCodable] {
+    func groupIntoRows(
+        _ elements: [MapElement], bandSize: CGFloat, summary: Bool = false,
+        verboseFields: Set<String> = []
+    ) -> [AnyCodable] {
         guard !elements.isEmpty else { return [] }
 
         var rows: [AnyCodable] = []
@@ -185,8 +187,10 @@ extension MapModeIntrospector {
     /// Serialize a row of elements for JSON output.
     /// When `summary` is true, omits frames, traits, heuristics, scroll_context,
     /// and other verbose fields to reduce token count for agent use.
-    func serializeRow(_ elements: [MapElement], summary: Bool = false,
-                      verboseFields: Set<String> = []) -> AnyCodable {
+    func serializeRow(
+        _ elements: [MapElement], summary: Bool = false,
+        verboseFields: Set<String> = []
+    ) -> AnyCodable {
         let minY = elements.map { $0.frame.origin.y }.min() ?? 0
         let maxY = elements.map { $0.frame.origin.y + $0.frame.size.height }.max() ?? 0
 
@@ -195,7 +199,7 @@ extension MapModeIntrospector {
         }
 
         var row: [String: AnyCodable] = [
-            "elements": AnyCodable(serialized),
+            "elements": AnyCodable(serialized)
         ]
         if !summary {
             row["y_range"] = AnyCodable([AnyCodable(Int(minY)), AnyCodable(Int(maxY))])
@@ -207,10 +211,12 @@ extension MapModeIntrospector {
     /// `verboseFields` controls which heavyweight fields to include (frame, visible,
     /// hit_reachable, label_source). These are omitted by default to reduce payload size;
     /// callers opt in by naming the fields they need.
-    private func serializeElement(_ elem: MapElement, summary: Bool,
-                                  verboseFields: Set<String> = []) -> AnyCodable {
+    private func serializeElement(
+        _ elem: MapElement, summary: Bool,
+        verboseFields: Set<String> = []
+    ) -> AnyCodable {
         var dict: [String: AnyCodable] = [
-            "type": AnyCodable(elem.type),
+            "type": AnyCodable(elem.type)
         ]
 
         if !summary {
@@ -617,11 +623,13 @@ extension MapModeIntrospector {
     /// Serialize non-interactive elements for JSON, marking volatile positions.
     /// When `summary` is true, returns only type, label, and value.
     /// Full mode includes center and frame. `verboseFields` controls opt-in heavyweight fields (visible, label_source).
-    func serializeNonInteractive(_ elements: [MapElement], volatileKeys: Set<String>, summary: Bool = false,
-                                 verboseFields: Set<String> = []) -> [AnyCodable] {
+    func serializeNonInteractive(
+        _ elements: [MapElement], volatileKeys: Set<String>, summary: Bool = false,
+        verboseFields: Set<String> = []
+    ) -> [AnyCodable] {
         elements.map { elem in
             var dict: [String: AnyCodable] = [
-                "type": AnyCodable(elem.type),
+                "type": AnyCodable(elem.type)
             ]
             if let label = elem.label { dict["label"] = AnyCodable(label) }
             if let value = elem.value, !value.isEmpty { dict["value"] = AnyCodable(value) }

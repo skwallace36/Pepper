@@ -99,9 +99,10 @@ struct TextTapStrategy: TapStrategy {
             let desc = "\(text)[\(textIndex)]"
             return .tap(point: pick.0, strategy: "interactive_text", description: desc, window: keyWindow)
         }
-        return .response(.error(
-            id: command.id,
-            message: "Text '\(text)' has \(matches.count) match(es), index \(textIndex) out of range"))
+        return .response(
+            .error(
+                id: command.id,
+                message: "Text '\(text)' has \(matches.count) match(es), index \(textIndex) out of range"))
     }
 
     // MARK: - Generic Resolution

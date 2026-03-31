@@ -32,7 +32,8 @@ struct MapModeIntrospector {
         // Omitted by default to reduce WebSocket payload; callers request them via
         // comma-separated "verbose_fields" param.
         let verboseCSV = command.params?["verbose_fields"]?.stringValue ?? ""
-        let verboseFields: Set<String> = verboseCSV.isEmpty
+        let verboseFields: Set<String> =
+            verboseCSV.isEmpty
             ? []
             : Set(verboseCSV.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) })
 
@@ -130,7 +131,8 @@ struct MapModeIntrospector {
             // Try to find accessibility value for this element via label-keyed dictionary
             var accValue: String? = {
                 guard let label = elem.label,
-                      let candidates = accByLabel[label] else { return nil }
+                    let candidates = accByLabel[label]
+                else { return nil }
                 return pepperSanitizeLabel(
                     candidates.first(where: {
                         abs($0.frame.midX - elem.center.x) < 15 && abs($0.frame.midY - elem.center.y) < 15
@@ -736,26 +738,29 @@ struct MapModeIntrospector {
                     // Serialize OCR survivors with metadata (text, center, confidence, rect).
                     // Match confidence from original observations by text+center proximity.
                     for elem in survivors {
-                        let conf = observations.first { obs in
-                            obs.text == elem.label
-                                && abs(obs.boundingBox.midX - elem.center.x) < 2
-                                && abs(obs.boundingBox.midY - elem.center.y) < 2
-                        }?.confidence ?? 0
+                        let conf =
+                            observations.first { obs in
+                                obs.text == elem.label
+                                    && abs(obs.boundingBox.midX - elem.center.x) < 2
+                                    && abs(obs.boundingBox.midY - elem.center.y) < 2
+                            }?.confidence ?? 0
                         var entry: [String: AnyCodable] = [
                             "text": AnyCodable(elem.label ?? ""),
-                            "center": AnyCodable([
-                                "x": AnyCodable(Int(elem.center.x)),
-                                "y": AnyCodable(Int(elem.center.y)),
-                            ] as [String: AnyCodable]),
+                            "center": AnyCodable(
+                                [
+                                    "x": AnyCodable(Int(elem.center.x)),
+                                    "y": AnyCodable(Int(elem.center.y)),
+                                ] as [String: AnyCodable]),
                             "confidence": AnyCodable(Double(conf)),
                         ]
                         if !isSummary {
-                            entry["rect"] = AnyCodable([
-                                "x": AnyCodable(Int(elem.frame.origin.x)),
-                                "y": AnyCodable(Int(elem.frame.origin.y)),
-                                "w": AnyCodable(Int(elem.frame.width)),
-                                "h": AnyCodable(Int(elem.frame.height)),
-                            ] as [String: AnyCodable])
+                            entry["rect"] = AnyCodable(
+                                [
+                                    "x": AnyCodable(Int(elem.frame.origin.x)),
+                                    "y": AnyCodable(Int(elem.frame.origin.y)),
+                                    "w": AnyCodable(Int(elem.frame.width)),
+                                    "h": AnyCodable(Int(elem.frame.height)),
+                                ] as [String: AnyCodable])
                         }
                         ocrResults.append(entry)
                     }
@@ -819,8 +824,9 @@ struct MapModeIntrospector {
         // duplicate labels, then group into rows by Y-band
         mergedInteractive.sort { $0.center.y < $1.center.y }
         assignOrdinalIndices(&mergedInteractive)
-        let rows = groupIntoRows(mergedInteractive, bandSize: bandSize, summary: isSummary,
-                                 verboseFields: verboseFields)
+        let rows = groupIntoRows(
+            mergedInteractive, bandSize: bandSize, summary: isSummary,
+            verboseFields: verboseFields)
 
         // Phase 7a: Extract screen info + nav bar title (needed before text serialization)
         let screenID: String
@@ -873,8 +879,9 @@ struct MapModeIntrospector {
         }
         textForOutput.sort { $0.center.y < $1.center.y }
         let volatileKeys = Self.trackVolatileText(&textForOutput)
-        let nonInteractiveSerialized = serializeNonInteractive(textForOutput, volatileKeys: volatileKeys,
-                                                              summary: isSummary, verboseFields: verboseFields)
+        let nonInteractiveSerialized = serializeNonInteractive(
+            textForOutput, volatileKeys: volatileKeys,
+            summary: isSummary, verboseFields: verboseFields)
         let screenSize = UIScreen.main.bounds.size
 
         logger.info(
@@ -904,7 +911,7 @@ struct MapModeIntrospector {
         if scopeFailed, let scopeID = requestedScope {
             data["scope_error"] = AnyCodable(
                 "No element matching scope '\(scopeID)' found. Results are empty. "
-                + "Use look without scope to see available elements, then retry with a matching label or identifier."
+                    + "Use look without scope to see available elements, then retry with a matching label or identifier."
             )
         }
         if !isSummary {
@@ -927,16 +934,19 @@ struct MapModeIntrospector {
                     guard contentW > boundsW + 1 || contentH > boundsH + 1 else { return nil }
                     return [
                         "direction": AnyCodable(info.direction),
-                        "content_size": AnyCodable([
-                            "w": AnyCodable(contentW), "h": AnyCodable(contentH),
-                        ] as [String: AnyCodable]),
-                        "visible_size": AnyCodable([
-                            "w": AnyCodable(boundsW), "h": AnyCodable(boundsH),
-                        ] as [String: AnyCodable]),
-                        "offset": AnyCodable([
-                            "x": AnyCodable(Int(sv.contentOffset.x)),
-                            "y": AnyCodable(Int(sv.contentOffset.y)),
-                        ] as [String: AnyCodable]),
+                        "content_size": AnyCodable(
+                            [
+                                "w": AnyCodable(contentW), "h": AnyCodable(contentH),
+                            ] as [String: AnyCodable]),
+                        "visible_size": AnyCodable(
+                            [
+                                "w": AnyCodable(boundsW), "h": AnyCodable(boundsH),
+                            ] as [String: AnyCodable]),
+                        "offset": AnyCodable(
+                            [
+                                "x": AnyCodable(Int(sv.contentOffset.x)),
+                                "y": AnyCodable(Int(sv.contentOffset.y)),
+                            ] as [String: AnyCodable]),
                         "frame": AnyCodable([
                             AnyCodable(Int(info.frameInWindow.origin.x)),
                             AnyCodable(Int(info.frameInWindow.origin.y)),
@@ -1008,19 +1018,20 @@ struct MapModeIntrospector {
                 info["loading"] = AnyCodable(wv.isLoading)
                 webviewInfos.append(info)
             }
-            data["webview_detected"] = AnyCodable([
-                "warning": AnyCodable("\u{26a0}\u{fe0f} webview_content"),
-                "description": AnyCodable(
-                    "Screen content is inside a WKWebView. Native introspection cannot see web elements. "
-                    + "Use the `webview` tool to inspect and interact with the content."
-                ),
-                "webviews": AnyCodable(webviewInfos.map { AnyCodable($0) }),
-                "suggested_actions": AnyCodable([
-                    AnyCodable("webview url — see loaded URL and state"),
-                    AnyCodable("webview dom — list DOM elements"),
-                    AnyCodable("webview evaluate script='...' — run JavaScript"),
-                ]),
-            ] as [String: AnyCodable])
+            data["webview_detected"] = AnyCodable(
+                [
+                    "warning": AnyCodable("\u{26a0}\u{fe0f} webview_content"),
+                    "description": AnyCodable(
+                        "Screen content is inside a WKWebView. Native introspection cannot see web elements. "
+                            + "Use the `webview` tool to inspect and interact with the content."
+                    ),
+                    "webviews": AnyCodable(webviewInfos.map { AnyCodable($0) }),
+                    "suggested_actions": AnyCodable([
+                        AnyCodable("webview url — see loaded URL and state"),
+                        AnyCodable("webview dom — list DOM elements"),
+                        AnyCodable("webview evaluate script='...' — run JavaScript"),
+                    ]),
+                ] as [String: AnyCodable])
         }
 
         // System dialog detection: warn agents when a modal dialog is blocking interaction.

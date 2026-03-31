@@ -39,7 +39,7 @@ struct IdentifyIconsHandler: PepperHandler {
             let debug = PepperIconCatalog.shared.identifyDebug(frame: element.frame)
 
             var entry: [String: AnyCodable] = [
-                "center": AnyCodable([AnyCodable(Int(element.center.x)), AnyCodable(Int(element.center.y))]),
+                "center": AnyCodable([AnyCodable(Int(element.center.x)), AnyCodable(Int(element.center.y))])
             ]
 
             if let debug = debug {

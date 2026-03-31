@@ -63,7 +63,7 @@ struct TreeHandler: PepperHandler {
         nodeCount += 1
 
         var node: [String: AnyCodable] = [
-            "class": AnyCodable(String(describing: type(of: view))),
+            "class": AnyCodable(String(describing: type(of: view)))
         ]
 
         if !summary {
@@ -97,8 +97,9 @@ struct TreeHandler: PepperHandler {
             for subview in view.subviews {
                 if nodeCount >= Self.maxNodes { break }
                 children.append(
-                    buildNode(view: subview, depth: depth + 1, maxDepth: maxDepth, summary: summary,
-                              nodeCount: &nodeCount))
+                    buildNode(
+                        view: subview, depth: depth + 1, maxDepth: maxDepth, summary: summary,
+                        nodeCount: &nodeCount))
             }
             node["children"] = AnyCodable(children)
         } else if !view.subviews.isEmpty {

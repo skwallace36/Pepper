@@ -17,9 +17,10 @@ struct PredicateTapStrategy: TapStrategy {
             return .response(.error(id: command.id, message: "No elements match predicate: \(predFormat)"))
         }
         guard index < matches.count else {
-            return .response(.error(
-                id: command.id,
-                message: "Predicate matched \(matches.count) element(s), index \(index) out of range"))
+            return .response(
+                .error(
+                    id: command.id,
+                    message: "Predicate matched \(matches.count) element(s), index \(index) out of range"))
         }
 
         let match = matches[index]

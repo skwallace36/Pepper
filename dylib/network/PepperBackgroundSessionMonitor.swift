@@ -66,9 +66,10 @@ final class PepperBackgroundSessionMonitor {
         }
 
         let originalIMP = method_getImplementation(method)
-        typealias OrigType = @convention(c) (
-            AnyObject, Selector, URLSessionConfiguration, URLSessionDelegate?, OperationQueue?
-        ) -> URLSession
+        typealias OrigType =
+            @convention(c) (
+                AnyObject, Selector, URLSessionConfiguration, URLSessionDelegate?, OperationQueue?
+            ) -> URLSession
         let original = unsafeBitCast(originalIMP, to: OrigType.self)
 
         let block:

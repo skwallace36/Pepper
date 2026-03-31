@@ -27,8 +27,10 @@ struct WaitHandler: PepperHandler {
 
         let parseResult = parseCondition(from: untilDict)
         guard let condition = parseResult.condition else {
-            return .error(id: command.id, message: parseResult.error
-                ?? "Invalid wait condition. Supported: element+state, text, screen, predicate.")
+            return .error(
+                id: command.id,
+                message: parseResult.error
+                    ?? "Invalid wait condition. Supported: element+state, text, screen, predicate.")
         }
 
         logger.info("Wait started, timeout \(timeoutMs)ms, condition: \(String(describing: condition))")
@@ -176,7 +178,8 @@ struct WaitHandler: PepperHandler {
                 return (nil, parseError)
             }
             let expect = (dict["expect"]?.value as? String) ?? "match"
-            let condition: WaitCondition = expect == "gone"
+            let condition: WaitCondition =
+                expect == "gone"
                 ? .predicateGone(format: predicateFormat)
                 : .predicateMatch(format: predicateFormat)
             return (condition, nil)

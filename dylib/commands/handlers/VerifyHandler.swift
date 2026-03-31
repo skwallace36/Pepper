@@ -84,13 +84,15 @@ struct VerifyHandler: PepperHandler {
         let allPassed = failCount == 0
         logger.info("Verify batch: \(passCount) passed, \(failCount) failed")
 
-        return .result(id: command.id, [
-            "pass": AnyCodable(allPassed),
-            "passed": AnyCodable(passCount),
-            "failed": AnyCodable(failCount),
-            "total": AnyCodable(results.count),
-            "results": AnyCodable(results.map { AnyCodable($0) }),
-        ])
+        return .result(
+            id: command.id,
+            [
+                "pass": AnyCodable(allPassed),
+                "passed": AnyCodable(passCount),
+                "failed": AnyCodable(failCount),
+                "total": AnyCodable(results.count),
+                "results": AnyCodable(results.map { AnyCodable($0) }),
+            ])
     }
 
     // MARK: - Assertion Evaluation
@@ -149,7 +151,8 @@ struct VerifyHandler: PepperHandler {
         // Search all visible windows (same strategy as WaitHandler/TapHandler)
         for w in UIWindow.pepper_allVisibleWindows {
             if let match = w.pepper_findElement(text: text, exact: exact) {
-                let label = match.accessibilityLabel ?? match.accessibilityIdentifier ?? String(describing: type(of: match))
+                let label =
+                    match.accessibilityLabel ?? match.accessibilityIdentifier ?? String(describing: type(of: match))
                 return AssertionResult(
                     pass: true, assertion: "text_visible",
                     details: [
@@ -233,7 +236,8 @@ struct VerifyHandler: PepperHandler {
             if isSwiftUI {
                 actualVisible = true  // present in accessibility tree = visible
             } else {
-                actualVisible = !resolved.view.isHidden && resolved.view.alpha > 0
+                actualVisible =
+                    !resolved.view.isHidden && resolved.view.alpha > 0
                     && resolved.view.window != nil
             }
             details["visible"] = AnyCodable(actualVisible)

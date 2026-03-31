@@ -99,7 +99,9 @@ struct SwipeHandler: PepperHandler {
         )
 
         if success {
-            let dirDesc = command.params?["direction"]?.stringValue ?? "(\(Int(from.x)),\(Int(from.y)))→(\(Int(to.x)),\(Int(to.y)))"
+            let dirDesc =
+                command.params?["direction"]?.stringValue
+                ?? "(\(Int(from.x)),\(Int(from.y)))→(\(Int(to.x)),\(Int(to.y)))"
             return .action(
                 id: command.id, action: "swipe", target: dirDesc,
                 extra: [
