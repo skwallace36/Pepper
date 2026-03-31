@@ -1,0 +1,29 @@
+name: simulate-offline
+description: >
+  Simulate offline conditions, trigger an action that needs network,
+  and verify the app shows appropriate error UI. Tests network fault injection.
+requires_simulator: true
+deploy_test_app: true
+
+goal: |
+  1. Use look to observe the current screen in normal state.
+  2. Use network with action=simulate effect=offline to go offline.
+  3. Interact with the app to trigger something that needs network (tap a button, navigate).
+  4. Use look to verify the app shows an error state, empty state, or offline indicator.
+  5. Use network with action=simulate effect=none to restore connectivity.
+  6. Use look to verify the app recovers.
+  Report what error UI appeared and whether recovery worked.
+
+success:
+  pepper_tools_called: [look, network, tap]
+  min_look_calls: 3
+
+anti_patterns:
+  - name: no-look-before-interact
+    rule: look_before_act < 1.0
+  - name: excessive-consecutive-actions
+    rule: consecutive_actions > 2
+
+budget_usd: 0.35
+timeout_s: 180
+tags: [network, fault-injection, medium]

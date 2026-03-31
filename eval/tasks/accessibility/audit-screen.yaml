@@ -1,0 +1,29 @@
+name: audit-screen
+description: >
+  Run an accessibility audit on the current screen and report violations
+  with severity. Tests accessibility tooling and structured reporting.
+requires_simulator: true
+deploy_test_app: true
+
+goal: |
+  1. Use look to observe the current screen.
+  2. Use accessibility_audit to scan for violations.
+  3. For each violation found, report:
+     - Element affected
+     - Violation type (missing label, low contrast, small touch target, etc.)
+     - Severity (critical, warning, info)
+     - Suggested fix
+  4. If no violations, navigate to another screen and try again.
+  Produce a structured accessibility report.
+
+success:
+  pepper_tools_called: [look, accessibility_audit]
+  min_look_calls: 1
+
+anti_patterns:
+  - name: no-look-first
+    rule: look_before_act < 1.0
+
+budget_usd: 0.25
+timeout_s: 120
+tags: [accessibility, audit, quick]

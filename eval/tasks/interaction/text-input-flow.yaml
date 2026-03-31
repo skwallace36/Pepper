@@ -1,0 +1,29 @@
+name: text-input-flow
+description: >
+  Find a text field, enter text, dismiss keyboard, and verify the input
+  was accepted. Tests the full text input lifecycle.
+requires_simulator: true
+deploy_test_app: true
+
+goal: |
+  1. Use look to find a screen with a text field.
+  2. Tap the text field to focus it.
+  3. Use input_text to type a value.
+  4. Use dismiss_keyboard to close the keyboard.
+  5. Use look to verify the text field shows the entered value.
+  Report: which field was used, what text was entered, and whether
+  the value persisted after keyboard dismissal.
+
+success:
+  pepper_tools_called: [look, tap, input_text, dismiss_keyboard]
+  min_look_calls: 2
+
+anti_patterns:
+  - name: no-look-before-tap
+    rule: look_before_act < 1.0
+  - name: excessive-consecutive-actions
+    rule: consecutive_actions > 2
+
+budget_usd: 0.25
+timeout_s: 120
+tags: [interaction, text-input, quick]
