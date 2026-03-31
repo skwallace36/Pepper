@@ -34,6 +34,9 @@
 		A100001A /* AppearanceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A200001A; };
 		A100001B /* NestedScrollView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A200001B; };
 		A100001C /* CoreDataView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A200001C; };
+		A100001D /* WebSocketView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A200001D; };
+		A100001E /* SandboxBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A200001E; };
+		A100001F /* RenderTrackingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A200001F; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -65,6 +68,9 @@
 		A200001A /* AppearanceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppearanceView.swift; sourceTree = "<group>"; };
 		A200001B /* NestedScrollView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NestedScrollView.swift; sourceTree = "<group>"; };
 		A200001C /* CoreDataView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreDataView.swift; sourceTree = "<group>"; };
+		A200001D /* WebSocketView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebSocketView.swift; sourceTree = "<group>"; };
+		A200001E /* SandboxBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SandboxBrowserView.swift; sourceTree = "<group>"; };
+		A200001F /* RenderTrackingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RenderTrackingView.swift; sourceTree = "<group>"; };
 		A3000001 /* PepperTestApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PepperTestApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -118,6 +124,9 @@
 				A200001A /* AppearanceView.swift */,
 				A200001B /* NestedScrollView.swift */,
 				A200001C /* CoreDataView.swift */,
+				A200001D /* WebSocketView.swift */,
+				A200001E /* SandboxBrowserView.swift */,
+				A200001F /* RenderTrackingView.swift */,
 			);
 			path = PepperTestApp;
 			sourceTree = "<group>";
@@ -220,6 +229,9 @@
 				A100001A /* AppearanceView.swift in Sources */,
 				A100001B /* NestedScrollView.swift in Sources */,
 				A100001C /* CoreDataView.swift in Sources */,
+				A100001D /* WebSocketView.swift in Sources */,
+				A100001E /* SandboxBrowserView.swift in Sources */,
+				A100001F /* RenderTrackingView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
