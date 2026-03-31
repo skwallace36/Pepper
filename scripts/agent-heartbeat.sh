@@ -222,10 +222,6 @@ print(unclaimed)
       echo "$(date +%H:%M) builder in backoff (${BACKOFF_THRESHOLD}+ consecutive failures) — skipping"
     else
       launch_if_slots builder
-      # Launch a second builder if there's enough work (runner enforces the cap)
-      if [ "$TASK_COUNT" -gt 1 ]; then
-        launch_if_slots builder
-      fi
     fi
   fi
 

@@ -186,7 +186,7 @@ fi
 case "$TYPE" in
   bugfix)                MAX_INSTANCES=1 ;;
   pr-verifier|verifier)  MAX_INSTANCES=2 ;;
-  builder)               MAX_INSTANCES=2 ;;
+  builder)               MAX_INSTANCES=1 ;;
   pr-responder)          MAX_INSTANCES=1 ;;
   tester)                MAX_INSTANCES=0 ;;  # paused — use regression-tester instead
   regression-tester)     MAX_INSTANCES=1 ;;
