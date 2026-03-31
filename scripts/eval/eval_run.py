@@ -162,7 +162,7 @@ def run_eval(
 
     mcp_config = _build_mcp_config(mode, fixture)
     if mcp_config:
-        cmd.extend(["--mcp-config", mcp_config])
+        cmd.extend(["--mcp-config", mcp_config, "--strict-mcp-config"])
 
     print(f"Running eval: {task.get('name', task_path)}")
     print(f"  Mode: {mode}, Model: {model}, Budget: ${budget}, Timeout: {timeout}s")

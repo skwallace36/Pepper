@@ -19,7 +19,18 @@ cmd=$(echo "$input" | jq -r '.tool_input.command // empty')
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || echo "")"
 [ -z "$REPO_ROOT" ] && exit 0
 
-branch=$(git -C "$REPO_ROOT" branch --show-current 2>/dev/null || echo "")
+# If the command starts with "cd /path &&", resolve branch from that directory.
+# This handles worktree commands where the Bash tool CWD differs from the target.
+cmd_dir=""
+if echo "$cmd" | grep -qE '^cd\s+(/[^ ]+)'; then
+  cmd_dir=$(echo "$cmd" | sed -n 's/^cd \(\/[^ ]*\).*/\1/p')
+fi
+
+if [ -n "$cmd_dir" ] && [ -d "$cmd_dir" ]; then
+  branch=$(git -C "$cmd_dir" branch --show-current 2>/dev/null || echo "")
+else
+  branch=$(git -C "$REPO_ROOT" branch --show-current 2>/dev/null || echo "")
+fi
 
 # ── 1. Block commits on main ──────────────────────────────────────────
 # Match git commit anywhere in a command chain (&&, ||, ;, |, subshell)
