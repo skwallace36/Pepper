@@ -1,8 +1,8 @@
 {
   "_comment": "Regression test baseline. Updated by the regression-tester agent. Each key is a test name, value is {status, last_run, notes}.",
   "_last_run": "2026-03-31",
-  "_sha": "e2135d0a3e031f49effa4366fe5f491e32532086",
-  "_note": "Full run against PepperTestApp on sim 6BCC79BB (Pepper Agent 1). Used pepper-ctl CLI + raw commands. 20/36 pass, 0 regressions.",
+  "_sha": "e2cd0a244a3bf1ced707f3f84d4423d2d8e338b7",
+  "_note": "Validated on e2cd0a2 (sim 19C7CBE5, port 8830). CLI-only run confirmed 0 regressions against 20/36 baseline from sim 6BCC79BB.",
   "pepper connects": {
     "status": "pass",
     "last_run": "2026-03-31",
