@@ -212,24 +212,26 @@ struct ScrollHandler: PepperHandler {
 
     // MARK: - Scroll by direction (touch synthesis)
 
-    /// Resolve scroll view targeting params to the center point of the target scroll view.
-    /// Returns nil if no targeting param matched (caller should use screen center).
+    /// Resolve scroll view targeting params to the target scroll view and its center point.
+    /// Returns nil if no targeting param matched (caller should use screen center with HID).
     private func resolveScrollTarget(
         command: PepperCommand, scrollViewID: String?, scrollViewClass: String?, in window: UIWindow
-    ) -> CGPoint? {
+    ) -> (scrollView: UIScrollView, center: CGPoint)? {
         if let id = scrollViewID,
             let resolved = PepperElementResolver.resolveByID(id, in: window),
             resolved.tapPoint == nil,
             let scrollView = resolved.view as? UIScrollView
         {
-            return scrollView.convert(
+            let center = scrollView.convert(
                 CGPoint(x: scrollView.bounds.midX, y: scrollView.bounds.midY), to: window)
+            return (scrollView, center)
         }
         if let className = scrollViewClass,
             let scrollView = findScrollViewByClass(className, in: window)
         {
-            return scrollView.convert(
+            let center = scrollView.convert(
                 CGPoint(x: scrollView.bounds.midX, y: scrollView.bounds.midY), to: window)
+            return (scrollView, center)
         }
         if let parentText = command.params?["parent_of"]?.stringValue {
             let axis = command.params?["axis"]?.stringValue
@@ -237,16 +239,18 @@ struct ScrollHandler: PepperHandler {
             if let result = result,
                 let sv = findAncestorScrollView(of: result.view, axis: axis)
             {
-                return sv.convert(
+                let center = sv.convert(
                     CGPoint(x: sv.bounds.midX, y: sv.bounds.midY), to: window)
+                return (sv, center)
             }
             logger.warning("parent_of '\(parentText)' — no matching scroll view found")
         }
         if let atY = command.params?["at_y"]?.doubleValue {
             let point = CGPoint(x: window.bounds.midX, y: CGFloat(atY))
             if let sv = findScrollViewAtPoint(point, in: window) {
-                return sv.convert(
+                let center = sv.convert(
                     CGPoint(x: sv.bounds.midX, y: sv.bounds.midY), to: window)
+                return (sv, center)
             }
             logger.warning("at_y \(atY) — no scroll view found at that position")
         }
@@ -259,15 +263,24 @@ struct ScrollHandler: PepperHandler {
     ) -> PepperResponse {
         let duration = command.params?["duration"]?.doubleValue ?? 0.4
 
+        // Resolve targeted scroll view (if any scoping param was provided)
+        let resolved = resolveScrollTarget(
+            command: command, scrollViewID: scrollViewID, scrollViewClass: scrollViewClass, in: window)
+
+        // When we have a resolved scroll view on a presented sheet, use direct contentOffset
+        // manipulation to bypass HID hit-testing (which routes touches to the view behind the sheet).
+        if let resolved = resolved, isViewOnPresentedSheet(resolved.scrollView) {
+            return scrollDirectly(
+                resolved.scrollView, direction: direction, amount: amount, command: command)
+        }
+
         // Determine gesture start point — center of targeted scroll view, or screen center
         var startX = window.bounds.midX
         var startY = window.bounds.midY
 
-        if let target = resolveScrollTarget(
-            command: command, scrollViewID: scrollViewID, scrollViewClass: scrollViewClass, in: window)
-        {
-            startX = target.x
-            startY = target.y
+        if let resolved = resolved {
+            startX = resolved.center.x
+            startY = resolved.center.y
         }
 
         // Allow explicit start point override
@@ -330,7 +343,67 @@ struct ScrollHandler: PepperHandler {
         }
     }
 
-    // MARK: - Helpers
+    /// Scroll a specific scroll view by manipulating contentOffset directly.
+    /// Used when HID touch injection would be routed to a view behind a sheet.
+    private func scrollDirectly(
+        _ scrollView: UIScrollView, direction: String, amount: CGFloat, command: PepperCommand
+    ) -> PepperResponse {
+        let inset = scrollView.adjustedContentInset
+        var newOffset = scrollView.contentOffset
+
+        switch direction.lowercased() {
+        case "down":
+            let maxY = max(scrollView.contentSize.height - scrollView.bounds.height + inset.bottom, -inset.top)
+            newOffset.y = min(newOffset.y + amount, maxY)
+        case "up":
+            newOffset.y = max(newOffset.y - amount, -inset.top)
+        case "right":
+            let maxX = max(scrollView.contentSize.width - scrollView.bounds.width + inset.right, -inset.left)
+            newOffset.x = min(newOffset.x + amount, maxX)
+        case "left":
+            newOffset.x = max(newOffset.x - amount, -inset.left)
+        default:
+            return .error(id: command.id, message: "Invalid direction: \(direction). Use up/down/left/right")
+        }
+
+        logger.info(
+            "Scroll \(direction) direct: offset (\(scrollView.contentOffset.x),\(scrollView.contentOffset.y)) → (\(newOffset.x),\(newOffset.y))"
+        )
+        scrollView.setContentOffset(newOffset, animated: true)
+
+        return .action(
+            id: command.id, action: "scroll", target: "\(direction) \(Int(amount))pt",
+            extra: [
+                "description": AnyCodable("Scrolled \(direction) \(Int(amount))pt (direct)"),
+                "direction": AnyCodable(direction),
+                "amount": AnyCodable(Double(amount)),
+                "method": AnyCodable("direct"),
+                "scrollOffset": AnyCodable([
+                    "x": AnyCodable(Double(newOffset.x)),
+                    "y": AnyCodable(Double(newOffset.y)),
+                ]),
+            ])
+    }
+
+    // MARK: - Presentation-aware helpers
+
+    /// Check if a view is inside a presented sheet or modal (same logic as tap's Tier 1).
+    private func isViewOnPresentedSheet(_ view: UIView) -> Bool {
+        guard let vc = ElementDiscoveryBridge.shared.findOwningViewController(for: view) else { return false }
+        let ctx = ElementDiscoveryBridge.shared.presentationContext(of: vc)
+        return ctx == "sheet" || ctx == "modal" || ctx == "popover"
+    }
+
+    /// Get the view hierarchy root for the topmost presented view controller, if any.
+    private func topmostPresentedView(in window: UIWindow) -> UIView? {
+        var vc = window.rootViewController
+        while let presented = vc?.presentedViewController {
+            vc = presented
+        }
+        // Only return if it's actually presented (not the root)
+        guard let top = vc, top.presentingViewController != nil else { return nil }
+        return top.view
+    }
 
     private func findAncestorScrollView(of view: UIView, axis: String? = nil) -> UIScrollView? {
         var current = view.superview
@@ -352,20 +425,37 @@ struct ScrollHandler: PepperHandler {
         let scrollViews = ElementDiscoveryBridge.shared.collectScrollViews()
         var bestMatch: UIScrollView?
         var bestArea: CGFloat = .greatestFiniteMagnitude
+        var bestOnSheet = false
 
         for info in scrollViews {
             if info.frameInWindow.contains(point) {
                 let area = info.frameInWindow.width * info.frameInWindow.height
-                if area < bestArea {
-                    bestArea = area
+                let onSheet = isViewOnPresentedSheet(info.scrollView)
+                // Prefer scroll views on presented sheets over background ones
+                if onSheet && !bestOnSheet {
                     bestMatch = info.scrollView
+                    bestArea = area
+                    bestOnSheet = true
+                } else if onSheet == bestOnSheet && area < bestArea {
+                    bestMatch = info.scrollView
+                    bestArea = area
                 }
             }
         }
         return bestMatch
     }
 
-    private func findScrollViewByClass(_ className: String, in view: UIView) -> UIScrollView? {
+    private func findScrollViewByClass(_ className: String, in window: UIWindow) -> UIScrollView? {
+        // Search presented sheet hierarchy first
+        if let presentedView = topmostPresentedView(in: window) {
+            if let found = findScrollViewByClassRecursive(className, in: presentedView) {
+                return found
+            }
+        }
+        return findScrollViewByClassRecursive(className, in: window)
+    }
+
+    private func findScrollViewByClassRecursive(_ className: String, in view: UIView) -> UIScrollView? {
         if let scrollView = view as? UIScrollView {
             let typeName = String(describing: type(of: scrollView))
             if typeName.contains(className) {
@@ -373,20 +463,29 @@ struct ScrollHandler: PepperHandler {
             }
         }
         for subview in view.subviews {
-            if let found = findScrollViewByClass(className, in: subview) {
+            if let found = findScrollViewByClassRecursive(className, in: subview) {
                 return found
             }
         }
         return nil
     }
 
-    private func findFirstScrollView(in view: UIView) -> UIScrollView? {
-        // Look for the most prominent scroll view (usually the main content)
+    private func findFirstScrollView(in window: UIWindow) -> UIScrollView? {
+        // If a sheet/modal is presented, search its view hierarchy first
+        if let presentedView = topmostPresentedView(in: window) {
+            if let found = findFirstScrollViewRecursive(in: presentedView) {
+                return found
+            }
+        }
+        return findFirstScrollViewRecursive(in: window)
+    }
+
+    private func findFirstScrollViewRecursive(in view: UIView) -> UIScrollView? {
         if let scrollView = view as? UIScrollView, scrollView.contentSize.height > scrollView.bounds.height {
             return scrollView
         }
         for subview in view.subviews {
-            if let found = findFirstScrollView(in: subview) {
+            if let found = findFirstScrollViewRecursive(in: subview) {
                 return found
             }
         }
