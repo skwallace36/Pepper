@@ -126,18 +126,13 @@ sys.exit(1)      # backoff expired = OK
   return $?
 }
 
-# Launch an agent type if under its instance cap
-# Runner enforces the actual cap per-type — heartbeat launches one per cycle
+# Launch an agent type — runner enforces the actual per-type instance cap
 launch_if_slots() {
   local type="$1"
-  local running
-  running=$(count_running "$type")
-  if [ "$running" -eq 0 ]; then
-    echo "$(date +%H:%M) Launching $type"
-    # Runner runs in the same process group as heartbeat — when heartbeat dies,
-    # the whole group gets killed. No orphans.
-    "$REPO_ROOT/scripts/agent-runner.sh" "$type" >> build/logs/heartbeat.log 2>&1 &
-  fi
+  echo "$(date +%H:%M) Launching $type"
+  # Runner runs in the same process group as heartbeat — when heartbeat dies,
+  # the whole group gets killed. No orphans.
+  "$REPO_ROOT/scripts/agent-runner.sh" "$type" >> build/logs/heartbeat.log 2>&1 &
 }
 
 # Main loop
@@ -227,6 +222,10 @@ print(unclaimed)
       echo "$(date +%H:%M) builder in backoff (${BACKOFF_THRESHOLD}+ consecutive failures) — skipping"
     else
       launch_if_slots builder
+      # Launch a second builder if there's enough work (runner enforces the cap)
+      if [ "$TASK_COUNT" -gt 1 ]; then
+        launch_if_slots builder
+      fi
     fi
   fi
 
