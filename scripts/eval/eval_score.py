@@ -172,14 +172,16 @@ def check_anti_patterns(
         value = metrics.get(metric_name)
         if value is None:
             continue
+        # Rule defines WHEN the anti-pattern fires, e.g. "look_before_act < 1.0"
+        # means "violation when look_before_act is below 1.0"
         violated = False
-        if op == "<" and not (value < threshold):
+        if op == "<" and value < threshold:
             violated = True
-        elif op == "<=" and not (value <= threshold):
+        elif op == "<=" and value <= threshold:
             violated = True
-        elif op == ">" and not (value > threshold):
+        elif op == ">" and value > threshold:
             violated = True
-        elif op == ">=" and not (value >= threshold):
+        elif op == ">=" and value >= threshold:
             violated = True
         if violated:
             violations.append(ap["name"])
@@ -215,6 +217,7 @@ class EvalScore:
 
     def to_dict(self) -> dict:
         return {
+            "schema_version": 2,
             "look_before_act": self.look_before_act,
             "consecutive_actions": self.consecutive_actions,
             "error_recovery": self.error_recovery,
@@ -299,7 +302,11 @@ def compute_score(
 
     # ── Efficiency Score ──
     # Cost, speed, waste. Affected by both prompt and infrastructure.
-    eff_score = (n_wc + n_rr + n_cost) / 3
+    # In replay mode (cost=0), exclude cost from efficiency — it's not meaningful.
+    if transcript.total_cost_usd == 0:
+        eff_score = (n_wc + n_rr) / 2
+    else:
+        eff_score = (n_wc + n_rr + n_cost) / 3
 
     # ── Completion Score (infrastructure-dependent) ──
     # Did the agent achieve the goal? Affected by auth, sim health, timeouts.

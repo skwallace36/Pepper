@@ -192,11 +192,13 @@ def parse_verbose_log(path: str) -> EvalTranscript:
     num_turns = 0
     duration_ms = 0
     stop_reason = ""
+    assistant_message_count = 0
 
     for ev in events:
         ev_type = ev.get("type", "")
 
         if ev_type == "assistant":
+            assistant_message_count += 1
             msg = ev.get("message", ev)
             content = msg.get("content", [])
             if isinstance(content, list):
@@ -292,6 +294,10 @@ def parse_verbose_log(path: str) -> EvalTranscript:
             cur["is_wasted"] = True
 
     tool_calls = [ToolCall(**rc) for rc in raw_calls]
+
+    # Derive turn count from assistant messages if result event didn't provide it
+    if num_turns == 0 and assistant_message_count > 0:
+        num_turns = assistant_message_count
 
     return EvalTranscript(
         session_id=session_id,
