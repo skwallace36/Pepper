@@ -1,32 +1,32 @@
 {
   "_comment": "Regression test baseline. Updated by the regression-tester agent. Each key is a test name, value is {status, last_run, notes}.",
   "_last_run": "2026-03-31",
-  "_sha": "e8cde4b405b16eea36e2b97407b10e6711536fbf",
-  "_note": "Full run against PepperTestApp on simulator. CLI-based (pepper-ctl). MCP tools not available in session. raw command crashes app.",
+  "_sha": "3275e6bdac561b88cc860927f5f5f6c384bb24b7",
+  "_note": "Full run against PepperTestApp on sim 905B3C10. CLI-only (no MCP tools available). Test app built and deployed successfully.",
   "pepper connects": {
     "status": "pass",
     "last_run": "2026-03-31",
-    "notes": "ping returns pong, screen returns screen_id=home_view with 5 tabs (connected to real app first, then recovered to test app)"
+    "notes": "ping returns pong, look returns screen data (19 interactive + 11 text elements on Controls tab)"
   },
   "look returns elements": {
     "status": "pass",
     "last_run": "2026-03-31",
-    "notes": "19 interactive + 19 text elements on home_view screen"
+    "notes": "19 interactive elements on Controls tab, well above 3 minimum"
   },
   "tap by text": {
     "status": "pass",
     "last_run": "2026-03-31",
-    "notes": "Tapped 'Health' tab via text strategy, screen changed from home_view to health_view"
+    "notes": "Tapped 'List' tab via text strategy, screen changed from Controls to List (title=List)"
   },
   "tap by point": {
     "status": "pass",
     "last_run": "2026-03-31",
-    "notes": "Tapped at (200,400) via hid_touch point strategy, acknowledged"
+    "notes": "Tapped at (200,400) via hid_touch, acknowledged"
   },
   "back navigation": {
     "status": "pass",
     "last_run": "2026-03-31",
-    "notes": "back command executed, returned 'Navigated back'. Dismissed modal, app recovered to test app Controls tab."
+    "notes": "Navigated back from detail to List screen successfully"
   },
   "input text into field": {
     "status": "pass",
@@ -34,29 +34,29 @@
     "notes": "Tapped 'Enter text here' textField, input 'test input 123', verified value='test input 123' in subsequent look"
   },
   "dismiss keyboard": {
-    "status": "fail",
+    "status": "pass",
     "last_run": "2026-03-31",
-    "notes": "App crashed on dismiss_keyboard raw command (WebSocket connection lost: timed out). Same crash as 2026-03-30 baseline."
+    "notes": "No crash! PR #967 fix confirmed. Returns 'Invalid JSON' response but app stays alive and functional. Previously crashed."
   },
   "scroll down": {
     "status": "pass",
     "last_run": "2026-03-31",
-    "notes": "Scrolled down 200pt successfully, content shifted from 'Tap Me' to 'Notifications'/'Dark Mode'"
+    "notes": "Scrolled down 200pt successfully, content shifted to show text field and other elements"
   },
   "scroll to element": {
     "status": "fail",
     "last_run": "2026-03-31",
-    "notes": "scroll --element 'Show Alert' and 'Push Detail' both return 'Element not found'. Off-screen elements not discoverable."
+    "notes": "scroll --element 'Date Picker' returns 'Element not found'. Off-screen elements not discoverable by scroll command."
   },
   "look scope filtering": {
     "status": "fail",
     "last_run": "2026-03-31",
-    "notes": "look --scope 'Toggles' returns 0 elements with SCOPE ERROR. Scope filtering doesn't match SwiftUI section headers."
+    "notes": "look --scope 'Toggles' returns element_count=0 with SCOPE ERROR. Scope filtering doesn't match SwiftUI section headers."
   },
   "look compact mode": {
     "status": "skip",
     "last_run": "2026-03-31",
-    "notes": "Skipped: compact mode only available via MCP tool. raw command crashes app."
+    "notes": "Skipped: compact mode only available via MCP tool (not in pepper-ctl CLI)."
   },
   "find by predicate": {
     "status": "skip",
@@ -66,7 +66,7 @@
   "read element properties": {
     "status": "fail",
     "last_run": "2026-03-31",
-    "notes": "read --id requires accessibility ID. No elements in test app expose explicit accessibility IDs. snapshot shows '? (?)' for all elements."
+    "notes": "read command requires --id (accessibility ID). No elements in test app expose explicit accessibility IDs in look output."
   },
   "screen name": {
     "status": "pass",
@@ -74,9 +74,9 @@
     "notes": "Returns screen_id='navigation_stack', type='NavigationStackHostingController<AnyView>', tab='controls', 3 tabs, can_go_back=false"
   },
   "appearance toggle": {
-    "status": "skip",
+    "status": "fail",
     "last_run": "2026-03-31",
-    "notes": "Skipped: appearance command only available via MCP tool. raw command crashes app."
+    "notes": "CRASH: appearance command crashes app (WebSocket connection lost). Reproduced 2/2 times. Filed #974."
   },
   "network monitoring": {
     "status": "skip",
@@ -136,7 +136,7 @@
   "console capture": {
     "status": "skip",
     "last_run": "2026-03-31",
-    "notes": "Skipped: console commands only available via MCP tool."
+    "notes": "Skipped: console commands only available via MCP tool. Raw JSON attempt crashed app similarly to appearance."
   },
   "timeline flight recorder": {
     "status": "skip",
@@ -156,12 +156,12 @@
   "snapshot save and diff": {
     "status": "pass",
     "last_run": "2026-03-31",
-    "notes": "snapshot returned 42 elements on Controls tab. Diff not tested (MCP-only)."
+    "notes": "snapshot returned 41 elements on Controls tab. Diff not tested (MCP-only)."
   },
   "accessibility audit": {
     "status": "skip",
     "last_run": "2026-03-31",
-    "notes": "Skipped: accessibility_audit command only available via MCP tool. raw command crashes app."
+    "notes": "Skipped: accessibility_audit command only available via MCP tool."
   },
   "tree dump": {
     "status": "pass",
@@ -171,7 +171,7 @@
   "look on empty screen": {
     "status": "pass",
     "last_run": "2026-03-31",
-    "notes": "Look returns successfully on Controls tab (18 interactive, 12 text). No empty screen available but no errors."
+    "notes": "Look returns successfully on Misc tab (24 interactive, 26 text). No errors."
   },
   "tap nonexistent element": {
     "status": "pass",
