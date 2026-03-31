@@ -1,0 +1,33 @@
+name: Regenerate
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'dylib/commands/**'
+      - 'test-app/coverage-status.json'
+
+permissions:
+  contents: write
+
+jobs:
+  regenerate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Regenerate pepper_commands.py
+        run: python3 scripts/gen-pepper-commands.py
+
+      - name: Regenerate COVERAGE.md
+        run: python3 scripts/gen-coverage.py
+
+      - name: Commit if changed
+        run: |
+          git diff --quiet && echo "Already in sync" && exit 0
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add pepper_ios/pepper_commands.py test-app/COVERAGE.md
+          git commit -m "Regenerate pepper_commands.py and COVERAGE.md [skip ci]"
+          git push
