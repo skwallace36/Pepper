@@ -1,181 +1,181 @@
 {
   "_comment": "Regression test baseline. Updated by the regression-tester agent. Each key is a test name, value is {status, last_run, notes}.",
   "_last_run": "2026-03-30",
-  "_sha": "d4500996b41d512b5d07693e39e47ee3d8959e9f",
-  "_note": "Partial run: test app build failed (issue #941 — 3 Swift files missing from Xcode project). Tested against connected social app stuck on LoadingViewController.",
+  "_sha": "e8af8497b0e158e1f5073c41b86d971b4641cd12",
+  "_note": "Full run against PepperTestApp on sim 905B3C10. CLI-only (no MCP tools available). Test app built and deployed successfully.",
   "pepper connects": {
     "status": "pass",
     "last_run": "2026-03-30",
-    "notes": "ping returns pong, look returns screen data (14 interactive, 5 text on community tab)"
+    "notes": "ping returns pong, look returns screen data (19 elements on Controls tab)"
   },
   "look returns elements": {
     "status": "pass",
     "last_run": "2026-03-30",
-    "notes": "14 interactive, 5 text elements on community tab screen"
+    "notes": "19 elements (interactive + non-interactive) on Controls tab with nav_title=Controls"
   },
   "tap by text": {
     "status": "pass",
     "last_run": "2026-03-30",
-    "notes": "Tapped 'Health' tab, screen changed from 'fi' to 'health_view' (programmatic_tab)"
+    "notes": "Tapped 'List' tab via text strategy, screen changed from Controls to List (nav_title=List)"
   },
   "tap by point": {
     "status": "pass",
     "last_run": "2026-03-30",
-    "notes": "Tapped at (200,300), acknowledged via hid_touch"
+    "notes": "Tapped at (200,400) via hid_touch point strategy, acknowledged"
   },
   "back navigation": {
     "status": "pass",
     "last_run": "2026-03-30",
-    "notes": "back command returned 'Navigated back'; app ended on loading screen (no network)"
+    "notes": "At root screen: returns clean error 'Cannot go back: already at root screen', no crash"
   },
   "input text into field": {
-    "status": "skip",
+    "status": "pass",
     "last_run": "2026-03-30",
-    "notes": "Skipped: app stuck on loading screen, no text fields available. Test app build failed (issue #941)."
+    "notes": "Tapped 'Enter text here' textField, input 'test input 123', verified value='test input 123' in subsequent look"
   },
   "dismiss keyboard": {
-    "status": "skip",
+    "status": "fail",
     "last_run": "2026-03-30",
-    "notes": "Skipped: no keyboard to dismiss (app on loading screen). Test app build failed (issue #941)."
+    "notes": "App crashed on dismiss_keyboard raw command (WebSocket connection lost). Crash reproduced once, no crash log found."
   },
   "scroll down": {
     "status": "pass",
     "last_run": "2026-03-30",
-    "notes": "Scrolled down by 200pt, command succeeded"
+    "notes": "Scrolled down 200pt successfully on Controls tab"
   },
   "scroll to element": {
-    "status": "skip",
+    "status": "fail",
     "last_run": "2026-03-30",
-    "notes": "Skipped: not enough scrollable content on loading screen. Previously fail (lazy list items)."
+    "notes": "scroll --element 'Push Detail' and 'Show Alert' both return 'Element not found'. Off-screen elements not discoverable by scroll command."
   },
   "look scope filtering": {
-    "status": "skip",
+    "status": "fail",
     "last_run": "2026-03-30",
-    "notes": "Skipped: limited UI on loading screen. Previously pass."
+    "notes": "look --scope 'Toggles' returns element_count=0. Scope filtering doesn't match SwiftUI section headers."
   },
   "look compact mode": {
     "status": "skip",
     "last_run": "2026-03-30",
-    "notes": "Skipped: limited UI on loading screen. Previously fail (returns full output, not diff)."
+    "notes": "Skipped: compact mode only available via MCP tool (not in pepper-ctl CLI)."
   },
   "find by predicate": {
     "status": "skip",
     "last_run": "2026-03-30",
-    "notes": "Skipped: MCP tools not available (venv missing in worktree). find requires MCP tool. Previously pass."
+    "notes": "Skipped: find command only available via MCP tool."
   },
   "read element properties": {
     "status": "fail",
     "last_run": "2026-03-30",
-    "notes": "read command requires accessibility ID; text-based lookup not supported. No change from previous run."
+    "notes": "read command requires --id (accessibility ID). No elements in test app expose explicit accessibility IDs in look output."
   },
   "screen name": {
     "status": "pass",
     "last_run": "2026-03-30",
-    "notes": "Returns screen_id='loading', type='LoadingViewController', navigation_stack, can_go_back=false"
+    "notes": "Returns screen_id='navigation_stack', type='NavigationStackHostingController<AnyView>', tab='controls', 3 tabs, can_go_back=false"
   },
   "appearance toggle": {
     "status": "skip",
     "last_run": "2026-03-30",
-    "notes": "Skipped: appearance command only available via MCP tool. Previously pass."
+    "notes": "Skipped: appearance command only available via MCP tool."
   },
   "network monitoring": {
     "status": "skip",
     "last_run": "2026-03-30",
-    "notes": "Skipped: network commands only available via MCP tool. Previously pass."
+    "notes": "Skipped: network commands only available via MCP tool."
   },
   "network simulate latency": {
     "status": "skip",
     "last_run": "2026-03-30",
-    "notes": "Skipped: requires MCP tools and test app. Test app build failed (issue #941)."
+    "notes": "Skipped: requires MCP tools."
   },
   "network simulate fail_status": {
     "status": "skip",
     "last_run": "2026-03-30",
-    "notes": "Skipped: requires MCP tools and test app. Test app build failed (issue #941)."
+    "notes": "Skipped: requires MCP tools."
   },
   "network simulate fail_error": {
     "status": "skip",
     "last_run": "2026-03-30",
-    "notes": "Skipped: requires MCP tools and test app. Test app build failed (issue #941)."
+    "notes": "Skipped: requires MCP tools."
   },
   "network simulate throttle": {
     "status": "skip",
     "last_run": "2026-03-30",
-    "notes": "Skipped: requires MCP tools and test app. Test app build failed (issue #941)."
+    "notes": "Skipped: requires MCP tools."
   },
   "network simulate offline": {
     "status": "skip",
     "last_run": "2026-03-30",
-    "notes": "Skipped: requires MCP tools and test app. Test app build failed (issue #941)."
+    "notes": "Skipped: requires MCP tools."
   },
   "network simulate presets": {
     "status": "skip",
     "last_run": "2026-03-30",
-    "notes": "Skipped: requires MCP tools. Test app build failed (issue #941)."
+    "notes": "Skipped: requires MCP tools."
   },
   "network conditions lifecycle": {
     "status": "skip",
     "last_run": "2026-03-30",
-    "notes": "Skipped: requires MCP tools. Test app build failed (issue #941)."
+    "notes": "Skipped: requires MCP tools."
   },
   "network mock lifecycle": {
     "status": "skip",
     "last_run": "2026-03-30",
-    "notes": "Skipped: requires MCP tools and test app. Test app build failed (issue #941)."
+    "notes": "Skipped: requires MCP tools."
   },
   "network clear mocks": {
     "status": "skip",
     "last_run": "2026-03-30",
-    "notes": "Skipped: requires MCP tools. Test app build failed (issue #941)."
+    "notes": "Skipped: requires MCP tools."
   },
   "network websocket log and status": {
     "status": "skip",
     "last_run": "2026-03-30",
-    "notes": "Skipped: requires MCP tools and test app WebSocket Client screen. Test app build failed (issue #941)."
+    "notes": "Skipped: requires MCP tools and test app WebSocket Client screen."
   },
   "console capture": {
     "status": "skip",
     "last_run": "2026-03-30",
-    "notes": "Skipped: console commands only available via MCP tool. Previously pass."
+    "notes": "Skipped: console commands only available via MCP tool."
   },
   "timeline flight recorder": {
     "status": "skip",
     "last_run": "2026-03-30",
-    "notes": "Skipped: timeline command only available via MCP tool. Previously pass."
+    "notes": "Skipped: timeline command only available via MCP tool."
   },
   "vars inspect": {
     "status": "skip",
     "last_run": "2026-03-30",
-    "notes": "Skipped: vars_inspect command only available via MCP tool. Previously pass."
+    "notes": "Skipped: vars_inspect command only available via MCP tool."
   },
   "defaults read": {
     "status": "skip",
     "last_run": "2026-03-30",
-    "notes": "Skipped: defaults command only available via MCP tool. Previously pass."
+    "notes": "Skipped: defaults command only available via MCP tool."
   },
   "snapshot save and diff": {
     "status": "pass",
     "last_run": "2026-03-30",
-    "notes": "snapshot CLI returned 4 elements (Retry, Log out, Environment, 1 unnamed) on loading screen"
+    "notes": "snapshot returned 42 elements (32 labeled, 10 unlabeled) on Controls tab. Diff not tested (MCP-only)."
   },
   "accessibility audit": {
     "status": "skip",
     "last_run": "2026-03-30",
-    "notes": "Skipped: accessibility_audit command only available via MCP tool. Previously pass."
+    "notes": "Skipped: accessibility_audit command only available via MCP tool."
   },
   "tree dump": {
     "status": "pass",
     "last_run": "2026-03-30",
-    "notes": "Returned 4-node view hierarchy (UIWindow → UITransitionView → UIDropShadowView → UILayoutContainerView)"
+    "notes": "4-node hierarchy: UIWindow → UITransitionView → UIDropShadowView → _UIHostingView<ModifiedContent<AnyView, RootModifier>>"
   },
   "look on empty screen": {
     "status": "pass",
     "last_run": "2026-03-30",
-    "notes": "Returns without error on loading screen (0 interactive, 1 text). Functional but minimal."
+    "notes": "Look returns successfully on Controls tab (19 elements). No empty screen available but no errors."
   },
   "tap nonexistent element": {
     "status": "pass",
     "last_run": "2026-03-30",
-    "notes": "Returns 'Element not found by text: ... not found anywhere in the view hierarchy' — clear error, no crash"
+    "notes": "Returns clear error: 'Element not found by text: ... not found anywhere in the view hierarchy', no crash"
   }
 }
