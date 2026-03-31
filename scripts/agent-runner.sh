@@ -704,7 +704,14 @@ EXIT_REASON=$(jq -r '.result // ""' "$TRANSCRIPT" 2>/dev/null | head -c 200 | tr
 UNPRODUCTIVE=false
 UNPRODUCTIVE_IDLE=false
 UNPRODUCTIVE_REASON=""
-if [ "$DURATION" -lt 120 ] && [ $EXIT_CODE -eq 0 ]; then
+# Read-only agents (pr-verifier, pr-responder, groomer, conflict-resolver) don't
+# edit/commit/build — they do gh operations. Skip the unproductive check for them.
+SKIP_PROD_CHECK=false
+case "$TYPE" in
+  pr-verifier|verifier|pr-responder|groomer|conflict-resolver) SKIP_PROD_CHECK=true ;;
+esac
+
+if [ "$SKIP_PROD_CHECK" = false ] && [ "$DURATION" -lt 120 ] && [ $EXIT_CODE -eq 0 ]; then
   PROD_STATS=$(python3 -c "
 import json, sys
 from datetime import datetime, timezone
