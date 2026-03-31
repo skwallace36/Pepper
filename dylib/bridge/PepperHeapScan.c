@@ -113,6 +113,36 @@ static void heap_recorder(
     }
 }
 
+// ---------------------------------------------------------------------------
+// Registered class set cache — rebuilt only when class count changes.
+// Avoids rebuilding a 30K-entry CFSet from scratch on every scan.
+// ---------------------------------------------------------------------------
+
+static CFMutableSetRef cached_registered_classes = NULL;
+static unsigned int cached_class_count = 0;
+
+static CFMutableSetRef get_registered_classes(void) {
+    unsigned int current_count = (unsigned int)objc_getClassList(NULL, 0);
+    if (cached_registered_classes && current_count == cached_class_count) {
+        return (CFMutableSetRef)CFRetain(cached_registered_classes);
+    }
+
+    Class *all_classes = objc_copyClassList(&current_count);
+    if (!all_classes || current_count == 0) return NULL;
+
+    CFMutableSetRef registered = CFSetCreateMutable(NULL, current_count, NULL);
+    for (unsigned int i = 0; i < current_count; i++) {
+        CFSetAddValue(registered, (const void *)all_classes[i]);
+    }
+    free(all_classes);
+
+    if (cached_registered_classes) CFRelease(cached_registered_classes);
+    cached_registered_classes = (CFMutableSetRef)CFRetain(registered);
+    cached_class_count = current_count;
+
+    return registered;
+}
+
 /// Scan the heap and return instance counts for all ObjC classes.
 ///
 /// Returns a malloc'd array of PepperHeapEntry (caller must free).
@@ -130,15 +160,9 @@ int pepper_heap_scan(
     *out_entries = NULL;
     *out_count = 0;
 
-    // Step 1: Build set of all registered ObjC classes
-    unsigned int total_class_count = 0;
-    Class *all_classes = objc_copyClassList(&total_class_count);
-    if (!all_classes || total_class_count == 0) return -1;
-
-    CFMutableSetRef registered = CFSetCreateMutable(NULL, total_class_count, NULL);
-    for (unsigned int i = 0; i < total_class_count; i++) {
-        CFSetAddValue(registered, (const void *)all_classes[i]);
-    }
+    // Step 1: Build set of all registered ObjC classes (cached)
+    CFMutableSetRef registered = get_registered_classes();
+    if (!registered) return -1;
 
     // Step 2: Set up context
     PepperHeapContext ctx;
@@ -244,7 +268,6 @@ int pepper_heap_scan(
 
     // Cleanup
     CFRelease(registered);
-    free(all_classes);
 
     *out_entries = results;
     *out_count = result_count;
@@ -325,16 +348,9 @@ int pepper_heap_find_instances(
 
     if (!target_classes || target_count == 0) return -1;
 
-    // Build set of all registered ObjC classes
-    unsigned int total_class_count = 0;
-    Class *all_classes = objc_copyClassList(&total_class_count);
-    if (!all_classes || total_class_count == 0) return -1;
-
-    CFMutableSetRef registered = CFSetCreateMutable(NULL, total_class_count, NULL);
-    for (unsigned int i = 0; i < total_class_count; i++) {
-        CFSetAddValue(registered, (const void *)all_classes[i]);
-    }
-    free(all_classes);
+    // Build set of all registered ObjC classes (cached)
+    CFMutableSetRef registered = get_registered_classes();
+    if (!registered) return -1;
 
     // Build set of target classes
     CFMutableSetRef targets = CFSetCreateMutable(NULL, target_count, NULL);
@@ -358,7 +374,10 @@ int pepper_heap_find_instances(
         ctx.isa_mask = 0x007ffffffffffff8ULL;
     }
 
-    // Enumerate all malloc zones
+    // Enumerate all malloc zones — NO locking for find_instances.
+    // Liveness is validated afterward (malloc_size + isa re-check in Swift),
+    // so lockless enumeration is acceptable. Worst case: miss an object or
+    // visit freed memory, both handled by post-scan validation.
     vm_address_t *zones = NULL;
     unsigned int zone_count = 0;
     kern_return_t kr = malloc_get_all_zones(mach_task_self(), heap_reader, &zones, &zone_count);
@@ -372,8 +391,6 @@ int pepper_heap_find_instances(
             malloc_introspection_t *introspect = zone->introspect;
             if (!introspect || !introspect->enumerator) continue;
 
-            if (introspect->force_lock) introspect->force_lock(zone);
-
             introspect->enumerator(
                 mach_task_self(),
                 &ctx,
@@ -382,8 +399,6 @@ int pepper_heap_find_instances(
                 heap_reader,
                 find_recorder
             );
-
-            if (introspect->force_unlock) introspect->force_unlock(zone);
         }
     }
 

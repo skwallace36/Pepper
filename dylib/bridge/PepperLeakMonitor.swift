@@ -46,6 +46,12 @@ final class PepperLeakMonitor {
     private var warnings: [LeakWarning] = []
     private let maxWarnings = 50
 
+    /// Async scan: heap scans run on a background queue and results
+    /// are attached to the next look response. Never blocks main thread.
+    private var pendingScan = false
+    private var latestScanResult: [String: Int] = [:]
+    private let scanQueue = DispatchQueue(label: "com.pepper.control.heap-scan", qos: .utility)
+
     struct LeakWarning {
         let screenKey: String
         let className: String
@@ -81,11 +87,27 @@ final class PepperLeakMonitor {
         return digest.prefix(4).map { String(format: "%02x", $0) }.joined()
     }
 
-    /// Run a heap scan and diff against the previous snapshot for this screen key.
-    /// Returns only significant growing classes — minor jitter is suppressed.
+    /// Kick off an async heap scan if one isn't already running.
+    /// Results appear in the next scanAndDiff call.
+    private func triggerAsyncScan() {
+        guard !pendingScan else { return }
+        pendingScan = true
+        scanQueue.async { [weak self] in
+            guard let self else { return }
+            let result = self.runHeapScan()
+            self.queue.sync {
+                self.latestScanResult = result
+                self.pendingScan = false
+            }
+        }
+    }
+
+    /// Diff against the previous snapshot for this screen key using the
+    /// most recent async scan result. Never blocks main thread.
+    /// Kicks off a new async scan for future calls.
     func scanAndDiff(screenKey: String) -> [[String: AnyCodable]] {
-        // Run heap scan outside lock — it's CPU-bound (~10-50ms)
-        let current = runHeapScan()
+        triggerAsyncScan()
+        let current = latestScanResult
         guard !current.isEmpty else { return [] }
 
         return queue.sync {
@@ -176,6 +198,7 @@ final class PepperLeakMonitor {
             screenObservations.removeAll()
             growthStreaks.removeAll()
             warnings.removeAll()
+            latestScanResult.removeAll()
         }
     }
 
