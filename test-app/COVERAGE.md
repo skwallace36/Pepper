@@ -198,11 +198,11 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `notifications` | post | ready | Misc tab — NSNotificationCenter Observers section | Surface added (TASK-316). post_notification_button triggers PepperTestNotification. notification_received_count label increments on receive. Also testable via notifications post name=PepperTestNotification. |
 | `notifications` | events | ready | Misc tab — NSNotificationCenter Observers section | Surface added (TASK-316). Events logged after post. Shows add/remove/post timeline. |
 | `notifications` | clear | untested |  |  |
-| `snapshot` | save | untested | MiscTab > Snapshot Test Screen | New command. Captures current look/introspect map output as a named baseline for later diffing. |
-| `snapshot` | diff | untested | MiscTab > Snapshot Test Screen (after save) | New command. Compares current screen state against saved snapshot. Returns added/removed/changed elements and text. Supports ignore_transient and assert_no_diff. |
-| `snapshot` | list | untested | MiscTab > Snapshot Test Screen | New command. Lists all saved snapshot names. |
-| `snapshot` | delete | untested | MiscTab > Snapshot Test Screen (after save) | New command. Deletes a saved snapshot by name. |
-| `snapshot` | clear | untested | MiscTab > Snapshot Test Screen (after save) | New command. Deletes all saved snapshots. |
+| `snapshot` | save | regression | MiscTab > Snapshot Test Screen | Captures current look/introspect map output as a named baseline for later diffing. Regression test: save and verify element_count > 0. |
+| `snapshot` | diff | regression | MiscTab > Snapshot Test Screen (after save) | Compares current screen state against saved snapshot. Returns added/removed/changed elements and text. Supports ignore_transient and assert_no_diff. Regression tests: no-change diff, post-mutation diff, assert_no_diff, ignore_transient. |
+| `snapshot` | list | regression | MiscTab > Snapshot Test Screen | Lists all saved snapshot names. Regression test: verified in lifecycle and clear tests. |
+| `snapshot` | delete | regression | MiscTab > Snapshot Test Screen (after save) | Deletes a saved snapshot by name. Regression test: save, delete, verify removed from list. |
+| `snapshot` | clear | regression | MiscTab > Snapshot Test Screen (after save) | Deletes all saved snapshots. Regression test: save two snapshots, clear, verify list empty. |
 | `diff` | start | untested |  |  |
 | `diff` | show | untested |  |  |
 | `diff` | clear | untested |  |  |
@@ -291,5 +291,5 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 
 - pass: 138
 - fail: 3
-- untested: 89
+- untested: 84
 
