@@ -499,8 +499,13 @@ def _list_port_files() -> list[dict]:
     return sims
 
 
+def _is_agent_sim(name: str) -> bool:
+    """Only Pepper Agent sims are eligible for agent use."""
+    return name.startswith("Pepper Agent")
+
+
 def _list_booted_sims() -> list[str]:
-    """List UDIDs of all booted simulators."""
+    """List UDIDs of booted Pepper Agent simulators."""
     import subprocess
 
     result = subprocess.run(["xcrun", "simctl", "list", "devices", "booted", "-j"], capture_output=True, text=True)
@@ -509,7 +514,7 @@ def _list_booted_sims() -> list[str]:
         data = json.loads(result.stdout)
         for _runtime, devices in data.get("devices", {}).items():
             for d in devices:
-                if d.get("state") == "Booted":
+                if d.get("state") == "Booted" and _is_agent_sim(d.get("name", "")):
                     booted.append(d["udid"])
     except (json.JSONDecodeError, KeyError):
         pass
@@ -528,7 +533,7 @@ def _list_available_iphones() -> list[dict]:
             if "iOS" not in runtime and "iphone" not in runtime.lower():
                 continue
             for d in data["devices"][runtime]:
-                if d.get("isAvailable") and "iPhone" in d.get("name", "") and d.get("state") != "Booted":
+                if d.get("isAvailable") and _is_agent_sim(d.get("name", "")) and d.get("state") != "Booted":
                     iphones.append(d)
     except (json.JSONDecodeError, KeyError):
         pass
