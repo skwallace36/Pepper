@@ -460,6 +460,11 @@ struct MiscTab: View {
                             AccessibilityActionsWrapper()
                         }
                         .accessibilityIdentifier("accessibility_actions_link")
+
+                        NavigationLink("Dynamic Type Screen") {
+                            DynamicTypeWrapper()
+                        }
+                        .accessibilityIdentifier("dynamic_type_link")
                     }
                 }
 
