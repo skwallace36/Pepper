@@ -1,7 +1,7 @@
 #!/bin/bash
 # scripts/hooks/pre-push-rebase.sh
-# Git pre-push hook: auto-rebase agent branches against origin/main before pushing.
-# Only active for agent/* branches. Interactive branches are unaffected.
+# Git pre-push hook: auto-rebase ALL branches against origin/main before pushing.
+# Blocks direct pushes to main. Rebases everything else.
 # Install: ln -sf ../../scripts/hooks/pre-push-rebase.sh .git/hooks/pre-push
 
 BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
@@ -32,11 +32,7 @@ if [ "$BRANCH" = "main" ] || [ "$BRANCH" = "master" ]; then
   exit 1
 fi
 
-# Only rebase agent branches
-case "$BRANCH" in
-  agent/*) ;;
-  *) exit 0 ;;  # Non-agent branch, skip
-esac
+# Rebase ALL non-main branches — agents and interactive sessions alike
 
 # Fetch latest main
 git fetch origin main --quiet 2>/dev/null || exit 0
