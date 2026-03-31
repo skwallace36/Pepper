@@ -22,10 +22,21 @@ EVENTS_LOG="${PEPPER_EVENTS_LOG:-}"
 LOG_DIR=$(dirname "$EVENTS_LOG")
 STATE_DIR="$LOG_DIR/drift-$AGENT"
 
-# --- Thresholds ---
-READ_WARN=15          # consecutive read-only ops → warning
-READ_KILL=25          # consecutive read-only ops → block (after warning)
-REREAD_WARN=8         # re-reads of already-seen files → warning
+# --- Thresholds (per-type) ---
+# Builder/researcher need more room to explore before writing.
+# Bugfix/tester should act fast — if they're reading 20+ files, they're lost.
+case "$AGENT" in
+  builder|researcher)
+    READ_WARN=25
+    READ_KILL=40
+    REREAD_WARN=12
+    ;;
+  *)
+    READ_WARN=15
+    READ_KILL=25
+    REREAD_WARN=8
+    ;;
+esac
 ERROR_WARN=5          # consecutive errors → warning
 ERROR_KILL=10         # consecutive errors → block (after warning)
 
