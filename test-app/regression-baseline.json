@@ -1,12 +1,12 @@
 {
   "_comment": "Regression test baseline. Updated by the regression-tester agent. Each key is a test name, value is {status, last_run, notes}.",
   "_last_run": "2026-03-31",
-  "_sha": "3275e6bdac561b88cc860927f5f5f6c384bb24b7",
-  "_note": "Full run against PepperTestApp on sim 905B3C10. CLI-only (no MCP tools available). Test app built and deployed successfully.",
+  "_sha": "e2135d0a3e031f49effa4366fe5f491e32532086",
+  "_note": "Full run against PepperTestApp on sim 6BCC79BB (Pepper Agent 1). Used pepper-ctl CLI + raw commands. 20/36 pass, 0 regressions.",
   "pepper connects": {
     "status": "pass",
     "last_run": "2026-03-31",
-    "notes": "ping returns pong, look returns screen data (19 interactive + 11 text elements on Controls tab)"
+    "notes": "ping returns pong, look returns screen data (19 interactive + 12 text elements on Controls tab)"
   },
   "look returns elements": {
     "status": "pass",
@@ -21,12 +21,12 @@
   "tap by point": {
     "status": "pass",
     "last_run": "2026-03-31",
-    "notes": "Tapped at (200,400) via hid_touch, acknowledged"
+    "notes": "Tapped at (200,400) via hid_touch, navigated to Item 2 detail"
   },
   "back navigation": {
     "status": "pass",
     "last_run": "2026-03-31",
-    "notes": "Navigated back from detail to List screen successfully"
+    "notes": "Navigated back from Item 2 detail to List screen successfully"
   },
   "input text into field": {
     "status": "pass",
@@ -34,9 +34,9 @@
     "notes": "Tapped 'Enter text here' textField, input 'test input 123', verified value='test input 123' in subsequent look"
   },
   "dismiss keyboard": {
-    "status": "pass",
+    "status": "skip",
     "last_run": "2026-03-31",
-    "notes": "No crash! PR #967 fix confirmed. Returns 'Invalid JSON' response but app stays alive and functional. Previously crashed."
+    "notes": "Skipped: dismiss_keyboard command only available via MCP tool. CLI has no equivalent."
   },
   "scroll down": {
     "status": "pass",
@@ -66,7 +66,7 @@
   "read element properties": {
     "status": "fail",
     "last_run": "2026-03-31",
-    "notes": "read command requires --id (accessibility ID). No elements in test app expose explicit accessibility IDs in look output."
+    "notes": "read command requires --id (accessibility ID). No elements in test app expose explicit accessibility IDs."
   },
   "screen name": {
     "status": "pass",
@@ -74,59 +74,59 @@
     "notes": "Returns screen_id='navigation_stack', type='NavigationStackHostingController<AnyView>', tab='controls', 3 tabs, can_go_back=false"
   },
   "appearance toggle": {
-    "status": "fail",
+    "status": "pass",
     "last_run": "2026-03-31",
-    "notes": "CRASH: appearance command crashes app (WebSocket connection lost). Reproduced 2/2 times. Filed #974."
+    "notes": "FIX CONFIRMED (#977). Dark and light mode toggle via raw cmd, no crash. Previously crashed on system windows."
   },
   "network monitoring": {
-    "status": "skip",
+    "status": "pass",
     "last_run": "2026-03-31",
-    "notes": "Skipped: network commands only available via MCP tool."
+    "notes": "start/log/stop lifecycle works via raw cmd. log returns empty transactions (no network activity triggered)."
   },
   "network simulate latency": {
     "status": "skip",
     "last_run": "2026-03-31",
-    "notes": "Skipped: requires MCP tools."
+    "notes": "Skipped: requires MCP tools to interact with test app UI buttons (slow_request_button)."
   },
   "network simulate fail_status": {
     "status": "skip",
     "last_run": "2026-03-31",
-    "notes": "Skipped: requires MCP tools."
+    "notes": "Skipped: requires MCP tools to interact with test app UI buttons (error_request_button)."
   },
   "network simulate fail_error": {
     "status": "skip",
     "last_run": "2026-03-31",
-    "notes": "Skipped: requires MCP tools."
+    "notes": "Skipped: requires MCP tools to interact with test app UI buttons (error_request_button)."
   },
   "network simulate throttle": {
     "status": "skip",
     "last_run": "2026-03-31",
-    "notes": "Skipped: requires MCP tools."
+    "notes": "Skipped: requires MCP tools to interact with test app UI buttons (slow_request_button)."
   },
   "network simulate offline": {
     "status": "skip",
     "last_run": "2026-03-31",
-    "notes": "Skipped: requires MCP tools."
+    "notes": "Skipped: requires MCP tools to interact with test app UI buttons (offline_request_button)."
   },
   "network simulate presets": {
-    "status": "skip",
+    "status": "pass",
     "last_run": "2026-03-31",
-    "notes": "Skipped: requires MCP tools."
+    "notes": "Returns 6 presets: 3G, Edge, LTE, WiFi, High Latency DNS, 100% Loss. All have correct effects."
   },
   "network conditions lifecycle": {
     "status": "skip",
     "last_run": "2026-03-31",
-    "notes": "Skipped: requires MCP tools."
+    "notes": "Skipped: requires MCP tools for full conditions add/remove/clear cycle verification."
   },
   "network mock lifecycle": {
     "status": "skip",
     "last_run": "2026-03-31",
-    "notes": "Skipped: requires MCP tools."
+    "notes": "Skipped: requires MCP tools to interact with test app mock_request_button."
   },
   "network clear mocks": {
     "status": "skip",
     "last_run": "2026-03-31",
-    "notes": "Skipped: requires MCP tools."
+    "notes": "Skipped: requires MCP tools for full mock add/clear cycle."
   },
   "network websocket log and status": {
     "status": "skip",
@@ -134,34 +134,34 @@
     "notes": "Skipped: requires MCP tools and test app WebSocket Client screen."
   },
   "console capture": {
-    "status": "skip",
+    "status": "pass",
     "last_run": "2026-03-31",
-    "notes": "Skipped: console commands only available via MCP tool. Raw JSON attempt crashed app similarly to appearance."
+    "notes": "start/log/stop lifecycle works via raw cmd. Log returned 0 lines (no app activity between start/log)."
   },
   "timeline flight recorder": {
-    "status": "skip",
+    "status": "pass",
     "last_run": "2026-03-31",
-    "notes": "Skipped: timeline command only available via MCP tool."
+    "notes": "query last_seconds=30 returns events including screen transitions and commands. Working correctly."
   },
   "vars inspect": {
     "status": "skip",
     "last_run": "2026-03-31",
-    "notes": "Skipped: vars_inspect command only available via MCP tool."
+    "notes": "Skipped: vars_inspect command not recognized (may use different cmd name in dylib)."
   },
   "defaults read": {
-    "status": "skip",
+    "status": "pass",
     "last_run": "2026-03-31",
-    "notes": "Skipped: defaults command only available via MCP tool."
+    "notes": "Returns 52 UserDefaults entries with keys, values, and types."
   },
   "snapshot save and diff": {
     "status": "pass",
     "last_run": "2026-03-31",
-    "notes": "snapshot returned 41 elements on Controls tab. Diff not tested (MCP-only)."
+    "notes": "snapshot returned 41 elements on Controls tab. Diff not tested (requires MCP)."
   },
   "accessibility audit": {
-    "status": "skip",
+    "status": "pass",
     "last_run": "2026-03-31",
-    "notes": "Skipped: accessibility_audit command only available via MCP tool."
+    "notes": "Returns audit results: 6 checks run, 3 errors, 4 warnings. No crash."
   },
   "tree dump": {
     "status": "pass",
@@ -171,7 +171,7 @@
   "look on empty screen": {
     "status": "pass",
     "last_run": "2026-03-31",
-    "notes": "Look returns successfully on Misc tab (24 interactive, 26 text). No errors."
+    "notes": "Look returns successfully on Misc tab (9 interactive, 23 text). No errors."
   },
   "tap nonexistent element": {
     "status": "pass",
