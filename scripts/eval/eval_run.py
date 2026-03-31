@@ -84,31 +84,26 @@ def _build_user_prompt(task: dict) -> str:
     return f"Complete the following task.\n\n{goal}" if goal else "Complete the task."
 
 
-def _build_mcp_config(mode: str, fixture: str | None) -> str | None:
-    if mode != "replay":
-        return None
-    if not fixture:
-        print("Error: --fixture required for replay mode", file=sys.stderr)
-        sys.exit(1)
+def _setup_replay_env(fixture: str) -> tuple[str, str]:
+    """Set up replay mode: create a bin dir with pepper-ctl pointing to the replay script.
 
+    Returns (bin_dir, state_file) for cleanup.
+    """
     repo_root = Path(__file__).resolve().parent.parent.parent
-    config = {
-        "mcpServers": {
-            "pepper": {
-                "command": sys.executable,
-                "args": [
-                    str(repo_root / "scripts" / "eval" / "eval_replay.py"),
-                    "--fixture", str(Path(fixture).resolve()),
-                    "--serve",
-                ],
-                "env": {"PYTHONUNBUFFERED": "1"},
-            }
-        }
-    }
-    fd, path = tempfile.mkstemp(suffix=".json", prefix="eval-mcp-")
-    with os.fdopen(fd, "w") as f:
-        json.dump(config, f, indent=2)
-    return path
+    replay_script = repo_root / "scripts" / "eval" / "pepper-ctl-replay"
+    fixture_path = str(Path(fixture).resolve())
+
+    # Create temp bin dir with pepper-ctl symlink
+    bin_dir = tempfile.mkdtemp(prefix="eval-replay-bin-")
+    ctl_path = Path(bin_dir) / "pepper-ctl"
+    ctl_path.symlink_to(replay_script)
+
+    # Clean any leftover state from previous runs
+    state_file = fixture_path + ".state"
+    if os.path.exists(state_file):
+        os.unlink(state_file)
+
+    return bin_dir, fixture_path
 
 
 def run_eval(
@@ -160,9 +155,18 @@ def run_eval(
         "--verbose",
     ]
 
-    mcp_config = _build_mcp_config(mode, fixture)
-    if mcp_config:
-        cmd.extend(["--mcp-config", mcp_config, "--strict-mcp-config"])
+    # Replay mode: put a fake pepper-ctl on PATH that reads from the fixture.
+    # The agent uses Bash + pepper-ctl naturally (as CLAUDE.md teaches it).
+    replay_bin = None
+    replay_fixture = None
+    env = os.environ.copy()
+    if mode == "replay":
+        if not fixture:
+            print("Error: --fixture required for replay mode", file=sys.stderr)
+            sys.exit(1)
+        replay_bin, replay_fixture = _setup_replay_env(fixture)
+        env["PATH"] = replay_bin + ":" + env.get("PATH", "")
+        env["PEPPER_REPLAY_FIXTURE"] = replay_fixture
 
     print(f"Running eval: {task.get('name', task_path)}")
     print(f"  Mode: {mode}, Model: {model}, Budget: ${budget}, Timeout: {timeout}s")
@@ -175,6 +179,7 @@ def run_eval(
                 stdout=log_f,
                 stderr=subprocess.STDOUT,
                 preexec_fn=os.setsid,
+                env=env,
             )
             try:
                 proc.wait(timeout=timeout)
@@ -187,8 +192,13 @@ def run_eval(
         print("Error: 'claude' CLI not found. Install Claude Code first.", file=sys.stderr)
         sys.exit(1)
     finally:
-        if mcp_config:
-            os.unlink(mcp_config)
+        if replay_bin:
+            import shutil
+            shutil.rmtree(replay_bin, ignore_errors=True)
+        if replay_fixture:
+            state_file = replay_fixture + ".state"
+            if os.path.exists(state_file):
+                os.unlink(state_file)
 
     manifest["finished_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
