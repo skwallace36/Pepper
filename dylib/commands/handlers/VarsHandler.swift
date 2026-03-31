@@ -10,6 +10,8 @@ import Foundation
 ///   - "dump":     Dump all properties of a specific class. Params: class
 struct VarsHandler: PepperHandler {
     let commandName = "vars"
+    /// Heap scan on first call can take 30+s on complex apps.
+    var timeout: TimeInterval { 45.0 }
 
     func handle(_ command: PepperCommand) -> PepperResponse {
         let action = command.params?["action"]?.stringValue ?? "list"

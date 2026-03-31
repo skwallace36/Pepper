@@ -45,7 +45,8 @@ def register_state_tools(mcp, resolve_and_send):
             params["path"] = path
         if value is not None:
             params["value"] = try_parse_json(value)
-        return await resolve_and_send(simulator, CMD_VARS, params)
+        # Heap scan on first call can take 30+s — needs longer timeout
+        return await resolve_and_send(simulator, CMD_VARS, params, timeout=45)
 
     @mcp.tool()
     async def defaults(
