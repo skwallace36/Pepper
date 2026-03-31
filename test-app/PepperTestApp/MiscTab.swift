@@ -317,6 +317,11 @@ struct MiscTab: View {
                         }
                         .accessibilityIdentifier("mock_request_button")
 
+                        Button("Background Request") {
+                            state.fetchBackgroundRequest()
+                        }
+                        .accessibilityIdentifier("background_request_button")
+
                         // Detail labels
                         VStack(alignment: .leading, spacing: 4) {
                             Text(state.networkResponse.isEmpty ? "No request yet" : state.networkResponse)

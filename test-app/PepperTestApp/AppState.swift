@@ -389,6 +389,42 @@ final class AppState {
         }.resume()
     }
 
+    // MARK: - Background URLSession
+
+    /// Fires a request via a background URLSessionConfiguration so Pepper's
+    /// delegate-proxy interception can capture it.
+    func fetchBackgroundRequest() {
+        print("[PepperTest] Background request started")
+        guard let url = URL(string: "https://httpbin.org/json") else { return }
+        clearNetworkLabels()
+        networkResponse = "Background: in flight…"
+
+        let id = "com.peppertest.background.\(UUID().uuidString.prefix(8))"
+        let config = URLSessionConfiguration.background(withIdentifier: id)
+        config.isDiscretionary = false
+        config.sessionSendsLaunchEvents = false
+
+        let delegate = BackgroundSessionDelegate { [weak self] statusCode, error in
+            DispatchQueue.main.async {
+                if let statusCode {
+                    self?.lastHTTPStatus = statusCode
+                    self?.networkStatusCode = "\(statusCode)"
+                    self?.networkResponse = "Background: \(statusCode)"
+                    print("[PepperTest] Background response: \(statusCode)")
+                } else if let error {
+                    let nsError = error as NSError
+                    self?.networkError = "\(nsError.domain) \(nsError.code)"
+                    self?.networkResponse = "Background error: \(error.localizedDescription)"
+                    print("[PepperTest] Background error: \(error)")
+                }
+            }
+        }
+
+        let session = URLSession(configuration: config, delegate: delegate, delegateQueue: nil)
+        // Background sessions only support download tasks (not data tasks)
+        session.downloadTask(with: url).resume()
+    }
+
     // MARK: - WebSocket
 
     func wsConnect(urlString: String = "wss://echo.websocket.events") {
@@ -460,6 +496,34 @@ final class AppState {
                     print("[PepperTest] WebSocket receive error: \(error)")
                 }
             }
+        }
+    }
+}
+
+// MARK: - Background Session Delegate
+
+/// Minimal delegate for background URLSession download tasks.
+/// Retains itself until the task completes so the session delegate isn't deallocated.
+private final class BackgroundSessionDelegate: NSObject, URLSessionDownloadDelegate {
+    private let completion: (_ statusCode: Int?, _ error: Error?) -> Void
+
+    init(completion: @escaping (_ statusCode: Int?, _ error: Error?) -> Void) {
+        self.completion = completion
+        super.init()
+    }
+
+    func urlSession(
+        _ session: URLSession,
+        downloadTask: URLSessionDownloadTask,
+        didFinishDownloadingTo location: URL
+    ) {
+        let statusCode = (downloadTask.response as? HTTPURLResponse)?.statusCode
+        completion(statusCode, nil)
+    }
+
+    func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
+        if let error {
+            completion(nil, error)
         }
     }
 }
