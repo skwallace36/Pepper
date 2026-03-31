@@ -1,5 +1,7 @@
 # Pepper
 
+[![SafeSkill 60/100](https://img.shields.io/badge/SafeSkill-60%2F100_Use%20with%20Caution-orange)](https://safeskill.dev/scan/skwallace36-pepper)
+
 Pepper gives AI agents eyes and hands inside iOS Simulator apps.
 
 It injects a lightweight dylib into any running simulator app — no source changes, no SDK, no build step. The dylib opens a WebSocket server inside the app process, and your AI agent connects through MCP to see what's on screen, tap buttons, inspect state, intercept network calls, read the heap, and debug layout issues. Over 60 tools, all available through natural language.
