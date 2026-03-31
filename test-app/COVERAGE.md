@@ -260,6 +260,11 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `perf` | stop | untested |  |  |
 | `perf` | mark | untested |  |  |
 | `perf` | status | untested |  |  |
+| `hangs` | start | untested |  |  |
+| `hangs` | stop | untested |  |  |
+| `hangs` | status | untested |  |  |
+| `hangs` | hangs | untested |  |  |
+| `hangs` | clear | untested |  |  |
 | `screenshot` | — | not_tested |  |  |
 | `storage` | summary | untested |  |  |
 | `storage` | coredata | untested |  |  |
@@ -282,9 +287,9 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 
 ## Summary
 
-**259 test points** across 73 commands.
+**264 test points** across 74 commands.
 
 - pass: 138
 - fail: 3
-- untested: 84
+- untested: 89
 
