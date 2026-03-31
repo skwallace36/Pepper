@@ -19,7 +19,9 @@ struct AppearanceHandler: PepperHandler {
                     message: "Unknown mode '\(mode)'. Use: dark, light, system"
                 )
             }
-            for window in UIWindow.pepper_allVisibleWindows {
+            // Only modify app windows — system windows (UIRemoteKeyboardWindow,
+            // UITextEffectsWindow, etc.) crash when their traits are overridden.
+            for window in UIWindow.pepper_allVisibleWindows where window.rootViewController != nil {
                 window.overrideUserInterfaceStyle = style
             }
         }
@@ -42,8 +44,11 @@ struct AppearanceHandler: PepperHandler {
     }
 
     private func currentModeName() -> String {
-        // Check the override on the first visible window
-        if let window = UIWindow.pepper_allVisibleWindows.first {
+        // Query app windows only — system windows may not reflect the app's appearance.
+        let appWindow = UIWindow.pepper_allVisibleWindows.first { $0.rootViewController != nil }
+
+        // Check the override on the first app window
+        if let window = appWindow {
             switch window.overrideUserInterfaceStyle {
             case .dark: return "dark"
             case .light: return "light"
@@ -52,7 +57,7 @@ struct AppearanceHandler: PepperHandler {
             }
         }
         // No override — report the active trait
-        if let window = UIWindow.pepper_allVisibleWindows.first {
+        if let window = appWindow {
             switch window.traitCollection.userInterfaceStyle {
             case .dark: return "dark"
             case .light: return "light"
