@@ -200,7 +200,7 @@ struct ExpensiveView: View {
     var body: some View {
         let _ = incrementRenderCount()
         // Intentionally expensive: sort a large array on every render
-        let _ = (0..<5000).map { Int.random(in: 0..<10000) }.sorted()
+        let _ = (0..<5000).map { _ in Int.random(in: 0..<10000) }.sorted()
         let _ = (1...1000).reduce(0, +)
 
         VStack(spacing: 4) {

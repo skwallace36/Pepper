@@ -62,7 +62,7 @@ struct WebSocketView: View {
                             ForEach(Array(state.wsMessages.enumerated()), id: \.offset) { index, msg in
                                 Text(msg)
                                     .font(.caption.monospacedDigit())
-                                    .foregroundStyle(msg.hasPrefix("→") ? .primary : .blue)
+                                    .foregroundStyle(msg.hasPrefix("→") ? .primary : Color.blue)
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                     .accessibilityIdentifier("websocket_message_\(index)")
                             }
