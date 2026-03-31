@@ -142,6 +142,13 @@ if [ "$TOOL" = "Write" ] || [ "$TOOL" = "Edit" ]; then
   FILE=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty' 2>/dev/null)
   [ -z "$FILE" ] && exit 0
 
+  # Block generated files — these regenerate on merge to main, not in PRs.
+  case "$FILE" in
+    */pepper_ios/pepper_commands.py|*/test-app/COVERAGE.md)
+      deny "agents cannot modify $FILE (generated file — regenerates on merge to main)."
+      ;;
+  esac
+
   # Common no-touch files for all agent types
   case "$FILE" in
     */.claude/worktrees/*)
