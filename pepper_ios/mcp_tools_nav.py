@@ -323,11 +323,19 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
             default=None,
             description="Find text field by visible text, placeholder, or label (e.g. 'Search', 'Email'). Same matching as tap's text parameter.",
         ),
-        value: str = Field(description="Text to type"),
+        value: str | None = Field(default=None, description="Text to type (also accepted as 'text' when no field-matching text is needed)"),
         clear: bool = Field(default=False, description="Clear existing text before typing"),
         submit: bool = Field(default=False, description="Submit/return after typing"),
     ) -> list:
         """Enter or replace text in a field. Focuses the field and types in one step — don't tap first. Shows screen state after."""
+        # When agents send text= instead of value= (common mistake), and no
+        # element_id is set, treat text as the value to type rather than as a
+        # field-matching query.
+        if value is None and text is not None and element_id is None:
+            value = text
+            text = None
+        if value is None:
+            return [TextContent(type="text", text="Error: 'value' is required — the text to type into the field.")]
         params: dict = {"value": value}
         if element_id:
             params["element"] = element_id
