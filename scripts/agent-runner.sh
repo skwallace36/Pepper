@@ -185,7 +185,7 @@ fi
 # Max concurrent instances per agent type
 case "$TYPE" in
   bugfix)                MAX_INSTANCES=1 ;;
-  pr-verifier|verifier)  MAX_INSTANCES=2 ;;
+  pr-verifier)           MAX_INSTANCES=2 ;;
   builder)               MAX_INSTANCES=1 ;;
   pr-responder)          MAX_INSTANCES=1 ;;
   tester)                MAX_INSTANCES=0 ;;  # paused — use regression-tester instead
@@ -342,7 +342,7 @@ export CLAUDE_CODE_DISABLE_AUTO_MEMORY=1
 # Other agents (conflict-resolver, groomer, pr-responder) skip this entirely.
 NEEDS_SIM=false
 case "$TYPE" in
-  pr-verifier|verifier|regression-tester|tester|bugfix) NEEDS_SIM=true ;;
+  pr-verifier|regression-tester|tester|bugfix) NEEDS_SIM=true ;;
 esac
 
 if [ "$NEEDS_SIM" = true ]; then
@@ -503,7 +503,7 @@ PROMPT=$(cat "$PROMPT_FILE")
 
 # Per-agent budget (Opus agents get more headroom since it costs more per token)
 case "$TYPE" in
-  verifier|pr-verifier) BUDGET=5.00 ;;
+  pr-verifier) BUDGET=5.00 ;;
   tester|regression-tester) BUDGET=5.00 ;;
   bugfix)   BUDGET=5.00 ;;
   builder)  BUDGET=5.00 ;;
@@ -517,7 +517,7 @@ esac
 # Model routing — Opus for reasoning-heavy work, Sonnet for mechanical/scripted tasks
 case "$TYPE" in
   bugfix|builder|researcher|pr-verifier|pr-responder|regression-tester) MODEL="opus" ;;
-  tester|groomer|conflict-resolver|verifier)                           MODEL="sonnet" ;;
+  tester|groomer|conflict-resolver)                                    MODEL="sonnet" ;;
   *)                                                  MODEL="sonnet" ;;
 esac
 
@@ -745,7 +745,7 @@ UNPRODUCTIVE_REASON=""
 # edit/commit/build — they do gh operations. Skip the unproductive check for them.
 SKIP_PROD_CHECK=false
 case "$TYPE" in
-  pr-verifier|verifier|pr-responder|groomer|conflict-resolver) SKIP_PROD_CHECK=true ;;
+  pr-verifier|pr-responder|groomer|conflict-resolver) SKIP_PROD_CHECK=true ;;
 esac
 
 if [ "$SKIP_PROD_CHECK" = false ] && [ "$DURATION" -lt 120 ] && [ $EXIT_CODE -eq 0 ]; then

@@ -88,7 +88,7 @@ if [ "$TOOL" = "Bash" ]; then
   # Block pepper-ctl raw (sim-facing agents only) — use MCP tools directly
   if echo "$CMD" | grep -qE 'pepper-ctl raw'; then
     case "$AGENT_TYPE" in
-      regression-tester|pr-verifier|verifier|tester)
+      regression-tester|pr-verifier|tester)
         deny "Use MCP tools (look, tap, scroll, etc.) directly instead of pepper-ctl raw."
         ;;
     esac
@@ -97,7 +97,7 @@ if [ "$TOOL" = "Bash" ]; then
   # Block pepper-ctl command chaining with && (sim-facing agents only) — one action at a time
   if echo "$CMD" | grep -qE 'pepper-ctl .+&&.*pepper-ctl'; then
     case "$AGENT_TYPE" in
-      regression-tester|pr-verifier|verifier|tester)
+      regression-tester|pr-verifier|tester)
         deny "One action at a time. Don't chain pepper-ctl commands with &&. Use MCP tools individually."
         ;;
     esac
@@ -195,7 +195,7 @@ if [ "$TOOL" = "Write" ] || [ "$TOOL" = "Edit" ]; then
         *) deny "builder agent cannot modify $FILE. Allowed: dylib/, tools/, scripts/, pepper_ios/, test-app/, Makefile" ;;
       esac
       ;;
-    pr-verifier|verifier)
+    pr-verifier)
       deny "pr-verifier agent cannot modify files. Read-only + GitHub interaction only."
       ;;
     conflict-resolver)

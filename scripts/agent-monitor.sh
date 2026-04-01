@@ -29,7 +29,7 @@ icon_for() {
     builder)      echo "W" ;;
     tester)       echo "T" ;;
     pr-responder) echo "R" ;;
-    pr-verifier|verifier) echo "V" ;;
+    pr-verifier) echo "V" ;;
     researcher)   echo "?" ;;
     groomer)      echo "G" ;;
     conflict-resolver) echo "C" ;;
@@ -44,7 +44,7 @@ color_for() {
     builder)      echo "35" ;;  # magenta
     tester)       echo "36" ;;  # cyan
     pr-responder) echo "33" ;;  # yellow
-    pr-verifier|verifier) echo "32" ;;  # green
+    pr-verifier) echo "32" ;;  # green
     researcher)   echo "34" ;;  # blue
     groomer)      echo "37" ;;  # white
     conflict-resolver) echo "36" ;; # cyan
