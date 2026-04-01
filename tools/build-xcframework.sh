@@ -44,7 +44,7 @@ if [ -n "$CLEAN" ]; then
     rm -rf "$BUILD_DIR" "$XCFRAMEWORK_DIR"
 fi
 
-IOS_TARGET_VERSION="${IOS_TARGET_VERSION:-17.0}"
+IOS_TARGET_VERSION="${IOS_TARGET_VERSION:-18.0}"
 
 # --- Load .env for adapter config ---
 ENV_FILE="$PROJECT_DIR/.env"

@@ -72,7 +72,7 @@ fi
 # --- Detect architecture ---
 # Apple Silicon Macs run arm64 simulators; Intel runs x86_64
 ARCH=$(uname -m)
-IOS_TARGET_VERSION="${IOS_TARGET_VERSION:-17.0}"
+IOS_TARGET_VERSION="${IOS_TARGET_VERSION:-18.0}"
 if [ "$PLATFORM" = "device" ]; then
     TARGET="arm64-apple-ios${IOS_TARGET_VERSION}"
     SDK_NAME="iphoneos"
