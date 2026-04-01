@@ -553,7 +553,7 @@ fi
   --verbose \
   --worktree \
   --name "pepper-agent-${TYPE}" \
-  > "$VERBOSE_LOG" 2>&1 &
+  8>&- > "$VERBOSE_LOG" 2>&1 &
 AGENT_PID=$!
 
 # Identify which worktree was created for this agent.
