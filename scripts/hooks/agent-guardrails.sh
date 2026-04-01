@@ -173,8 +173,8 @@ if [ "$TOOL" = "Write" ] || [ "$TOOL" = "Edit" ]; then
       ;;
     bugfix)
       case "$FILE" in
-        */dylib/*|*/tools/*|*/scripts/*) ;; # allowed
-        *) deny "bugfix agent cannot modify $FILE. Allowed: dylib/, tools/, scripts/" ;;
+        */dylib/*|*/tools/*|*/scripts/*|*/pepper_ios/*) ;; # allowed
+        *) deny "bugfix agent cannot modify $FILE. Allowed: dylib/, tools/, scripts/, pepper_ios/" ;;
       esac
       ;;
     researcher)
@@ -191,8 +191,8 @@ if [ "$TOOL" = "Write" ] || [ "$TOOL" = "Edit" ]; then
       ;;
     builder)
       case "$FILE" in
-        */dylib/*|*/tools/*|*/scripts/*|*/test-app/*|*/Makefile) ;; # allowed
-        *) deny "builder agent cannot modify $FILE. Allowed: dylib/, tools/, scripts/, test-app/, Makefile" ;;
+        */dylib/*|*/tools/*|*/scripts/*|*/pepper_ios/*|*/test-app/*|*/Makefile) ;; # allowed
+        *) deny "builder agent cannot modify $FILE. Allowed: dylib/, tools/, scripts/, pepper_ios/, test-app/, Makefile" ;;
       esac
       ;;
     pr-verifier|verifier)
