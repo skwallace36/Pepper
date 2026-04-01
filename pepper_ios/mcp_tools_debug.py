@@ -166,8 +166,8 @@ def register_debug_tools(mcp, resolve_and_send):
         filter_text: str | None = Field(
             default=None, description="Filter observers/events by notification name or class pattern"
         ),
-        user_info: str | None = Field(
-            default=None, description="JSON string of userInfo dict to include when posting (for 'post' action)"
+        user_info: dict | str | None = Field(
+            default=None, description="userInfo dict to include when posting (for 'post' action)"
         ),
         limit: int | None = Field(default=None, description="Max results to return (for list/events actions)"),
     ) -> str:
@@ -177,11 +177,14 @@ def register_debug_tools(mcp, resolve_and_send):
             params["name"] = name
         if filter_text:
             params["filter"] = filter_text
-        if user_info:
-            try:
-                params["user_info"] = json.loads(user_info)
-            except json.JSONDecodeError:
-                return "Error: user_info must be valid JSON"
+        if user_info is not None:
+            if isinstance(user_info, str):
+                try:
+                    params["user_info"] = json.loads(user_info)
+                except json.JSONDecodeError:
+                    return "Error: user_info must be valid JSON"
+            else:
+                params["user_info"] = user_info
         if limit is not None:
             params["limit"] = limit
         return await resolve_and_send(simulator, CMD_NOTIFICATIONS, params)
