@@ -521,11 +521,15 @@ case "$TYPE" in
   *)                                                  MODEL="sonnet" ;;
 esac
 
+# Serialize worktree creation across concurrent agents.
+# Claude's --worktree flag runs `git worktree add` internally, which locks .git/config.
+# Without serialization, concurrent launches race and fail.
+WORKTREE_LOCK="$REPO_ROOT/build/logs/.worktree-create.lock"
+exec 8>"$WORKTREE_LOCK"
+flock -w 30 8 || { echo "Timed out waiting for worktree lock"; exit 1; }
+
 # Snapshot worktrees before launch so we can identify ours
 WORKTREES_BEFORE=$(git worktree list --porcelain 2>/dev/null | grep "^worktree .*/\.claude/worktrees/" | sed 's/^worktree //' | sort || true)
-
-# Stagger concurrent launches — random 0-3s to avoid git worktree add race
-sleep $(( RANDOM % 4 ))
 
 # Launch the agent in background so we can enforce timeout
 # --name is our stable marker for process identification (agents-stop uses pgrep on it)
@@ -547,10 +551,17 @@ fi
   > "$VERBOSE_LOG" 2>&1 &
 AGENT_PID=$!
 
-# Identify which worktree was created for this agent
-sleep 2
-WORKTREES_AFTER=$(git worktree list --porcelain 2>/dev/null | grep "^worktree .*/\.claude/worktrees/" | sed 's/^worktree //' | sort || true)
-OUR_WORKTREE=$(comm -13 <(echo "$WORKTREES_BEFORE") <(echo "$WORKTREES_AFTER") | head -1)
+# Identify which worktree was created for this agent.
+# Poll until it appears (max 15s), then release the lock so the next agent can start.
+for _wait in 1 2 3 4 5; do
+  sleep "$_wait"
+  WORKTREES_AFTER=$(git worktree list --porcelain 2>/dev/null | grep "^worktree .*/\.claude/worktrees/" | sed 's/^worktree //' | sort || true)
+  OUR_WORKTREE=$(comm -13 <(echo "$WORKTREES_BEFORE") <(echo "$WORKTREES_AFTER") | head -1)
+  [ -n "$OUR_WORKTREE" ] && break
+done
+# Release worktree creation lock — next agent can now create theirs
+flock -u 8
+exec 8>&-
 
 # Symlink .venv into worktree so MCP servers can resolve ./.venv/bin/python3
 if [ -n "$OUR_WORKTREE" ] && [ -d "$REPO_ROOT/.venv" ] && [ ! -e "$OUR_WORKTREE/.venv" ]; then
