@@ -9,6 +9,7 @@ import UIKit
 /// 2. Singleton/shared instance detection (calls .shared, .default, etc.)
 /// 3. ViewController hierarchy walking
 /// 4. UIView hierarchy walking (finds any view: GMSMapView, MKMapView, etc.)
+/// 5. Malloc zone heap scan (finds any ObjC-compatible object, including pure Swift classes)
 ///
 /// Actions:
 ///   - "find":       Find singleton/shared instance of a class. Params: class
@@ -49,7 +50,7 @@ struct HeapHandler: PepperHandler {
 
         guard let (obj, resolvedClass, method) = findInstance(className: className) else {
             return .error(
-                id: command.id, message: "No instance found for '\(className)'. Try 'classes' action to search.")
+                id: command.id, message: "No live instance found for '\(className)'. Checked singletons, VC/view hierarchy, and heap scan. Try 'classes' action to verify the class name.")
         }
 
         let mirror = Mirror(reflecting: obj)
@@ -281,6 +282,12 @@ struct HeapHandler: PepperHandler {
             }
         }
 
+        // Strategy 4: Malloc zone heap scan — finds any ObjC-compatible object on the heap,
+        // including pure Swift classes not reachable via singletons or UIKit hierarchy.
+        if let found = findOnHeap(cls) {
+            return (found, resolvedName, "heap_scan")
+        }
+
         return nil
     }
 
@@ -331,6 +338,42 @@ struct HeapHandler: PepperHandler {
                 return found
             }
         }
+        return nil
+    }
+
+    /// Find an instance on the heap via malloc zone enumeration.
+    /// Falls back to this when ObjC runtime strategies (singletons, VC/view hierarchy) fail.
+    private func findOnHeap(_ cls: AnyClass) -> AnyObject? {
+        var targetPtrs: [UnsafeRawPointer?] = [unsafeBitCast(cls, to: UnsafeRawPointer.self)]
+
+        var instancesPtr: UnsafeMutablePointer<UnsafeRawPointer?>?
+        var classesPtr: UnsafeMutablePointer<UnsafeRawPointer?>?
+        var count: Int32 = 0
+
+        let result = targetPtrs.withUnsafeMutableBufferPointer { buf in
+            pepper_heap_find_instances(buf.baseAddress!, Int32(buf.count), &instancesPtr, &classesPtr, &count)
+        }
+
+        guard result == 0, count > 0, let instances = instancesPtr, let classes = classesPtr else { return nil }
+        defer {
+            free(instances)
+            free(classes)
+        }
+
+        // Return the first live instance (with liveness validation)
+        for i in 0..<Int(count) {
+            guard let instancePtr = instances[i] else { continue }
+
+            // Liveness check: malloc_size returns 0 for freed blocks
+            guard malloc_size(instancePtr) >= MemoryLayout<UnsafeRawPointer>.size else { continue }
+            // Verify isa pointer still matches — guards against freed+reused memory
+            guard let expectedClassPtr = classes[i] else { continue }
+            let isaPtr = instancePtr.load(as: UnsafeRawPointer.self)
+            guard isaPtr == expectedClassPtr else { continue }
+
+            return Unmanaged<AnyObject>.fromOpaque(instancePtr).takeUnretainedValue()
+        }
+
         return nil
     }
 
