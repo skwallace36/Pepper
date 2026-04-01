@@ -12,16 +12,7 @@ WRAPUP_FILE="${PEPPER_WRAPUP_FILE:-}"
 # Consume stdin (required by hook protocol)
 cat > /dev/null
 
-# File exists — inject wrap-up reminder. Only fires once per tool call
-# after the signal, so the agent sees it repeatedly until it wraps up.
+# File exists — inject wrap-up reminder via additionalContext (the format Claude Code reads).
 cat <<'MSG'
-⏰ TIME CHECK: You are running low on time. You MUST wrap up NOW:
-
-1. STOP investigating. Do NOT start new file reads or searches.
-2. If you have a fix ready: commit, push, open PR.
-3. If you do NOT have a fix ready: comment on the issue with:
-   - What you investigated (files, functions, patterns checked)
-   - What you found (root cause hypothesis, relevant code paths)
-   - What remains to be done (specific next steps for the next agent run)
-4. This is your LAST CHANCE to preserve your work before timeout.
+{"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"⏰ TIME CHECK: You are running low on time. You MUST wrap up NOW:\n1. STOP investigating. Do NOT start new file reads or searches.\n2. If you have a fix ready: commit, push, open PR.\n3. If you do NOT have a fix ready: comment on the issue with what you investigated, what you found, and what remains to be done.\n4. This is your LAST CHANCE to preserve your work before timeout."}}
 MSG
