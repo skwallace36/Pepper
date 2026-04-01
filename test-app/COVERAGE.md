@@ -238,7 +238,8 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `renders` | why | untested |  |  |
 | `renders` | install | untested |  |  |
 | `renders` | drain | untested |  |  |
-| `constraints` | — | ready | Misc tab → Layout Test Screen (UIKit) | LayoutTestViewController added with 4 sections: (1) well-constrained 3-label stack, (2) intentionally ambiguous view (missing trailing/width — flagged by ambiguous_only), (3) two conflicting required width constraints (100pt vs 200pt), (4) complex nested view tree with constraints at 3 depths. Navigate: Misc tab → UIKit → Layout Test Screen. |
+| `constraints` | spacing | untested |  |  |
+| `constraints` | audit | untested |  |  |
 | `sandbox` | paths | untested |  |  |
 | `sandbox` | list | untested |  |  |
 | `sandbox` | read | untested |  |  |
@@ -288,9 +289,9 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 
 ## Summary
 
-**265 test points** across 75 commands.
+**266 test points** across 75 commands.
 
 - pass: 138
 - fail: 3
-- untested: 75
+- untested: 77
 
