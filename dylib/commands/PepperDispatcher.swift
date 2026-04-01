@@ -409,6 +409,7 @@ final class PepperDispatcher {
         registerLazy("verify") { VerifyHandler() }
         registerLazy("assert") { AssertHandler() }
         registerLazy("swizzle_check") { SwizzleCheckHandler() }
+        registerLazy("formatters") { FormattersHandler() }
     }
 }
 

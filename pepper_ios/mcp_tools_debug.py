@@ -1,7 +1,7 @@
 """Debug and introspection tool definitions for Pepper MCP.
 
 Tool definitions for: layers, console, crash_log, lifecycle, responder_chain,
-notifications, constraints, timers, concurrency, loading.
+notifications, constraints, timers, concurrency, loading, formatters.
 """
 
 from __future__ import annotations
@@ -272,3 +272,11 @@ def register_debug_tools(mcp, resolve_and_send):
         """Detect active loading indicators — spinners (UIActivityIndicatorView), progress bars (UIProgressView), and skeleton/shimmer views. Cross-references with in-flight network requests."""
         params: dict = {"include_network": include_network}
         return await resolve_and_send(simulator, "loading", params)
+
+    @mcp.tool()
+    async def formatters(
+        simulator: str | None = Field(default=None, description="Simulator UDID"),
+    ) -> str:
+        """Inspect date/time formatting across visible labels. Detects format patterns (12h/24h, ISO 8601, slash/dot dates, relative dates), reports locale context, and flags inconsistencies like mixed clock formats."""
+        params: dict = {}
+        return await resolve_and_send(simulator, "formatters", params)
