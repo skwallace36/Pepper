@@ -495,6 +495,11 @@
     "status": "pass",
     "surface": "Any state"
   },
+  "loading": {
+    "notes": "",
+    "status": "untested",
+    "surface": "Any screen with spinners, progress bars, or skeleton views"
+  },
   "layers": {
     "notes": "BUG-002 FIXED: no longer crashes on gradient views. Returns full CALayer tree with properties (cornerRadius, shadow, gradient colors/locations, opacity, masks). Tested: Misc tab gradient area returned GradientLayer with colors [#0088FF, #9069EF, #CB30E0], shadow properties. List tab returned CellHostingView layer tree. Controls tab times out (deep hierarchy) — not a crash, just slow. Error case: missing point param returns proper error.",
     "status": "pass",

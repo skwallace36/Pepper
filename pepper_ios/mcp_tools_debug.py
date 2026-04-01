@@ -1,7 +1,7 @@
 """Debug and introspection tool definitions for Pepper MCP.
 
 Tool definitions for: layers, console, crash_log, lifecycle, responder_chain,
-notifications, constraints, timers, concurrency.
+notifications, constraints, timers, concurrency, loading.
 """
 
 from __future__ import annotations
@@ -252,3 +252,15 @@ def register_debug_tools(mcp, resolve_and_send):
         if limit is not None:
             params["limit"] = limit
         return await resolve_and_send(simulator, CMD_CONCURRENCY, params)
+
+    @mcp.tool()
+    async def loading(
+        simulator: str | None = Field(default=None, description="Simulator UDID"),
+        include_network: bool = Field(
+            default=True,
+            description="Cross-reference with in-flight network requests (default true)",
+        ),
+    ) -> str:
+        """Detect active loading indicators — spinners (UIActivityIndicatorView), progress bars (UIProgressView), and skeleton/shimmer views. Cross-references with in-flight network requests."""
+        params: dict = {"include_network": include_network}
+        return await resolve_and_send(simulator, "loading", params)

@@ -403,6 +403,7 @@ final class PepperDispatcher {
         registerLazy("storage") { StorageHandler() }
         registerLazy("coredata") { CoreDataHandler() }
         registerLazy("webview") { WebViewHandler() }
+        registerLazy("loading") { LoadingHandler() }
         registerLazy("appearance") { AppearanceHandler() }
         registerLazy("dynamic_type") { DynamicTypeHandler() }
         registerLazy("verify") { VerifyHandler() }
