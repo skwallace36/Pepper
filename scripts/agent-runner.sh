@@ -540,11 +540,12 @@ WORKTREES_BEFORE=$(git worktree list --porcelain 2>/dev/null | grep "^worktree .
 # --name is our stable marker for process identification (agents-stop uses pgrep on it)
 # Stream-json gives turn-by-turn verbose log; we extract the final result line for the transcript.
 # PEPPER_AGENT_API_KEY → ANTHROPIC_API_KEY scoped to only this claude process.
-AGENT_ENV=()
+# Export API key only for the claude subprocess if set.
+# Use subshell export so it doesn't leak into the runner's environment.
 if [ -n "${PEPPER_AGENT_API_KEY:-}" ]; then
-  AGENT_ENV=(env ANTHROPIC_API_KEY="$PEPPER_AGENT_API_KEY")
+  export ANTHROPIC_API_KEY="$PEPPER_AGENT_API_KEY"
 fi
-"${AGENT_ENV[@]}" claude -p \
+claude -p \
   "You are the ${TYPE} agent. Follow your instructions." \
   --append-system-prompt "$PROMPT" \
   --model "$MODEL" \
