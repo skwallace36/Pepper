@@ -195,8 +195,14 @@ def register_debug_tools(mcp, resolve_and_send):
         element: str | None = Field(default=None, description="Accessibility ID to scope to a subtree"),
         ambiguous_only: bool = Field(default=False, description="Only return views with ambiguous layout"),
         depth: int | None = Field(default=None, description="Max recursion depth (default: 30)"),
+        mode: str | None = Field(
+            default=None,
+            description="Mode: 'constraints' (default) for AutoLayout constraints, "
+            "'spacing' for margins/insets/stack spacing, "
+            "'audit' to detect inconsistent gaps between siblings",
+        ),
     ) -> str:
-        """Dump AutoLayout constraints with ambiguity detection. Use ambiguous_only=true to find layout issues quickly."""
+        """Dump AutoLayout constraints with ambiguity detection. Use mode='spacing' for margins/insets, mode='audit' to flag inconsistent gaps."""
         params: dict = {}
         if element:
             params["element"] = element
@@ -204,6 +210,8 @@ def register_debug_tools(mcp, resolve_and_send):
             params["ambiguous_only"] = True
         if depth is not None:
             params["depth"] = depth
+        if mode:
+            params["mode"] = mode
         return await resolve_and_send(simulator, CMD_CONSTRAINTS, params)
 
     @mcp.tool()
