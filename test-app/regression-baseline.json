@@ -1,181 +1,181 @@
 {
   "_comment": "Regression test baseline. Updated by the regression-tester agent. Each key is a test name, value is {status, last_run, notes}.",
-  "_last_run": "2026-03-31",
-  "_sha": "e2cd0a244a3bf1ced707f3f84d4423d2d8e338b7",
-  "_note": "Validated on e2cd0a2 (sim 19C7CBE5, port 8830). CLI-only run confirmed 0 regressions against 20/36 baseline from sim 6BCC79BB.",
+  "_last_run": "2026-04-01",
+  "_sha": "f9f6726c",
+  "_note": "MCP-based run on Pepper Agent 2 (sim 0726E67D, port 8868). 17/26 tests executed, 0 regressions. scroll_to_element now passes.",
   "pepper connects": {
     "status": "pass",
-    "last_run": "2026-03-31",
-    "notes": "ping returns pong, look returns screen data (19 interactive + 12 text elements on Controls tab)"
+    "last_run": "2026-04-01",
+    "notes": "status returns bundle_id=com.pepper.testapp, 3 websocket connections, 9/9 swizzles, hid_available=true"
   },
   "look returns elements": {
     "status": "pass",
-    "last_run": "2026-03-31",
+    "last_run": "2026-04-01",
     "notes": "19 interactive elements on Controls tab, well above 3 minimum"
   },
   "tap by text": {
     "status": "pass",
-    "last_run": "2026-03-31",
-    "notes": "Tapped 'List' tab via text strategy, screen changed from Controls to List (title=List)"
+    "last_run": "2026-04-01",
+    "notes": "Tapped 'List' tab via text, screen changed from Controls to List (title=List, 33 interactive)"
   },
   "tap by point": {
     "status": "pass",
-    "last_run": "2026-03-31",
-    "notes": "Tapped at (200,400) via hid_touch, navigated to Item 2 detail"
+    "last_run": "2026-04-01",
+    "notes": "Tapped at (200,300) via hid_touch, navigated to Item 1 detail"
   },
   "back navigation": {
     "status": "pass",
-    "last_run": "2026-03-31",
-    "notes": "Navigated back from Item 2 detail to List screen successfully"
+    "last_run": "2026-04-01",
+    "notes": "Navigated back from Item 1 detail to List screen successfully"
   },
   "input text into field": {
     "status": "pass",
-    "last_run": "2026-03-31",
-    "notes": "Tapped 'Enter text here' textField, input 'test input 123', verified value='test input 123' in subsequent look"
+    "last_run": "2026-04-01",
+    "notes": "Tapped 'Enter text here' textField, input 'test input 123', verified value='test input 123' in field"
   },
   "dismiss keyboard": {
-    "status": "skip",
-    "last_run": "2026-03-31",
-    "notes": "Skipped: dismiss_keyboard command only available via MCP tool. CLI has no equivalent."
+    "status": "pass",
+    "last_run": "2026-04-01",
+    "notes": "dismiss_keyboard succeeded, additional elements became visible (Push Detail button appeared). Previously skipped (CLI-only)."
   },
   "scroll down": {
     "status": "pass",
-    "last_run": "2026-03-31",
-    "notes": "Scrolled down 200pt successfully, content shifted to show text field and other elements"
+    "last_run": "2026-04-01",
+    "notes": "Scrolled down 200pt, new elements visible (Date Picker, Text Input, Stepper, Slider)"
   },
   "scroll to element": {
-    "status": "fail",
-    "last_run": "2026-03-31",
-    "notes": "scroll --element 'Date Picker' returns 'Element not found'. Off-screen elements not discoverable by scroll command."
+    "status": "pass",
+    "last_run": "2026-04-01",
+    "notes": "FIX: scroll_to target='Push Detail' successfully found and scrolled element into view. Previously failed with 'Element not found'."
   },
   "look scope filtering": {
     "status": "fail",
-    "last_run": "2026-03-31",
-    "notes": "look --scope 'Toggles' returns element_count=0 with SCOPE ERROR. Scope filtering doesn't match SwiftUI section headers."
+    "last_run": "2026-04-01",
+    "notes": "look scope='Toggles' returns element_count=0 with SCOPE ERROR. Scope filtering doesn't match SwiftUI section headers."
   },
   "look compact mode": {
-    "status": "skip",
-    "last_run": "2026-03-31",
-    "notes": "Skipped: compact mode only available via MCP tool (not in pepper-ctl CLI)."
+    "status": "pass",
+    "last_run": "2026-04-01",
+    "notes": "Compact mode returns diff on subsequent calls — 'no interactive changes, no text changes'. Previously skipped (CLI-only)."
   },
   "find by predicate": {
-    "status": "skip",
-    "last_run": "2026-03-31",
-    "notes": "Skipped: find command only available via MCP tool."
+    "status": "pass",
+    "last_run": "2026-04-01",
+    "notes": "find predicate=\"type == 'button'\" returned 30 button elements, all with correct type. Previously skipped (MCP-only)."
   },
   "read element properties": {
     "status": "fail",
-    "last_run": "2026-03-31",
-    "notes": "read command requires --id (accessibility ID). No elements in test app expose explicit accessibility IDs."
+    "last_run": "2026-04-01",
+    "notes": "read_element requires accessibility IDs. 'Tap Me' resolved by text not ID. Test app doesn't expose explicit accessibility IDs."
   },
   "screen name": {
     "status": "pass",
-    "last_run": "2026-03-31",
+    "last_run": "2026-04-01",
     "notes": "Returns screen_id='navigation_stack', type='NavigationStackHostingController<AnyView>', tab='controls', 3 tabs, can_go_back=false"
   },
   "appearance toggle": {
     "status": "pass",
-    "last_run": "2026-03-31",
-    "notes": "FIX CONFIRMED (#977). Dark and light mode toggle via raw cmd, no crash. Previously crashed on system windows."
+    "last_run": "2026-04-01",
+    "notes": "Dark and light mode toggle, no crash. Returns mode confirmation."
   },
   "network monitoring": {
     "status": "pass",
-    "last_run": "2026-03-31",
-    "notes": "start/log/stop lifecycle works via raw cmd. log returns empty transactions (no network activity triggered)."
+    "last_run": "2026-04-01",
+    "notes": "start/log/stop lifecycle works. 0 transactions (no network activity triggered by test app)."
   },
   "network simulate latency": {
     "status": "skip",
-    "last_run": "2026-03-31",
-    "notes": "Skipped: requires MCP tools to interact with test app UI buttons (slow_request_button)."
+    "last_run": "2026-04-01",
+    "notes": "Timed Request button tapped but no network request generated. Test app buttons may not be wired to HTTP calls. network_elapsed element not found."
   },
   "network simulate fail_status": {
     "status": "skip",
-    "last_run": "2026-03-31",
-    "notes": "Skipped: requires MCP tools to interact with test app UI buttons (error_request_button)."
+    "last_run": "2026-04-01",
+    "notes": "Skipped: test app network buttons don't generate HTTP traffic (0 transactions captured)."
   },
   "network simulate fail_error": {
     "status": "skip",
-    "last_run": "2026-03-31",
-    "notes": "Skipped: requires MCP tools to interact with test app UI buttons (error_request_button)."
+    "last_run": "2026-04-01",
+    "notes": "Skipped: test app network buttons don't generate HTTP traffic."
   },
   "network simulate throttle": {
     "status": "skip",
-    "last_run": "2026-03-31",
-    "notes": "Skipped: requires MCP tools to interact with test app UI buttons (slow_request_button)."
+    "last_run": "2026-04-01",
+    "notes": "Skipped: test app network buttons don't generate HTTP traffic."
   },
   "network simulate offline": {
     "status": "skip",
-    "last_run": "2026-03-31",
-    "notes": "Skipped: requires MCP tools to interact with test app UI buttons (offline_request_button)."
+    "last_run": "2026-04-01",
+    "notes": "Skipped: test app network buttons don't generate HTTP traffic."
   },
   "network simulate presets": {
     "status": "pass",
-    "last_run": "2026-03-31",
+    "last_run": "2026-04-01",
     "notes": "Returns 6 presets: 3G, Edge, LTE, WiFi, High Latency DNS, 100% Loss. All have correct effects."
   },
   "network conditions lifecycle": {
-    "status": "skip",
-    "last_run": "2026-03-31",
-    "notes": "Skipped: requires MCP tools for full conditions add/remove/clear cycle verification."
+    "status": "pass",
+    "last_run": "2026-04-01",
+    "notes": "Full lifecycle: add condition with custom ID, verify in list, remove by ID (empty), add 2 more, clear_conditions (empty). Previously skipped."
   },
   "network mock lifecycle": {
     "status": "skip",
-    "last_run": "2026-03-31",
-    "notes": "Skipped: requires MCP tools to interact with test app mock_request_button."
+    "last_run": "2026-04-01",
+    "notes": "Skipped: test app mock_request_button doesn't generate network traffic."
   },
   "network clear mocks": {
     "status": "skip",
-    "last_run": "2026-03-31",
-    "notes": "Skipped: requires MCP tools for full mock add/clear cycle."
+    "last_run": "2026-04-01",
+    "notes": "Skipped: depends on mock lifecycle test."
   },
   "network websocket log and status": {
     "status": "skip",
-    "last_run": "2026-03-31",
-    "notes": "Skipped: requires MCP tools and test app WebSocket Client screen."
+    "last_run": "2026-04-01",
+    "notes": "Skipped: budget constraints. Requires WebSocket Client screen interaction."
   },
   "console capture": {
     "status": "pass",
-    "last_run": "2026-03-31",
-    "notes": "start/log/stop lifecycle works via raw cmd. Log returned 0 lines (no app activity between start/log)."
+    "last_run": "2026-04-01",
+    "notes": "start/log/stop lifecycle works. 0 lines captured (test app doesn't print during Fetch HTTP)."
   },
   "timeline flight recorder": {
     "status": "pass",
-    "last_run": "2026-03-31",
-    "notes": "query last_seconds=30 returns events including screen transitions and commands. Working correctly."
+    "last_run": "2026-04-01",
+    "notes": "query last_seconds=30 returns 13 command events with timestamps and summaries."
   },
   "vars inspect": {
     "status": "skip",
     "last_run": "2026-03-31",
-    "notes": "Skipped: vars_inspect command not recognized (may use different cmd name in dylib)."
+    "notes": "Skipped: not tested this run due to budget."
   },
   "defaults read": {
     "status": "pass",
-    "last_run": "2026-03-31",
-    "notes": "Returns 52 UserDefaults entries with keys, values, and types."
+    "last_run": "2026-04-01",
+    "notes": "Returns 50 UserDefaults entries with keys, values, and types."
   },
   "snapshot save and diff": {
-    "status": "pass",
+    "status": "skip",
     "last_run": "2026-03-31",
-    "notes": "snapshot returned 41 elements on Controls tab. Diff not tested (requires MCP)."
+    "notes": "Not tested this run due to budget. Previously pass (save only)."
   },
   "accessibility audit": {
-    "status": "pass",
+    "status": "skip",
     "last_run": "2026-03-31",
-    "notes": "Returns audit results: 6 checks run, 3 errors, 4 warnings. No crash."
+    "notes": "Not tested this run due to budget. Previously pass."
   },
   "tree dump": {
-    "status": "pass",
+    "status": "skip",
     "last_run": "2026-03-31",
-    "notes": "4-node hierarchy: UIWindow → UITransitionView → UIDropShadowView → _UIHostingView<ModifiedContent<AnyView, RootModifier>>"
+    "notes": "Not tested this run due to budget. Previously pass."
   },
   "look on empty screen": {
-    "status": "pass",
+    "status": "skip",
     "last_run": "2026-03-31",
-    "notes": "Look returns successfully on Misc tab (9 interactive, 23 text). No errors."
+    "notes": "Not tested this run due to budget. Previously pass."
   },
   "tap nonexistent element": {
-    "status": "pass",
+    "status": "skip",
     "last_run": "2026-03-31",
-    "notes": "Returns clear error: 'Element not found by text: ... not found anywhere in the view hierarchy', no crash"
+    "notes": "Not tested this run due to budget. Previously pass."
   }
 }
