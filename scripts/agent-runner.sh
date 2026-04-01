@@ -322,9 +322,11 @@ fi
 
 emit "started" ",\"detail\":\"picking work from queue (\$${TYPE_COST_TODAY} spent today)\""
 
-# Export env vars for the PostToolUse hook
+# Export env vars for hooks (PostToolUse events + wrap-up reminder)
 export PEPPER_EVENTS_LOG="$EVENTS"
 export PEPPER_AGENT_TYPE="$TYPE"
+export PEPPER_AGENT_PID=$$
+export PEPPER_WRAPUP_FILE="/tmp/pepper-agent-$$.wrapup"
 
 # Session label — flows through to session files so `simulator action=list`
 # shows which agent owns which sim.
@@ -577,9 +579,17 @@ if ! kill -0 "$AGENT_PID" 2>/dev/null; then
   echo "Agent died immediately. Transcript: $TRANSCRIPT"
   exit 1
 fi
+WRAPUP_SENT=false
+WRAPUP_AT=$(( TIMEOUT_S * 80 / 100 ))  # 80% of timeout
 while kill -0 "$AGENT_PID" 2>/dev/null; do
   sleep 5
   ELAPSED=$(( $(date +%s) - START ))
+  # Signal wrap-up at 80% — hook will inject reminder on next tool call
+  if [ "$WRAPUP_SENT" = false ] && [ "$ELAPSED" -ge "$WRAPUP_AT" ]; then
+    echo "wrap-up" > "$PEPPER_WRAPUP_FILE"
+    WRAPUP_SENT=true
+    echo "Wrap-up signal sent (${ELAPSED}s / ${TIMEOUT_S}s)"
+  fi
   if [ "$ELAPSED" -ge "$TIMEOUT_S" ]; then
     TIMED_OUT=true
     echo "Timeout (${TIMEOUT_S}s) — killing agent..."
@@ -590,6 +600,7 @@ while kill -0 "$AGENT_PID" 2>/dev/null; do
     break
   fi
 done
+rm -f "$PEPPER_WRAPUP_FILE" 2>/dev/null
 
 wait "$AGENT_PID" 2>/dev/null
 EXIT_CODE=$?
