@@ -526,7 +526,12 @@ esac
 # Without serialization, concurrent launches race and fail.
 WORKTREE_LOCK="$REPO_ROOT/build/logs/.worktree-create.lock"
 exec 8>"$WORKTREE_LOCK"
-flock -w 30 8 || { echo "Timed out waiting for worktree lock"; exit 1; }
+if command -v flock &>/dev/null; then
+  flock -w 30 8 || { echo "Timed out waiting for worktree lock"; exit 1; }
+else
+  # macOS: lockf -t30 = 30s timeout, lock on fd 8
+  lockf -s -t 30 8 || { echo "Timed out waiting for worktree lock"; exit 1; }
+fi
 
 # Snapshot worktrees before launch so we can identify ours
 WORKTREES_BEFORE=$(git worktree list --porcelain 2>/dev/null | grep "^worktree .*/\.claude/worktrees/" | sed 's/^worktree //' | sort || true)
@@ -560,7 +565,6 @@ for _wait in 1 2 3 4 5; do
   [ -n "$OUR_WORKTREE" ] && break
 done
 # Release worktree creation lock — next agent can now create theirs
-flock -u 8
 exec 8>&-
 
 # Symlink .venv into worktree so MCP servers can resolve ./.venv/bin/python3
