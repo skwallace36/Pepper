@@ -75,6 +75,7 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `network` | conditions | ready | After network.simulate | Regression test: simulate latency with known id → call conditions → verify entry appears. Part of conditions lifecycle test. |
 | `network` | remove_condition | ready | After network.simulate | Regression test: simulate with known id → remove_condition by id → verify conditions list empty. Part of conditions lifecycle test. |
 | `network` | clear_conditions | ready | After network.simulate | Regression test: add 2 conditions → clear_conditions → verify conditions count drops to 0. Part of conditions lifecycle test. |
+| `network` | tasks | untested |  |  |
 | `network` | latency | untested |  |  |
 | `network` | fail_status | untested |  |  |
 | `network` | fail_error | untested |  |  |
@@ -290,9 +291,9 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 
 ## Summary
 
-**267 test points** across 76 commands.
+**268 test points** across 76 commands.
 
 - pass: 138
 - fail: 3
-- untested: 78
+- untested: 79
 
