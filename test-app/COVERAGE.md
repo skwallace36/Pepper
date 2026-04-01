@@ -275,6 +275,7 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `webview` | evaluate | untested |  |  |
 | `webview` | url | untested |  |  |
 | `webview` | dom | untested |  |  |
+| `loading` | — | untested | Any screen with spinners, progress bars, or skeleton views |  |
 | `appearance` | dark | untested |  |  |
 | `appearance` | light | untested |  |  |
 | `dynamic_type` | current | untested |  |  |
@@ -287,9 +288,9 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 
 ## Summary
 
-**264 test points** across 74 commands.
+**265 test points** across 75 commands.
 
 - pass: 138
 - fail: 3
-- untested: 74
+- untested: 75
 
