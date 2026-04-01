@@ -50,7 +50,10 @@ struct HeapHandler: PepperHandler {
 
         guard let (obj, resolvedClass, method) = findInstance(className: className) else {
             return .error(
-                id: command.id, message: "No live instance found for '\(className)'. Checked singletons, VC/view hierarchy, and heap scan. Try 'classes' action to verify the class name.")
+                id: command.id,
+                message:
+                    "No live instance found for '\(className)'. Checked singletons, VC/view hierarchy, and heap scan. Try 'classes' action to verify the class name."
+            )
         }
 
         let mirror = Mirror(reflecting: obj)

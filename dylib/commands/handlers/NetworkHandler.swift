@@ -16,6 +16,9 @@ import os
 ///   {"cmd":"network", "params":{"action":"log", "include_body":true}}                    // include bodies (up to 4096 chars)
 ///   {"cmd":"network", "params":{"action":"log", "include_body":true, "max_body":1024}}   // include bodies, truncate to 1KB
 ///   {"cmd":"network", "params":{"action":"clear"}}
+///   {"cmd":"network", "params":{"action":"tasks"}}
+///   {"cmd":"network", "params":{"action":"tasks", "state":"running"}}
+///   {"cmd":"network", "params":{"action":"tasks", "filter":"api.example.com"}}
 ///   {"cmd":"network", "params":{"action":"simulate", "preset":"3G"}}
 ///   {"cmd":"network", "params":{"action":"simulate", "preset":"Edge", "url":"api.example.com"}}
 ///   {"cmd":"network", "params":{"action":"simulate", "preset":"LTE"}}
@@ -48,7 +51,7 @@ struct NetworkHandler: PepperHandler {
             return .error(
                 id: command.id,
                 message:
-                    "Missing 'action' param. Available: start, stop, status, log, clear, simulate, presets, conditions, remove_condition, clear_conditions, mock, mocks, remove_mock, clear_mocks, ws_log, ws_status, ws_clear"
+                    "Missing 'action' param. Available: start, stop, status, log, clear, tasks, simulate, presets, conditions, remove_condition, clear_conditions, mock, mocks, remove_mock, clear_mocks, ws_log, ws_status, ws_clear"
             )
         }
 
@@ -60,6 +63,7 @@ struct NetworkHandler: PepperHandler {
             let bufferSize = command.params?["buffer_size"]?.intValue
             interceptor.install(bufferSize: bufferSize)
             PepperWebSocketInterceptor.shared.install(bufferSize: bufferSize)
+            PepperURLSessionTracker.shared.install()
             return .ok(
                 id: command.id,
                 data: [
@@ -143,6 +147,9 @@ struct NetworkHandler: PepperHandler {
         case "mock", "mocks", "remove_mock", "clear_mocks":
             return handleMockAction(action, command)
 
+        case "tasks":
+            return handleTasks(command)
+
         case "ws_log", "ws_status", "ws_clear":
             return handleWsAction(action, command)
 
@@ -150,7 +157,7 @@ struct NetworkHandler: PepperHandler {
             return .error(
                 id: command.id,
                 message:
-                    "Unknown action '\(action)'. Available: start, stop, status, log, clear, simulate, presets, conditions, remove_condition, clear_conditions, mock, mocks, remove_mock, clear_mocks, ws_log, ws_status, ws_clear"
+                    "Unknown action '\(action)'. Available: start, stop, status, log, clear, tasks, simulate, presets, conditions, remove_condition, clear_conditions, mock, mocks, remove_mock, clear_mocks, ws_log, ws_status, ws_clear"
             )
         }
     }
@@ -204,6 +211,53 @@ struct NetworkHandler: PepperHandler {
         }
 
         return .ok(id: command.id, data: statusData)
+    }
+
+    // MARK: - Tasks
+
+    private func handleTasks(_ command: PepperCommand) -> PepperResponse {
+        let tracker = PepperURLSessionTracker.shared
+        tracker.install()  // Idempotent — ensures swizzle is active
+
+        let stateFilter = command.params?["state"]?.stringValue
+        let filter = command.params?["filter"]?.stringValue
+
+        var snapshots = tracker.getAllActiveTasks()
+
+        // Filter by state
+        if let stateFilter = stateFilter {
+            snapshots = snapshots.filter { $0.stateName == stateFilter }
+        }
+
+        // Filter by URL substring
+        if let filter = filter, !filter.isEmpty {
+            snapshots = snapshots.filter { snap in
+                if let url = snap.originalRequestURL,
+                    url.localizedCaseInsensitiveContains(filter)
+                {
+                    return true
+                }
+                if let url = snap.currentRequestURL,
+                    url.localizedCaseInsensitiveContains(filter)
+                {
+                    return true
+                }
+                return false
+            }
+        }
+
+        let stateCounts = Dictionary(grouping: snapshots, by: { $0.stateName })
+            .mapValues { $0.count }
+
+        return .list(
+            id: command.id,
+            "tasks",
+            snapshots.map { AnyCodable($0.toDictionary()) },
+            extra: [
+                "sessions_tracked": AnyCodable(tracker.trackedSessionCount),
+                "by_state": AnyCodable(stateCounts.mapValues { AnyCodable($0) }),
+            ]
+        )
     }
 
     // MARK: - Log

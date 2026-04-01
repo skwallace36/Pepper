@@ -24,7 +24,11 @@ def register_network_tools(mcp, resolve_and_send):
     async def network(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
         action: str = Field(
-            description="Action: start, stop, log, status, clear, simulate, presets, conditions, remove_condition, clear_conditions, mock, mocks, remove_mock, clear_mocks"
+            description="Action: start, stop, log, status, clear, tasks, simulate, presets, conditions, remove_condition, clear_conditions, mock, mocks, remove_mock, clear_mocks"
+        ),
+        task_state: str | None = Field(
+            default=None,
+            description="Filter tasks by state: running, suspended, canceling, completed (for tasks action)",
         ),
         filter_text: str | None = Field(default=None, description="Filter by URL pattern (for log action)"),
         hide_noise: bool | None = Field(
@@ -90,24 +94,29 @@ Common recipes (copy-paste ready):
    action="log", include_headers=True, include_body=True  → full request/response details
    action="status"                                        → interception state + active conditions/mocks
 
-2. Mock an API endpoint:
+2. Inspect active URLSession tasks:
+   action="tasks"                                          → all tasks across all sessions
+   action="tasks", task_state="running"                    → only running tasks
+   action="tasks", filter_text="api.example.com"           → filter by URL
+
+3. Mock an API endpoint:
    action="mock", url="api.example.com/users", mock_body='{"users": []}'
    action="mock", url="api.example.com/users", mock_status_code=201, mock_body='{"id": 1}', method="POST"
    action="mocks"              → list active mocks
    action="remove_mock", mock_id="<id from mock call>"
    action="clear_mocks"        → remove all mocks
 
-3. Simulate slow network (3G-like):
+4. Simulate slow network (3G-like):
    action="simulate", effect="throttle", bytes_per_second=50000
    action="simulate", effect="latency", latency_ms=300
    → Combine both for realistic 3G. Each creates a separate condition; use action="conditions" to list them.
 
-4. Fail a specific URL:
+5. Fail a specific URL:
    action="simulate", effect="fail_status", status_code=500, url="api.example.com/checkout"
    action="simulate", effect="fail_error", error_code=-1009, url="api.example.com"  → NSURLErrorNotConnectedToInternet
    action="simulate", effect="offline"                                                → all requests fail
 
-5. Clean up:
+6. Clean up:
    action="conditions"          → list active conditions (latency/throttle/fail)
    action="remove_condition", condition_id="<id>"
    action="clear_conditions"    → remove all conditions
@@ -118,6 +127,7 @@ Parameter relationships:
 - mock_status_code, mock_body, mock_id → only with action="mock"
 - effect, latency_ms, status_code, error_domain, error_code, bytes_per_second → only with action="simulate"
 - condition_id → action="simulate" (custom ID) or action="remove_condition"
+- task_state, filter_text → with action="tasks" (filter_text also used by action="log")
 - filter_text, limit, offset, include_headers, include_body, max_body, hide_noise, exclude → only with action="log"
 - url, method → used by both action="simulate" and action="mock" to match requests"""
         params: dict = {"action": action}
@@ -165,6 +175,8 @@ Parameter relationships:
             params["body"] = mock_body
         if mock_id:
             params["id"] = mock_id
+        if task_state:
+            params["state"] = task_state
         return await resolve_and_send(simulator, CMD_NETWORK, params)
 
     @mcp.tool()
