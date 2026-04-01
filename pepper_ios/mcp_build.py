@@ -14,9 +14,14 @@ import subprocess
 import tempfile
 from collections.abc import Callable
 
+import logging
+import re
+
 from . import pepper_sessions
 from .pepper_common import PORT_DIR, get_config
 from .pepper_format import format_look
+
+logger = logging.getLogger(__name__)
 
 # Type alias for the send_command callable expected by deploy_app.
 # Signature: async (port, cmd, params=None, timeout=10) -> dict
@@ -310,6 +315,53 @@ async def build_app(
         return False, _extract_build_errors(output, "BUILD FAILED")
 
 
+def _get_binary_minos(binary_path: str) -> str | None:
+    """Extract the minimum OS version (minos) from a Mach-O binary via otool."""
+    try:
+        result = subprocess.run(
+            ["xcrun", "otool", "-l", binary_path],
+            capture_output=True, text=True, timeout=10,
+        )
+        if result.returncode != 0:
+            return None
+        # Look for LC_BUILD_VERSION minos field: "minos 18.0"
+        for match in re.finditer(r"minos\s+([\d.]+)", result.stdout):
+            return match.group(1)
+        # Fallback: LC_VERSION_MIN_IPHONEOS "version 17.0"
+        for match in re.finditer(r"version\s+([\d.]+)", result.stdout):
+            return match.group(1)
+    except (subprocess.TimeoutExpired, OSError):
+        pass
+    return None
+
+
+def _check_minos_compat(app_path: str, dylib_path: str) -> str | None:
+    """Return a warning string if dylib minos < app minos, else None."""
+    # Find the app's main binary
+    app_name = os.path.splitext(os.path.basename(app_path))[0]
+    app_binary = os.path.join(app_path, app_name)
+    if not os.path.exists(app_binary):
+        return None
+
+    app_minos = _get_binary_minos(app_binary)
+    dylib_binary = os.path.join(dylib_path, "Pepper") if os.path.isdir(dylib_path) else dylib_path
+    dylib_minos = _get_binary_minos(dylib_binary)
+
+    if not app_minos or not dylib_minos:
+        return None
+
+    app_parts = [int(x) for x in app_minos.split(".")]
+    dylib_parts = [int(x) for x in dylib_minos.split(".")]
+
+    if dylib_parts < app_parts:
+        return (
+            f"Dylib minos ({dylib_minos}) < app minos ({app_minos}). "
+            f"iOS 26.3+ simulators silently reject injected dylibs with a lower minos than the host app. "
+            f"Rebuild with: IOS_TARGET_VERSION={app_minos} make build"
+        )
+    return None
+
+
 async def deploy_app(
     simulator: str,
     send_fn: SendFn,
@@ -386,6 +438,15 @@ async def deploy_app(
         capture_output=True,
         text=True,
     )
+
+    # Check for minos mismatch that causes silent injection failure on iOS 26.3+
+    if install_path and os.path.exists(install_path):
+        # dylib path may be the framework dir or the binary inside it
+        dylib_for_check = dylib
+        minos_warning = _check_minos_compat(install_path, dylib_for_check)
+        if minos_warning:
+            logger.warning(minos_warning)
+            return f"Deploy blocked: {minos_warning}"
 
     # Launch with injection + adapter env vars
     env = os.environ.copy()
