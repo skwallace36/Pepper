@@ -77,11 +77,20 @@ struct ReadHandler: PepperHandler {
         case let label as UILabel:
             data["value"] = AnyCodable(label.text ?? "")
             data["numberOfLines"] = AnyCodable(label.numberOfLines)
+            data["textAlignment"] = AnyCodable(textAlignmentString(label.textAlignment))
+            data["lineBreakMode"] = AnyCodable(lineBreakModeString(label.lineBreakMode))
+            data["adjustsFontForContentSizeCategory"] = AnyCodable(label.adjustsFontForContentSizeCategory)
+            if let fontProps = fontProperties(for: label.font) {
+                data["font"] = AnyCodable(fontProps)
+            }
 
         case let button as UIButton:
             data["value"] = AnyCodable(button.currentTitle ?? "")
             data["enabled"] = AnyCodable(button.isEnabled)
             data["selected"] = AnyCodable(button.isSelected)
+            if let fontProps = fontProperties(for: button.titleLabel?.font) {
+                data["font"] = AnyCodable(fontProps)
+            }
 
         case let field as UITextField:
             data["value"] = AnyCodable(field.text ?? "")
@@ -89,10 +98,20 @@ struct ReadHandler: PepperHandler {
             data["enabled"] = AnyCodable(field.isEnabled)
             data["editing"] = AnyCodable(field.isEditing)
             data["secureEntry"] = AnyCodable(field.isSecureTextEntry)
+            data["textAlignment"] = AnyCodable(textAlignmentString(field.textAlignment))
+            data["adjustsFontForContentSizeCategory"] = AnyCodable(field.adjustsFontForContentSizeCategory)
+            if let fontProps = fontProperties(for: field.font) {
+                data["font"] = AnyCodable(fontProps)
+            }
 
         case let textView as UITextView:
             data["value"] = AnyCodable(textView.text ?? "")
             data["editable"] = AnyCodable(textView.isEditable)
+            data["textAlignment"] = AnyCodable(textAlignmentString(textView.textAlignment))
+            data["adjustsFontForContentSizeCategory"] = AnyCodable(textView.adjustsFontForContentSizeCategory)
+            if let fontProps = fontProperties(for: textView.font) {
+                data["font"] = AnyCodable(fontProps)
+            }
 
         case let toggle as UISwitch:
             data["value"] = AnyCodable(toggle.isOn)
@@ -136,6 +155,49 @@ struct ReadHandler: PepperHandler {
         }
 
         return data
+    }
+
+    // MARK: - Typography
+
+    private func fontProperties(for font: UIFont?) -> [String: AnyCodable]? {
+        guard let font = font else { return nil }
+        var props: [String: AnyCodable] = [
+            "familyName": AnyCodable(font.familyName),
+            "fontName": AnyCodable(font.fontName),
+            "pointSize": AnyCodable(Double(font.pointSize)),
+        ]
+        let traits = font.fontDescriptor.symbolicTraits
+        props["bold"] = AnyCodable(traits.contains(.traitBold))
+        props["italic"] = AnyCodable(traits.contains(.traitItalic))
+        if let weightValue = font.fontDescriptor.object(forKey: .traits) as? [UIFontDescriptor.TraitKey: Any],
+            let weight = weightValue[.weight] as? CGFloat
+        {
+            props["weight"] = AnyCodable(Double(weight))
+        }
+        return props
+    }
+
+    private func textAlignmentString(_ alignment: NSTextAlignment) -> String {
+        switch alignment {
+        case .left: return "left"
+        case .center: return "center"
+        case .right: return "right"
+        case .justified: return "justified"
+        case .natural: return "natural"
+        @unknown default: return "unknown"
+        }
+    }
+
+    private func lineBreakModeString(_ mode: NSLineBreakMode) -> String {
+        switch mode {
+        case .byWordWrapping: return "wordWrapping"
+        case .byCharWrapping: return "charWrapping"
+        case .byClipping: return "clipping"
+        case .byTruncatingHead: return "truncatingHead"
+        case .byTruncatingTail: return "truncatingTail"
+        case .byTruncatingMiddle: return "truncatingMiddle"
+        @unknown default: return "unknown"
+        }
     }
 
     // MARK: - Type Detection
