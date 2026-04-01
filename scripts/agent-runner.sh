@@ -424,7 +424,12 @@ source_env() {
   [ -f "$REPO_ROOT/.env" ] || return
   while IFS='=' read -r key value; do
     [[ "$key" =~ ^#.*$ || -z "$key" ]] && continue
-    export "$key"="$value"
+    # API keys are read but not exported — scoped to the claude process at launch time.
+    if [[ "$key" == "ANTHROPIC_API_KEY" || "$key" == "PEPPER_AGENT_API_KEY" ]]; then
+      eval "$key=\"$value\""
+    else
+      export "$key"="$value"
+    fi
   done < "$REPO_ROOT/.env"
 }
 source_env
@@ -523,7 +528,12 @@ sleep $(( RANDOM % 4 ))
 # Launch the agent in background so we can enforce timeout
 # --name is our stable marker for process identification (agents-stop uses pgrep on it)
 # Stream-json gives turn-by-turn verbose log; we extract the final result line for the transcript.
-claude -p \
+# PEPPER_AGENT_API_KEY → ANTHROPIC_API_KEY scoped to only this claude process.
+AGENT_ENV=()
+if [ -n "${PEPPER_AGENT_API_KEY:-}" ]; then
+  AGENT_ENV=(env ANTHROPIC_API_KEY="$PEPPER_AGENT_API_KEY")
+fi
+"${AGENT_ENV[@]}" claude -p \
   "You are the ${TYPE} agent. Follow your instructions." \
   --append-system-prompt "$PROMPT" \
   --model "$MODEL" \
