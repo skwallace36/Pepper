@@ -37,15 +37,28 @@ struct VarsHandler: PepperHandler {
 
     // MARK: - Actions
 
+    /// Default cap for unbounded list to prevent crashes on large apps.
+    private static let listLimit = 50
+
     private func handleList(_ command: PepperCommand) -> PepperResponse {
         PepperVarRegistry.shared.discoverFromHeapIfNeeded()
-        let instances = PepperVarRegistry.shared.listAll()
-        return .ok(
-            id: command.id,
-            data: [
-                "instances": AnyCodable(instances),
-                "count": AnyCodable(instances.count),
-            ])
+
+        let classFilter = command.params?["class"]?.stringValue
+        let limit = command.params?["limit"]?.intValue ?? Self.listLimit
+
+        let allInstances = PepperVarRegistry.shared.listAll(classFilter: classFilter)
+        let truncated = allInstances.count > limit
+        let instances = truncated ? Array(allInstances.prefix(limit)) : allInstances
+
+        var data: [String: AnyCodable] = [
+            "instances": AnyCodable(instances),
+            "count": AnyCodable(allInstances.count),
+        ]
+        if truncated {
+            data["truncated"] = AnyCodable(true)
+            data["hint"] = AnyCodable("Showing \(limit) of \(allInstances.count). Use class filter or increase limit.")
+        }
+        return .ok(id: command.id, data: data)
     }
 
     private func handleGet(_ command: PepperCommand) -> PepperResponse {
@@ -97,13 +110,23 @@ struct VarsHandler: PepperHandler {
 
     private func handleDiscover(_ command: PepperCommand) -> PepperResponse {
         PepperVarRegistry.shared.forceDiscover()
-        let instances = PepperVarRegistry.shared.listAll()
-        return .ok(
-            id: command.id,
-            data: [
-                "instances": AnyCodable(instances),
-                "count": AnyCodable(instances.count),
-            ])
+
+        let classFilter = command.params?["class"]?.stringValue
+        let limit = command.params?["limit"]?.intValue ?? Self.listLimit
+
+        let allInstances = PepperVarRegistry.shared.listAll(classFilter: classFilter)
+        let truncated = allInstances.count > limit
+        let instances = truncated ? Array(allInstances.prefix(limit)) : allInstances
+
+        var data: [String: AnyCodable] = [
+            "instances": AnyCodable(instances),
+            "count": AnyCodable(allInstances.count),
+        ]
+        if truncated {
+            data["truncated"] = AnyCodable(true)
+            data["hint"] = AnyCodable("Showing \(limit) of \(allInstances.count). Use class filter or increase limit.")
+        }
+        return .ok(id: command.id, data: data)
     }
 
     private func handleDump(_ command: PepperCommand) -> PepperResponse {

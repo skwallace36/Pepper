@@ -494,11 +494,16 @@ final class PepperVarRegistry {
     // MARK: - Read
 
     /// List all tracked instances and their properties.
-    func listAll() -> [[String: AnyCodable]] {
+    /// - Parameter classFilter: Optional class name filter. When nil, returns all instances.
+    func listAll(classFilter: String? = nil) -> [[String: AnyCodable]] {
         lock.lock()
         tracked.removeAll { $0.instance == nil }
-        let snapshot = tracked
+        var snapshot = tracked
         lock.unlock()
+
+        if let classFilter = classFilter {
+            snapshot = snapshot.filter { $0.className == classFilter }
+        }
 
         return snapshot.compactMap { entry -> [String: AnyCodable]? in
             guard entry.instance != nil else { return nil }
