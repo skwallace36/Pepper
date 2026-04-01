@@ -527,10 +527,10 @@ esac
 WORKTREE_LOCK="$REPO_ROOT/build/logs/.worktree-create.lock"
 exec 8>"$WORKTREE_LOCK"
 if command -v flock &>/dev/null; then
-  flock -w 30 8 || { echo "Timed out waiting for worktree lock"; exit 1; }
+  flock -w 120 8 || { echo "Timed out waiting for worktree lock"; exit 1; }
 else
-  # macOS: lockf -t30 = 30s timeout, lock on fd 8
-  lockf -s -t 30 8 || { echo "Timed out waiting for worktree lock"; exit 1; }
+  # macOS: lockf with 120s timeout — enough for ~6 agents queued at ~15s each
+  lockf -s -t 120 8 || { echo "Timed out waiting for worktree lock"; exit 1; }
 fi
 
 # Snapshot worktrees before launch so we can identify ours
