@@ -99,8 +99,14 @@ def load_env() -> dict[str, str]:
 
 
 def get_config() -> dict[str, str]:
-    """Get build config from .env + defaults."""
+    """Get build config from .env + defaults. os.environ overrides .env for agent isolation."""
     env = load_env()
+    # Let os.environ override .env — agent-runner exports APP_BUNDLE_ID=com.pepper.testapp
+    # to prevent agents from touching real apps, but load_env reads the file directly.
+    for key in ("APP_BUNDLE_ID", "APP_SCHEME", "APP_ADAPTER_TYPE"):
+        os_val = os.environ.get(key)
+        if os_val:
+            env[key] = os_val
     return {
         "scheme": env.get("APP_SCHEME", ""),
         "bundle_id": env.get("APP_BUNDLE_ID", ""),
