@@ -448,17 +448,31 @@ async def deploy_app(
             logger.warning(minos_warning)
             return f"Deploy blocked: {minos_warning}"
 
-    # Launch with injection + adapter env vars
-    env = os.environ.copy()
-    env["SIMCTL_CHILD_DYLD_INSERT_LIBRARIES"] = dylib
-    env["SIMCTL_CHILD_PEPPER_ADAPTER"] = cfg.get("adapter_type", "generic")
-    env["SIMCTL_CHILD_PEPPER_SIM_UDID"] = simulator
-    # Skip authorization swizzles when we already granted permissions via simctl.
-    # The swizzles intentionally trigger dialogs for testing — but deploy already
-    # grants permissions, so the dialogs are redundant and block agents/users.
+    # Inject env vars via launchctl setenv inside the simulator.
+    # SIMCTL_CHILD_ prefix is silently ignored on iOS 18.4+ / 26.3+ simulators,
+    # so we set vars directly in the sim's launchd context instead.
+    inject_vars = {
+        "DYLD_INSERT_LIBRARIES": dylib,
+        "PEPPER_ADAPTER": cfg.get("adapter_type", "generic"),
+        "PEPPER_SIM_UDID": simulator,
+    }
     if not skip_privacy:
-        env["SIMCTL_CHILD_PEPPER_SKIP_PERMISSIONS"] = "1"
-    result = subprocess.run(["xcrun", "simctl", "launch", simulator, bid], capture_output=True, text=True, env=env)
+        inject_vars["PEPPER_SKIP_PERMISSIONS"] = "1"
+
+    for key, val in inject_vars.items():
+        subprocess.run(
+            ["xcrun", "simctl", "spawn", simulator, "launchctl", "setenv", key, val],
+            capture_output=True, text=True,
+        )
+
+    result = subprocess.run(["xcrun", "simctl", "launch", simulator, bid], capture_output=True, text=True)
+
+    # Clean up injected env vars so they don't leak to other apps
+    for key in inject_vars:
+        subprocess.run(
+            ["xcrun", "simctl", "spawn", simulator, "launchctl", "unsetenv", key],
+            capture_output=True, text=True,
+        )
 
     if result.returncode != 0:
         stderr = result.stderr.strip()

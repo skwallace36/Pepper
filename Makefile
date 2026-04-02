@@ -99,27 +99,29 @@ launch:
 			xcrun simctl privacy "$(SIMULATOR_ID)" grant $$perm "$(BUNDLE_ID)" 2>/dev/null || true; \
 		done; \
 	fi
-	@LAUNCH_OUTPUT=$$(SIMCTL_CHILD_DYLD_INSERT_LIBRARIES="$(DYLIB_PATH)" \
-		SIMCTL_CHILD_PEPPER_PORT="$(PORT)" \
-		SIMCTL_CHILD_PEPPER_SIM_UDID="$(SIMULATOR_ID)" \
-		SIMCTL_CHILD_PEPPER_ADAPTER="$(ADAPTER_TYPE)" \
-		SIMCTL_CHILD_PEPPER_SKIP_PERMISSIONS="$${PEPPER_AGENT_TYPE:+1}" \
-		xcrun simctl launch "$(SIMULATOR_ID)" "$(BUNDLE_ID)" 2>&1) || { \
+	@xcrun simctl spawn "$(SIMULATOR_ID)" launchctl setenv DYLD_INSERT_LIBRARIES "$(DYLIB_PATH)"
+	@xcrun simctl spawn "$(SIMULATOR_ID)" launchctl setenv PEPPER_PORT "$(PORT)"
+	@xcrun simctl spawn "$(SIMULATOR_ID)" launchctl setenv PEPPER_SIM_UDID "$(SIMULATOR_ID)"
+	@xcrun simctl spawn "$(SIMULATOR_ID)" launchctl setenv PEPPER_ADAPTER "$(ADAPTER_TYPE)"
+	@if [ -n "$${PEPPER_AGENT_TYPE}" ]; then \
+		xcrun simctl spawn "$(SIMULATOR_ID)" launchctl setenv PEPPER_SKIP_PERMISSIONS 1; \
+	fi
+	@LAUNCH_OUTPUT=$$(xcrun simctl launch "$(SIMULATOR_ID)" "$(BUNDLE_ID)" 2>&1) || { \
 		if echo "$$LAUNCH_OUTPUT" | grep -qi "domain.*error\|unable to lookup.*application\|not found"; then \
 			echo "App not installed on $(SIMULATOR_ID). Auto-installing..."; \
 			$(MAKE) test-app SIMULATOR_ID="$(SIMULATOR_ID)" && \
-			LAUNCH_OUTPUT=$$(SIMCTL_CHILD_DYLD_INSERT_LIBRARIES="$(DYLIB_PATH)" \
-				SIMCTL_CHILD_PEPPER_PORT="$(PORT)" \
-				SIMCTL_CHILD_PEPPER_SIM_UDID="$(SIMULATOR_ID)" \
-				SIMCTL_CHILD_PEPPER_ADAPTER="$(ADAPTER_TYPE)" \
-				SIMCTL_CHILD_PEPPER_SKIP_PERMISSIONS="$${PEPPER_AGENT_TYPE:+1}" \
-				xcrun simctl launch "$(SIMULATOR_ID)" "$(BUNDLE_ID)" 2>&1) || { \
+			LAUNCH_OUTPUT=$$(xcrun simctl launch "$(SIMULATOR_ID)" "$(BUNDLE_ID)" 2>&1) || { \
 				echo "$$LAUNCH_OUTPUT" >&2; exit 1; \
 			}; \
 		else \
 			echo "$$LAUNCH_OUTPUT" >&2; exit 1; \
 		fi; \
 	}; echo "$$LAUNCH_OUTPUT"
+	@xcrun simctl spawn "$(SIMULATOR_ID)" launchctl unsetenv DYLD_INSERT_LIBRARIES
+	@xcrun simctl spawn "$(SIMULATOR_ID)" launchctl unsetenv PEPPER_PORT
+	@xcrun simctl spawn "$(SIMULATOR_ID)" launchctl unsetenv PEPPER_SIM_UDID
+	@xcrun simctl spawn "$(SIMULATOR_ID)" launchctl unsetenv PEPPER_ADAPTER
+	@xcrun simctl spawn "$(SIMULATOR_ID)" launchctl unsetenv PEPPER_SKIP_PERMISSIONS 2>/dev/null || true
 	@echo "Launched with injection. Control plane at ws://localhost:$(PORT)"
 	@python3 -c "import sys, os, time; sys.path.insert(0, '$(TOOLS_DIR)'); \
 from pepper_sessions import quick_port_check, claim_simulator_with_port; \
