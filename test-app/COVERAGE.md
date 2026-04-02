@@ -297,12 +297,14 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `swiftui_body` | counts | untested |  |  |
 | `swiftui_body` | scan | untested |  |  |
 | `swiftui_body` | reset | untested |  |  |
+| `frameworks` | list | untested |  |  |
+| `frameworks` | detail | ready | Any running app | Detailed info for a single loaded image |
 
 ## Summary
 
-**277 test points** across 77 commands.
+**279 test points** across 78 commands.
 
 - pass: 138
 - fail: 3
-- untested: 88
+- untested: 89
 
