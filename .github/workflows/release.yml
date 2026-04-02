@@ -38,7 +38,8 @@ jobs:
           gh release create "$GITHUB_REF_NAME" \
             --title "Pepper $GITHUB_REF_NAME" \
             --generate-notes \
-            build/Pepper.framework.zip
+            build/Pepper.framework.zip 2>/dev/null \
+          || gh release upload "$GITHUB_REF_NAME" build/Pepper.framework.zip --clobber
 
       - name: Create GitHub Release (public)
         env:
