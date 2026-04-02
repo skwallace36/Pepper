@@ -288,12 +288,20 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `assert` | — | untested | Any state | New command. Assertion primitives for agent-driven testing. Supports element state, text presence, and count assertions. |
 | `swizzle_check` | — | untested | Any app | New command. Calls each swizzled authorization API and verifies the swizzle intercepted (completion fired synchronously with auto-grant value). Covers: notifications, photos, tracking, camera, contacts, location, eventkit_events, eventkit_reminders. |
 | `formatters` | — | untested |  |  |
+| `swiftui_body` | start | untested |  |  |
+| `swiftui_body` | stop | untested |  |  |
+| `swiftui_body` | status | untested |  |  |
+| `swiftui_body` | log | untested |  |  |
+| `swiftui_body` | clear | untested |  |  |
+| `swiftui_body` | counts | untested |  |  |
+| `swiftui_body` | scan | untested |  |  |
+| `swiftui_body` | reset | untested |  |  |
 
 ## Summary
 
-**268 test points** across 76 commands.
+**276 test points** across 77 commands.
 
 - pass: 138
 - fail: 3
-- untested: 79
+- untested: 87
 
