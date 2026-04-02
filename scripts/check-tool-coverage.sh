@@ -28,6 +28,7 @@ done < <(grep -E 'register\("[a-z_]+"' "$ROOT"/dylib/commands/PepperDispatcher.s
 
 # MCP tools that don't send a dylib command (local-only).
 local_only=(
+  biometric
   build_sim
   build_hardware
   crash_log
