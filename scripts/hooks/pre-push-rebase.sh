@@ -6,8 +6,18 @@
 
 BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
 
-# Protect main: block ALL direct pushes. Everything goes through PRs.
-if [ "$BRANCH" = "main" ] || [ "$BRANCH" = "master" ]; then
+# Allow tag-only pushes from main (releases).
+# Pre-push stdin format: <local ref> <local sha> <remote ref> <remote sha>
+TAG_ONLY=true
+while read -r LOCAL_REF _ REMOTE_REF _; do
+  case "$REMOTE_REF" in
+    refs/tags/*) ;;  # tag push — allowed
+    *) TAG_ONLY=false ;;
+  esac
+done
+
+# Protect main: block branch pushes. Tag pushes go through (for releases).
+if [ "$TAG_ONLY" = false ] && { [ "$BRANCH" = "main" ] || [ "$BRANCH" = "master" ]; }; then
   echo ""
   echo "╔══════════════════════════════════════════════════════════╗"
   echo "║  BLOCKED: Direct push to $BRANCH is not allowed.       ║"
