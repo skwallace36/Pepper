@@ -410,6 +410,7 @@ final class PepperDispatcher {
         registerLazy("assert") { AssertHandler() }
         registerLazy("swizzle_check") { SwizzleCheckHandler() }
         registerLazy("formatters") { FormattersHandler() }
+        registerLazy("swiftui_body") { SwiftUIBodyHandler() }
     }
 }
 

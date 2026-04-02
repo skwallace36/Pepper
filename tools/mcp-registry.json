@@ -95,6 +95,7 @@
     {"name": "hangs", "category": "debug", "description": "Detect main thread hangs with symbolicated stack traces"},
     {"name": "perf", "category": "debug", "description": "Measure performance metrics (CPU, FPS, hangs)"},
     {"name": "renders", "category": "debug", "description": "Track view render counts and off-screen renders"},
+    {"name": "swiftui_body", "category": "debug", "description": "Track per-view SwiftUI body evaluations with timing"},
     {"name": "responder_chain", "category": "debug", "description": "Dump the UIResponder chain"},
     {"name": "sandbox", "category": "state", "description": "Browse the app sandbox filesystem"},
     {"name": "storage", "category": "state", "description": "Inspect app storage (files, databases, caches)"},

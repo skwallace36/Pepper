@@ -785,6 +785,11 @@
     "status": "untested",
     "surface": "SwiftUI app"
   },
+  "swiftui_body": {
+    "notes": "Per-view SwiftUI body tracking via Mach-O protocol conformance scanning and hosting view hooking.",
+    "status": "untested",
+    "surface": "SwiftUI app"
+  },
   "responder_chain": {
     "notes": "Dumps gesture recognizers, responder chain, and hit-test path. Smoke test hits point (200,400). Regression test uses text='Tap Me'.",
     "status": "ready",
