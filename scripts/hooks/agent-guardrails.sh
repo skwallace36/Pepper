@@ -127,6 +127,28 @@ if echo "$TOOL" | grep -qE '^mcp__pepper__'; then
   if [ -n "$SIM_PARAM" ] && [ -n "${SIMULATOR_ID:-}" ] && [ "$SIM_PARAM" != "$SIMULATOR_ID" ]; then
     deny "agents can only use their claimed simulator ($SIMULATOR_ID). Got: $SIM_PARAM"
   fi
+
+  # Block deploy/build with non-whitelisted bundle IDs.
+  # Agents can only interact with known-safe apps.
+  ALLOWED_BUNDLES="com.pepper.testapp"
+  BUNDLE_PARAM=$(echo "$INPUT" | jq -r '.tool_input.bundle_id // empty' 2>/dev/null)
+  if [ -n "$BUNDLE_PARAM" ]; then
+    ALLOWED=false
+    for b in $ALLOWED_BUNDLES; do
+      [ "$BUNDLE_PARAM" = "$b" ] && ALLOWED=true
+    done
+    if [ "$ALLOWED" = false ]; then
+      deny "agents can only use whitelisted apps ($ALLOWED_BUNDLES). Got: $BUNDLE_PARAM"
+    fi
+  fi
+
+  # Block deploy_sim with non-whitelisted workspace paths
+  if [ "$TOOL" = "mcp__pepper__deploy_sim" ] || [ "$TOOL" = "mcp__pepper__build_sim" ]; then
+    WS_PARAM=$(echo "$INPUT" | jq -r '.tool_input.workspace // empty' 2>/dev/null)
+    if [ -n "$WS_PARAM" ] && ! echo "$WS_PARAM" | grep -qE 'PepperTestApp|pepper.*test'; then
+      deny "agents can only build/deploy the test app. Got workspace: $WS_PARAM"
+    fi
+  fi
 fi
 
 # --- Read tool guardrails: block reading secrets ---
