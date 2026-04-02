@@ -62,11 +62,13 @@ def stop_recording(sim_key: str = "default") -> tuple[str, dict | None]:
     if not rec["steps"]:
         return f"Recording '{rec['name']}' had no steps. Nothing saved.", None
 
-    config = get_config()
+    from .mcp_build import get_session_context
+    ctx = get_session_context()
+    bundle_id = ctx.get("bundle_id") or get_config().get("bundle_id", "")
     script = {
         "name": rec["name"],
         "description": rec["description"],
-        "bundle_id": config.get("bundle_id", ""),
+        "bundle_id": bundle_id,
         "created_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "steps": rec["steps"],
     }
