@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-__version__ = "0.1.3"
+__version__ = "0.2.0"
 
 
 def _find_dylib() -> str:
