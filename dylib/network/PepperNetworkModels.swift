@@ -9,6 +9,16 @@ struct NetworkTransaction: Codable {
     var error: String?
     /// GraphQL operation names parsed from the request body (empty if not a GraphQL request).
     var graphqlOperations: [String]?
+    /// Whether this is an SSE or streaming response (text/event-stream, application/x-ndjson, etc.).
+    var isStreaming: Bool = false
+    /// Stream status: "open" while receiving chunks, "closed" when done.
+    var streamStatus: String?
+    /// Number of streaming chunks received so far.
+    var chunksReceived: Int = 0
+    /// Total bytes received across all streaming chunks.
+    var totalStreamBytes: Int = 0
+    /// Content type that triggered streaming detection (e.g. "text/event-stream").
+    var streamContentType: String?
 
     func toDictionary(maxBody: Int? = nil, includeHeaders: Bool = true) -> [String: AnyCodable] {
         var dict: [String: AnyCodable] = [
@@ -28,6 +38,17 @@ struct NetworkTransaction: Codable {
                 dict["graphql_operation"] = AnyCodable(ops[0])
             } else {
                 dict["graphql_operations"] = AnyCodable(ops)
+            }
+        }
+        if isStreaming {
+            dict["is_streaming"] = AnyCodable(true)
+            if let status = streamStatus {
+                dict["stream_status"] = AnyCodable(status)
+            }
+            dict["chunks_received"] = AnyCodable(chunksReceived)
+            dict["total_stream_bytes"] = AnyCodable(totalStreamBytes)
+            if let ct = streamContentType {
+                dict["stream_content_type"] = AnyCodable(ct)
             }
         }
         return dict
@@ -103,6 +124,23 @@ struct NetworkResponseInfo: Codable {
             dict["body_encoding"] = encoding
         }
         return dict
+    }
+}
+
+/// A single chunk from an SSE or streaming response.
+struct StreamingChunk: Codable {
+    let index: Int
+    let timestampMs: Int64
+    let data: String
+    let sizeBytes: Int
+
+    func toDictionary() -> [String: Any] {
+        [
+            "index": index,
+            "timestamp_ms": timestampMs,
+            "data": data,
+            "size_bytes": sizeBytes,
+        ]
     }
 }
 

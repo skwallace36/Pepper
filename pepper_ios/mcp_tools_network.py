@@ -24,7 +24,7 @@ def register_network_tools(mcp, resolve_and_send):
     async def network(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
         action: str = Field(
-            description="Action: start, stop, log, status, clear, tasks, simulate, presets, conditions, remove_condition, clear_conditions, mock, mocks, remove_mock, clear_mocks"
+            description="Action: start, stop, log, status, clear, tasks, simulate, presets, conditions, remove_condition, clear_conditions, mock, mocks, remove_mock, clear_mocks, stream_log"
         ),
         task_state: str | None = Field(
             default=None,
@@ -82,6 +82,10 @@ def register_network_tools(mcp, resolve_and_send):
         mock_status_code: int | None = Field(default=None, description="HTTP status code for mock response (default: 200)"),
         mock_body: str | None = Field(default=None, description="Response body for mock (JSON string)"),
         mock_id: str | None = Field(default=None, description="Mock ID (for remove_mock, or custom ID for mock)"),
+        transaction_id: str | None = Field(
+            default=None,
+            description="Transaction ID of a streaming request (for stream_log action — get SSE/streaming chunks)",
+        ),
     ) -> str:
         """Monitor HTTP traffic, simulate network conditions (latency, errors, throttle, offline), and mock API responses. Tip: use `timeline(last_seconds=30)` to see network events correlated with console and screen transitions.
 
@@ -116,6 +120,12 @@ Common recipes (copy-paste ready):
    action="simulate", effect="fail_error", error_code=-1009, url="api.example.com"  → NSURLErrorNotConnectedToInternet
    action="simulate", effect="offline"                                                → all requests fail
 
+5. SSE / streaming responses:
+   Automatically detected for text/event-stream, application/x-ndjson, etc.
+   In action="log", streaming requests show is_streaming=true and stream_status="open"|"closed".
+   action="stream_log", transaction_id="<id>"  → get individual chunks from a streaming request
+   Real-time events: network_stream_start, network_stream_chunk, network_stream_end.
+
 6. Clean up:
    action="conditions"          → list active conditions (latency/throttle/fail)
    action="remove_condition", condition_id="<id>"
@@ -129,7 +139,8 @@ Parameter relationships:
 - condition_id → action="simulate" (custom ID) or action="remove_condition"
 - task_state, filter_text → with action="tasks" (filter_text also used by action="log")
 - filter_text, limit, offset, include_headers, include_body, max_body, hide_noise, exclude → only with action="log"
-- url, method → used by both action="simulate" and action="mock" to match requests"""
+- url, method → used by both action="simulate" and action="mock" to match requests
+- transaction_id → only with action="stream_log" """
         params: dict = {"action": action}
         if filter_text:
             params["filter"] = filter_text
@@ -177,6 +188,8 @@ Parameter relationships:
             params["id"] = mock_id
         if task_state:
             params["state"] = task_state
+        if transaction_id:
+            params["id"] = transaction_id
         return await resolve_and_send(simulator, CMD_NETWORK, params)
 
     @mcp.tool()

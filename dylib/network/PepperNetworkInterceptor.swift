@@ -68,6 +68,35 @@ final class PepperNetworkInterceptor {
     /// Active mock rules — checked by PepperNetworkProtocol before overrides and conditions.
     private var mocks: [PepperNetworkMock] = []
 
+    // MARK: - Streaming / SSE
+
+    /// Streaming chunks keyed by transaction ID.
+    private var streamingChunks: [String: [StreamingChunk]] = [:]
+
+    /// Maximum chunks stored per streaming transaction.
+    private let maxChunksPerStream = 1000
+
+    /// Maximum streaming transactions tracked (oldest evicted first).
+    private var streamingOrder: [String] = []
+    private let maxStreamingTransactions = 50
+
+    /// Maximum size of a single chunk's text data (4KB).
+    static let maxChunkDataSize = 4096
+
+    /// Content types that indicate a streaming response.
+    static let streamingContentTypes = [
+        "text/event-stream",
+        "application/x-ndjson",
+        "application/stream+json",
+        "text/x-ndjson",
+    ]
+
+    /// Check whether a content type indicates a streaming response.
+    static func isStreamingContentType(_ contentType: String?) -> Bool {
+        guard let ct = contentType?.lowercased() else { return false }
+        return streamingContentTypes.contains { ct.contains($0) }
+    }
+
     struct DuplicateRequestWarning {
         let endpoint: String  // "GET /api/users" or "POST /graphql (GetUserProfile)"
         let count: Int
@@ -300,6 +329,157 @@ final class PepperNetworkInterceptor {
         )
         DispatchQueue.main.async {
             PepperPlane.shared.broadcast(event)
+        }
+    }
+
+    /// Record the start of a streaming/SSE transaction. Called when a streaming Content-Type is detected.
+    func recordStreamingStart(_ transaction: NetworkTransaction) {
+        var tx = transaction
+        tx.isStreaming = true
+        tx.streamStatus = "open"
+
+        queue.async(flags: .barrier) {
+            if self.buffer.count >= self.bufferSize {
+                self.buffer.removeFirst()
+                self.totalDropped += 1
+            }
+            self.buffer.append(tx)
+            self.totalRecorded += 1
+
+            // Initialize chunk storage
+            self.streamingChunks[tx.id] = []
+            self.streamingOrder.append(tx.id)
+
+            // Evict oldest streaming transaction if over limit
+            while self.streamingOrder.count > self.maxStreamingTransactions {
+                let evicted = self.streamingOrder.removeFirst()
+                self.streamingChunks.removeValue(forKey: evicted)
+            }
+
+            // Flight recorder entry
+            let method = tx.request.method
+            let url = tx.request.url
+            let urlObj = URL(string: url)
+            let path = urlObj?.path ?? url
+            let ct = tx.streamContentType ?? "streaming"
+            let summary = "STREAM \(method) \(path) [\(ct)] opened"
+            PepperFlightRecorder.shared.record(type: .network, summary: summary, referenceId: tx.id)
+        }
+
+        // Broadcast event
+        var eventData = tx.toDictionary()
+        eventData["stream_event"] = AnyCodable("open")
+        let event = PepperEvent(event: "network_stream_start", data: eventData)
+        DispatchQueue.main.async {
+            PepperPlane.shared.broadcast(event)
+        }
+    }
+
+    /// Record a streaming chunk for an active streaming transaction.
+    func recordStreamingChunk(transactionId: String, data chunkData: Data) {
+        let nowMs = Self.nowMs()
+        let chunkText: String
+        let rawText = String(data: chunkData, encoding: .utf8) ?? chunkData.base64EncodedString()
+        if rawText.count > Self.maxChunkDataSize {
+            chunkText = String(rawText.prefix(Self.maxChunkDataSize))
+        } else {
+            chunkText = rawText
+        }
+
+        queue.async(flags: .barrier) {
+            guard var chunks = self.streamingChunks[transactionId] else { return }
+
+            let chunk = StreamingChunk(
+                index: chunks.count,
+                timestampMs: nowMs,
+                data: chunkText,
+                sizeBytes: chunkData.count
+            )
+
+            if chunks.count < self.maxChunksPerStream {
+                chunks.append(chunk)
+                self.streamingChunks[transactionId] = chunks
+            }
+
+            // Update the transaction in the buffer
+            if let idx = self.buffer.lastIndex(where: { $0.id == transactionId }) {
+                self.buffer[idx].chunksReceived = chunks.count
+                self.buffer[idx].totalStreamBytes += chunkData.count
+                self.buffer[idx].timing.endMs = nowMs
+                self.buffer[idx].timing.durationMs = nowMs - self.buffer[idx].timing.startMs
+            }
+        }
+
+        // Broadcast chunk event
+        let event = PepperEvent(
+            event: "network_stream_chunk",
+            data: [
+                "transaction_id": AnyCodable(transactionId),
+                "index": AnyCodable(self.streamingChunkCount(for: transactionId)),
+                "timestamp_ms": AnyCodable(nowMs),
+                "data": AnyCodable(chunkText),
+                "size_bytes": AnyCodable(chunkData.count),
+            ]
+        )
+        DispatchQueue.main.async {
+            PepperPlane.shared.broadcast(event)
+        }
+    }
+
+    /// Finalize a streaming transaction (connection closed or errored).
+    func finalizeStreaming(transactionId: String, error: String?) {
+        let nowMs = Self.nowMs()
+
+        queue.async(flags: .barrier) {
+            guard let idx = self.buffer.lastIndex(where: { $0.id == transactionId }) else { return }
+            self.buffer[idx].streamStatus = "closed"
+            self.buffer[idx].timing.endMs = nowMs
+            self.buffer[idx].timing.durationMs = nowMs - self.buffer[idx].timing.startMs
+            if let error = error {
+                self.buffer[idx].error = error
+            }
+
+            // Flight recorder entry
+            let tx = self.buffer[idx]
+            let method = tx.request.method
+            let urlObj = URL(string: tx.request.url)
+            let path = urlObj?.path ?? tx.request.url
+            let chunks = tx.chunksReceived
+            let bytes = Self.formatBytes(tx.totalStreamBytes)
+            let duration = tx.timing.durationMs ?? 0
+            let summary = "STREAM \(method) \(path) closed (\(chunks) chunks, \(bytes), \(duration)ms)"
+            PepperFlightRecorder.shared.record(type: .network, summary: summary, referenceId: transactionId)
+        }
+
+        // Broadcast close event
+        let event = PepperEvent(
+            event: "network_stream_end",
+            data: [
+                "transaction_id": AnyCodable(transactionId),
+                "error": AnyCodable(error as Any),
+            ]
+        )
+        DispatchQueue.main.async {
+            PepperPlane.shared.broadcast(event)
+        }
+    }
+
+    /// Get streaming chunks for a transaction.
+    func streamingChunksForTransaction(_ transactionId: String, limit: Int = 100, offset: Int = 0)
+        -> [StreamingChunk]
+    {
+        queue.sync {
+            guard let chunks = streamingChunks[transactionId] else { return [] }
+            let start = min(offset, chunks.count)
+            let end = min(start + limit, chunks.count)
+            return Array(chunks[start..<end])
+        }
+    }
+
+    /// Get chunk count for a streaming transaction.
+    func streamingChunkCount(for transactionId: String) -> Int {
+        queue.sync {
+            streamingChunks[transactionId]?.count ?? 0
         }
     }
 

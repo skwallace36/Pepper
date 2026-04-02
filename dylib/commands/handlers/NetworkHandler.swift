@@ -40,6 +40,12 @@ import os
 ///   {"cmd":"network", "params":{"action":"conditions"}}
 ///   {"cmd":"network", "params":{"action":"remove_condition", "id":"condition-id"}}
 ///   {"cmd":"network", "params":{"action":"clear_conditions"}}
+///   {"cmd":"network", "params":{"action":"stream_log", "id":"transaction-id"}}               // get SSE/streaming chunks
+///   {"cmd":"network", "params":{"action":"stream_log", "id":"transaction-id", "limit":50, "offset":0}}
+///
+/// SSE/streaming responses (text/event-stream, application/x-ndjson) are detected automatically.
+/// They appear in the log with `is_streaming: true` and `stream_status: "open"|"closed"`.
+/// Real-time events: "network_stream_start", "network_stream_chunk", "network_stream_end".
 ///
 /// While active, each completed HTTP request broadcasts a "network_request" event.
 struct NetworkHandler: PepperHandler {
@@ -51,7 +57,7 @@ struct NetworkHandler: PepperHandler {
             return .error(
                 id: command.id,
                 message:
-                    "Missing 'action' param. Available: start, stop, status, log, clear, tasks, simulate, presets, conditions, remove_condition, clear_conditions, mock, mocks, remove_mock, clear_mocks, ws_log, ws_status, ws_clear"
+                    "Missing 'action' param. Available: start, stop, status, log, clear, tasks, simulate, presets, conditions, remove_condition, clear_conditions, mock, mocks, remove_mock, clear_mocks, stream_log, ws_log, ws_status, ws_clear"
             )
         }
 
@@ -150,6 +156,9 @@ struct NetworkHandler: PepperHandler {
         case "tasks":
             return handleTasks(command)
 
+        case "stream_log":
+            return handleStreamLog(command)
+
         case "ws_log", "ws_status", "ws_clear":
             return handleWsAction(action, command)
 
@@ -157,7 +166,7 @@ struct NetworkHandler: PepperHandler {
             return .error(
                 id: command.id,
                 message:
-                    "Unknown action '\(action)'. Available: start, stop, status, log, clear, tasks, simulate, presets, conditions, remove_condition, clear_conditions, mock, mocks, remove_mock, clear_mocks, ws_log, ws_status, ws_clear"
+                    "Unknown action '\(action)'. Available: start, stop, status, log, clear, tasks, simulate, presets, conditions, remove_condition, clear_conditions, mock, mocks, remove_mock, clear_mocks, stream_log, ws_log, ws_status, ws_clear"
             )
         }
     }
@@ -559,6 +568,43 @@ struct NetworkHandler: PepperHandler {
                 "status_code": AnyCodable(statusCode),
                 "description": AnyCodable(description),
                 "active_mocks": AnyCodable(interceptor.activeMocks.count),
+            ])
+    }
+
+    // MARK: - Stream Log
+
+    private func handleStreamLog(_ command: PepperCommand) -> PepperResponse {
+        guard let transactionId = command.params?["id"]?.stringValue else {
+            return .error(
+                id: command.id,
+                message: "Missing 'id' param — pass the transaction ID of a streaming request")
+        }
+
+        let limit = command.params?["limit"]?.intValue ?? 100
+        let offset = command.params?["offset"]?.intValue ?? 0
+        let interceptor = PepperNetworkInterceptor.shared
+
+        let chunks = interceptor.streamingChunksForTransaction(
+            transactionId, limit: limit, offset: offset)
+        let totalChunks = interceptor.streamingChunkCount(for: transactionId)
+
+        if totalChunks == 0 {
+            return .error(
+                id: command.id,
+                message:
+                    "No streaming chunks found for transaction '\(transactionId)'. "
+                    + "Either the ID is wrong or this isn't a streaming response.")
+        }
+
+        return .ok(
+            id: command.id,
+            data: [
+                "transaction_id": AnyCodable(transactionId),
+                "count": AnyCodable(chunks.count),
+                "total": AnyCodable(totalChunks),
+                "offset": AnyCodable(offset),
+                "has_more": AnyCodable(offset + chunks.count < totalChunks),
+                "chunks": AnyCodable(chunks.map { AnyCodable($0.toDictionary()) }),
             ])
     }
 

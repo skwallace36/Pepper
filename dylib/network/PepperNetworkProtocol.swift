@@ -32,6 +32,12 @@ final class PepperNetworkProtocol: URLProtocol {
     /// Matched network conditions for this request (latency, throttle, etc.).
     private var matchedConditions: [PepperNetworkCondition] = []
 
+    /// Whether this response is a streaming/SSE response (detected from Content-Type).
+    private var isStreaming = false
+
+    /// Whether we've already recorded the initial streaming transaction.
+    private var streamingRecorded = false
+
     /// Transaction ID for correlation.
     private let transactionId = UUID().uuidString
 
@@ -332,19 +338,81 @@ extension PepperNetworkProtocol: URLSessionDataDelegate {
         completionHandler: @escaping (URLSession.ResponseDisposition) -> Void
     ) {
         httpResponse = response as? HTTPURLResponse
+
+        // Detect SSE / streaming responses by Content-Type
+        let contentType = httpResponse?.allHeaderFields["Content-Type"] as? String
+        if PepperNetworkInterceptor.isStreamingContentType(contentType) {
+            isStreaming = true
+        }
+
         // If matched override or throttle, defer sending the response — we'll deliver after buffering
         if matchedOverride == nil && throttleBytesPerSecond == nil {
             client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
         }
+
+        // Record the initial streaming transaction now (before any chunks arrive)
+        if isStreaming, !streamingRecorded {
+            recordStreamingTransaction(contentType: contentType)
+        }
+
         completionHandler(.allow)
     }
 
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
         responseData.append(data)
+
+        // For streaming responses, emit each chunk as a sub-event
+        if isStreaming {
+            PepperNetworkInterceptor.shared.recordStreamingChunk(
+                transactionId: transactionId, data: data)
+        }
+
         // If matched override or throttling, buffer only — don't stream to client yet
         if matchedOverride == nil && throttleBytesPerSecond == nil {
             client?.urlProtocol(self, didLoad: data)
         }
+    }
+
+    /// Record the initial streaming transaction when headers arrive.
+    private func recordStreamingTransaction(contentType: String?) {
+        streamingRecorded = true
+
+        let reqContentType = request.allHTTPHeaderFields?["Content-Type"]
+        let bodyResult = PepperNetworkInterceptor.processBody(capturedRequestBody, contentType: reqContentType)
+        let requestInfo = NetworkRequestInfo(
+            url: request.url?.absoluteString ?? "unknown",
+            method: request.httpMethod ?? "GET",
+            headers: PepperNetworkInterceptor.extractRequestHeaders(request),
+            body: bodyResult.body,
+            bodyEncoding: bodyResult.encoding,
+            bodyTruncated: bodyResult.truncated,
+            originalBodySize: bodyResult.originalSize,
+            timestampMs: startMs
+        )
+
+        var responseInfo: NetworkResponseInfo?
+        if let httpResponse = httpResponse {
+            responseInfo = NetworkResponseInfo(
+                statusCode: httpResponse.statusCode,
+                headers: PepperNetworkInterceptor.extractHeaders(httpResponse),
+                body: nil,
+                bodyEncoding: nil,
+                bodyTruncated: false,
+                originalBodySize: 0,
+                contentLength: Int64(httpResponse.expectedContentLength)
+            )
+        }
+
+        var transaction = NetworkTransaction(
+            id: transactionId,
+            request: requestInfo,
+            response: responseInfo,
+            timing: NetworkTiming(startMs: startMs, endMs: nil, durationMs: nil),
+            error: nil
+        )
+        transaction.streamContentType = contentType
+
+        PepperNetworkInterceptor.shared.recordStreamingStart(transaction)
     }
 
     /// Lowest throttle rate from matched conditions, or nil if no throttle.
@@ -358,6 +426,21 @@ extension PepperNetworkProtocol: URLSessionDataDelegate {
 
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
         PepperNetworkInterceptor.shared.decrementActiveRequests()
+
+        // For streaming transactions, finalize instead of recording a new transaction
+        if isStreaming && streamingRecorded {
+            PepperNetworkInterceptor.shared.finalizeStreaming(
+                transactionId: transactionId, error: error?.localizedDescription)
+
+            if let error = error {
+                client?.urlProtocol(self, didFailWithError: error)
+            } else {
+                client?.urlProtocolDidFinishLoading(self)
+            }
+            forwardSession?.finishTasksAndInvalidate()
+            return
+        }
+
         let endMs = PepperNetworkInterceptor.nowMs()
 
         // Build request info — use body captured at startLoading (before stream was consumed)
