@@ -429,6 +429,9 @@ source_env() {
     # API keys are read but not exported — scoped to the claude process at launch time.
     if [[ "$key" == "ANTHROPIC_API_KEY" || "$key" == "PEPPER_AGENT_API_KEY" ]]; then
       eval "$key=\"$value\""
+    # Don't let .env override the agent's forced test app bundle ID.
+    elif [[ "$key" == "APP_BUNDLE_ID" && "${APP_BUNDLE_ID:-}" == "com.pepper.testapp" ]]; then
+      continue
     else
       export "$key"="$value"
     fi
