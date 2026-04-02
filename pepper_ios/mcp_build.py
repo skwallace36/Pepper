@@ -375,16 +375,17 @@ async def deploy_app(
     bid = bundle_id
     dylib = dylib_path or cfg["dylib_path"]
 
-    # Auto-detect bundle ID from the most recent build for this simulator
-    # so agents working on different apps don't all need to match .env.
-    if not bid and not install_path:
-        ws = workspace or _sim_build_state.get(simulator)
-        if ws:
-            built = find_built_app(workspace=ws)
-            if built:
-                bid = _bundle_id_from_app(built)
-                if bid:
-                    install_path = built  # reuse so we don't search again below
+    # Auto-detect bundle ID from the built .app.
+    if not bid:
+        app_to_check = install_path
+        if not app_to_check:
+            ws = workspace or _sim_build_state.get(simulator)
+            if ws:
+                app_to_check = find_built_app(workspace=ws)
+                if app_to_check:
+                    install_path = app_to_check
+        if app_to_check:
+            bid = _bundle_id_from_app(app_to_check)
 
     bid = bid or cfg["bundle_id"]
 
