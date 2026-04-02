@@ -682,7 +682,7 @@ _CORE_INSTRUCTIONS = (
     "- To capture app logs (print + NSLog): use `console` start + log.\n"
     "- If a command returns APP CRASHED: investigate the crash, do NOT just redeploy.\n"
     "- If an element isn't found: the screen state is in the error. Read it before retrying.\n"
-    "- Use `deploy_sim` with workspace to build + deploy. NEVER use raw `simctl launch`.\n\n"
+    "- Use `deploy_sim(workspace, simulator)` to build + deploy. NEVER use raw `simctl launch`.\n\n"
     "TIPS:\n"
     "- Always `look` before interacting to confirm screen state.\n"
     "- Action tools (tap, scroll, navigate) auto-include screen state in response — read it.\n"
@@ -740,11 +740,11 @@ _SCREEN_RECORDING_GUIDE = (
 
 _LAUNCHING_GUIDE = (
     "LAUNCHING THE APP:\n"
-    "Use `deploy_sim` for everything — it builds (when workspace provided), installs, "
-    "launches with Pepper injected, waits for connection, and returns screen state.\n"
-    "Pass workspace to build + deploy. Omit workspace to relaunch the last build.\n"
+    "`deploy_sim` builds, installs, launches with Pepper, and returns screen state.\n"
+    "Required params: workspace (path to .xcworkspace) and simulator (UDID).\n"
+    "Use `simulator action=list` to find available simulator UDIDs.\n"
     "NEVER use raw `simctl launch` — it skips Pepper injection.\n"
-    "`deploy_sim` auto-detects the bundle ID from the built app. No need to pass it manually."
+    "Bundle ID is auto-detected from the built .app. Pass it explicitly only if needed."
 )
 
 _ACTIONS_REFERENCE = """\
@@ -990,8 +990,8 @@ async def wait_idle(
 @mcp.tool()
 async def build_sim(
     workspace: str = Field(description="Absolute path to the .xcworkspace to build"),
+    simulator: str = Field(description="Simulator UDID for -destination"),
     scheme: str | None = Field(default=None, description="Build scheme (default: from .env APP_SCHEME)"),
-    simulator: str | None = Field(default=None, description="Simulator UDID for -destination"),
 ) -> str:
     """Compile the iOS app for simulator. Build only — does not install or launch. Use deploy_sim to build + deploy."""
     success, message = await _build_app(workspace, scheme, simulator)
@@ -1050,51 +1050,29 @@ async def build_hardware(
 
 @mcp.tool()
 async def deploy_sim(
-    workspace: str | None = Field(
-        default=None,
-        description="Path to .xcworkspace. When provided, builds the app before deploying. Omit to relaunch the last build.",
-    ),
-    scheme: str | None = Field(default=None, description="Build scheme (default: from .env APP_SCHEME). Only used when workspace is provided."),
-    simulator: str | None = Field(default=None, description="Simulator UDID"),
-    bundle_id: str | None = Field(default=None, description="App bundle ID (default: auto-detected from build, then .env)"),
-    dylib_path: str | None = Field(default=None, description="Path to Pepper dylib (default: from .env)"),
-    skip_privacy: bool = Field(
-        default=False,
-        description="Skip auto-granting privacy permissions",
-    ),
+    workspace: str = Field(description="Absolute path to the .xcworkspace"),
+    simulator: str = Field(description="Simulator UDID (use `simulator action=list` to find one)"),
+    scheme: str | None = Field(default=None, description="Build scheme (default: from .env APP_SCHEME)"),
+    bundle_id: str | None = Field(default=None, description="App bundle ID (default: auto-detected from built .app)"),
+    skip_privacy: bool = Field(default=False, description="Skip auto-granting privacy permissions"),
 ) -> str:
-    """Build (if workspace provided), install, and launch the app with Pepper injected. Returns screen state.
+    """Build, install, and launch the app with Pepper injected. Returns screen state."""
+    # Build
+    success, build_msg = await _build_app(workspace, scheme, simulator)
+    if not success:
+        return build_msg
+    app_path = _find_built_app(workspace)
 
-    With workspace: compiles the app, installs, launches with Pepper, returns screen.
-    Without workspace: relaunches the last-compiled binary with Pepper."""
-    try:
-        sim = _resolve_simulator(simulator)
-    except RuntimeError as e:
-        return str(e)
-
-    build_msg = None
-    app_path = None
-
-    # Build if workspace provided
-    if workspace:
-        success, build_msg = await _build_app(workspace, scheme, sim)
-        if not success:
-            return build_msg
-        app_path = _find_built_app(workspace)
-
+    # Deploy
     deploy_msg = await _deploy_app(
-        sim,
+        simulator,
         send_fn=send_command,
         bundle_id=bundle_id,
-        dylib_path=dylib_path,
         install_path=app_path,
         workspace=workspace,
         skip_privacy=skip_privacy,
     )
-
-    if build_msg:
-        return f"{build_msg}\n\n{deploy_msg}"
-    return deploy_msg
+    return f"{build_msg}\n\n{deploy_msg}"
 
 
 @mcp.tool()
