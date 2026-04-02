@@ -504,24 +504,94 @@ VERBOSE_LOG="build/logs/verbose-${TYPE}-${START}.log"
 
 PROMPT=$(cat "$PROMPT_FILE")
 
-# Per-agent budget (Opus agents get more headroom since it costs more per token)
+# Per-agent budget — base rates, overridden by dynamic model routing below
 case "$TYPE" in
-  pr-verifier) BUDGET=5.00 ;;
-  tester|regression-tester) BUDGET=5.00 ;;
-  bugfix)   BUDGET=5.00 ;;
-  builder)  BUDGET=5.00 ;;
-  pr-responder) BUDGET=5.00 ;;
-  researcher) BUDGET=5.00 ;;
-  groomer)  BUDGET=3.00 ;;
   conflict-resolver) BUDGET=1.00 ;;
-  *)        BUDGET=2.00 ;;
+  groomer)  BUDGET=3.00 ;;
+  *)        BUDGET=5.00 ;;
 esac
 
-# Model routing — Opus for reasoning-heavy work, Sonnet for mechanical/scripted tasks
-case "$TYPE" in
-  bugfix|builder|researcher|pr-verifier|pr-responder|regression-tester) MODEL="opus" ;;
-  tester|groomer|conflict-resolver)                                    MODEL="sonnet" ;;
-  *)                                                  MODEL="sonnet" ;;
+# Model routing — dynamic based on agent type and issue complexity.
+# Types that are always mechanical get Sonnet. Types that reason over code
+# start on Sonnet but escalate to Opus if the issue has model:opus label
+# (set by a previous failed Sonnet attempt or by complexity heuristics).
+resolve_model() {
+  local agent_type="$1"
+
+  # Always-Sonnet types: mechanical, scripted, or read-only
+  case "$agent_type" in
+    groomer|conflict-resolver) echo "sonnet"; return ;;
+  esac
+
+  # Check if the next available issue has a model:opus label.
+  # For bugfix/builder, peek at the issue queue. For PR-based agents, check the PR.
+  local forced_model=""
+  case "$agent_type" in
+    bugfix)
+      forced_model=$(python3 -c "
+import json, subprocess, re, sys
+bugs = json.loads(subprocess.check_output(
+    ['gh', 'issue', 'list', '--repo', 'skwallace36/Pepper-private', '--label', 'bug',
+     '--state', 'open', '--limit', '20', '--json', 'number,labels'], text=True) or '[]')
+prs = json.loads(subprocess.check_output(
+    ['gh', 'pr', 'list', '--repo', 'skwallace36/Pepper-private', '--state', 'open',
+     '--json', 'number,body'], text=True) or '[]')
+claimed = set()
+for pr in prs:
+    for m in re.findall(r'(?:fixes|closes|resolves)\s+#(\d+)', pr.get('body',''), re.I):
+        claimed.add(int(m))
+for bug in bugs:
+    labels = [l['name'] for l in bug.get('labels',[])]
+    if 'in-progress' in labels or 'blocked' in labels: continue
+    if bug['number'] in claimed: continue
+    if 'model:opus' in labels:
+        print('opus')
+    else:
+        print('sonnet')
+    sys.exit(0)
+print('sonnet')
+" 2>/dev/null) ;;
+    builder)
+      forced_model=$(python3 -c "
+import json, subprocess, re, sys
+issues = json.loads(subprocess.check_output(
+    ['gh', 'issue', 'list', '--repo', 'skwallace36/Pepper-private', '--state', 'open',
+     '--limit', '50', '--json', 'number,labels'], text=True) or '[]')
+prs = json.loads(subprocess.check_output(
+    ['gh', 'pr', 'list', '--repo', 'skwallace36/Pepper-private', '--state', 'open',
+     '--json', 'number,body'], text=True) or '[]')
+claimed = set()
+for pr in prs:
+    for m in re.findall(r'(?:fixes|closes|resolves)\s+#(\d+)', pr.get('body',''), re.I):
+        claimed.add(int(m))
+for issue in issues:
+    labels = [l['name'] for l in issue.get('labels',[])]
+    if not any(l.startswith('area:') for l in labels): continue
+    if 'in-progress' in labels or 'blocked' in labels: continue
+    if issue['number'] in claimed: continue
+    if 'model:opus' in labels:
+        print('opus')
+    else:
+        print('sonnet')
+    sys.exit(0)
+print('sonnet')
+" 2>/dev/null) ;;
+    pr-verifier|pr-responder)
+      # PR agents: check if the PR being worked on has many files changed
+      forced_model="sonnet" ;;
+    *)
+      forced_model="sonnet" ;;
+  esac
+
+  echo "${forced_model:-sonnet}"
+}
+
+MODEL=$(resolve_model "$TYPE")
+
+# Adjust budget based on model — Sonnet is cheaper, can run with lower budget
+case "$MODEL" in
+  opus)   BUDGET_OVERRIDE=5.00 ;;
+  sonnet) BUDGET_OVERRIDE=3.00 ;;
 esac
 
 # Serialize worktree creation across concurrent agents.
@@ -552,7 +622,7 @@ claude -p \
   "You are the ${TYPE} agent. Follow your instructions." \
   --append-system-prompt "$PROMPT" \
   --model "$MODEL" \
-  --max-budget-usd "$BUDGET" \
+  --max-budget-usd "${BUDGET_OVERRIDE:-$BUDGET}" \
   --output-format stream-json \
   --verbose \
   --worktree \
@@ -815,6 +885,20 @@ elif [ "$UNPRODUCTIVE" = true ]; then
   emit_final "failed" ",\"detail\":\"unproductive run (${UNPRODUCTIVE_REASON})\",\"cost_usd\":${COST},\"duration_s\":${DURATION},\"turns\":${TURNS}"
 else
   emit_final "done" ",\"cost_usd\":${COST},\"duration_s\":${DURATION},\"turns\":${TURNS},\"exit_reason\":${EXIT_REASON}"
+fi
+
+# Model escalation: if a Sonnet agent failed/timed out on an issue, escalate to Opus.
+# This lets the next run use Opus without human intervention.
+if [ -n "$CLAIMED_ISSUE" ] && [ "$MODEL" = "sonnet" ]; then
+  if [ "$TIMED_OUT" = true ] || { [ $EXIT_CODE -ne 0 ] && [ "$NOT_LOGGED_IN" = false ]; } || [ "$UNPRODUCTIVE" = true ]; then
+    # Only escalate bugfix/builder — other types don't benefit from model upgrade
+    case "$TYPE" in
+      bugfix|builder)
+        gh issue edit "$CLAIMED_ISSUE" --repo skwallace36/Pepper-private --add-label "model:opus" 2>/dev/null || true
+        emit "escalated" ",\"detail\":\"#${CLAIMED_ISSUE} escalated to opus after ${MODEL} failure\""
+        ;;
+    esac
+  fi
 fi
 
 # Auto-label new PRs with awaiting:verifier (state machine entry point).
