@@ -24,6 +24,16 @@ DEVICE_DIR = "/tmp/pepper-devices"
 DEFAULT_HOST = "localhost"
 
 
+def _find_dylib_default() -> str:
+    """Resolve dylib path: dev build dir first, then auto-download."""
+    from . import _find_dylib
+    path = _find_dylib()
+    if path:
+        return path
+    # Fallback to the conventional dev path (may not exist yet)
+    return os.path.join(PEPPER_DIR, "build", "Pepper.framework", "Pepper")
+
+
 def try_parse_json(value):
     """Try to parse a string as JSON for proper typing (bool, int, dict, list).
     Returns the parsed value on success, or the original string on failure."""
@@ -112,10 +122,7 @@ def get_config() -> dict[str, str]:
         "bundle_id": env.get("APP_BUNDLE_ID", ""),
         "adapter_type": env.get("APP_ADAPTER_TYPE", "generic"),
         "xcodebuild_wrapper": os.path.join(PEPPER_DIR, "scripts", "xcodebuild.sh"),
-        "dylib_path": env.get(
-            "APP_DYLIB_PATH",
-            os.path.join(PEPPER_DIR, "build", "Pepper.framework", "Pepper"),
-        ),
+        "dylib_path": env.get("APP_DYLIB_PATH") or _find_dylib_default(),
         "device_xcodebuild_id": env.get("DEVICE_XCODEBUILD_ID", ""),
         "device_devicectl_uuid": env.get("DEVICE_DEVICECTL_UUID", ""),
     }

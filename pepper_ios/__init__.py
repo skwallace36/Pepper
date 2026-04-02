@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 
 def _find_dylib() -> str:
@@ -31,5 +31,12 @@ def _find_dylib() -> str:
     dev_dylib = repo_root / "build" / "Pepper.framework" / "Pepper"
     if dev_dylib.is_file():
         return str(dev_dylib)
+
+    # 4. Auto-download from GitHub Releases (pip installs)
+    try:
+        from .dylib_fetch import ensure_dylib
+        return ensure_dylib()
+    except Exception:
+        pass
 
     return ""

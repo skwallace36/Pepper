@@ -8,14 +8,13 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import os
+import re
 import shutil
 import subprocess
 import tempfile
 from collections.abc import Callable
-
-import logging
-import re
 
 from . import pepper_sessions
 from .pepper_common import PORT_DIR, get_config
@@ -379,7 +378,11 @@ async def deploy_app(
     if not bid:
         return "No bundle ID configured. Set APP_BUNDLE_ID in pepper/.env"
     if not os.path.exists(dylib):
-        return f"Pepper dylib not found at {dylib}. Run `make build` in pepper dir."
+        try:
+            from .dylib_fetch import ensure_dylib
+            dylib = ensure_dylib()
+        except Exception as e:
+            return f"Pepper dylib not found at {dylib} and auto-download failed: {e}\nRun `make build` in pepper dir or check your pepper-ios version."
 
     # Session guard: refuse to deploy if another session owns this simulator
     session = pepper_sessions.is_claimed(simulator)
