@@ -177,5 +177,30 @@
     "status": "pass",
     "last_run": "2026-04-01",
     "notes": "Returns clear error 'Element not found by text' with current screen state shown"
+  },
+  "flags CRUD lifecycle": {
+    "status": "pass",
+    "last_run": "2026-04-02",
+    "notes": "set test_flag_bool=true, get returns override_value=1, set test_flag_string=hello, list shows 2 overrides, clear-by-key removes bool (has_override=false), clear-all removes remaining, list empty."
+  },
+  "responder chain dump": {
+    "status": "pass",
+    "last_run": "2026-04-02",
+    "notes": "Returns gesture_recognizers (4 recognizers on PassthroughWindow), responder_chain (view/windowScene/application/responder), hit_test_path with is_hit_target marker on _UIHostingView."
+  },
+  "notifications lifecycle": {
+    "status": "skip",
+    "last_run": "2026-04-02",
+    "notes": "Skipped: requires logged-in state to access notification buttons."
+  },
+  "heap snapshot check": {
+    "status": "skip",
+    "last_run": "2026-04-02",
+    "notes": "Skipped: budget constraints."
+  },
+  "diff start and show": {
+    "status": "skip",
+    "last_run": "2026-04-02",
+    "notes": "Skipped: budget constraints."
   }
 }
