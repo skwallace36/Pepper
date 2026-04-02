@@ -72,6 +72,21 @@ def _extract_build_errors(output: str, label: str = "BUILD FAILED") -> str:
 # grabbing another Claude session's sim when auto-resolving.
 _session_simulator: str | None = None
 
+# Session-level active app context — set by deploy_sim after a successful deploy.
+# Other parts of the system (preamble, scripts, adapter tools) use this to resolve
+# the correct adapter without depending on .env.
+_session_bundle_id: str | None = None
+_session_adapter_type: str | None = None
+
+
+def get_session_context() -> dict:
+    """Return the active session's app context."""
+    return {
+        "simulator": _session_simulator,
+        "bundle_id": _session_bundle_id,
+        "adapter_type": _session_adapter_type,
+    }
+
 
 # ---------------------------------------------------------------------------
 # Simulator helpers
@@ -542,6 +557,10 @@ async def deploy_app(
                     reset_monitor_state()
                     # Claim this simulator for our session
                     pepper_sessions.claim_simulator(simulator, bundle_id=bid, port=port)
+                    # Update session context so preamble/scripts/adapter resolve correctly
+                    global _session_bundle_id, _session_adapter_type
+                    _session_bundle_id = bid
+                    _session_adapter_type = adapter_type
                     return f"Deployed to {simulator} (PID {pid}, port {port}). Pepper is connected.\n--- Screen ---\n{screen_summary}"
             except (TimeoutError, OSError, ValueError):
                 pass

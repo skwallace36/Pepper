@@ -35,6 +35,7 @@ local_only=(
   deploy_sim
   raw
   record
+  script
   simulator
 )
 

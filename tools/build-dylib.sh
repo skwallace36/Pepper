@@ -101,6 +101,15 @@ if [ -f "$ENV_FILE" ]; then
     ADAPTER_TYPE=$(set -a && source "$ENV_FILE" 2>/dev/null && echo "${APP_ADAPTER_TYPE:-}")
 fi
 
+# --- Resolve adapter from ~/.pepper/adapters/ (overrides ADAPTER_PATH) ---
+ADAPTERS_DIR="$HOME/.pepper/adapters"
+if [ -n "$ADAPTER_TYPE" ] && [ "$ADAPTER_TYPE" != "generic" ]; then
+    CANDIDATE="$ADAPTERS_DIR/$ADAPTER_TYPE"
+    if [ -d "$CANDIDATE" ] && [ -f "$CANDIDATE/config.json" ]; then
+        ADAPTER_PATH="$CANDIDATE"
+    fi
+fi
+
 # --- Gather sources ---
 SOURCE_DIRS=("$CONTROL_DIR")
 HAS_ADAPTER=""

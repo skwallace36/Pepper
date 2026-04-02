@@ -63,6 +63,7 @@ from .mcp_tools_network import register_network_tools
 from .mcp_tools_perf import register_perf_tools
 from .mcp_tools_record import register_record_tools
 from .mcp_tools_renders import register_renders_tools
+from .mcp_tools_script import register_script_tools
 from .mcp_tools_sim import register_sim_tools
 from .mcp_tools_state import register_state_tools
 from .mcp_tools_system import register_system_tools
@@ -101,21 +102,46 @@ from .pepper_common import (
     get_config,
     json_dumps,
     load_env,
+    resolve_adapter_dir,
 )
 
 
-def load_adapter_tools() -> list[dict]:
-    """Load adapter-specific tool definitions from ~/.pepper/tools/{adapter_type}.json.
+def _active_adapter_type() -> str:
+    """Resolve the active adapter type — session context first, .env fallback."""
+    from .mcp_build import get_session_context
+    ctx = get_session_context()
+    if ctx.get("adapter_type"):
+        return ctx["adapter_type"]
+    return get_config().get("adapter_type", "generic")
 
-    Local-only, works across all worktrees. Each tool is a dict with:
-      name, description, command (shell string with {app_repo}/{pepper_dir} placeholders)
+
+def load_adapter_tools() -> list[dict]:
+    """Load adapter-specific tool definitions.
+
+    Searches (in order):
+    1. ~/.pepper/adapters/{type}/tools.json (co-located with adapter)
+    2. ~/.pepper/tools/{adapter_type}.json (legacy location)
+
+    Uses the session's active adapter (set by deploy_sim), falling back to .env.
     """
-    adapter_type = get_config().get("adapter_type", "generic")
+    adapter_type = _active_adapter_type()
     if adapter_type == "generic":
         return []
-    tools_path = os.path.join(os.path.expanduser("~"), ".pepper", "tools", f"{adapter_type}.json")
-    if not os.path.exists(tools_path):
+
+    # Find the tools file — adapter dir first, legacy fallback
+    adapter_dir = resolve_adapter_dir(adapter_type)
+    tools_path = None
+    if adapter_dir:
+        candidate = os.path.join(adapter_dir, "tools.json")
+        if os.path.exists(candidate):
+            tools_path = candidate
+    if not tools_path:
+        candidate = os.path.join(os.path.expanduser("~"), ".pepper", "tools", f"{adapter_type}.json")
+        if os.path.exists(candidate):
+            tools_path = candidate
+    if not tools_path:
         return []
+
     try:
         with open(tools_path) as f:
             tools = json.load(f)
@@ -123,8 +149,8 @@ def load_adapter_tools() -> list[dict]:
             return []
         # Resolve placeholders. APP_REPO can be set in .env or shell env.
         # Falls back to APP_WORKSPACE dirname if available.
-        config = get_config()
         env = load_env()
+        config = get_config()
         workspace = config.get("workspace", "")
         app_repo = (
             env.get("APP_REPO") or os.environ.get("APP_REPO") or (os.path.dirname(workspace) if workspace else "")
@@ -148,19 +174,19 @@ def load_adapter_preamble() -> str:
     """Load adapter-specific MCP preamble.
 
     Searches (in order):
-    1. ADAPTER_PATH/mcp-preamble.md (external adapter repo)
-    2. dylib/{adapter_type}/mcp-preamble.md (in-tree fallback)
+    1. ~/.pepper/adapters/{type}/mcp-preamble.md (adapter repo)
+    2. ADAPTER_PATH/mcp-preamble.md (legacy external path)
+    3. dylib/{adapter_type}/mcp-preamble.md (in-tree fallback)
     Returns the content or empty string if no preamble found.
     """
-    env = load_env()
-    adapter_type = env.get("APP_ADAPTER_TYPE", "generic")
+    adapter_type = _active_adapter_type()
     if adapter_type == "generic":
         return ""
 
-    # Check external adapter path first
-    adapter_path = env.get("ADAPTER_PATH", "")
-    if adapter_path:
-        preamble = os.path.join(adapter_path, "mcp-preamble.md")
+    # Check resolved adapter dir (covers both ~/.pepper/adapters/ and ADAPTER_PATH)
+    adapter_dir = resolve_adapter_dir(adapter_type)
+    if adapter_dir:
+        preamble = os.path.join(adapter_dir, "mcp-preamble.md")
         if os.path.exists(preamble):
             try:
                 with open(preamble) as f:
@@ -558,6 +584,10 @@ async def act_and_look(simulator: str | None, cmd: str, params: dict | None = No
     # Execute the action
     action_resp = await bound_fn(port, cmd, params, timeout)
 
+    # Record the step if a script recording is active
+    from .mcp_scripts import maybe_record_step
+    maybe_record_step(cmd, params, sim_key=udid or "default")
+
     # If the action failed, include screen state + guidance
     if action_resp.get("status") != "ok":
         error_msg = action_resp.get("error", "")
@@ -933,6 +963,7 @@ register_element_tools(mcp, resolve_and_send_json, act_and_look)
 register_record_tools(mcp)
 register_sim_tools(mcp, resolve_and_send_json, _resolve_simulator)
 register_biometric_tools(mcp, _resolve_simulator)
+register_script_tools(mcp, act_and_look, resolve_and_send_json)
 register_prompts(mcp)
 
 

@@ -19,6 +19,7 @@ import sys
 # ---------------------------------------------------------------------------
 
 PEPPER_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ADAPTERS_DIR = os.path.join(os.path.expanduser("~"), ".pepper", "adapters")
 PORT_DIR = "/tmp/pepper-ports"
 DEVICE_DIR = "/tmp/pepper-devices"
 DEFAULT_HOST = "localhost"
@@ -126,6 +127,47 @@ def get_config() -> dict[str, str]:
         "device_xcodebuild_id": env.get("DEVICE_XCODEBUILD_ID", ""),
         "device_devicectl_uuid": env.get("DEVICE_DEVICECTL_UUID", ""),
     }
+
+
+def resolve_adapter_dir(adapter_type: str | None = None) -> str | None:
+    """Resolve adapter directory path.
+
+    Priority: ~/.pepper/adapters/{type}/ > ADAPTER_PATH from .env > None.
+    Returns absolute path or None for generic mode.
+    """
+    if not adapter_type or adapter_type == "generic":
+        return None
+    # Check ~/.pepper/adapters/{type}/
+    candidate = os.path.join(ADAPTERS_DIR, adapter_type)
+    if os.path.isdir(candidate) and os.path.isfile(os.path.join(candidate, "config.json")):
+        return candidate
+    # Fallback: ADAPTER_PATH from .env
+    env = load_env()
+    adapter_path = env.get("ADAPTER_PATH", "")
+    if adapter_path and os.path.isdir(adapter_path):
+        return adapter_path
+    return None
+
+
+def adapter_for_bundle_id(bundle_id: str) -> tuple[str, str] | None:
+    """Reverse lookup: find adapter (name, path) by bundle_id.
+
+    Scans ~/.pepper/adapters/*/config.json for a matching bundle_id.
+    """
+    if not bundle_id or not os.path.isdir(ADAPTERS_DIR):
+        return None
+    for name in os.listdir(ADAPTERS_DIR):
+        config_path = os.path.join(ADAPTERS_DIR, name, "config.json")
+        if not os.path.isfile(config_path):
+            continue
+        try:
+            with open(config_path) as f:
+                config = json.load(f)
+            if config.get("bundle_id") == bundle_id:
+                return (name, os.path.join(ADAPTERS_DIR, name))
+        except (json.JSONDecodeError, OSError):
+            continue
+    return None
 
 
 # ---------------------------------------------------------------------------

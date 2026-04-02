@@ -85,6 +85,7 @@
     {"name": "wait_for", "category": "system", "description": "Wait for an element to appear"},
     {"name": "wait_idle", "category": "system", "description": "Wait for the app to become idle"},
     {"name": "record", "category": "recording", "description": "Record a sequence of interactions"},
+    {"name": "script", "category": "recording", "description": "Record, replay, and manage action sequences"},
     {"name": "raw", "category": "simulator", "description": "Send a raw WebSocket command"},
     {"name": "simulator", "category": "simulator", "description": "Control simulator state (boot, shutdown, etc.)"},
     {"name": "build_sim", "category": "build", "description": "Build the app for simulator (build only, no deploy)"},
