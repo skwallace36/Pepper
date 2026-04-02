@@ -33,7 +33,6 @@ local_only=(
   build_hardware
   crash_log
   deploy_sim
-  iterate
   raw
   record
   simulator

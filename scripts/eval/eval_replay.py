@@ -33,7 +33,7 @@ PEPPER_TOOLS = [
     "clipboard", "keychain", "cookies", "locale", "flags", "push",
     "orientation", "appearance", "dynamic_type", "status", "wait_for",
     "wait_idle", "record", "raw", "simulator", "build_sim",
-    "build_hardware", "deploy_sim", "iterate", "constraints",
+    "build_hardware", "deploy_sim", "constraints",
     "accessibility_action", "accessibility_audit", "accessibility_events",
     "concurrency", "coredata", "notifications", "perf", "renders",
     "responder_chain", "sandbox", "storage", "timers", "undo_manager",

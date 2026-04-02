@@ -30,7 +30,7 @@ With Pepper injected, an AI agent can:
 - **Inspect state** — `vars_inspect` reads arbitrary properties, `heap` queries live objects, `defaults` / `keychain` / `cookies` / `clipboard` access storage layers.
 - **Debug** — `console` shows logs, `network` shows HTTP traffic, `crash_log` fetches crash reports, `layers` visualizes the view hierarchy, `timeline` replays events.
 - **Control the simulator** — `orientation`, `locale`, `push` (simulated push notifications), `status` (status bar overrides), `simulator` (simctl operations).
-- **Build and deploy** — `build` compiles the app, `deploy` installs with Pepper injected, `iterate` does build+deploy+verify in one step.
+- **Build and deploy** — `deploy_sim` builds (when workspace provided), installs, and launches with Pepper injected. One tool for the full cycle.
 
 No source access required. The agent operates on any iOS simulator app as-is.
 
@@ -98,7 +98,7 @@ Extracted from `pepper-mcp` into focused modules. Each is imported by `pepper-mc
 
 | Module | Purpose |
 |--------|---------|
-| `mcp_build.py` | Simulator resolution, `xcodebuild` invocation, app deployment with dylib injection, device build/deploy, `iterate()` |
+| `mcp_build.py` | Simulator resolution, `xcodebuild` invocation, app deployment with dylib injection, device build/deploy |
 | `mcp_crash.py` | Crash log parsing (`parse_crash_report()`) and fetching (`fetch_crash_info()`) |
 
 ## Build & deploy scripts

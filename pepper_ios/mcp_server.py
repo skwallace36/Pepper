@@ -682,7 +682,7 @@ _CORE_INSTRUCTIONS = (
     "- To capture app logs (print + NSLog): use `console` start + log.\n"
     "- If a command returns APP CRASHED: investigate the crash, do NOT just redeploy.\n"
     "- If an element isn't found: the screen state is in the error. Read it before retrying.\n"
-    "- After building, use `deploy_sim` to launch — NOT raw `simctl launch`.\n\n"
+    "- Use `deploy_sim` with workspace to build + deploy. NEVER use raw `simctl launch`.\n\n"
     "TIPS:\n"
     "- Always `look` before interacting to confirm screen state.\n"
     "- Action tools (tap, scroll, navigate) auto-include screen state in response — read it.\n"
@@ -740,13 +740,11 @@ _SCREEN_RECORDING_GUIDE = (
 
 _LAUNCHING_GUIDE = (
     "LAUNCHING THE APP:\n"
-    "After building the iOS app, ALWAYS use Pepper's `deploy_sim` tool to launch "
-    "— NOT raw `simctl launch`.\n"
-    "`deploy_sim` handles: terminate, install, launch with dylib injection + env vars, "
-    "wait for WebSocket server, auto-look.\n"
-    "Raw `simctl launch` doesn't wait for Pepper — `look` will fail with connection refused.\n"
-    "Pattern: build_sim → deploy_sim (deploy handles install automatically).\n"
-    "`deploy_sim` requires workspace — always pass the .xcworkspace path."
+    "Use `deploy_sim` for everything — it builds (when workspace provided), installs, "
+    "launches with Pepper injected, waits for connection, and returns screen state.\n"
+    "Pass workspace to build + deploy. Omit workspace to relaunch the last build.\n"
+    "NEVER use raw `simctl launch` — it skips Pepper injection.\n"
+    "`deploy_sim` auto-detects the bundle ID from the built app. No need to pass it manually."
 )
 
 _ACTIONS_REFERENCE = """\
@@ -995,7 +993,7 @@ async def build_sim(
     scheme: str | None = Field(default=None, description="Build scheme (default: from .env APP_SCHEME)"),
     simulator: str | None = Field(default=None, description="Simulator UDID for -destination"),
 ) -> str:
-    """Compile the iOS app for simulator. Build only — does not install or launch. Use iterate for build + deploy."""
+    """Compile the iOS app for simulator. Build only — does not install or launch. Use deploy_sim to build + deploy."""
     success, message = await _build_app(workspace, scheme, simulator)
     return message
 
@@ -1051,58 +1049,52 @@ async def build_hardware(
 
 
 @mcp.tool()
-async def iterate(
-    workspace: str = Field(description="Absolute path to the .xcworkspace to build"),
-    scheme: str | None = Field(default=None, description="Build scheme (default: from .env APP_SCHEME)"),
-    simulator: str | None = Field(default=None, description="Simulator UDID"),
-    bundle_id: str | None = Field(default=None, description="App bundle ID (default: from .env APP_BUNDLE_ID)"),
-) -> str:
-    """Build + deploy + verify in one call. The go-to tool after editing app source code. Returns screen state."""
-    # Resolve sim first
-    try:
-        sim = _resolve_simulator(simulator)
-    except RuntimeError as e:
-        return str(e)
-
-    # Build
-    success, build_msg = await _build_app(workspace, scheme, sim)
-    if not success:
-        return build_msg
-
-    # Find built .app
-    app_path = _find_built_app(workspace)
-
-    # Deploy
-    deploy_msg = await _deploy_app(sim, send_fn=send_command, bundle_id=bundle_id, install_path=app_path)
-    return f"{build_msg}\n\n{deploy_msg}"
-
-
-@mcp.tool()
 async def deploy_sim(
-    workspace: str = Field(
-        description="Path to the .xcworkspace or .xcodeproj (required — used to locate the built .app)"
+    workspace: str | None = Field(
+        default=None,
+        description="Path to .xcworkspace. When provided, builds the app before deploying. Omit to relaunch the last build.",
     ),
+    scheme: str | None = Field(default=None, description="Build scheme (default: from .env APP_SCHEME). Only used when workspace is provided."),
     simulator: str | None = Field(default=None, description="Simulator UDID"),
-    bundle_id: str | None = Field(default=None, description="App bundle ID (default: from .env)"),
+    bundle_id: str | None = Field(default=None, description="App bundle ID (default: auto-detected from build, then .env)"),
     dylib_path: str | None = Field(default=None, description="Path to Pepper dylib (default: from .env)"),
     skip_privacy: bool = Field(
         default=False,
-        description="Skip auto-granting privacy permissions (photos, camera, microphone, contacts, calendar, location)",
+        description="Skip auto-granting privacy permissions",
     ),
 ) -> str:
-    """Terminate, install, and relaunch the app with Pepper injected. Does not rebuild — uses last-compiled binary."""
+    """Build (if workspace provided), install, and launch the app with Pepper injected. Returns screen state.
+
+    With workspace: compiles the app, installs, launches with Pepper, returns screen.
+    Without workspace: relaunches the last-compiled binary with Pepper."""
     try:
         sim = _resolve_simulator(simulator)
     except RuntimeError as e:
         return str(e)
-    return await _deploy_app(
+
+    build_msg = None
+    app_path = None
+
+    # Build if workspace provided
+    if workspace:
+        success, build_msg = await _build_app(workspace, scheme, sim)
+        if not success:
+            return build_msg
+        app_path = _find_built_app(workspace)
+
+    deploy_msg = await _deploy_app(
         sim,
         send_fn=send_command,
         bundle_id=bundle_id,
         dylib_path=dylib_path,
+        install_path=app_path,
         workspace=workspace,
         skip_privacy=skip_privacy,
     )
+
+    if build_msg:
+        return f"{build_msg}\n\n{deploy_msg}"
+    return deploy_msg
 
 
 @mcp.tool()

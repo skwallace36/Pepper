@@ -119,7 +119,7 @@ fi
 if echo "$TOOL" | grep -qE '^mcp__pepper__'; then
   # Block build_hardware entirely — agents only use simulators
   if [ "$TOOL" = "mcp__pepper__build_hardware" ]; then
-    deny "agents cannot build for hardware devices. Use build_sim only."
+    deny "agents cannot build for hardware devices. Use deploy_sim only."
   fi
 
   # Block any MCP tool targeting a non-local simulator

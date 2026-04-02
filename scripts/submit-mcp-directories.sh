@@ -34,7 +34,7 @@ LONG_DESC="Pepper is a dylib injected into iOS simulator apps at launch via DYLD
 - **Debugging**: console logs, network traffic, heap inspection, crash logs, layers, animations
 - **State**: SwiftUI vars, NSUserDefaults, keychain, clipboard, cookies, feature flags
 - **System**: push notifications, orientation, locale, method hooking
-- **Build/Deploy**: build, deploy, iterate cycle from within the agent
+- **Build/Deploy**: build and deploy cycle from within the agent
 
 No source patches required. Works with any iOS simulator app. Supports both SwiftUI and UIKit via a single HID injection pipeline."
 
@@ -114,7 +114,7 @@ Pepper is a dylib injected into iOS simulator apps at launch. It starts a WebSoc
 - **Debugging**: console, network, heap, crash_log, layers, animations, lifecycle
 - **State**: vars_inspect, defaults, clipboard, keychain, cookies, flags
 - **System**: push, orientation, locale, hook, find, tree, highlight
-- **Build**: build, deploy, iterate
+- **Build**: build and deploy
 
 ### Why it belongs here
 Only in-process iOS runtime inspector exposed via MCP. External tools (Appium, Maestro) can't access heap, network interception, keychain, or SwiftUI state variables.
@@ -181,7 +181,7 @@ Pepper is a dylib injected into iOS simulator apps at launch. It starts a WebSoc
 - **Debugging**: console, network, heap, crash_log, layers, animations, lifecycle
 - **State**: vars_inspect, defaults, clipboard, keychain, cookies, flags
 - **System**: push, orientation, locale, hook, find, tree, highlight
-- **Build**: build, deploy, iterate
+- **Build**: build and deploy
 
 ### Why it belongs here
 Only in-process iOS runtime inspector exposed via MCP. External tools (Appium, Maestro) can't access heap, network interception, keychain, or SwiftUI state variables.
@@ -246,7 +246,7 @@ State (5): vars_inspect, defaults, clipboard, keychain, cookies
 System (13): push, status, highlight, orientation, locale, gesture, hook, find, flags, dialog, toggle, read_element, tree
 Recording (1): record
 Simulator (2): raw, simulator
-Build (4): build, build_device, deploy, iterate
+Build (3): build, build_device, deploy
 
 ### What makes it unique
 Only in-process iOS runtime inspector exposed via MCP. Provides deep access to heap, network traffic, console, keychain, layers, lifecycle, and SwiftUI state — capabilities that external tools (Appium MCP, Maestro, etc.) cannot match.
