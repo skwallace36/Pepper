@@ -372,8 +372,21 @@ async def deploy_app(
 ) -> str:
     """Deploy (terminate + install + launch with Pepper). Returns status message + screen."""
     cfg = get_config()
-    bid = bundle_id or cfg["bundle_id"]
+    bid = bundle_id
     dylib = dylib_path or cfg["dylib_path"]
+
+    # Auto-detect bundle ID from the most recent build for this simulator
+    # so agents working on different apps don't all need to match .env.
+    if not bid and not install_path:
+        ws = workspace or _sim_build_state.get(simulator)
+        if ws:
+            built = find_built_app(workspace=ws)
+            if built:
+                bid = _bundle_id_from_app(built)
+                if bid:
+                    install_path = built  # reuse so we don't search again below
+
+    bid = bid or cfg["bundle_id"]
 
     if not bid:
         return "No bundle ID configured. Set APP_BUNDLE_ID in pepper/.env"
@@ -455,8 +468,19 @@ async def deploy_app(
     # launchctl setenv silently drops DYLD_INSERT_LIBRARIES (restricted var) on
     # iOS 18.4+ / 26.3+ simulators — confirmed: setenv succeeds but getenv returns empty.
     # Non-DYLD_ vars work fine via launchctl setenv (PEPPER_ADAPTER, PEPPER_SIM_UDID, etc.).
+    # Resolve adapter type from the bundle ID (supports multi-app).
+    # Falls back to .env APP_ADAPTER_TYPE for single-app setups.
+    adapter_type = cfg.get("adapter_type", "generic")
+    try:
+        from .pepper_common import adapter_for_bundle_id
+        match = adapter_for_bundle_id(bid)
+        if match:
+            adapter_type = match[0]
+    except (ImportError, Exception):
+        pass
+
     pepper_vars = {
-        "PEPPER_ADAPTER": cfg.get("adapter_type", "generic"),
+        "PEPPER_ADAPTER": adapter_type,
         "PEPPER_SIM_UDID": simulator,
     }
     if not skip_privacy:
@@ -522,6 +546,23 @@ async def deploy_app(
                 pass
 
     return f"App launched (PID {pid}) but Pepper didn't respond within 10s. Check dylib injection. Port file exists: {os.path.exists(port_file)}"
+
+
+def _bundle_id_from_app(app_path: str) -> str | None:
+    """Read CFBundleIdentifier from an .app's Info.plist."""
+    plist = os.path.join(app_path, "Info.plist")
+    if not os.path.exists(plist):
+        return None
+    try:
+        result = subprocess.run(
+            ["plutil", "-extract", "CFBundleIdentifier", "raw", plist],
+            capture_output=True, text=True, timeout=5,
+        )
+        if result.returncode == 0:
+            return result.stdout.strip()
+    except (subprocess.TimeoutExpired, OSError):
+        pass
+    return None
 
 
 def find_built_app(workspace: str | None = None, platform: str = "iphonesimulator") -> str | None:
