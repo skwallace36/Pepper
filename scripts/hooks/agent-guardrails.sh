@@ -130,7 +130,7 @@ if echo "$TOOL" | grep -qE '^mcp__pepper__'; then
 
   # Block deploy/build with non-whitelisted bundle IDs.
   # Agents can only interact with known-safe apps.
-  ALLOWED_BUNDLES="com.pepper.testapp"
+  ALLOWED_BUNDLES="com.pepper.testapp com.icecubesapp.IceCubesApp"
   BUNDLE_PARAM=$(echo "$INPUT" | jq -r '.tool_input.bundle_id // empty' 2>/dev/null)
   if [ -n "$BUNDLE_PARAM" ]; then
     ALLOWED=false
@@ -145,7 +145,7 @@ if echo "$TOOL" | grep -qE '^mcp__pepper__'; then
   # Block deploy_sim with non-whitelisted workspace paths
   if [ "$TOOL" = "mcp__pepper__deploy_sim" ] || [ "$TOOL" = "mcp__pepper__build_sim" ]; then
     WS_PARAM=$(echo "$INPUT" | jq -r '.tool_input.workspace // empty' 2>/dev/null)
-    if [ -n "$WS_PARAM" ] && ! echo "$WS_PARAM" | grep -qE 'PepperTestApp|pepper.*test'; then
+    if [ -n "$WS_PARAM" ] && ! echo "$WS_PARAM" | grep -qE 'PepperTestApp|pepper.*test|IceCubes'; then
       deny "agents can only build/deploy the test app. Got workspace: $WS_PARAM"
     fi
   fi
