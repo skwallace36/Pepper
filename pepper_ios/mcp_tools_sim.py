@@ -45,7 +45,7 @@ def register_sim_tools(mcp, resolve_and_send, resolve_simulator):
     @mcp.tool()
     async def simulator(
         action: str = Field(
-            description="Action: list | install | uninstall | location | permissions | biometrics | privacy_reset | open_url | addmedia | boot | shutdown | erase | status_bar"
+            description="Action: list | install | uninstall | location | permissions | privacy_reset | open_url | addmedia | boot | shutdown | erase | status_bar (use the biometric tool for Face ID / Touch ID simulation)"
         ),
         simulator_id: str | None = Field(default=None, description="Simulator UDID (auto-resolved if only one booted)"),
         app_path: str | None = Field(default=None, description="Path to .app/.ipa for action=install"),
@@ -57,7 +57,7 @@ def register_sim_tools(mcp, resolve_and_send, resolve_simulator):
             description="Permission name (for action=permissions). See pepper://reference/actions for values.",
         ),
         permission_value: str | None = Field(default=None, description="Permission value: grant, revoke, reset"),
-        biometric_type: str | None = Field(default=None, description="For action=biometrics: enroll or match"),
+        biometric_type: str | None = Field(default=None, description="Deprecated — use the biometric tool instead"),
         url: str | None = Field(default=None, description="URL for action=open_url (deep link or web)"),
         media_path: str | None = Field(default=None, description="Path to image/video file for action=addmedia"),
         clear_time: bool = Field(default=False, description="For action=status_bar: clear override instead of setting"),
@@ -162,43 +162,7 @@ def register_sim_tools(mcp, resolve_and_send, resolve_simulator):
             )
 
         elif action == "biometrics":
-            if biometric_type == "enroll":
-                result = subprocess.run(
-                    [
-                        "xcrun",
-                        "simctl",
-                        "spawn",
-                        sim,
-                        "notifyutil",
-                        "-s",
-                        "com.apple.BiometricKit.enrollmentChanged",
-                        "1",
-                    ],
-                    capture_output=True,
-                    text=True,
-                )
-                subprocess.run(
-                    ["xcrun", "simctl", "spawn", sim, "notifyutil", "-p", "com.apple.BiometricKit.enrollmentChanged"],
-                    capture_output=True,
-                    text=True,
-                )
-                return "Face ID enrolled" if result.returncode == 0 else f"Failed: {result.stderr.strip()}"
-            elif biometric_type == "match":
-                result = subprocess.run(
-                    [
-                        "xcrun",
-                        "simctl",
-                        "spawn",
-                        sim,
-                        "notifyutil",
-                        "-p",
-                        "com.apple.BiometricKit_Sim.fingerTouch.match",
-                    ],
-                    capture_output=True,
-                    text=True,
-                )
-                return "Biometric match sent" if result.returncode == 0 else f"Failed: {result.stderr.strip()}"
-            return "Error: biometric_type must be 'enroll' or 'match'"
+            return "Use the biometric tool for Face ID / Touch ID simulation (enroll, match, nonmatch with face/finger type)."
 
         elif action == "open_url":
             if not url:
@@ -240,4 +204,4 @@ def register_sim_tools(mcp, resolve_and_send, resolve_simulator):
             result = subprocess.run(cmd, capture_output=True, text=True)
             return "Status bar overridden" if result.returncode == 0 else f"Failed: {result.stderr.strip()}"
 
-        return f"Unknown action '{action}'. Use: list, install, uninstall, location, permissions, biometrics, privacy_reset, open_url, addmedia, boot, shutdown, erase, status_bar"
+        return f"Unknown action '{action}'. Use: list, install, uninstall, location, permissions, privacy_reset, open_url, addmedia, boot, shutdown, erase, status_bar"

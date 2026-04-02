@@ -54,6 +54,7 @@ from .mcp_build import (
 from .mcp_crash import fetch_crash_info
 from .mcp_prompts import register_prompts
 from .mcp_tools_accessibility import register_accessibility_tools
+from .mcp_tools_biometric import register_biometric_tools
 from .mcp_tools_debug import register_debug_tools
 from .mcp_tools_dialog import register_dialog_tools
 from .mcp_tools_element import register_element_tools
@@ -925,6 +926,7 @@ register_dialog_tools(mcp, resolve_and_send, _resolve_simulator)
 register_element_tools(mcp, resolve_and_send_json, act_and_look)
 register_record_tools(mcp)
 register_sim_tools(mcp, resolve_and_send_json, _resolve_simulator)
+register_biometric_tools(mcp, _resolve_simulator)
 register_prompts(mcp)
 
 
