@@ -472,6 +472,11 @@ async def deploy_app(
     # This is the only path that actually injects the dylib — launchctl-inherited
     # DYLD_INSERT_LIBRARIES is stripped by dyld's restricted-env check before it runs.
     launch_env = os.environ.copy()
+    # Strip any inherited SIMCTL_CHILD_ vars — stale values from the parent process
+    # (e.g. baked into launchd session or .zshrc) override what we set here and break
+    # injection.  Only our explicit vars below should reach the simulator.
+    for k in [k for k in launch_env if k.startswith("SIMCTL_CHILD_")]:
+        del launch_env[k]
     launch_env["SIMCTL_CHILD_DYLD_INSERT_LIBRARIES"] = dylib
     for key, val in pepper_vars.items():
         launch_env[f"SIMCTL_CHILD_{key}"] = val
