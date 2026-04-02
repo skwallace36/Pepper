@@ -18,7 +18,7 @@ extension ElementDiscoveryBridge {
         collectViewsByAccessibilityLabel(in: root, label: label, exact: exact, into: &results)
         guard !results.isEmpty else { return nil }
 
-        let screenBounds = UIScreen.main.bounds
+        let screenBounds = UIScreen.pepper_screen.bounds
 
         // When doing substring matching, exact matches should win over partial.
         let exactMatches: Set<ObjectIdentifier> =
@@ -121,7 +121,7 @@ extension ElementDiscoveryBridge {
     /// Elements in off-screen scroll content or beyond the viewport are skipped.
     func findAccessibilityElementCenter(label: String, exact: Bool = false) -> CGPoint? {
         let elements = collectAccessibilityElements()
-        let screenBounds = UIScreen.main.bounds
+        let screenBounds = UIScreen.pepper_screen.bounds
 
         // Collect all on-screen matches, then pick the best one.
         // Priority: fully visible > partially visible > off-screen,
@@ -170,7 +170,7 @@ extension ElementDiscoveryBridge {
     /// that don't have backing UIViews.
     func findAccessibilityElementFrame(label: String, exact: Bool = false) -> CGRect? {
         let elements = collectAccessibilityElements()
-        let screenBounds = UIScreen.main.bounds
+        let screenBounds = UIScreen.pepper_screen.bounds
 
         struct Match {
             let frame: CGRect

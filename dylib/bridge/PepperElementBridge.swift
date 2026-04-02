@@ -50,7 +50,7 @@ extension UIView {
         }
         guard !results.isEmpty else { return nil }
 
-        let screenBounds = UIScreen.main.bounds
+        let screenBounds = UIScreen.pepper_screen.bounds
 
         // When doing substring matching, exact matches should win over partial matches.
         // e.g. searching "PROD" should prefer a button labeled "PROD" over static text "production".

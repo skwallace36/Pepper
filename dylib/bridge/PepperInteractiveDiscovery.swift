@@ -314,7 +314,7 @@ extension ElementDiscoveryBridge {
         in view: UIView, window: UIWindow, dedup: inout ElementDedup, results: inout [PepperInteractiveElement],
         maxElements: Int
     ) {
-        let screenBounds = UIScreen.main.bounds
+        let screenBounds = UIScreen.pepper_screen.bounds
         // Collect existing interactive frames — ImageLayer icon_buttons inside these
         // are decorative (e.g., like/share icons inside post cells, gear icons inside
         // content cards). Only toggles/sliders/checkboxes bypass this filter.

@@ -64,7 +64,7 @@ struct IdentifySelectedHandler: PepperHandler {
         }
 
         // Phase 2: Render the window to a snapshot image
-        let scale = UIScreen.main.scale
+        let scale = UIScreen.pepper_screen.scale
         let windowBounds = window.bounds
         let renderer = UIGraphicsImageRenderer(bounds: windowBounds)
         let snapshot = renderer.image { ctx in
@@ -189,7 +189,7 @@ struct IdentifySelectedHandler: PepperHandler {
             )
         else { return nil }
 
-        let screenBounds = UIScreen.main.bounds
+        let screenBounds = UIScreen.pepper_screen.bounds
         let allElements = PepperSwiftUIBridge.shared.collectAccessibilityElements()
 
         let targetMidY = targetFrame.midY

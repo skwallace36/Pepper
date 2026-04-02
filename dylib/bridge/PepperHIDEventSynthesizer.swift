@@ -386,7 +386,7 @@ final class PepperHIDEventSynthesizer {
         let identifier = nextEventId
         nextEventId += 1
 
-        let fps = Double(UIScreen.main.maximumFramesPerSecond)
+        let fps = Double(UIScreen.pepper_screen.maximumFramesPerSecond)
         let steps = max(Int(duration * fps), 10)
         let stepDuration = duration / Double(steps)
 

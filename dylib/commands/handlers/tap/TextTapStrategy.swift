@@ -52,7 +52,7 @@ struct TextTapStrategy: TapStrategy {
                 let label = el.label ?? ""
                 let exact = command.params?["exact"]?.boolValue ?? false
                 let matches = exact ? label == text : label.localizedCaseInsensitiveContains(text)
-                if matches && UIScreen.main.bounds.contains(el.center) {
+                if matches && UIScreen.pepper_screen.bounds.contains(el.center) {
                     let isDuplicate = allMatches.contains {
                         abs($0.0.x - el.center.x) < 5 && abs($0.0.y - el.center.y) < 5
                     }
@@ -89,7 +89,7 @@ struct TextTapStrategy: TapStrategy {
         for el in interactiveEls {
             guard let label = el.label else { continue }
             let hit = exact ? label == text : label.localizedCaseInsensitiveContains(text)
-            guard hit, UIScreen.main.bounds.contains(el.center) else { continue }
+            guard hit, UIScreen.pepper_screen.bounds.contains(el.center) else { continue }
             matches.append((el.center, label))
         }
         matches.sort { $0.0.y == $1.0.y ? $0.0.x < $1.0.x : $0.0.y < $1.0.y }

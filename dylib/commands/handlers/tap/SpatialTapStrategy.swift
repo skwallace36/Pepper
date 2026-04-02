@@ -62,7 +62,7 @@ struct SpatialTapStrategy: TapStrategy {
         direction: Direction, anchorText: String,
         anchorFrame: CGRect, keyWindow: UIWindow
     ) -> TapStrategyResult? {
-        let screen = UIScreen.main.bounds
+        let screen = UIScreen.pepper_screen.bounds
         let elements = PepperSwiftUIBridge.shared.discoverInteractiveElements(hitTestFilter: true, maxElements: 200)
 
         let candidates = filterCandidates(
@@ -125,7 +125,7 @@ struct SpatialTapStrategy: TapStrategy {
         anchorText: String, anchorFrame: CGRect,
         keyWindow: UIWindow
     ) -> TapStrategyResult {
-        let screen = UIScreen.main.bounds
+        let screen = UIScreen.pepper_screen.bounds
         let inset: CGFloat = 32
         let tapPoint: CGPoint
 

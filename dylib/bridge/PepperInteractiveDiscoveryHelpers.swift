@@ -162,7 +162,7 @@ extension ElementDiscoveryBridge {
         // If it has a label, no heuristic needed
         if let label = label, !label.isEmpty { return nil }
 
-        let screenWidth = UIScreen.main.bounds.width
+        let screenWidth = UIScreen.pepper_screen.bounds.width
         let isSmallSquare = frame.width < 60 && frame.height < 60
         let isTopArea = frame.origin.y < 120
         let isRightSide = frame.origin.x > screenWidth - 80
@@ -200,7 +200,7 @@ extension ElementDiscoveryBridge {
         if isSmallSquare && isRightSide && frame.origin.y >= 100 && frame.origin.y < 200 {
             return "icon_button"
         }
-        let screenHeight = UIScreen.main.bounds.height
+        let screenHeight = UIScreen.pepper_screen.bounds.height
         let isBottomArea = frame.origin.y > screenHeight - 160  // near tab bar / FAB zone
         // Small button at far left (non-header, non-bottom) → previous/back navigation
         if isSmallSquare && frame.origin.x < 60 && !isTopArea && !isBottomArea {

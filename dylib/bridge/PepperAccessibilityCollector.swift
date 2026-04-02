@@ -47,7 +47,7 @@ extension ElementDiscoveryBridge {
         // Detection: when multiple labeled elements share the same center, the later
         // one in the tree walk is the replacement (e.g. "Add item" slid up);
         // the earlier one is the ghost (e.g. deleted "Item 1234").
-        let screenBounds = UIScreen.main.bounds
+        let screenBounds = UIScreen.pepper_screen.bounds
 
         // First pass: find overlapping elements by frame origin (top-left corner).
         // Ghost elements share the same origin as their replacement but may differ
@@ -111,7 +111,7 @@ extension ElementDiscoveryBridge {
     func annotateDepth(_ elements: [PepperAccessibilityElement], alreadyScoped: Bool = false)
         -> [PepperAccessibilityElement]
     {
-        let screenBounds = UIScreen.main.bounds
+        let screenBounds = UIScreen.pepper_screen.bounds
 
         // Build the reachable set from the topmost presented VC's view subtree.
         // Walk from the root VC to find the deepest presented VC. If ANY VC is

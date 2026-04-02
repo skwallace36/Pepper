@@ -402,7 +402,7 @@ struct AccessibilityAuditHandler: PepperHandler {
     private func isOnScreen(_ view: UIView, in window: UIView) -> Bool {
         guard view.window != nil else { return false }
         let frame = view.convert(view.bounds, to: window)
-        let screen = UIScreen.main.bounds
+        let screen = UIScreen.pepper_screen.bounds
         return screen.intersects(frame) && frame.width > 0 && frame.height > 0
     }
 

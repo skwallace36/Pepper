@@ -256,7 +256,7 @@ struct TapHandler: PepperHandler {
     /// Scans interactive elements for label matches and explains why each was rejected.
     private func tapDiagnostics(query: String, baseMessage: String) -> (String, [String: AnyCodable]) {
         let allElements = PepperSwiftUIBridge.shared.discoverInteractiveElements(hitTestFilter: true, maxElements: 300)
-        let screen = UIScreen.main.bounds
+        let screen = UIScreen.pepper_screen.bounds
 
         let candidates = allElements.filter { el in
             guard let label = el.label else { return false }

@@ -57,7 +57,7 @@ struct MapModeIntrospector {
             if isFullScreen { return vc.view }
             // Also scope if the presented view covers ≥90% of the screen
             let vcFrame = vc.view.convert(vc.view.bounds, to: nil)
-            let screenH = UIScreen.main.bounds.height
+            let screenH = UIScreen.pepper_screen.bounds.height
             if vcFrame.height >= screenH * 0.9 { return vc.view }
             return nil  // Sheet — don't scope, collect from full window
         }()
@@ -89,7 +89,7 @@ struct MapModeIntrospector {
         var coveredCenters = SpatialHash(cellSize: 5)
 
         // Add interactive elements first (they have hit_reachable info)
-        let screenBounds = UIScreen.main.bounds
+        let screenBounds = UIScreen.pepper_screen.bounds
         for elem in interactiveElements {
             // Accessibility-sourced buttons are trusted even when hit-test fails —
             // SwiftUI overlays (FABs, floating buttons) often fail UIKit hit-test
@@ -726,7 +726,7 @@ struct MapModeIntrospector {
         // separate array. Only runs when the caller passes ocr: true.
         var ocrResults: [[String: AnyCodable]] = []
         if enableOCR {
-            let screenSize = UIScreen.main.bounds.size
+            let screenSize = UIScreen.pepper_screen.bounds.size
             if let cgImage = PepperWindowCapture.captureWindow() {
                 if let observations = PepperOCR.recognizeText(in: cgImage, screenSize: screenSize) {
                     let ocrObs = observations.map { OCRObservation(text: $0.text, bounds: $0.boundingBox) }
@@ -882,7 +882,7 @@ struct MapModeIntrospector {
         let nonInteractiveSerialized = serializeNonInteractive(
             textForOutput, volatileKeys: volatileKeys,
             summary: isSummary, verboseFields: verboseFields)
-        let screenSize = UIScreen.main.bounds.size
+        let screenSize = UIScreen.pepper_screen.bounds.size
 
         logger.info(
             "Map introspection: \(mergedInteractive.count) interactive, \(mergedNonInteractive.count) non-interactive, \(rows.count) rows"

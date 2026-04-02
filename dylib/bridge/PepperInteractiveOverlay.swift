@@ -180,7 +180,7 @@ final class PepperInteractiveOverlay {
         container.frame.size = CGSize(width: totalWidth, height: containerH)
 
         // Position: centered below element, or above if near bottom
-        let screenBounds = UIScreen.main.bounds
+        let screenBounds = UIScreen.pepper_screen.bounds
         var originX = frame.midX - totalWidth / 2
         originX = max(4, min(originX, screenBounds.width - totalWidth - 4))
 

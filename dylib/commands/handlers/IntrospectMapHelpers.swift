@@ -40,7 +40,7 @@ func parseRegion(from params: [String: AnyCodable]?) -> CGRect? {
             let maxY = Double(parts[1]),
             maxY > minY
         {
-            let screenW = Double(UIScreen.main.bounds.width)
+            let screenW = Double(UIScreen.pepper_screen.bounds.width)
             return CGRect(x: 0, y: minY, width: screenW, height: maxY - minY)
         }
     }
@@ -433,7 +433,7 @@ extension MapModeIntrospector {
         // Collect interactive element frames to skip text inside content areas/charts.
         // Exclude full-screen containers (content_area spanning >80% of screen)
         // which would block ALL text from being promoted.
-        let screenArea = UIScreen.main.bounds.width * UIScreen.main.bounds.height
+        let screenArea = UIScreen.pepper_screen.bounds.width * UIScreen.pepper_screen.bounds.height
         let interactiveFrames = interactive.compactMap { elem -> CGRect? in
             let area = elem.frame.width * elem.frame.height
             if area > screenArea * 0.8 { return nil }

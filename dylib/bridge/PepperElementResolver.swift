@@ -56,7 +56,7 @@ enum PepperElementResolver {
             // Fallback: search the accessibility tree (SwiftUI .accessibilityIdentifier()
             // puts identifiers on UIAccessibilityElement objects, not on backing UIViews)
             let accElements = PepperSwiftUIBridge.shared.collectAccessibilityElements()
-            let screenBounds = UIScreen.main.bounds
+            let screenBounds = UIScreen.pepper_screen.bounds
             var bestMatch: PepperAccessibilityElement?
             for element in accElements {
                 guard element.identifier == elementID, element.frame != .zero else { continue }
@@ -129,7 +129,7 @@ enum PepperElementResolver {
             var candidates: [(view: UIView, tapPoint: CGPoint?, strategy: Strategy)] = []
 
             // Interactive elements (discoverInteractiveElements) — ranked highest by pickBestCandidate
-            let screenBounds = UIScreen.main.bounds
+            let screenBounds = UIScreen.pepper_screen.bounds
             let interactiveElements = PepperSwiftUIBridge.shared.discoverInteractiveElements(
                 hitTestFilter: true, maxElements: 500)
             let matches = interactiveElements.filter { $0.hitReachable && ($0.label?.pepperEquals(text) == true) }
@@ -310,7 +310,7 @@ enum PepperElementResolver {
             return (name.contains("TabBar") || name.contains("tabBar")) && !(view is UITabBar)
                 && view.subviews.count >= 2
                 // Tab bars are typically at the bottom of the screen
-                && view.convert(view.bounds, to: nil).origin.y > UIScreen.main.bounds.height * 0.7
+                && view.convert(view.bounds, to: nil).origin.y > UIScreen.pepper_screen.bounds.height * 0.7
         }
         for tabBarView in customTabBars {
             // Get interactive children sorted left-to-right

@@ -6,7 +6,7 @@ import os
 /// Combines scroll (HID swipe) + text visibility polling.
 ///
 /// Terminology:
-///   - "on screen" / "in viewport": element's frame intersects UIScreen.main.bounds
+///   - "on screen" / "in viewport": element's frame intersects UIScreen.pepper_screen.bounds
 ///   - "in view tree": element exists as a UIView (may be off-screen in scroll content)
 ///   - "in accessibility tree": element has an accessibility label (may be off-screen)
 struct ScrollUntilVisibleHandler: PepperHandler {
@@ -166,7 +166,7 @@ struct ScrollUntilVisibleHandler: PepperHandler {
     /// Elements in the view tree or accessibility tree that are off-screen (e.g. in scroll
     /// content below the fold) do NOT count as "on screen."
     private func textIsOnScreen(_ text: String, in window: UIWindow) -> Bool {
-        let screenBounds = UIScreen.main.bounds
+        let screenBounds = UIScreen.pepper_screen.bounds
 
         // UIKit view tree: find element and verify its frame is in the viewport
         for w in UIWindow.pepper_allVisibleWindows {

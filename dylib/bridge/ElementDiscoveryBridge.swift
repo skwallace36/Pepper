@@ -149,7 +149,7 @@ final class ElementDiscoveryBridge {
         }
 
         guard let match = bestMatch else { return nil }
-        let screenBounds = UIScreen.main.bounds
+        let screenBounds = UIScreen.pepper_screen.bounds
         let isFixedEdge =
             screenBounds.contains(elementCenter)
             && (elementCenter.y < 60 || elementCenter.y > screenBounds.height - 60)

@@ -218,7 +218,7 @@ struct NavigateHandler: PepperHandler {
             let name = String(describing: type(of: view))
             return (name.contains("TabBar") || name.contains("tabBar")) && !(view is UITabBar)
                 && view.subviews.count >= 2
-                && view.convert(view.bounds, to: nil).origin.y > UIScreen.main.bounds.height * 0.7
+                && view.convert(view.bounds, to: nil).origin.y > UIScreen.pepper_screen.bounds.height * 0.7
         }
         for tabBarView in customTabBars {
             let allButtons = tabBarView.subviews.filter { subview in

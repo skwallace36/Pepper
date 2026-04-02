@@ -32,13 +32,19 @@ struct OrientationHandler: PepperHandler {
         var isLandscape = current.isLandscape
         var isPortrait = current.isPortrait
 
-        if #available(iOS 15.0, *),
-            let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene
-        {
-            let iface = scene.interfaceOrientation
-            orientStr = interfaceOrientationString(iface)
-            isLandscape = iface.isLandscape
-            isPortrait = iface.isPortrait
+        if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
+            if #available(iOS 26.0, *) {
+                let geom = scene.effectiveGeometry
+                let iface = geom.interfaceOrientation
+                orientStr = interfaceOrientationString(iface)
+                isLandscape = iface.isLandscape
+                isPortrait = iface.isPortrait
+            } else {
+                let iface = scene.interfaceOrientation
+                orientStr = interfaceOrientationString(iface)
+                isLandscape = iface.isLandscape
+                isPortrait = iface.isPortrait
+            }
         }
 
         return .ok(

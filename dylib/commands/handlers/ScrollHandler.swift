@@ -109,7 +109,7 @@ struct ScrollHandler: PepperHandler {
             )
 
         // Check if already visible in the safe area (not behind nav bar or toolbar)
-        let screen = UIScreen.main.bounds
+        let screen = UIScreen.pepper_screen.bounds
         let safeTop = window.safeAreaInsets.top
         let safeBottom = window.safeAreaInsets.bottom
         // Measure actual nav bar height instead of assuming 44pt

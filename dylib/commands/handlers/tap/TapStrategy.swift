@@ -20,7 +20,7 @@ protocol TapStrategy {
 enum TapStrategyHelpers {
     /// Summarize why non-hit-reachable candidates were rejected.
     static func rejectionSummary(for candidates: [PepperInteractiveElement]) -> String {
-        let screen = UIScreen.main.bounds
+        let screen = UIScreen.pepper_screen.bounds
         var offScreen = 0
         var covered = 0
         var notInViewport = 0

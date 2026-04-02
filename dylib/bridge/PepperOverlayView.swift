@@ -138,7 +138,7 @@ final class PepperOverlayView {
         let pill = UIView(
             frame: CGRect(
                 x: 0, y: 0,
-                width: min(label.frame.width + hPad * 2, UIScreen.main.bounds.width - 4),
+                width: min(label.frame.width + hPad * 2, UIScreen.pepper_screen.bounds.width - 4),
                 height: label.frame.height + vPad * 2
             ))
         pill.backgroundColor = color.withAlphaComponent(0.85)

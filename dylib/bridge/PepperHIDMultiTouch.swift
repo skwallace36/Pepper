@@ -53,7 +53,7 @@ extension PepperHIDEventSynthesizer {
         let id2 = nextEventId
         nextEventId += 1
 
-        let fps = Double(UIScreen.main.maximumFramesPerSecond)
+        let fps = Double(UIScreen.pepper_screen.maximumFramesPerSecond)
         let steps = max(Int(duration * fps), 10)
         let stepDuration = duration / Double(steps)
 
@@ -162,7 +162,7 @@ extension PepperHIDEventSynthesizer {
         let id2 = nextEventId
         nextEventId += 1
 
-        let fps = Double(UIScreen.main.maximumFramesPerSecond)
+        let fps = Double(UIScreen.pepper_screen.maximumFramesPerSecond)
         let steps = max(Int(duration * fps), 10)
         let stepDuration = duration / Double(steps)
         let angleRadians = angle * .pi / 180

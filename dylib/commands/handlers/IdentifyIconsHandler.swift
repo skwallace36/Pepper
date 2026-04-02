@@ -24,7 +24,7 @@ struct IdentifyIconsHandler: PepperHandler {
 
         // Get all interactive elements
         let elements = PepperSwiftUIBridge.shared.discoverInteractiveElements()
-        let screenBounds = UIScreen.main.bounds
+        let screenBounds = UIScreen.pepper_screen.bounds
 
         // Filter to unlabeled small-square elements (potential icon buttons)
         var icons: [[String: AnyCodable]] = []
