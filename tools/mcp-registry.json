@@ -1,14 +1,16 @@
 {
   "name": "pepper",
   "display_name": "Pepper",
-  "description": "Runtime control for iOS simulator apps. Dylib injected at launch — no source modifications needed. 67 MCP tools for navigation, debugging, state inspection, and automation.",
+  "description": "Runtime control for iOS simulator apps. Dylib injected at launch \u2014 no source modifications needed. 68 MCP tools for navigation, debugging, state inspection, and automation.",
   "repository": "https://github.com/skwallace36/Pepper",
   "homepage": "https://github.com/skwallace36/Pepper",
   "license": "MIT",
   "language": "python",
   "runtime": "python3",
   "transport": "stdio",
-  "platform": ["macOS"],
+  "platform": [
+    "macOS"
+  ],
   "category": "mobile-development",
   "tags": [
     "ios",
@@ -23,11 +25,17 @@
     "xcode"
   ],
   "install": {
-    "prerequisites": ["Xcode", "Python 3.11+", "iOS Simulator"],
+    "prerequisites": [
+      "Xcode",
+      "Python 3.11+",
+      "iOS Simulator"
+    ],
     "command": "make setup && make test-deploy",
     "mcp_config": {
       "command": "./.venv/bin/python3",
-      "args": ["./tools/pepper-mcp"],
+      "args": [
+        "./tools/pepper-mcp"
+      ],
       "env": {
         "PYTHONUNBUFFERED": "1"
       }
@@ -101,6 +109,7 @@
     {"name": "storage", "category": "state", "description": "Inspect app storage (files, databases, caches)"},
     {"name": "timers", "category": "debug", "description": "Inspect active NSTimer and DispatchSourceTimer instances"},
     {"name": "undo_manager", "category": "state", "description": "Inspect NSUndoManager state and actions"},
-    {"name": "webview", "category": "debug", "description": "Inspect and interact with WKWebView content"}
+    {"name": "webview", "category": "debug", "description": "Inspect and interact with WKWebView content"},
+    {"name": "frameworks", "category": "debug", "description": "List loaded dylibs and frameworks with versions, UUIDs, and segment info"}
   ]
 }

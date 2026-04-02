@@ -3,37 +3,37 @@
   "accessibility_action": {
     "notes": "Test surface added: adjustable counter, custom actions, magic tap",
     "status": "ready",
-    "surface": "Misc tab → Accessibility Actions Screen"
+    "surface": "Misc tab \u2192 Accessibility Actions Screen"
   },
   "accessibility_action.decrement": {
     "notes": "AdjustableCounterView with .adjustable trait; decrements counter from 5",
     "status": "ready",
-    "surface": "Misc tab → Accessibility Actions Screen"
+    "surface": "Misc tab \u2192 Accessibility Actions Screen"
   },
   "accessibility_action.escape": {
-    "notes": "Escape via responder chain — works from any screen",
+    "notes": "Escape via responder chain \u2014 works from any screen",
     "status": "ready",
-    "surface": "Misc tab → Accessibility Actions Screen"
+    "surface": "Misc tab \u2192 Accessibility Actions Screen"
   },
   "accessibility_action.increment": {
     "notes": "AdjustableCounterView with .adjustable trait; increments counter from 5",
     "status": "ready",
-    "surface": "Misc tab → Accessibility Actions Screen"
+    "surface": "Misc tab \u2192 Accessibility Actions Screen"
   },
   "accessibility_action.invoke": {
     "notes": "Invokes named custom actions on a11y_custom_actions element",
     "status": "ready",
-    "surface": "Misc tab → Accessibility Actions Screen"
+    "surface": "Misc tab \u2192 Accessibility Actions Screen"
   },
   "accessibility_action.list": {
     "notes": "Lists custom actions on a11y_custom_actions (Mark as Read, Archive) and adjustable trait on a11y_adjustable",
     "status": "ready",
-    "surface": "Misc tab → Accessibility Actions Screen"
+    "surface": "Misc tab \u2192 Accessibility Actions Screen"
   },
   "accessibility_action.magic_tap": {
     "notes": "VC overrides accessibilityPerformMagicTap(); status label updates to confirm",
     "status": "ready",
-    "surface": "Misc tab → Accessibility Actions Screen"
+    "surface": "Misc tab \u2192 Accessibility Actions Screen"
   },
   "accessibility_audit": {
     "notes": "",
@@ -46,12 +46,12 @@
     "surface": "Any app"
   },
   "animations.scan": {
-    "notes": "BUG-009 fix (icon catalog background thread crash) was unrelated to this failure. 'Response lost in transit' issue persists — server logs success but client never receives response. trace and speed actions work fine. New issue: #267.",
+    "notes": "BUG-009 fix (icon catalog background thread crash) was unrelated to this failure. 'Response lost in transit' issue persists \u2014 server logs success but client never receives response. trace and speed actions work fine. New issue: #267.",
     "status": "fail",
     "surface": "Misc tab"
   },
   "animations.speed": {
-    "notes": "Sets/gets CALayer animation speed. Returns {speed:N, animations_enabled:bool}. Tested: set 0.5 and 1.0 — both accepted. Note: returned speed always shows 1 regardless of value param (may be reading before set takes effect, similar to timeline.config async dispatch).",
+    "notes": "Sets/gets CALayer animation speed. Returns {speed:N, animations_enabled:bool}. Tested: set 0.5 and 1.0 \u2014 both accepted. Note: returned speed always shows 1 regardless of value param (may be reading before set takes effect, similar to timeline.config async dispatch).",
     "status": "pass",
     "surface": "Misc tab"
   },
@@ -73,7 +73,7 @@
   "back": {
     "notes": "BUG-001 FIXED: BackHandler uses pepper_effectiveNavController to find child UINavigationController from SwiftUI NavigationStack. pepper_canPop checks nav bar items as secondary signal. pepper_popBack uses HID back-button tap for SwiftUI NavigationStack.",
     "status": "pass",
-    "surface": "Detail → Deeper nav stack push"
+    "surface": "Detail \u2192 Deeper nav stack push"
   },
   "batch": {
     "notes": "Executes array of commands sequentially, returns all responses. Tested: (1) ping+screen returns 2 responses with correct data. (2) tap+look returns tap result then screen state. (3) Empty array returns {executed:0, errors:0, responses:[]}. (4) Missing commands param returns proper error.",
@@ -126,9 +126,9 @@
     "surface": "After start"
   },
   "constraints": {
-    "notes": "LayoutTestViewController added with 4 sections: (1) well-constrained 3-label stack, (2) intentionally ambiguous view (missing trailing/width — flagged by ambiguous_only), (3) two conflicting required width constraints (100pt vs 200pt), (4) complex nested view tree with constraints at 3 depths. Navigate: Misc tab → UIKit → Layout Test Screen.",
+    "notes": "LayoutTestViewController added with 4 sections: (1) well-constrained 3-label stack, (2) intentionally ambiguous view (missing trailing/width \u2014 flagged by ambiguous_only), (3) two conflicting required width constraints (100pt vs 200pt), (4) complex nested view tree with constraints at 3 depths. Navigate: Misc tab \u2192 UIKit \u2192 Layout Test Screen.",
     "status": "ready",
-    "surface": "Misc tab → Layout Test Screen (UIKit)"
+    "surface": "Misc tab \u2192 Layout Test Screen (UIKit)"
   },
   "cookies.clear": {
     "notes": "Clears all cookies. Returns {removed:0}. Command works, needs WKWebView for full verification with actual cookie data.",
@@ -146,12 +146,12 @@
     "surface": "HTTPCookieStorage (no WKWebView)"
   },
   "cookies.list": {
-    "notes": "Returns cookies from HTTPCookieStorage. Works correctly — returns {count:0, total:0, cookies:[]} since no WKWebView/cookies exist in test app. Command functions properly but needs WKWebView surface for full data verification.",
+    "notes": "Returns cookies from HTTPCookieStorage. Works correctly \u2014 returns {count:0, total:0, cookies:[]} since no WKWebView/cookies exist in test app. Command functions properly but needs WKWebView surface for full data verification.",
     "status": "pass",
     "surface": "HTTPCookieStorage (no WKWebView)"
   },
   "coredata": {
-    "notes": "Core Data schema inspector. Discovers NSPersistentContainer via AppDelegate/common singletons. Action: entities — lists entity names, attributes, and relationships from the managed object model.",
+    "notes": "Core Data schema inspector. Discovers NSPersistentContainer via AppDelegate/common singletons. Action: entities \u2014 lists entity names, attributes, and relationships from the managed object model.",
     "status": "untested",
     "surface": "App with Core Data"
   },
@@ -186,7 +186,7 @@
     "surface": "Any state"
   },
   "dialog.auto_dismiss": {
-    "notes": "Enable with buttons=['OK','Cancel']: returns {auto_dismiss:true, buttons:['OK','Cancel'], delay:0.3}. Triggered alert via Show Alert — dialog auto-dismissed within 1s (current returned has_dialog=false). Disable: returns auto_dismiss=false. Default buttons include 'Allow While Using App', 'Allow Once', 'Allow', 'OK'.",
+    "notes": "Enable with buttons=['OK','Cancel']: returns {auto_dismiss:true, buttons:['OK','Cancel'], delay:0.3}. Triggered alert via Show Alert \u2014 dialog auto-dismissed within 1s (current returned has_dialog=false). Disable: returns auto_dismiss=false. Default buttons include 'Allow While Using App', 'Allow Once', 'Allow', 'OK'.",
     "status": "pass",
     "surface": "Alert dialog"
   },
@@ -198,7 +198,7 @@
   "dialog.detect_system": {
     "notes": "Returns {detected, confidence, positive_signals, total_signals, signals[]}. Four signals: intercepted_dialog, key_window_level, elevated_alert_windows, hit_test_probe. Confidence: high (3+), medium (2), low (1), none (0). On fresh install: tap request_notifications_button, PepperWindowMonitor auto-dismisses via elevated_window_button strategy; detect_system returns detected=false after dismissal. look works immediately after (no timeout).",
     "status": "pass",
-    "surface": "Misc tab — request_notifications_button triggers system dialog on fresh install"
+    "surface": "Misc tab \u2014 request_notifications_button triggers system dialog on fresh install"
   },
   "dialog.dismiss": {
     "notes": "Dismisses dialog by button name. Tested: dismiss with button='OK' returns {dismissed:true, button:'OK'}. Screen returns to normal 'ui' state. Error case: dismiss with no pending dialog returns proper error 'No pending dialog to dismiss'.",
@@ -231,7 +231,7 @@
     "surface": "Sheet from Show Sheet button"
   },
   "dismiss_keyboard": {
-    "notes": "Returns {dismissed:true} in all cases. Tested: (1) no keyboard showing — returns dismissed:true (no-op). (2) After input command focuses text_field — keyboard active, dismiss_keyboard dismisses it. No error cases.",
+    "notes": "Returns {dismissed:true} in all cases. Tested: (1) no keyboard showing \u2014 returns dismissed:true (no-op). (2) After input command focuses text_field \u2014 keyboard active, dismiss_keyboard dismisses it. No error cases.",
     "status": "pass",
     "surface": "Focus TextField then dismiss"
   },
@@ -246,12 +246,12 @@
     "surface": "Misc > Runtime Introspection Screen"
   },
   "explore.edit": {
-    "notes": "Blocked: explore command not yet implemented (#405). Test surface ready: IntrospectionWidget.caption (NSString) and score (NSNumber) are writable — verify value changes persist and reflect in heap.inspect.",
+    "notes": "Blocked: explore command not yet implemented (#405). Test surface ready: IntrospectionWidget.caption (NSString) and score (NSNumber) are writable \u2014 verify value changes persist and reflect in heap.inspect.",
     "status": "blocked",
     "surface": "Misc > Runtime Introspection Screen"
   },
   "explore.ivars": {
-    "notes": "Blocked: explore command not yet implemented (#405). Test surface ready: IntrospectionWidget and IntrospectionUser have private Swift ivars (_secret, _internalToken) that are NOT @objc — validates that private ivars are hidden from ObjC runtime enumeration.",
+    "notes": "Blocked: explore command not yet implemented (#405). Test surface ready: IntrospectionWidget and IntrospectionUser have private Swift ivars (_secret, _internalToken) that are NOT @objc \u2014 validates that private ivars are hidden from ObjC runtime enumeration.",
     "status": "blocked",
     "surface": "Misc > Runtime Introspection Screen"
   },
@@ -286,7 +286,7 @@
     "surface": "Controls tab with type=='button' limit=5"
   },
   "flags": {
-    "notes": "Feature flag overrides stored in UserDefaults. CRUD lifecycle: list → set → get → clear.",
+    "notes": "Feature flag overrides stored in UserDefaults. CRUD lifecycle: list \u2192 set \u2192 get \u2192 clear.",
     "status": "ready",
     "surface": "Any state (UserDefaults-backed)"
   },
@@ -310,6 +310,16 @@
     "status": "ready",
     "surface": "Any state"
   },
+  "frameworks": {
+    "notes": "Enumerates loaded dylibs/frameworks via Mach-O headers",
+    "status": "ready",
+    "surface": "Any running app"
+  },
+  "frameworks.detail": {
+    "notes": "Detailed info for a single loaded image",
+    "status": "ready",
+    "surface": "Any running app"
+  },
   "gesture.pinch": {
     "notes": "Executes pinch gesture at point. Returns {gesture:'pinch', start_distance:200, end_distance:50, center}. Scale parameter controls zoom. Command injects multi-touch HID events correctly.",
     "status": "pass",
@@ -318,7 +328,7 @@
   "gesture.rotate": {
     "notes": "UIRotationGestureRecognizer on RotatableView. Rotates a hex shape and displays cumulative angle in degrees (rotation_angle label). gesture.rotate injects HID rotation events; angle label updates on each gesture change.",
     "status": "pass",
-    "surface": "Misc tab – Rotation Gesture GroupBox"
+    "surface": "Misc tab \u2013 Rotation Gesture GroupBox"
   },
   "hangs": {
     "notes": "Main thread hang detection with symbolicated stack capture via Mach thread APIs. Actions: start, stop, status, hangs, clear. Configurable threshold_ms (default 250).",
@@ -361,7 +371,7 @@
     "surface": "After snapshot"
   },
   "heap_snapshot.diff": {
-    "notes": "Compares current heap to baseline. After ~10s found 7 growing classes (CString +10, Endpoint +8, etc.) with verdict '7 class(es) growing — potential leaks'. Returns growing/shrinking arrays with before/after/delta. No-baseline error handled properly.",
+    "notes": "Compares current heap to baseline. After ~10s found 7 growing classes (CString +10, Endpoint +8, etc.) with verdict '7 class(es) growing \u2014 potential leaks'. Returns growing/shrinking arrays with before/after/delta. No-baseline error handled properly.",
     "status": "pass",
     "surface": "Take 2 snapshots, diff"
   },
@@ -401,7 +411,7 @@
     "surface": "After install"
   },
   "hook.log": {
-    "notes": "Tab switch (Controls→List→Controls) triggered viewDidAppear: hook. Log returned 6 entries with receiver, receiver_class, method, timestamp, args (['YES']), call_number. Nonexistent hook ID returns empty entries (count=0).",
+    "notes": "Tab switch (Controls\u2192List\u2192Controls) triggered viewDidAppear: hook. Log returned 6 entries with receiver, receiver_class, method, timestamp, args (['YES']), call_number. Nonexistent hook ID returns empty entries (count=0).",
     "status": "pass",
     "surface": "After install + trigger via tab switch"
   },
@@ -495,13 +505,8 @@
     "status": "pass",
     "surface": "Any state"
   },
-  "loading": {
-    "notes": "",
-    "status": "untested",
-    "surface": "Any screen with spinners, progress bars, or skeleton views"
-  },
   "layers": {
-    "notes": "BUG-002 FIXED: no longer crashes on gradient views. Returns full CALayer tree with properties (cornerRadius, shadow, gradient colors/locations, opacity, masks). Tested: Misc tab gradient area returned GradientLayer with colors [#0088FF, #9069EF, #CB30E0], shadow properties. List tab returned CellHostingView layer tree. Controls tab times out (deep hierarchy) — not a crash, just slow. Error case: missing point param returns proper error.",
+    "notes": "BUG-002 FIXED: no longer crashes on gradient views. Returns full CALayer tree with properties (cornerRadius, shadow, gradient colors/locations, opacity, masks). Tested: Misc tab gradient area returned GradientLayer with colors [#0088FF, #9069EF, #CB30E0], shadow properties. List tab returned CellHostingView layer tree. Controls tab times out (deep hierarchy) \u2014 not a crash, just slow. Error case: missing point param returns proper error.",
     "status": "pass",
     "surface": "Misc tab (gradient + shadow), List tab"
   },
@@ -516,7 +521,7 @@
     "surface": "Any state"
   },
   "lifecycle.foreground": {
-    "notes": "Returns {state:'active'}. Posts willEnterForeground + didBecomeActive notifications. Tested after background — app fully responsive, look returns normal screen state.",
+    "notes": "Returns {state:'active'}. Posts willEnterForeground + didBecomeActive notifications. Tested after background \u2014 app fully responsive, look returns normal screen state.",
     "status": "pass",
     "surface": "After background"
   },
@@ -524,6 +529,11 @@
     "notes": "Returns {triggered:true}. Posts didReceiveMemoryWarningNotification and calls _performMemoryWarning on UIApplication. App remains stable after trigger.",
     "status": "pass",
     "surface": "Any state"
+  },
+  "loading": {
+    "notes": "",
+    "status": "untested",
+    "surface": "Any screen with spinners, progress bars, or skeleton views"
   },
   "locale.current": {
     "notes": "Returns language ('en'), region ('US'), identifier ('en_US'), app_localizations (['en']), override_active (false). After set: adds override_language field showing active override.",
@@ -536,7 +546,7 @@
     "surface": "Any state"
   },
   "locale.lookup": {
-    "notes": "Command works correctly: returns {key, value, found}. Returns found=false for keys 'greeting' and 'button_tap' — Localizable.strings file exists in source but isn't properly included in app bundle (build config issue, not a Pepper bug). Missing key param returns proper error.",
+    "notes": "Command works correctly: returns {key, value, found}. Returns found=false for keys 'greeting' and 'button_tap' \u2014 Localizable.strings file exists in source but isn't properly included in app bundle (build config issue, not a Pepper bug). Missing key param returns proper error.",
     "status": "pass",
     "surface": "Localizable.strings (keys defined but not bundled)"
   },
@@ -591,47 +601,47 @@
     "surface": "After log capture"
   },
   "network.clear_conditions": {
-    "notes": "Regression test: add 2 conditions → clear_conditions → verify conditions count drops to 0. Part of conditions lifecycle test.",
+    "notes": "Regression test: add 2 conditions \u2192 clear_conditions \u2192 verify conditions count drops to 0. Part of conditions lifecycle test.",
     "status": "ready",
     "surface": "After network.simulate"
   },
   "network.clear_mocks": {
-    "notes": "Regression test: add 2 mocks → clear_mocks → verify mocks count drops to 0. Dedicated clear_mocks regression test.",
+    "notes": "Regression test: add 2 mocks \u2192 clear_mocks \u2192 verify mocks count drops to 0. Dedicated clear_mocks regression test.",
     "status": "ready",
     "surface": "After network.mock"
   },
   "network.conditions": {
-    "notes": "Regression test: simulate latency with known id → call conditions → verify entry appears. Part of conditions lifecycle test.",
+    "notes": "Regression test: simulate latency with known id \u2192 call conditions \u2192 verify entry appears. Part of conditions lifecycle test.",
     "status": "ready",
     "surface": "After network.simulate"
   },
   "network.log": {
-    "notes": "Returns {count:N, transactions:[...]}. Each transaction has request (method, url, headers), response (status_code, headers, body, content_length), timing, and id. Captured GET https://httpbin.org/json → 200 with full JSON body. Limit param works correctly.",
+    "notes": "Returns {count:N, transactions:[...]}. Each transaction has request (method, url, headers), response (status_code, headers, body, content_length), timing, and id. Captured GET https://httpbin.org/json \u2192 200 with full JSON body. Limit param works correctly.",
     "status": "pass",
     "surface": "After start + Fetch HTTP button"
   },
   "network.mock": {
-    "notes": "Regression test: mock pepper.test/mock with status 200 + JSON body → tap Mock Test → verify network_body_preview shows mocked content. Auto-starts interception.",
+    "notes": "Regression test: mock pepper.test/mock with status 200 + JSON body \u2192 tap Mock Test \u2192 verify network_body_preview shows mocked content. Auto-starts interception.",
     "status": "ready",
-    "surface": "Mock Test button (MiscTab Network → mock_request_button → https://pepper.test/mock)"
+    "surface": "Mock Test button (MiscTab Network \u2192 mock_request_button \u2192 https://pepper.test/mock)"
   },
   "network.mocks": {
-    "notes": "Regression test: add mock → call mocks → verify entry appears with url pattern and status code. Part of mock lifecycle test.",
+    "notes": "Regression test: add mock \u2192 call mocks \u2192 verify entry appears with url pattern and status code. Part of mock lifecycle test.",
     "status": "ready",
     "surface": "After network.mock"
   },
   "network.presets": {
-    "notes": "Regression test: call presets → verify returns named presets (3G, Edge, LTE, WiFi, High Latency DNS, 100% Loss) with effect descriptions.",
+    "notes": "Regression test: call presets \u2192 verify returns named presets (3G, Edge, LTE, WiFi, High Latency DNS, 100% Loss) with effect descriptions.",
     "status": "ready",
     "surface": "Any state"
   },
   "network.remove_condition": {
-    "notes": "Regression test: simulate with known id → remove_condition by id → verify conditions list empty. Part of conditions lifecycle test.",
+    "notes": "Regression test: simulate with known id \u2192 remove_condition by id \u2192 verify conditions list empty. Part of conditions lifecycle test.",
     "status": "ready",
     "surface": "After network.simulate"
   },
   "network.remove_mock": {
-    "notes": "Regression test: add mock → remove_mock by id → verify mocks list empty. Part of mock lifecycle test.",
+    "notes": "Regression test: add mock \u2192 remove_mock by id \u2192 verify mocks list empty. Part of mock lifecycle test.",
     "status": "ready",
     "surface": "After network.mock"
   },
@@ -641,29 +651,29 @@
     "surface": "MiscTab Network buttons (slow_request_button, error_request_button, offline_request_button)"
   },
   "network.simulate.fail_error": {
-    "notes": "Regression test: simulate fail_error NSURLErrorDomain/-1009 → tap Error Request → verify network_error shows domain/code. Cleans up via clear_conditions.",
+    "notes": "Regression test: simulate fail_error NSURLErrorDomain/-1009 \u2192 tap Error Request \u2192 verify network_error shows domain/code. Cleans up via clear_conditions.",
     "status": "ready",
-    "surface": "Error Request button (MiscTab Network → error_request_button)"
+    "surface": "Error Request button (MiscTab Network \u2192 error_request_button)"
   },
   "network.simulate.fail_status": {
-    "notes": "Regression test: simulate fail_status 500 → tap Error Request → verify network_status_code shows HTTP 500. Cleans up via clear_conditions.",
+    "notes": "Regression test: simulate fail_status 500 \u2192 tap Error Request \u2192 verify network_status_code shows HTTP 500. Cleans up via clear_conditions.",
     "status": "ready",
-    "surface": "Error Request button (MiscTab Network → error_request_button)"
+    "surface": "Error Request button (MiscTab Network \u2192 error_request_button)"
   },
   "network.simulate.latency": {
-    "notes": "Regression test: simulate latency 2000ms → tap Timed Request → verify elapsed >= 2000ms. Auto-starts interception. Cleans up via clear_conditions.",
+    "notes": "Regression test: simulate latency 2000ms \u2192 tap Timed Request \u2192 verify elapsed >= 2000ms. Auto-starts interception. Cleans up via clear_conditions.",
     "status": "ready",
-    "surface": "Slow Request button (MiscTab Network → slow_request_button)"
+    "surface": "Slow Request button (MiscTab Network \u2192 slow_request_button)"
   },
   "network.simulate.offline": {
-    "notes": "Regression test: simulate offline → tap Offline Test → verify network_error shows offline NSError. Cleans up via clear_conditions.",
+    "notes": "Regression test: simulate offline \u2192 tap Offline Test \u2192 verify network_error shows offline NSError. Cleans up via clear_conditions.",
     "status": "ready",
-    "surface": "Offline Test button (MiscTab Network → offline_request_button)"
+    "surface": "Offline Test button (MiscTab Network \u2192 offline_request_button)"
   },
   "network.simulate.throttle": {
-    "notes": "Regression test: simulate throttle 256 bytes/s → tap Timed Request → verify elapsed significantly > unthrottled baseline. Cleans up via clear_conditions.",
+    "notes": "Regression test: simulate throttle 256 bytes/s \u2192 tap Timed Request \u2192 verify elapsed significantly > unthrottled baseline. Cleans up via clear_conditions.",
     "status": "ready",
-    "surface": "Slow Request button (MiscTab Network → slow_request_button)"
+    "surface": "Slow Request button (MiscTab Network \u2192 slow_request_button)"
   },
   "network.start": {
     "notes": "Returns {active:true, buffer_size:500}. Accepts buffer_size param. URLProtocol-based interception activates correctly.",
@@ -681,72 +691,72 @@
     "surface": "After start"
   },
   "network.ws_clear": {
-    "notes": "Regression test: connect WebSocket → ws_clear → verify ws_log returns 0 frames. Part of WebSocket lifecycle test.",
+    "notes": "Regression test: connect WebSocket \u2192 ws_clear \u2192 verify ws_log returns 0 frames. Part of WebSocket lifecycle test.",
     "status": "ready",
     "surface": "WebSocket Client screen (websocket_connect_button)"
   },
   "network.ws_log": {
-    "notes": "Regression test: connect WebSocket → ws_log → verify frames returned. Supports limit, filter, direction params. Part of WebSocket lifecycle test.",
+    "notes": "Regression test: connect WebSocket \u2192 ws_log \u2192 verify frames returned. Supports limit, filter, direction params. Part of WebSocket lifecycle test.",
     "status": "ready",
     "surface": "WebSocket Client screen (websocket_connect_button)"
   },
   "network.ws_status": {
-    "notes": "Regression test: connect WebSocket → ws_status → verify active connections >= 1. Returns active, buffer_size, frame_count, total_recorded, active_connections.",
+    "notes": "Regression test: connect WebSocket \u2192 ws_status \u2192 verify active connections >= 1. Returns active, buffer_size, frame_count, total_recorded, active_connections.",
     "status": "ready",
     "surface": "WebSocket Client screen (websocket_connect_button)"
   },
   "notifications": {
-    "notes": "Surface added (TASK-316). NSNotificationCenter inspector — register_observer_button, post_notification_button, remove_observer_button, and notification_received_count label all available.",
+    "notes": "Surface added (TASK-316). NSNotificationCenter inspector \u2014 register_observer_button, post_notification_button, remove_observer_button, and notification_received_count label all available.",
     "status": "ready",
-    "surface": "Misc tab — NSNotificationCenter Observers section"
+    "surface": "Misc tab \u2014 NSNotificationCenter Observers section"
   },
   "notifications.clear": {
     "notes": "Clears all tracked observers and events. Returns cleared=true.",
     "status": "ready",
-    "surface": "Misc tab — NSNotificationCenter Observers section"
+    "surface": "Misc tab \u2014 NSNotificationCenter Observers section"
   },
   "notifications.counts": {
     "notes": "Surface added (TASK-316). After registering observer, counts shows PepperTestNotification observer entry.",
     "status": "ready",
-    "surface": "Misc tab — NSNotificationCenter Observers section"
+    "surface": "Misc tab \u2014 NSNotificationCenter Observers section"
   },
   "notifications.events": {
     "notes": "Surface added (TASK-316). Events logged after post. Shows add/remove/post timeline.",
     "status": "ready",
-    "surface": "Misc tab — NSNotificationCenter Observers section"
+    "surface": "Misc tab \u2014 NSNotificationCenter Observers section"
   },
   "notifications.list": {
     "notes": "Lists observers with filter/limit support. Returns count and observers array.",
     "status": "ready",
-    "surface": "Misc tab — NSNotificationCenter Observers section"
+    "surface": "Misc tab \u2014 NSNotificationCenter Observers section"
   },
   "notifications.post": {
     "notes": "Surface added (TASK-316). post_notification_button triggers PepperTestNotification. notification_received_count label increments on receive. Also testable via notifications post name=PepperTestNotification.",
     "status": "ready",
-    "surface": "Misc tab — NSNotificationCenter Observers section"
+    "surface": "Misc tab \u2014 NSNotificationCenter Observers section"
   },
   "notifications.start": {
     "notes": "Surface added (TASK-316). register_observer_button registers an observer for PepperTestNotification. notifications start then list/counts shows the observer.",
     "status": "ready",
-    "surface": "Misc tab — NSNotificationCenter Observers section"
+    "surface": "Misc tab \u2014 NSNotificationCenter Observers section"
   },
   "notifications.status": {
     "notes": "Returns active, observer_count, event_count, total_tracked. Smoke test verifies active and observer_count keys.",
     "status": "ready",
-    "surface": "Misc tab — NSNotificationCenter Observers section"
+    "surface": "Misc tab \u2014 NSNotificationCenter Observers section"
   },
   "notifications.stop": {
     "notes": "Stops tracking. Returns active=false. Smoke test verifies has_keys: active.",
     "status": "ready",
-    "surface": "Misc tab — NSNotificationCenter Observers section"
+    "surface": "Misc tab \u2014 NSNotificationCenter Observers section"
   },
   "orientation.landscape_left": {
-    "notes": "Command accepted, UIDevice.setValue + orientationDidChangeNotification posted. Response still reports 'portrait' because UIWindowScene.interfaceOrientation doesn't change from programmatic UIDevice.setValue in simulator. Not a bug — simulator has no accelerometer. Error case: invalid value returns proper error.",
+    "notes": "Command accepted, UIDevice.setValue + orientationDidChangeNotification posted. Response still reports 'portrait' because UIWindowScene.interfaceOrientation doesn't change from programmatic UIDevice.setValue in simulator. Not a bug \u2014 simulator has no accelerometer. Error case: invalid value returns proper error.",
     "status": "pass",
     "surface": "Any state"
   },
   "orientation.landscape_right": {
-    "notes": "Same behavior as landscape_left — command succeeds, notification posted, but UIWindowScene reads portrait in simulator.",
+    "notes": "Same behavior as landscape_left \u2014 command succeeds, notification posted, but UIWindowScene reads portrait in simulator.",
     "status": "pass",
     "surface": "Any state"
   },
@@ -756,12 +766,12 @@
     "surface": "Any state"
   },
   "orientation.portrait_upside_down": {
-    "notes": "Same behavior — command succeeds, notification posted. UIWindowScene still reads portrait in simulator.",
+    "notes": "Same behavior \u2014 command succeeds, notification posted. UIWindowScene still reads portrait in simulator.",
     "status": "pass",
     "surface": "Any state"
   },
   "perf": {
-    "notes": "New command. Frame performance profiler using CADisplayLink — measures frame timing, dropped frames, hitch rate, and FPS.",
+    "notes": "New command. Frame performance profiler using CADisplayLink \u2014 measures frame timing, dropped frames, hitch rate, and FPS.",
     "status": "untested",
     "surface": "Any state"
   },
@@ -771,7 +781,7 @@
     "surface": "Any state"
   },
   "push": {
-    "notes": "Delivers local push notification. Tested: title='Test Push', body='Hello from Pepper', delay=0. Returns {delivered:true, notification_id:'pepper-push-ADF38CB4', title, body}. No UNNotification delegate needed — uses UNUserNotificationCenter directly.",
+    "notes": "Delivers local push notification. Tested: title='Test Push', body='Hello from Pepper', delay=0. Returns {delivered:true, notification_id:'pepper-push-ADF38CB4', title, body}. No UNNotification delegate needed \u2014 uses UNUserNotificationCenter directly.",
     "status": "pass",
     "surface": "Any state"
   },
@@ -842,7 +852,7 @@
   "scroll_to.down": {
     "notes": "Scrolls down until exact text match found. Tested: Item 12 found after 1 scroll (1325ms), Item 29 found after 1 scroll. Already-visible returns immediately (14ms). BUG-004: server dispatch timeout (10s) fires before long scrolls complete.",
     "status": "pass",
-    "surface": "List tab — scroll until text visible"
+    "surface": "List tab \u2014 scroll until text visible"
   },
   "scroll_to.left": {
     "notes": "Horizontal ScrollView available for left-direction scroll_to validation",
@@ -984,7 +994,7 @@
     "surface": "Any state"
   },
   "timeline.config": {
-    "notes": "Accepts buffer_size, recording (bool), enabled_types params. Tested: buffer_size 2000→5000 (verified via subsequent status). recording=false pauses recording. Note: config response returns pre-update values due to async barrier dispatch — subsequent status shows correct values.",
+    "notes": "Accepts buffer_size, recording (bool), enabled_types params. Tested: buffer_size 2000\u21925000 (verified via subsequent status). recording=false pauses recording. Note: config response returns pre-update values due to async barrier dispatch \u2014 subsequent status shows correct values.",
     "status": "pass",
     "surface": "Any state"
   },
@@ -1001,27 +1011,27 @@
   "timers.invalidate": {
     "notes": "Surface added (TASK-316). timers invalidate can stop the NSTimer created via start_repeating_timer_button; stop_repeating_timer_button and stop_display_link_button also available for manual control.",
     "status": "ready",
-    "surface": "Misc tab — NSTimer & CADisplayLink section"
+    "surface": "Misc tab \u2014 NSTimer & CADisplayLink section"
   },
   "timers.list": {
     "notes": "Surface added (TASK-316). Active timers visible after tapping Start Timer/Start Display Link. repeating_timer_count and display_link_frame_count labels confirm activity.",
     "status": "ready",
-    "surface": "Misc tab — NSTimer & CADisplayLink section"
+    "surface": "Misc tab \u2014 NSTimer & CADisplayLink section"
   },
   "timers.start": {
     "notes": "Surface added (TASK-316). Use start_repeating_timer_button and start_display_link_button to create active NSTimer and CADisplayLink instances for timers tracking.",
     "status": "ready",
-    "surface": "Misc tab — NSTimer & CADisplayLink section"
+    "surface": "Misc tab \u2014 NSTimer & CADisplayLink section"
   },
   "timers.status": {
     "notes": "Surface added (TASK-316). Shows timer_count and display_link_count after starting timers.",
     "status": "ready",
-    "surface": "Misc tab — NSTimer & CADisplayLink section"
+    "surface": "Misc tab \u2014 NSTimer & CADisplayLink section"
   },
   "timers.stop": {
     "notes": "Surface added (TASK-316). Uninstalls tracker; combine with stop buttons in test app.",
     "status": "ready",
-    "surface": "Misc tab — NSTimer & CADisplayLink section"
+    "surface": "Misc tab \u2014 NSTimer & CADisplayLink section"
   },
   "toggle": {
     "notes": "BUG-006 fix applied to PepperElementResolver (used by TapHandler) but ToggleHandler still calls pepper_findElement(id:) directly, bypassing the SwiftUI accessibility fallback. SwiftUI Toggle elements still return 'Element not found'. Segmented control (sort_picker) works. New issue: #265.",
@@ -1034,7 +1044,7 @@
     "surface": "Controls tab, Misc tab"
   },
   "undo": {
-    "notes": "New command. NSUndoManager inspector — list undo managers, query undo/redo stack state, trigger undo/redo programmatically.",
+    "notes": "New command. NSUndoManager inspector \u2014 list undo managers, query undo/redo stack state, trigger undo/redo programmatically.",
     "status": "untested",
     "surface": "Any state"
   },
@@ -1074,7 +1084,7 @@
     "surface": "AppState"
   },
   "vars.set": {
-    "notes": "Sets property value by path. Tested: set tapCount to 99 (confirmed via get), set NestedState.innerCount to 100. Returns {ok:true, value:newVal}. NOTE: does not trigger @Observable re-rendering — UI shows stale value until next natural update. Read-only properties return proper error.",
+    "notes": "Sets property value by path. Tested: set tapCount to 99 (confirmed via get), set NestedState.innerCount to 100. Returns {ok:true, value:newVal}. NOTE: does not trigger @Observable re-rendering \u2014 UI shows stale value until next natural update. Read-only properties return proper error.",
     "status": "pass",
     "surface": "AppState properties"
   },
@@ -1089,17 +1099,17 @@
     "surface": "Same timer or navigation push"
   },
   "wait_for.has_value": {
-    "notes": "BUG-006 fix not applied to WaitHandler — WaitHandler.evaluate(.elementHasValue) calls pepper_findElement(id:) directly, bypassing SwiftUI accessibility fallback. SwiftUI counter elements still not found. New issue: #266.",
+    "notes": "BUG-006 fix not applied to WaitHandler \u2014 WaitHandler.evaluate(.elementHasValue) calls pepper_findElement(id:) directly, bypassing SwiftUI accessibility fallback. SwiftUI counter elements still not found. New issue: #266.",
     "status": "fail",
     "surface": "Counter value after tap"
   },
   "wait_for.visible": {
-    "notes": "BUG-007 FIXED: Polling moved to background thread (DispatchQueue.global). Main thread is free for SwiftUI @Observable re-rendering. 3s timer test now works — wait_for detects async text change to 'Timer: FIRED'.",
+    "notes": "BUG-007 FIXED: Polling moved to background thread (DispatchQueue.global). Main thread is free for SwiftUI @Observable re-rendering. 3s timer test now works \u2014 wait_for detects async text change to 'Timer: FIRED'.",
     "status": "pass",
-    "surface": "Start 3s Timer → wait for FIRED text"
+    "surface": "Start 3s Timer \u2192 wait for FIRED text"
   },
   "wait_idle": {
-    "notes": "Returns {idle:bool, elapsed_ms:N}. Tested: returns idle=false after ~3s (animations/activity keep app non-idle). Accepts timeout param. Command functions correctly — monitors RunLoop/CADisplayLink activity.",
+    "notes": "Returns {idle:bool, elapsed_ms:N}. Tested: returns idle=false after ~3s (animations/activity keep app non-idle). Accepts timeout param. Command functions correctly \u2014 monitors RunLoop/CADisplayLink activity.",
     "status": "pass",
     "surface": "Any state"
   },

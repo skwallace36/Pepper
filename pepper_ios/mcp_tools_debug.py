@@ -1,7 +1,7 @@
 """Debug and introspection tool definitions for Pepper MCP.
 
 Tool definitions for: layers, console, crash_log, lifecycle, responder_chain,
-notifications, constraints, timers, concurrency, loading, formatters.
+notifications, constraints, timers, concurrency, loading, formatters, frameworks.
 """
 
 from __future__ import annotations
@@ -280,3 +280,27 @@ def register_debug_tools(mcp, resolve_and_send):
         """Inspect date/time formatting across visible labels. Detects format patterns (12h/24h, ISO 8601, slash/dot dates, relative dates), reports locale context, and flags inconsistencies like mixed clock formats."""
         params: dict = {}
         return await resolve_and_send(simulator, "formatters", params)
+
+    @mcp.tool()
+    async def frameworks(
+        simulator: str | None = Field(default=None, description="Simulator UDID"),
+        action: str = Field(
+            default="list",
+            description="Action: list (all loaded images), detail (single image info)",
+        ),
+        name: str | None = Field(
+            default=None,
+            description="Substring to match image name/path (required for detail)",
+        ),
+        filter: str | None = Field(
+            default=None,
+            description="Filter images by name substring (for list action)",
+        ),
+    ) -> str:
+        """List loaded dylibs and frameworks with names, versions, UUIDs, and segment info. Shows app composition at a glance."""
+        params: dict = {"action": action}
+        if name is not None:
+            params["name"] = name
+        if filter is not None:
+            params["filter"] = filter
+        return await resolve_and_send(simulator, "frameworks", params)
