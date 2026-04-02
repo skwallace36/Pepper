@@ -448,9 +448,10 @@ async def deploy_app(
             logger.warning(minos_warning)
             return f"Deploy blocked: {minos_warning}"
 
-    # Inject env vars via launchctl setenv inside the simulator.
-    # SIMCTL_CHILD_ prefix is silently ignored on iOS 18.4+ / 26.3+ simulators,
-    # so we set vars directly in the sim's launchd context instead.
+    # Inject env vars via two mechanisms for cross-version compatibility:
+    # 1. launchctl setenv — works on iOS 18.4+ / 26.3+ where SIMCTL_CHILD_ was broken
+    # 2. SIMCTL_CHILD_ prefix — passes vars at exec() time, honored by dyld on iOS 26.3.1
+    #    where launchd-inherited DYLD_INSERT_LIBRARIES is stripped before dyld runs
     inject_vars = {
         "DYLD_INSERT_LIBRARIES": dylib,
         "PEPPER_ADAPTER": cfg.get("adapter_type", "generic"),
@@ -465,7 +466,11 @@ async def deploy_app(
             capture_output=True, text=True,
         )
 
-    result = subprocess.run(["xcrun", "simctl", "launch", simulator, bid], capture_output=True, text=True)
+    launch_env = os.environ.copy()
+    for key, val in inject_vars.items():
+        launch_env[f"SIMCTL_CHILD_{key}"] = val
+
+    result = subprocess.run(["xcrun", "simctl", "launch", simulator, bid], capture_output=True, text=True, env=launch_env)
 
     # Clean up injected env vars so they don't leak to other apps
     for key in inject_vars:

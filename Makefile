@@ -106,11 +106,21 @@ launch:
 	@if [ -n "$${PEPPER_AGENT_TYPE}" ]; then \
 		xcrun simctl spawn "$(SIMULATOR_ID)" launchctl setenv PEPPER_SKIP_PERMISSIONS 1; \
 	fi
-	@LAUNCH_OUTPUT=$$(xcrun simctl launch "$(SIMULATOR_ID)" "$(BUNDLE_ID)" 2>&1) || { \
+	@LAUNCH_OUTPUT=$$(SIMCTL_CHILD_DYLD_INSERT_LIBRARIES="$(DYLIB_PATH)" \
+		SIMCTL_CHILD_PEPPER_PORT="$(PORT)" \
+		SIMCTL_CHILD_PEPPER_SIM_UDID="$(SIMULATOR_ID)" \
+		SIMCTL_CHILD_PEPPER_ADAPTER="$(ADAPTER_TYPE)" \
+		SIMCTL_CHILD_PEPPER_SKIP_PERMISSIONS="$${PEPPER_AGENT_TYPE:+1}" \
+		xcrun simctl launch "$(SIMULATOR_ID)" "$(BUNDLE_ID)" 2>&1) || { \
 		if echo "$$LAUNCH_OUTPUT" | grep -qi "domain.*error\|unable to lookup.*application\|not found"; then \
 			echo "App not installed on $(SIMULATOR_ID). Auto-installing..."; \
 			$(MAKE) test-app SIMULATOR_ID="$(SIMULATOR_ID)" && \
-			LAUNCH_OUTPUT=$$(xcrun simctl launch "$(SIMULATOR_ID)" "$(BUNDLE_ID)" 2>&1) || { \
+			LAUNCH_OUTPUT=$$(SIMCTL_CHILD_DYLD_INSERT_LIBRARIES="$(DYLIB_PATH)" \
+				SIMCTL_CHILD_PEPPER_PORT="$(PORT)" \
+				SIMCTL_CHILD_PEPPER_SIM_UDID="$(SIMULATOR_ID)" \
+				SIMCTL_CHILD_PEPPER_ADAPTER="$(ADAPTER_TYPE)" \
+				SIMCTL_CHILD_PEPPER_SKIP_PERMISSIONS="$${PEPPER_AGENT_TYPE:+1}" \
+				xcrun simctl launch "$(SIMULATOR_ID)" "$(BUNDLE_ID)" 2>&1) || { \
 				echo "$$LAUNCH_OUTPUT" >&2; exit 1; \
 			}; \
 		else \
