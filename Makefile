@@ -99,7 +99,9 @@ launch:
 			xcrun simctl privacy "$(SIMULATOR_ID)" grant $$perm "$(BUNDLE_ID)" 2>/dev/null || true; \
 		done; \
 	fi
-	@xcrun simctl spawn "$(SIMULATOR_ID)" launchctl setenv DYLD_INSERT_LIBRARIES "$(DYLIB_PATH)"
+	@# DYLD_INSERT_LIBRARIES is a restricted var — launchctl setenv silently drops it.
+	@# Inject via SIMCTL_CHILD_ at exec() time instead (see simctl launch call below).
+	@# Non-DYLD_ vars work fine via launchctl setenv.
 	@xcrun simctl spawn "$(SIMULATOR_ID)" launchctl setenv PEPPER_PORT "$(PORT)"
 	@xcrun simctl spawn "$(SIMULATOR_ID)" launchctl setenv PEPPER_SIM_UDID "$(SIMULATOR_ID)"
 	@xcrun simctl spawn "$(SIMULATOR_ID)" launchctl setenv PEPPER_ADAPTER "$(ADAPTER_TYPE)"
@@ -127,7 +129,6 @@ launch:
 			echo "$$LAUNCH_OUTPUT" >&2; exit 1; \
 		fi; \
 	}; echo "$$LAUNCH_OUTPUT"
-	@xcrun simctl spawn "$(SIMULATOR_ID)" launchctl unsetenv DYLD_INSERT_LIBRARIES
 	@xcrun simctl spawn "$(SIMULATOR_ID)" launchctl unsetenv PEPPER_PORT
 	@xcrun simctl spawn "$(SIMULATOR_ID)" launchctl unsetenv PEPPER_SIM_UDID
 	@xcrun simctl spawn "$(SIMULATOR_ID)" launchctl unsetenv PEPPER_ADAPTER

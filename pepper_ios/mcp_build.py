@@ -448,32 +448,35 @@ async def deploy_app(
             logger.warning(minos_warning)
             return f"Deploy blocked: {minos_warning}"
 
-    # Inject env vars via two mechanisms for cross-version compatibility:
-    # 1. launchctl setenv — works on iOS 18.4+ / 26.3+ where SIMCTL_CHILD_ was broken
-    # 2. SIMCTL_CHILD_ prefix — passes vars at exec() time, honored by dyld on iOS 26.3.1
-    #    where launchd-inherited DYLD_INSERT_LIBRARIES is stripped before dyld runs
-    inject_vars = {
-        "DYLD_INSERT_LIBRARIES": dylib,
+    # DYLD_INSERT_LIBRARIES must be passed via SIMCTL_CHILD_ at exec() time.
+    # launchctl setenv silently drops DYLD_INSERT_LIBRARIES (restricted var) on
+    # iOS 18.4+ / 26.3+ simulators — confirmed: setenv succeeds but getenv returns empty.
+    # Non-DYLD_ vars work fine via launchctl setenv (PEPPER_ADAPTER, PEPPER_SIM_UDID, etc.).
+    pepper_vars = {
         "PEPPER_ADAPTER": cfg.get("adapter_type", "generic"),
         "PEPPER_SIM_UDID": simulator,
     }
     if not skip_privacy:
-        inject_vars["PEPPER_SKIP_PERMISSIONS"] = "1"
+        pepper_vars["PEPPER_SKIP_PERMISSIONS"] = "1"
 
-    for key, val in inject_vars.items():
+    for key, val in pepper_vars.items():
         subprocess.run(
             ["xcrun", "simctl", "spawn", simulator, "launchctl", "setenv", key, val],
             capture_output=True, text=True,
         )
 
+    # Pass all vars (including DYLD_INSERT_LIBRARIES) via SIMCTL_CHILD_ at exec time.
+    # This is the only path that actually injects the dylib — launchctl-inherited
+    # DYLD_INSERT_LIBRARIES is stripped by dyld's restricted-env check before it runs.
     launch_env = os.environ.copy()
-    for key, val in inject_vars.items():
+    launch_env["SIMCTL_CHILD_DYLD_INSERT_LIBRARIES"] = dylib
+    for key, val in pepper_vars.items():
         launch_env[f"SIMCTL_CHILD_{key}"] = val
 
     result = subprocess.run(["xcrun", "simctl", "launch", simulator, bid], capture_output=True, text=True, env=launch_env)
 
-    # Clean up injected env vars so they don't leak to other apps
-    for key in inject_vars:
+    # Clean up non-DYLD_ vars from launchd so they don't leak to other apps
+    for key in pepper_vars:
         subprocess.run(
             ["xcrun", "simctl", "spawn", simulator, "launchctl", "unsetenv", key],
             capture_output=True, text=True,
