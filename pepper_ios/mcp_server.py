@@ -237,7 +237,15 @@ async def resolve_and_send(
     """
     logger.debug("resolve_and_send cmd=%s simulator=%s params=%s", cmd, simulator, params)
     try:
-        host, port, udid = discover_instance(simulator)
+        # Use session affinity: if no explicit sim, resolve via _resolve_simulator
+        # which remembers the last-used sim (set by deploy_sim).
+        resolved = simulator
+        if not resolved:
+            try:
+                resolved = _resolve_simulator(None)
+            except RuntimeError:
+                pass  # fall through to discover_instance(None)
+        host, port, udid = discover_instance(resolved)
     except RuntimeError as e:
         logger.warning("resolve_and_send cmd=%s discovery failed: %s", cmd, e)
         return {"status": "error", "error": str(e)}
