@@ -54,6 +54,7 @@ struct ConsoleHandler: PepperHandler {
                     "buffer_count": AnyCodable(interceptor.entryCount),
                     "total_captured": AnyCodable(interceptor.totalCaptured),
                     "total_dropped": AnyCodable(interceptor.totalDropped),
+                    "os_log_poller": AnyCodable(interceptor.isOSLogPollerActive),
                 ])
 
         case "log":

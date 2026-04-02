@@ -1,9 +1,13 @@
 import Foundation
+import OSLog
 import os
 
 /// Captures app stdout (print) and stderr (NSLog) output into a ring buffer for the `console` command.
 /// Redirects both through pipes, reads lines on background threads, stores them
 /// in a shared circular buffer, and tee's output to the originals so Xcode console still works.
+///
+/// On iOS 26+, NSLog routes through os_log instead of stderr. An OSLogStore poller
+/// supplements dup2 capture to pick up those entries.
 ///
 /// Usage:
 ///   PepperConsoleInterceptor.shared.install()
@@ -40,6 +44,10 @@ final class PepperConsoleInterceptor {
     private var stderrReaderThread: Thread?
     private var stdoutReaderThread: Thread?
 
+    /// OSLogStore poller for iOS 26+ (where NSLog routes through os_log, not stderr).
+    private var osLogPollTimer: DispatchSourceTimer?
+    private var osLogLastPollDate: Date?
+
     private init() {}
 
     // MARK: - Types
@@ -47,7 +55,7 @@ final class PepperConsoleInterceptor {
     struct ConsoleEntry {
         let timestampMs: Int64
         let message: String
-        let source: String  // "stdout" or "stderr"
+        let source: String  // "stdout", "stderr", or "os_log"
     }
 
     // MARK: - Lifecycle
@@ -104,7 +112,13 @@ final class PepperConsoleInterceptor {
             }
 
             self.isActive = true
-            pepperLog.info("Console capture started (buffer: \(self.bufferSize), stdout+stderr)", category: .bridge)
+
+            // On iOS 26+, NSLog routes through os_log instead of stderr.
+            // Start polling OSLogStore to capture those entries.
+            self.startOSLogPollerIfNeeded()
+
+            pepperLog.info(
+                "Console capture started (buffer: \(self.bufferSize), stdout+stderr+os_log)", category: .bridge)
         }
     }
 
@@ -149,7 +163,75 @@ final class PepperConsoleInterceptor {
             self.stderrReaderThread = nil
             self.stdoutReaderThread = nil
 
+            // Stop OSLogStore poller
+            self.osLogPollTimer?.cancel()
+            self.osLogPollTimer = nil
+            self.osLogLastPollDate = nil
+
             pepperLog.info("Console capture stopped (total captured: \(self.totalCaptured))", category: .bridge)
+        }
+    }
+
+    // MARK: - OSLogStore Poller (iOS 26+)
+
+    /// Starts a timer that polls OSLogStore for recent log entries from this process.
+    /// Only activates on iOS 26+ where NSLog routes through os_log instead of stderr.
+    private func startOSLogPollerIfNeeded() {
+        guard #available(iOS 26, *) else { return }
+
+        let store: OSLogStore
+        do {
+            store = try OSLogStore(scope: .currentProcessIdentifier)
+        } catch {
+            pepperLog.error("Console: failed to open OSLogStore: \(error)", category: .bridge)
+            return
+        }
+
+        osLogLastPollDate = Date()
+
+        let timer = DispatchSource.makeTimerSource(queue: DispatchQueue.global(qos: .utility))
+        timer.schedule(deadline: .now() + 0.5, repeating: 0.5)
+        timer.setEventHandler { [weak self] in
+            self?.pollOSLogStore(store)
+        }
+        osLogPollTimer = timer
+        timer.resume()
+
+        pepperLog.info("Console: OSLogStore poller started (iOS 26+ NSLog capture)", category: .bridge)
+    }
+
+    /// Queries OSLogStore for entries since the last poll and injects them into the buffer.
+    @available(iOS 15.0, *)
+    private func pollOSLogStore(_ store: OSLogStore) {
+        let since: Date = queue.sync { osLogLastPollDate ?? Date() }
+
+        let now = Date()
+
+        do {
+            let position = store.position(date: since)
+            let predicate = NSPredicate(format: "processIdentifier == %d", ProcessInfo.processInfo.processIdentifier)
+            let entries = try store.getEntries(at: position, matching: predicate)
+
+            for entry in entries {
+                guard let logEntry = entry as? OSLogEntryLog else { continue }
+                // Skip entries at or before our last poll boundary
+                guard logEntry.date > since else { continue }
+                // Skip Pepper's own internal logs
+                guard logEntry.subsystem != "com.pepper.control" else { continue }
+
+                let message = logEntry.composedMessage
+                guard !message.isEmpty else { continue }
+
+                let timestampMs = Int64(logEntry.date.timeIntervalSince1970 * 1000)
+                let entry = ConsoleEntry(timestampMs: timestampMs, message: message, source: "os_log")
+                appendEntry(entry)
+            }
+        } catch {
+            // Silently skip — transient failures are expected during app transitions
+        }
+
+        queue.async(flags: .barrier) {
+            self.osLogLastPollDate = now
         }
     }
 
@@ -338,6 +420,11 @@ final class PepperConsoleInterceptor {
             }
             return (page, total)
         }
+    }
+
+    /// Whether the OSLogStore poller is active (iOS 26+).
+    var isOSLogPollerActive: Bool {
+        queue.sync { osLogPollTimer != nil }
     }
 
     /// Number of entries in the buffer.
