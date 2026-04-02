@@ -26,7 +26,7 @@ source "$REPO_ROOT/scripts/lib/lockfile.sh"
 
 PIDFILE="build/logs/heartbeat.pid"
 EVENTS="$REPO_ROOT/build/logs/events.jsonl"
-INTERVAL=600          # 10 min between cycles — conserve tokens, babysit catches issues
+INTERVAL=300          # 5 min between cycles — faster verification throughput
 BACKOFF_THRESHOLD=3   # consecutive failures before backing off
 BACKOFF_CYCLES=2      # cycles to skip (2 * 600s = 20 min)
 LOCKFILE="build/logs/heartbeat.lock"
@@ -261,13 +261,18 @@ print(unclaimed)
     echo "$LAST_COMMENT" | grep -qE '(pepper-agent/|Verification Result|Rebased on main|conflicts resolved|Auto-merging|Code review:)' && continue
     # Human commented — check if it's an LGTM (approval) or feedback
     if echo "$LAST_COMMENT" | grep -qi "^lgtm"; then
-      # LGTM → merge the PR
-      echo "$(date +%H:%M) Human LGTM on PR #$pr — merging"
-      for lbl in awaiting:verifier awaiting:responder awaiting:human; do
-        gh pr edit "$pr" --repo skwallace36/Pepper-private --remove-label "$lbl" 2>/dev/null || true
-      done
-      gh pr edit "$pr" --repo skwallace36/Pepper-private --add-label "verified" 2>/dev/null || true
-      gh pr merge "$pr" --repo skwallace36/Pepper-private --squash --delete-branch 2>/dev/null || true
+      # LGTM → merge the PR (only if CI is not failing)
+      CI_STATUS=$(gh run list --repo skwallace36/Pepper-private --branch main --workflow=ci.yml --limit 1 --json conclusion --jq '.[0].conclusion // "none"' 2>/dev/null || echo "none")
+      if [ "$CI_STATUS" = "failure" ]; then
+        echo "$(date +%H:%M) LGTM on PR #$pr but CI is red — skipping merge"
+      else
+        echo "$(date +%H:%M) Human LGTM on PR #$pr — merging (CI: $CI_STATUS)"
+        for lbl in awaiting:verifier awaiting:responder awaiting:human; do
+          gh pr edit "$pr" --repo skwallace36/Pepper-private --remove-label "$lbl" 2>/dev/null || true
+        done
+        gh pr edit "$pr" --repo skwallace36/Pepper-private --add-label "verified" 2>/dev/null || true
+        gh pr merge "$pr" --repo skwallace36/Pepper-private --squash --delete-branch 2>/dev/null || true
+      fi
     else
       # Feedback → send to responder
       echo "$(date +%H:%M) Human commented on PR #$pr — relabeling to awaiting:responder"
