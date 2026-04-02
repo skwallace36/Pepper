@@ -4,7 +4,7 @@
 ## How This Works
 
 **Sources of truth:**
-- **Commands** — parsed from `dylib/commands/PepperDispatcher.swift` (`registerBuiltins()`)
+- **Commands** — parsed from `dylib/commands/PepperHandlerRegistry.swift` (`registerBuiltins()`)
 - **Variants** — parsed from handler switch cases (`case "action":` patterns)
 - **Status & test surfaces** — `test-app/coverage-status.json` (the only file you edit)
 
@@ -287,7 +287,7 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `verify` | — | untested | Any state | New command. Explicit pass/fail assertions on screen state. Supports text presence, element state (visible/enabled/value), and screen name checks. Batch mode for multiple assertions in one call. |
 | `assert` | — | untested | Any state | New command. Assertion primitives for agent-driven testing. Supports element state, text presence, and count assertions. |
 | `swizzle_check` | — | untested | Any app | New command. Calls each swizzled authorization API and verifies the swizzle intercepted (completion fired synchronously with auto-grant value). Covers: notifications, photos, tracking, camera, contacts, location, eventkit_events, eventkit_reminders. |
-| `formatters` | — | untested |  |  |
+| `formatters` | — | untested | Any app | New command. Returns active locale formatters (date, number, currency) and their current output. |
 | `swiftui_body` | start | untested |  |  |
 | `swiftui_body` | stop | untested |  |  |
 | `swiftui_body` | status | untested |  |  |
