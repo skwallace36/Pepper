@@ -68,4 +68,4 @@ jobs:
           python3 -m venv /tmp/pypi-venv
           /tmp/pypi-venv/bin/pip install --quiet build twine
           /tmp/pypi-venv/bin/python -m build
-          /tmp/pypi-venv/bin/twine upload dist/*
+          /tmp/pypi-venv/bin/twine upload --skip-existing dist/*
