@@ -918,6 +918,11 @@
     "status": "pass",
     "surface": "List tab (30 rows)"
   },
+  "formatters": {
+    "notes": "New command. Returns active locale formatters (date, number, currency) and their current output.",
+    "status": "untested",
+    "surface": "Any app"
+  },
   "swizzle_check": {
     "notes": "New command. Calls each swizzled authorization API and verifies the swizzle intercepted (completion fired synchronously with auto-grant value). Covers: notifications, photos, tracking, camera, contacts, location, eventkit_events, eventkit_reminders.",
     "status": "untested",

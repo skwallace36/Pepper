@@ -114,7 +114,7 @@ fi
 # Skipped on agent branches — generated files regenerate on merge to main.
 if [ "$IS_AGENT" = true ]; then
     pass "COVERAGE.md (skipped on agent branch)"
-elif echo "$STAGED_FILES" | grep -qE "(PepperDispatcher|Handler\.swift|coverage-status\.json)"; then
+elif echo "$STAGED_FILES" | grep -qE "(PepperDispatcher|PepperHandlerRegistry|Handler\.swift|coverage-status\.json)"; then
     if python3 "$REPO_DIR/scripts/gen-coverage.py" --check 2>/dev/null; then
         pass "COVERAGE.md in sync"
     else

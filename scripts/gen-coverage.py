@@ -2,7 +2,7 @@
 """Generate test-app/COVERAGE.md from PepperDispatcher source + coverage-status.json.
 
 Source of truth:
-  - Commands: dylib/commands/PepperDispatcher.swift (registerBuiltins)
+  - Commands: dylib/commands/PepperHandlerRegistry.swift (registerBuiltins)
   - Variants: dylib/commands/handlers/*Handler.swift (switch on action/mode/type/direction/value)
   - Status:   test-app/coverage-status.json (manually maintained)
 
@@ -18,6 +18,7 @@ import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DISPATCHER = os.path.join(ROOT, "dylib", "commands", "PepperDispatcher.swift")
+HANDLER_REGISTRY = os.path.join(ROOT, "dylib", "commands", "PepperHandlerRegistry.swift")
 HANDLERS_DIR = os.path.join(ROOT, "dylib", "commands", "handlers")
 STATUS_FILE = os.path.join(ROOT, "test-app", "coverage-status.json")
 OUTPUT_FILE = os.path.join(ROOT, "test-app", "COVERAGE.md")
@@ -37,12 +38,16 @@ SKIP_CASES = {
 
 
 def parse_registered_commands():
-    """Extract command names from PepperDispatcher.registerBuiltins()."""
-    with open(DISPATCHER) as f:
-        src = f.read()
-
-    m = re.search(r"func registerBuiltins\(\)\s*\{(.+)", src, re.DOTALL)
-    if not m:
+    """Extract command names from registerBuiltins() — now in PepperHandlerRegistry.swift."""
+    # Try the registry file first; fall back to the dispatcher for backwards compat.
+    for path in (HANDLER_REGISTRY, DISPATCHER):
+        if os.path.exists(path):
+            with open(path) as f:
+                src = f.read()
+            m = re.search(r"func registerBuiltins\(\)\s*\{(.+)", src, re.DOTALL)
+            if m:
+                break
+    else:
         sys.exit("Could not find registerBuiltins() in dispatcher")
     body = m.group(1)
 
@@ -178,7 +183,7 @@ def generate_markdown(commands, variants_map, status):
         "## How This Works",
         "",
         "**Sources of truth:**",
-        "- **Commands** — parsed from `dylib/commands/PepperDispatcher.swift` (`registerBuiltins()`)",
+        "- **Commands** — parsed from `dylib/commands/PepperHandlerRegistry.swift` (`registerBuiltins()`)",
         '- **Variants** — parsed from handler switch cases (`case "action":` patterns)',
         "- **Status & test surfaces** — `test-app/coverage-status.json` (the only file you edit)",
         "",

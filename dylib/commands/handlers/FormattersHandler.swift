@@ -15,7 +15,7 @@ struct FormattersHandler: PepperHandler {
     private struct DatePattern {
         let name: String
         let regex: NSRegularExpression
-        let clockFormat: String? // "12h", "24h", or nil
+        let clockFormat: String?  // "12h", "24h", or nil
     }
 
     private static let datePatterns: [DatePattern] = {
@@ -40,16 +40,21 @@ struct FormattersHandler: PepperHandler {
         add("date_iso", #"\b\d{4}-\d{2}-\d{2}\b"#)
 
         // Date patterns: Mon DD, YYYY or DD Mon YYYY
-        add("date_named_month",
-            #"\b(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+\d{1,2}(?:,?\s+\d{2,4})?\b"#)
-        add("date_day_month",
-            #"\b\d{1,2}\s+(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\b"#)
+        add(
+            "date_named_month",
+            #"\b(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+\d{1,2}(?:,?\s+\d{2,4})?\b"#
+        )
+        add(
+            "date_day_month",
+            #"\b\d{1,2}\s+(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\b"#
+        )
 
         // Date patterns: DD.MM.YYYY (European)
         add("date_dot", #"\b\d{1,2}\.\d{1,2}\.\d{2,4}\b"#)
 
         // Relative dates
-        add("relative_date",
+        add(
+            "relative_date",
             #"\b(?:today|yesterday|tomorrow|just now|\d+\s+(?:second|minute|hour|day|week|month|year)s?\s+ago)\b"#)
 
         return patterns
