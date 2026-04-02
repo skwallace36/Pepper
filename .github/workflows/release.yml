@@ -31,7 +31,7 @@ jobs:
       - name: Package framework
         run: cd build && zip -r Pepper.framework.zip Pepper.framework/
 
-      - name: Create GitHub Release
+      - name: Create GitHub Release (private)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -40,11 +40,31 @@ jobs:
             --generate-notes \
             build/Pepper.framework.zip
 
+      - name: Create GitHub Release (public)
+        env:
+          GH_TOKEN: ${{ secrets.PUBLIC_REPO_TOKEN }}
+        run: |
+          # Wait for mirror to push the tag to public repo
+          for i in 1 2 3 4 5; do
+            if gh release create "$GITHUB_REF_NAME" \
+              --repo skwallace36/Pepper \
+              --title "Pepper $GITHUB_REF_NAME" \
+              --generate-notes \
+              build/Pepper.framework.zip 2>/dev/null; then
+              echo "Public release created"
+              exit 0
+            fi
+            echo "Waiting for mirror to push tag... (attempt $i)"
+            sleep 30
+          done
+          echo "::warning::Could not create public release — mirror may not have pushed tag yet"
+
       - name: Publish to PyPI
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
         run: |
-          python3 -m pip install --quiet build twine
-          python3 -m build
-          python3 -m twine upload dist/*
+          python3 -m venv /tmp/pypi-venv
+          /tmp/pypi-venv/bin/pip install --quiet build twine
+          /tmp/pypi-venv/bin/python -m build
+          /tmp/pypi-venv/bin/twine upload dist/*

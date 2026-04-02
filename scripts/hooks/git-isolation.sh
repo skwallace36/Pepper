@@ -47,7 +47,8 @@ MSG
 fi
 
 # ── 2. Block direct pushes to main ───────────────────────────────────
-if echo "$cmd" | grep -qE '(^|[;&|]\s*)git\s+push'; then
+# Allow tag pushes (e.g. git push origin v0.1.1) — they don't push a branch
+if echo "$cmd" | grep -qE '(^|[;&|]\s*)git\s+push' && ! echo "$cmd" | grep -qE 'git\s+push\s+\S+\s+v[0-9]'; then
   # Block if currently on main (pushing current branch = pushing main)
   if [ "$branch" = "main" ]; then
     cat >&2 <<'MSG'
