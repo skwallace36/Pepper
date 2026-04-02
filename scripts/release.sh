@@ -3,10 +3,10 @@
 # Usage: scripts/release.sh <patch|minor|major>
 #
 # Steps:
-#   1. Validate: on main, clean tree, version not already tagged
+#   1. Validate: on main, clean tree, not already tagged
 #   2. Bump version in pyproject.toml + pepper_ios/__init__.py
-#   3. Commit the bump
-#   4. Tag and push (triggers mirror → release → PyPI via CI)
+#   3. Create a PR for the version bump, merge it
+#   4. Tag main and push the tag (triggers mirror → release → PyPI via CI)
 #
 # The CI pipeline handles everything after the tag push:
 #   mirror-code.yml  →  rewrites + pushes to public repo (including tag)
@@ -67,7 +67,10 @@ fi
 
 echo "Bumping: $CURRENT → $NEW ($BUMP)"
 
-# --- Bump version ---
+# --- Branch, bump, PR, merge ---
+RELEASE_BRANCH="release/$TAG"
+git checkout -b "$RELEASE_BRANCH"
+
 sed -i '' "s/version = \"$CURRENT\"/version = \"$NEW\"/" pyproject.toml
 sed -i '' "s/__version__ = \"$CURRENT\"/__version__ = \"$NEW\"/" pepper_ios/__init__.py
 
@@ -75,15 +78,22 @@ sed -i '' "s/__version__ = \"$CURRENT\"/__version__ = \"$NEW\"/" pepper_ios/__in
 PKG_VER=$(python3 -c "from pepper_ios import __version__; print(__version__)")
 if [ "$PKG_VER" != "$NEW" ]; then
     echo "ERROR: version mismatch after bump — pyproject says $NEW but __init__ says $PKG_VER"
-    git checkout -- pyproject.toml pepper_ios/__init__.py
+    git checkout main
+    git branch -D "$RELEASE_BRANCH"
     exit 1
 fi
 
-# --- Commit, tag, push ---
 git add pyproject.toml pepper_ios/__init__.py
 git commit -m "Release $TAG"
+git push -u origin "$RELEASE_BRANCH"
+gh pr create --title "Release $TAG" --body "Version bump: $CURRENT → $NEW"
+gh pr merge --squash --delete-branch
+
+# --- Tag and push ---
+git checkout main
+git pull origin main --quiet
 git tag "$TAG"
-git push origin main --follow-tags
+git push origin "$TAG"
 
 echo ""
 echo "=== Released $TAG ==="
