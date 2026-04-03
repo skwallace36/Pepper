@@ -76,15 +76,11 @@ struct HeapSnapshotHandler: PepperHandler {
         Self.savedSnapshot = counts
         Self.snapshotTime = Date()
 
-        let sorted = counts.sorted { $0.value > $1.value }.prefix(30)
-        let topClasses = sorted.map { ["class": AnyCodable($0.key), "count": AnyCodable($0.value)] }
-
         return .ok(
             id: command.id,
             data: [
                 "total_classes": AnyCodable(counts.count),
                 "total_instances": AnyCodable(counts.values.reduce(0, +)),
-                "top_30": AnyCodable(topClasses),
                 "memory": AnyCodable(getMemoryInfo()),
             ])
     }
