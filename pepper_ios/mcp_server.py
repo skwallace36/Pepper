@@ -58,6 +58,7 @@ from .mcp_tools_biometric import register_biometric_tools
 from .mcp_tools_debug import register_debug_tools
 from .mcp_tools_dialog import register_dialog_tools
 from .mcp_tools_element import register_element_tools
+from .mcp_tools_issue import register_issue_tools
 from .mcp_tools_nav import register_nav_tools
 from .mcp_tools_network import register_network_tools
 from .mcp_tools_perf import register_perf_tools
@@ -963,7 +964,24 @@ register_element_tools(mcp, resolve_and_send_json, act_and_look)
 register_record_tools(mcp)
 register_sim_tools(mcp, resolve_and_send_json, _resolve_simulator)
 register_biometric_tools(mcp, _resolve_simulator)
-register_script_tools(mcp, act_and_look, resolve_and_send_json)
+async def _script_deploy(workspace, simulator, scheme=None, bundle_id=None, skip_privacy=False):
+    """Internal deploy for script replay — bypasses MCP tool decorator."""
+    success, build_msg = await _build_app(workspace, scheme, simulator)
+    if not success:
+        return build_msg
+    app_path = _find_built_app(workspace)
+    deploy_msg = await _deploy_app(
+        simulator,
+        send_fn=send_command,
+        bundle_id=bundle_id,
+        install_path=app_path,
+        workspace=workspace,
+        skip_privacy=skip_privacy,
+    )
+    return f"{build_msg}\n\n{deploy_msg}"
+
+register_script_tools(mcp, act_and_look, resolve_and_send_json, deploy_fn=_script_deploy)
+register_issue_tools(mcp)
 register_prompts(mcp)
 
 
@@ -1111,6 +1129,11 @@ async def deploy_sim(
         workspace=workspace,
         skip_privacy=skip_privacy,
     )
+
+    # Record the deploy step if a script recording is active
+    from .mcp_scripts import maybe_record_step
+    maybe_record_step("deploy", {"workspace": workspace, "scheme": scheme}, sim_key=simulator)
+
     return f"{build_msg}\n\n{deploy_msg}"
 
 

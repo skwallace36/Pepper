@@ -457,14 +457,17 @@ if [ "$MAX_INSTANCES" -gt 1 ] && [ "$RUNNING" -gt 0 ]; then
   AGENT_NUM=$((AGENT_NUM + RUNNING))
 fi
 
-# Resolve credentials from env
+# Resolve credentials — Keychain first, .env fallback
 AGENT_USER_VAR="AGENT${AGENT_NUM}_GITHUB_USERNAME"
 AGENT_EMAIL_VAR="AGENT${AGENT_NUM}_GITHUB_EMAIL"
 AGENT_PAT_VAR="AGENT${AGENT_NUM}_GITHUB_PAT"
 
 AGENT_USERNAME="${!AGENT_USER_VAR:-}"
 AGENT_EMAIL="${!AGENT_EMAIL_VAR:-}"
-AGENT_PAT="${!AGENT_PAT_VAR:-}"
+AGENT_PAT=$(security find-generic-password -a "agent-${AGENT_NUM}" -s "pepper-agent-pat" -w 2>/dev/null || echo "")
+if [ -z "$AGENT_PAT" ]; then
+  AGENT_PAT="${!AGENT_PAT_VAR:-}"
+fi
 
 if [ -n "$AGENT_USERNAME" ]; then
   export GIT_AUTHOR_NAME="$AGENT_USERNAME"
@@ -475,6 +478,7 @@ if [ -n "$AGENT_USERNAME" ]; then
   export GH_TOKEN="$AGENT_PAT"
   # Per-agent credential script (avoids global git config race between concurrent agents)
   ASKPASS_SCRIPT="/tmp/pepper-askpass-$$.sh"
+  install -m 700 /dev/null "$ASKPASS_SCRIPT"
   cat > "$ASKPASS_SCRIPT" <<ASKEOF
 #!/bin/sh
 case "\$1" in
@@ -482,7 +486,6 @@ case "\$1" in
   Password*) echo "$AGENT_PAT" ;;
 esac
 ASKEOF
-  chmod +x "$ASKPASS_SCRIPT"
   export GIT_ASKPASS="$ASKPASS_SCRIPT"
   export GIT_TERMINAL_PROMPT=0
   emit "identity" ",\"agent_num\":${AGENT_NUM},\"username\":\"${AGENT_USERNAME}\""

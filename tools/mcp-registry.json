@@ -110,6 +110,7 @@
     {"name": "timers", "category": "debug", "description": "Inspect active NSTimer and DispatchSourceTimer instances"},
     {"name": "undo_manager", "category": "state", "description": "Inspect NSUndoManager state and actions"},
     {"name": "webview", "category": "debug", "description": "Inspect and interact with WKWebView content"},
-    {"name": "frameworks", "category": "debug", "description": "List loaded dylibs and frameworks with versions, UUIDs, and segment info"}
+    {"name": "frameworks", "category": "debug", "description": "List loaded dylibs and frameworks with versions, UUIDs, and segment info"},
+    {"name": "report_issue", "category": "system", "description": "Generate a pre-filled GitHub issue link for bug reports (dev mode only)"}
   ]
 }
