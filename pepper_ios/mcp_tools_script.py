@@ -181,9 +181,23 @@ async def _replay(
                         f"Script '{script_data['name']}' failed at step {i + 1}/{len(steps)} "
                         f"(deploy):\n{text}"
                     )
+                # Post-deploy health check: verify Pepper is alive before continuing
+                if i < len(steps) - 1:
+                    await asyncio.sleep(max(wait_ms / 1000, 2))  # At least 2s settle
+                    try:
+                        probe = await act_and_look_fn(simulator, "look", {})
+                        probe_text = probe[-1].text if isinstance(probe, list) and probe else str(probe)
+                        if _is_connection_error(probe_text):
+                            return (
+                                f"Script '{script_data['name']}' failed after deploy: "
+                                f"Pepper not responding.\n{probe_text[:200]}"
+                            )
+                    except Exception as e:
+                        return (
+                            f"Script '{script_data['name']}' failed after deploy: "
+                            f"health check error: {e}"
+                        )
                 results.append(f"  {i + 1}. deploy ✓")
-                if i < len(steps) - 1 and wait_ms > 0:
-                    await asyncio.sleep(wait_ms / 1000)
                 i += 1
                 continue
 
@@ -194,15 +208,22 @@ async def _replay(
             else:
                 text = str(resp)
 
+            # Connection failures: act_and_look returns JSON string on error
+            if _is_connection_error(text):
+                return (
+                    f"Script '{script_data['name']}' failed at step {i + 1}/{len(steps)} "
+                    f"({tool}): Pepper connection lost.\n{text[:200]}"
+                )
+
             # Hard failures: always abort
-            if "APP CRASHED" in text[:100]:
+            if "APP CRASHED" in text[:200]:
                 return (
                     f"Script '{script_data['name']}' failed at step {i + 1}/{len(steps)} "
                     f"({tool}):\n{text}"
                 )
 
             # Soft failure: element not found — try to skip optional steps
-            if "Element not found" in text[:100]:
+            if "Element not found" in text[:200]:
                 skipped_to = _try_skip_ahead(text, steps, i)
                 if skipped_to is not None:
                     for s in range(i, skipped_to):
@@ -216,7 +237,7 @@ async def _replay(
                 )
 
             # Other errors
-            if "Error:" in text[:50]:
+            if "Error:" in text[:100] or '"status": "error"' in text[:100]:
                 return (
                     f"Script '{script_data['name']}' failed at step {i + 1}/{len(steps)} "
                     f"({tool}):\n{text}"
@@ -240,6 +261,21 @@ async def _replay(
     if isinstance(resp, list) and resp:
         summary += f"\n\n--- Final screen state ---\n{resp[-1].text}"
     return summary
+
+
+_CONNECTION_ERROR_PATTERNS = [
+    "No Pepper instance",
+    "Connection refused",
+    "connect call failed",
+    '"status": "error"',
+    "not running",
+]
+
+
+def _is_connection_error(text: str) -> bool:
+    """Check if response indicates Pepper is unreachable."""
+    check = text[:300]
+    return any(p in check for p in _CONNECTION_ERROR_PATTERNS)
 
 
 def _try_skip_ahead(error_text: str, steps: list, current_idx: int) -> int | None:
