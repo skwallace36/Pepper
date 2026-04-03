@@ -15,8 +15,10 @@ from datetime import datetime, timezone
 from .pepper_common import ADAPTERS_DIR, get_config, resolve_adapter_dir
 
 # Action tools that get recorded. Read-only tools (look, find, verify) are skipped.
+# These are dylib command names (not MCP tool names).
+# act_and_look passes the dylib command to maybe_record_step.
 RECORDABLE_TOOLS = frozenset({
-    "tap", "scroll", "swipe", "input_text", "navigate", "back",
+    "tap", "scroll", "swipe", "input", "navigate", "back",
     "dismiss", "dismiss_keyboard", "gesture", "dialog", "toggle",
 })
 
