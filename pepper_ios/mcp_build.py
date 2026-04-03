@@ -468,17 +468,24 @@ async def deploy_app(
             return f"Dylib auto-rebuild failed: {msg}"
         logger.info("Dylib rebuilt successfully")
 
-    # Session guard: refuse to deploy if another session owns this simulator
+    # Session guard: refuse to deploy if another *live* session owns this simulator.
+    # If the claiming PID is dead, the session is stale even if the app port is
+    # still alive — the MCP server that owned it is gone (e.g. after /mcp reconnect).
     session = pepper_sessions.is_claimed(simulator)
     if session and session.get("pid") != os.getpid():
-        label = session.get("label", "")
-        label_str = f" ({label})" if label else ""
-        return (
-            f"Simulator {simulator} is in use by another Pepper session "
-            f"(PID {session['pid']}{label_str}, claimed at {session.get('claimed_at', '?')}). "
-            f"Use a different simulator or wait for that session to finish.\n"
-            f"Tip: use `simulator action=list` to see all available simulators."
-        )
+        claiming_pid = session.get("pid", 0)
+        if claiming_pid > 0 and pepper_sessions._is_pid_alive(claiming_pid):
+            label = session.get("label", "")
+            label_str = f" ({label})" if label else ""
+            return (
+                f"Simulator {simulator} is in use by another Pepper session "
+                f"(PID {claiming_pid}{label_str}, claimed at {session.get('claimed_at', '?')}). "
+                f"Use a different simulator or wait for that session to finish.\n"
+                f"Tip: use `simulator action=list` to see all available simulators."
+            )
+        # Claiming PID is dead — take over the stale claim
+        logger.info("Taking over stale session for %s (PID %d is dead)", simulator, claiming_pid)
+        pepper_sessions._remove_session(simulator)
 
     # Ensure simulator is booted
     if not is_sim_booted(simulator):
