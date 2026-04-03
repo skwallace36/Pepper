@@ -177,6 +177,13 @@ async def _replay(
             await asyncio.sleep(wait_ms / 1000)
         i += 1
 
+    # Return summary with final screen state from last action
+    summary = f"Script '{script_data['name']}' completed ({len(steps)} steps):\n"
+    summary += "\n".join(results)
+    if isinstance(resp, list) and resp:
+        summary += f"\n\n--- Final screen state ---\n{resp[-1].text}"
+    return summary
+
 
 def _try_skip_ahead(error_text: str, steps: list, current_idx: int) -> int | None:
     """When a step fails with 'Element not found', check if a later step's
@@ -193,10 +200,3 @@ def _try_skip_ahead(error_text: str, steps: list, current_idx: int) -> int | Non
         if target and target.lower() in screen_text:
             return j
     return None
-
-    # Return summary with final screen state from last action
-    summary = f"Script '{script_data['name']}' completed ({len(steps)} steps):\n"
-    summary += "\n".join(results)
-    if isinstance(resp, list) and resp:
-        summary += f"\n\n--- Final screen state ---\n{resp[-1].text}"
-    return summary
