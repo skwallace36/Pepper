@@ -273,14 +273,26 @@ struct NavigateHandler: PepperHandler {
 
         pepperLog.info("Opening deep link: \(url.absoluteString)", category: .commands, commandID: command.id)
 
-        // Open the URL through UIApplication — this triggers AppDelegate's
-        // application(_:open:options:) which feeds into the full deep link pipeline:
-        // URL -> app's deep link resolver -> screen handler
-        UIApplication.shared.open(url, options: [:]) { success in
-            if !success {
-                pepperLog.warning(
-                    "UIApplication.open returned false for: \(url.absoluteString)", category: .commands,
-                    commandID: command.id)
+        // Deliver the URL directly to the app's delegate instead of going through
+        // the OS. UIApplication.open() with the app's own scheme doesn't reliably
+        // trigger the URL handler on iOS 26+ — the system may not route it back
+        // to the foreground app.
+        var delivered = false
+
+        // Try UIApplicationDelegate.application(_:open:options:) directly
+        if let appDelegate = UIApplication.shared.delegate,
+           appDelegate.responds(to: #selector(UIApplicationDelegate.application(_:open:options:))) {
+            delivered = appDelegate.application?(UIApplication.shared, open: url, options: [:]) ?? false
+        }
+
+        // Fallback: UIApplication.open (goes through the OS)
+        if !delivered {
+            UIApplication.shared.open(url, options: [:]) { success in
+                if !success {
+                    pepperLog.warning(
+                        "UIApplication.open returned false for: \(url.absoluteString)", category: .commands,
+                        commandID: command.id)
+                }
             }
         }
 

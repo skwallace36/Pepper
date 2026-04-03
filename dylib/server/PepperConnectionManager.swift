@@ -270,8 +270,9 @@ final class PepperConnectionManager {
     /// Timer for periodic stale connection cleanup.
     private var cleanupTimer: DispatchSourceTimer?
 
-    /// How long a connection can be idle before being cleaned up (5 minutes).
-    private static let staleTimeout: TimeInterval = 300
+    /// How long a connection can be idle before being cleaned up (30 seconds).
+    /// MCP reconnects create new connections — old ones should be reaped quickly.
+    private static let staleTimeout: TimeInterval = 30
 
     /// How often to check for stale connections (60 seconds).
     private static let cleanupInterval: TimeInterval = 60
