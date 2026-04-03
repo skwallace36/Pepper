@@ -68,6 +68,7 @@ struct NetworkHandler: PepperHandler {
         case "start":
             let bufferSize = command.params?["buffer_size"]?.intValue
             interceptor.install(bufferSize: bufferSize)
+            interceptor.broadcastEnabled = true
             PepperWebSocketInterceptor.shared.install(bufferSize: bufferSize)
             PepperURLSessionTracker.shared.install()
             return .ok(
@@ -78,6 +79,7 @@ struct NetworkHandler: PepperHandler {
                 ])
 
         case "stop":
+            interceptor.broadcastEnabled = false
             interceptor.uninstall()
             PepperWebSocketInterceptor.shared.uninstall()
             return .ok(

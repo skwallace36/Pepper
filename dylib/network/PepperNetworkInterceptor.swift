@@ -20,6 +20,11 @@ final class PepperNetworkInterceptor {
     /// Use `isIntercepting` for thread-safe reads from outside the queue.
     private var isActive = false
 
+    /// Whether to broadcast network events to WebSocket clients.
+    /// Only true when `network action=start` is called. Requests are still
+    /// recorded to the buffer regardless — this only controls the broadcast.
+    var broadcastEnabled = false
+
     /// Thread-safe read of isActive (called from URLProtocol threads).
     var isIntercepting: Bool {
         queue.sync { isActive }
@@ -322,13 +327,15 @@ final class PepperNetworkInterceptor {
             self.checkForDuplicates(tx)
         }
 
-        // Broadcast event to WebSocket clients
-        let event = PepperEvent(
-            event: "network_request",
-            data: tx.toDictionary()
-        )
-        DispatchQueue.main.async {
-            PepperPlane.shared.broadcast(event)
+        // Broadcast event to WebSocket clients (only when monitoring is active)
+        if broadcastEnabled {
+            let event = PepperEvent(
+                event: "network_request",
+                data: tx.toDictionary()
+            )
+            DispatchQueue.main.async {
+                PepperPlane.shared.broadcast(event)
+            }
         }
     }
 
@@ -366,12 +373,14 @@ final class PepperNetworkInterceptor {
             PepperFlightRecorder.shared.record(type: .network, summary: summary, referenceId: tx.id)
         }
 
-        // Broadcast event
-        var eventData = tx.toDictionary()
-        eventData["stream_event"] = AnyCodable("open")
-        let event = PepperEvent(event: "network_stream_start", data: eventData)
-        DispatchQueue.main.async {
-            PepperPlane.shared.broadcast(event)
+        // Broadcast event (only when monitoring is active)
+        if broadcastEnabled {
+            var eventData = tx.toDictionary()
+            eventData["stream_event"] = AnyCodable("open")
+            let event = PepperEvent(event: "network_stream_start", data: eventData)
+            DispatchQueue.main.async {
+                PepperPlane.shared.broadcast(event)
+            }
         }
     }
 
@@ -411,18 +420,20 @@ final class PepperNetworkInterceptor {
         }
 
         // Broadcast chunk event
-        let event = PepperEvent(
-            event: "network_stream_chunk",
-            data: [
-                "transaction_id": AnyCodable(transactionId),
-                "index": AnyCodable(self.streamingChunkCount(for: transactionId)),
-                "timestamp_ms": AnyCodable(nowMs),
-                "data": AnyCodable(chunkText),
-                "size_bytes": AnyCodable(chunkData.count),
-            ]
-        )
-        DispatchQueue.main.async {
-            PepperPlane.shared.broadcast(event)
+        if broadcastEnabled {
+            let event = PepperEvent(
+                event: "network_stream_chunk",
+                data: [
+                    "transaction_id": AnyCodable(transactionId),
+                    "index": AnyCodable(self.streamingChunkCount(for: transactionId)),
+                    "timestamp_ms": AnyCodable(nowMs),
+                    "data": AnyCodable(chunkText),
+                    "size_bytes": AnyCodable(chunkData.count),
+                ]
+            )
+            DispatchQueue.main.async {
+                PepperPlane.shared.broadcast(event)
+            }
         }
     }
 
@@ -451,16 +462,18 @@ final class PepperNetworkInterceptor {
             PepperFlightRecorder.shared.record(type: .network, summary: summary, referenceId: transactionId)
         }
 
-        // Broadcast close event
-        let event = PepperEvent(
-            event: "network_stream_end",
-            data: [
-                "transaction_id": AnyCodable(transactionId),
-                "error": AnyCodable(error as Any),
-            ]
-        )
-        DispatchQueue.main.async {
-            PepperPlane.shared.broadcast(event)
+        // Broadcast close event (only when monitoring is active)
+        if broadcastEnabled {
+            let event = PepperEvent(
+                event: "network_stream_end",
+                data: [
+                    "transaction_id": AnyCodable(transactionId),
+                    "error": AnyCodable(error as Any),
+                ]
+            )
+            DispatchQueue.main.async {
+                PepperPlane.shared.broadcast(event)
+            }
         }
     }
 
