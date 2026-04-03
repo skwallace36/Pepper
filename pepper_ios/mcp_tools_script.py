@@ -18,16 +18,36 @@ from .mcp_scripts import (
     start_recording,
     stop_recording,
 )
-from .pepper_common import json_dumps
+from .pepper_common import json_dumps, resolve_adapter_dir
 
 
-def register_script_tools(mcp, act_and_look_fn, resolve_and_send_fn):
+def _resolve_adapter_config() -> dict:
+    """Resolve adapter config from session context or .env."""
+    from .mcp_build import get_session_context
+    from .pepper_common import get_config
+    ctx = get_session_context()
+    adapter_type = ctx.get("adapter_type") or get_config().get("adapter_type")
+    if adapter_type:
+        adapter_dir = resolve_adapter_dir(adapter_type)
+        if adapter_dir:
+            import json, os
+            config_path = os.path.join(adapter_dir, "config.json")
+            try:
+                with open(config_path) as f:
+                    return json.load(f)
+            except (OSError, json.JSONDecodeError):
+                pass
+    return {}
+
+
+def register_script_tools(mcp, act_and_look_fn, resolve_and_send_fn, deploy_fn=None):
     """Register the script tool on the given MCP server.
 
     Args:
         mcp: FastMCP server instance.
         act_and_look_fn: async (simulator, cmd, params?, timeout?) -> list
         resolve_and_send_fn: async (simulator, cmd, params?, timeout?) -> str
+        deploy_fn: async (workspace, simulator, scheme?, bundle_id?, skip_privacy?) -> str
     """
 
     @mcp.tool()
@@ -75,7 +95,7 @@ def register_script_tools(mcp, act_and_look_fn, resolve_and_send_fn):
             if not data:
                 available = [s["name"] for s in list_scripts()]
                 return f"Script '{name}' not found. Available: {available}"
-            return await _replay(data, act_and_look_fn, simulator, step_delay_ms)
+            return await _replay(data, act_and_look_fn, simulator, step_delay_ms, deploy_fn)
 
         elif action == "list":
             scripts = list_scripts()
@@ -108,6 +128,7 @@ async def _replay(
     act_and_look_fn,
     simulator: str | None,
     step_delay_ms: int | None,
+    deploy_fn=None,
 ) -> str:
     """Replay a script's steps and return a summary.
 
@@ -130,6 +151,42 @@ async def _replay(
         wait_ms = step_delay_ms if step_delay_ms is not None else step.get("wait_ms", 300)
 
         try:
+            # Deploy steps use the deploy function, not act_and_look
+            if tool == "deploy":
+                if not deploy_fn:
+                    return (
+                        f"Script '{script_data['name']}' has a deploy step but no deploy "
+                        f"function is available."
+                    )
+                # Resolve deploy params: step params > adapter config > error
+                adapter_cfg = _resolve_adapter_config()
+                ws = params.get("workspace") or adapter_cfg.get("workspace", "")
+                if ws:
+                    import os
+                    ws = os.path.expanduser(ws)
+                if not ws:
+                    return (
+                        f"Script '{script_data['name']}' deploy step has no workspace. "
+                        f"Set 'workspace' in adapter config.json or the step params."
+                    )
+                text = await deploy_fn(
+                    workspace=ws,
+                    simulator=simulator or params.get("simulator", ""),
+                    scheme=params.get("scheme") or adapter_cfg.get("scheme"),
+                    bundle_id=params.get("bundle_id") or adapter_cfg.get("bundle_id"),
+                    skip_privacy=params.get("skip_privacy", False),
+                )
+                if "Error" in text[:50] or "failed" in text[:50].lower():
+                    return (
+                        f"Script '{script_data['name']}' failed at step {i + 1}/{len(steps)} "
+                        f"(deploy):\n{text}"
+                    )
+                results.append(f"  {i + 1}. deploy ✓")
+                if i < len(steps) - 1 and wait_ms > 0:
+                    await asyncio.sleep(wait_ms / 1000)
+                i += 1
+                continue
+
             resp = await act_and_look_fn(simulator, tool, params)
             # act_and_look returns list of TextContent or a string
             if isinstance(resp, list):

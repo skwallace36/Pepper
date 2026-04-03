@@ -20,6 +20,7 @@ from .pepper_common import ADAPTERS_DIR, get_config, resolve_adapter_dir
 RECORDABLE_TOOLS = frozenset({
     "tap", "scroll", "swipe", "input", "navigate", "back",
     "dismiss", "dismiss_keyboard", "gesture", "dialog", "toggle",
+    "deploy",
 })
 
 # Active recordings keyed by simulator UDID (or "default" for single-sim).
