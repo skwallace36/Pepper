@@ -267,9 +267,50 @@ struct ScrollHandler: PepperHandler {
         let resolved = resolveScrollTarget(
             command: command, scrollViewID: scrollViewID, scrollViewClass: scrollViewClass, in: window)
 
-        // When we have a resolved scroll view on a presented sheet, use direct contentOffset
-        // manipulation to bypass HID hit-testing (which routes touches to the view behind the sheet).
+        // For scroll views on presented sheets: use HID with the swipe starting
+        // inside the scroll view's bounds. Direct contentOffset doesn't work on
+        // SwiftUI HostingScrollView (SwiftUI overrides the offset during layout).
+        // HID works because the sheet's views are hit-tested first (front-to-back).
         if let resolved = resolved, isViewOnPresentedSheet(resolved.scrollView) {
+            let center = resolved.center
+            let from: CGPoint
+            let to: CGPoint
+            switch direction.lowercased() {
+            case "down":
+                from = center
+                to = CGPoint(x: center.x, y: center.y - amount)
+            case "up":
+                from = center
+                to = CGPoint(x: center.x, y: center.y + amount)
+            case "left":
+                from = center
+                to = CGPoint(x: center.x + amount, y: center.y)
+            case "right":
+                from = center
+                to = CGPoint(x: center.x - amount, y: center.y)
+            default:
+                return .error(id: command.id, message: "Invalid direction: \(direction)")
+            }
+
+            logger.info("Scroll \(direction) on sheet via HID: (\(from.x),\(from.y)) → (\(to.x),\(to.y))")
+            PepperTouchVisualizer.shared.showSwipe(from: from, to: to)
+            let success = PepperHIDEventSynthesizer.shared.performSwipe(
+                from: from, to: to, duration: duration, in: window)
+
+            if success {
+                return .action(
+                    id: command.id, action: "scroll", target: "\(direction) \(Int(amount))pt",
+                    extra: [
+                        "description": AnyCodable("Scrolled \(direction) \(Int(amount))pt"),
+                        "direction": AnyCodable(direction),
+                        "amount": AnyCodable(Double(amount)),
+                        "gesture": AnyCodable([
+                            "from": AnyCodable(["x": AnyCodable(Double(from.x)), "y": AnyCodable(Double(from.y))]),
+                            "to": AnyCodable(["x": AnyCodable(Double(to.x)), "y": AnyCodable(Double(to.y))]),
+                        ]),
+                    ])
+            }
+            // Fall back to direct offset if HID fails
             return scrollDirectly(
                 resolved.scrollView, direction: direction, amount: amount, command: command)
         }
@@ -369,7 +410,33 @@ struct ScrollHandler: PepperHandler {
         logger.info(
             "Scroll \(direction) direct: offset (\(scrollView.contentOffset.x),\(scrollView.contentOffset.y)) → (\(newOffset.x),\(newOffset.y))"
         )
-        scrollView.setContentOffset(newOffset, animated: true)
+
+        // Strategy 1: Direct contentOffset (works for UIKit scroll views)
+        scrollView.setContentOffset(newOffset, animated: false)
+        scrollView.layoutIfNeeded()
+
+        // Strategy 2: If the scroll view didn't move (SwiftUI HostingScrollView
+        // overrides contentOffset), find a child view at the target offset and
+        // use scrollRectToVisible on it — this triggers SwiftUI's internal
+        // scroll coordination.
+        if abs(scrollView.contentOffset.x - newOffset.x) > 1
+            || abs(scrollView.contentOffset.y - newOffset.y) > 1
+        {
+            // Target rect in the scroll view's content coordinate space
+            let targetRect = CGRect(
+                x: newOffset.x, y: newOffset.y,
+                width: scrollView.bounds.width, height: scrollView.bounds.height
+            )
+            scrollView.scrollRectToVisible(targetRect, animated: true)
+
+            // Strategy 3: CADisplayLink-based offset forcing — set the offset
+            // after SwiftUI's layout pass completes
+            let sv = scrollView
+            let target = newOffset
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                sv.setContentOffset(target, animated: true)
+            }
+        }
 
         return .action(
             id: command.id, action: "scroll", target: "\(direction) \(Int(amount))pt",
@@ -383,6 +450,37 @@ struct ScrollHandler: PepperHandler {
                     "y": AnyCodable(Double(newOffset.y)),
                 ]),
             ])
+    }
+
+    // MARK: - Sheet gesture suppression
+
+    /// Temporarily disable pan gesture recognizers on ancestor scroll views and
+    /// sheet containers so HID touches reach the target horizontal scroll view
+    /// instead of being intercepted by parent vertical scrollers or sheet dismiss.
+    /// Returns the gestures that were disabled (caller must restore them).
+    private func suppressSheetPanGestures(for view: UIView) -> [(UIGestureRecognizer, Bool)] {
+        var suppressed: [(UIGestureRecognizer, Bool)] = []
+        // Walk up from the scroll view, suppressing ALL pan gestures on ancestors.
+        // This includes: parent UIScrollViews (vertical scrollers), sheet presentation
+        // controllers, dimming views, etc.
+        var current: UIView? = view.superview
+        while let v = current {
+            for gr in v.gestureRecognizers ?? [] {
+                if gr is UIPanGestureRecognizer && !(gr is UISwipeGestureRecognizer) && gr.isEnabled {
+                    suppressed.append((gr, true))
+                    gr.isEnabled = false
+                }
+            }
+            current = v.superview
+        }
+        return suppressed
+    }
+
+    /// Restore previously suppressed gesture recognizers.
+    private func restoreGestures(_ gestures: [(UIGestureRecognizer, Bool)]) {
+        for (gr, wasEnabled) in gestures {
+            gr.isEnabled = wasEnabled
+        }
     }
 
     // MARK: - Presentation-aware helpers
