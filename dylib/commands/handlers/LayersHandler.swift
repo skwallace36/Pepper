@@ -75,22 +75,32 @@ struct LayersHandler: PepperHandler {
         }
         result["frame"] = AnyCodable(frameDict(windowFrame))
 
-        // Common properties
+        // Common properties — only include non-default values to reduce response size.
         var props: [String: AnyCodable] = [:]
-        props["cornerRadius"] = AnyCodable(Double(layer.cornerRadius))
-        props["masksToBounds"] = AnyCodable(layer.masksToBounds)
-        props["opacity"] = AnyCodable(Double(layer.opacity))
-        props["isHidden"] = AnyCodable(layer.isHidden)
-        props["borderWidth"] = AnyCodable(Double(layer.borderWidth))
+        if layer.cornerRadius != 0 {
+            props["cornerRadius"] = AnyCodable(Double(layer.cornerRadius))
+        }
+        if layer.masksToBounds {
+            props["masksToBounds"] = AnyCodable(true)
+        }
+        if layer.opacity != 1 {
+            props["opacity"] = AnyCodable(Double(layer.opacity))
+        }
+        if layer.isHidden {
+            props["isHidden"] = AnyCodable(true)
+        }
+        if layer.borderWidth > 0 {
+            props["borderWidth"] = AnyCodable(Double(layer.borderWidth))
+            if let border = layer.borderColor {
+                props["borderColor"] = AnyCodable(cgColorToHex(border))
+            }
+        }
 
         if let bg = layer.backgroundColor {
             props["backgroundColor"] = AnyCodable(cgColorToHex(bg))
         }
-        if let border = layer.borderColor {
-            props["borderColor"] = AnyCodable(cgColorToHex(border))
-        }
 
-        // Shadow
+        // Shadow — only when visible
         if layer.shadowOpacity > 0 {
             props["shadowColor"] = AnyCodable(cgColorToHex(layer.shadowColor ?? UIColor.black.cgColor))
             props["shadowOpacity"] = AnyCodable(Double(layer.shadowOpacity))
@@ -101,7 +111,10 @@ struct LayersHandler: PepperHandler {
             props["shadowRadius"] = AnyCodable(Double(layer.shadowRadius))
         }
 
-        props["sublayer_count"] = AnyCodable(layer.sublayers?.count ?? 0)
+        let sublayerCount = layer.sublayers?.count ?? 0
+        if sublayerCount > 0 {
+            props["sublayer_count"] = AnyCodable(sublayerCount)
+        }
 
         // Type-specific properties
         if let gradient = layer as? CAGradientLayer {
@@ -121,7 +134,9 @@ struct LayersHandler: PepperHandler {
             if let stroke = shape.strokeColor {
                 props["strokeColor"] = AnyCodable(cgColorToHex(stroke))
             }
-            props["lineWidth"] = AnyCodable(Double(shape.lineWidth))
+            if shape.lineWidth != 1 {
+                props["lineWidth"] = AnyCodable(Double(shape.lineWidth))
+            }
             if let path = shape.path {
                 let bounds = path.boundingBox
                 props["pathBounds"] = AnyCodable(frameDict(bounds))
