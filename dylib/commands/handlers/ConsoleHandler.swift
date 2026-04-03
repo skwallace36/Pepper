@@ -72,7 +72,7 @@ struct ConsoleHandler: PepperHandler {
                 .map { $0.trimmingCharacters(in: .whitespaces) }
                 .filter { !$0.isEmpty }
 
-            let (lines, total) = interceptor.recentLines(
+            let (lines, total, noiseCounts) = interceptor.recentLines(
                 limit: limit, offset: offset, filter: filter, sinceMs: sinceMs,
                 hideNoise: hideNoise, exclude: exclude)
             var data: [String: AnyCodable] = [
@@ -82,8 +82,12 @@ struct ConsoleHandler: PepperHandler {
                 "has_more": AnyCodable(offset + lines.count < total),
                 "lines": AnyCodable(lines.map { AnyCodable($0) }),
             ]
-            if hideNoise {
-                data["noise_filtered"] = AnyCodable(true)
+            if hideNoise && !noiseCounts.isEmpty {
+                let totalHidden = noiseCounts.values.reduce(0, +)
+                data["noise_summary"] = AnyCodable([
+                    "hidden": AnyCodable(totalHidden),
+                    "categories": AnyCodable(noiseCounts.mapValues { AnyCodable($0) }),
+                ])
             }
             if lines.count > 0 {
                 data["hint"] = AnyCodable(

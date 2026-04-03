@@ -570,54 +570,67 @@ final class PepperNetworkInterceptor {
 
     // MARK: - Noise Filtering
 
-    /// Known Apple/system domains that generate telemetry and health-check traffic.
+    /// Known Apple/system domains grouped by category.
     /// Matched as case-insensitive substrings against the request URL.
-    static let noiseDomains: [String] = [
-        // Apple telemetry & config
-        "bag.itunes.apple.com",
-        "xp.apple.com",
-        "configuration.apple.com",
-        "gsp-ssl.ls.apple.com",
-        "init.itunes.apple.com",
-        "identity.apple.com",
-        "gsa.apple.com",
-        "gsas.apple.com",
-        "albert.apple.com",
-        "static.ips.apple.com",
-        "mesu.apple.com",
-        "gdmf.apple.com",
-        "pancake.apple.com",
-        "sylvan.apple.com",
-        // Apple push / device management
-        "push.apple.com",
-        "deviceenrollment.apple.com",
-        "mdmenrollment.apple.com",
-        "iprofiles.apple.com",
-        // iCloud system services
-        "gateway.icloud.com",
-        "setup.icloud.com",
-        "mask.icloud.com",
-        "mask-h2.icloud.com",
-        "keyvalueservice.icloud.com",
-        // Analytics SDKs
-        "app-measurement.com",
-        "firebase-settings.crashlytics.com",
-        "firebaseinstallations.googleapis.com",
-        "app.link",  // Branch.io
-        "settings.crashlytics.com",
-        // Apple CDN / software updates
-        "swscan.apple.com",
-        "swcdn.apple.com",
-        "swdist.apple.com",
-        "oscdn.apple.com",
-        "updates.cdn-apple.com",
-        "updates-http.cdn-apple.com",
+    static let noiseCategoryDomains: [(category: String, domains: [String])] = [
+        (
+            "Apple telemetry",
+            [
+                "bag.itunes.apple.com", "xp.apple.com", "configuration.apple.com",
+                "gsp-ssl.ls.apple.com", "init.itunes.apple.com", "identity.apple.com",
+                "gsa.apple.com", "gsas.apple.com", "albert.apple.com",
+                "static.ips.apple.com", "mesu.apple.com", "gdmf.apple.com",
+                "pancake.apple.com", "sylvan.apple.com",
+            ]
+        ),
+        (
+            "Push/MDM",
+            [
+                "push.apple.com", "deviceenrollment.apple.com",
+                "mdmenrollment.apple.com", "iprofiles.apple.com",
+            ]
+        ),
+        (
+            "iCloud",
+            [
+                "gateway.icloud.com", "setup.icloud.com", "mask.icloud.com",
+                "mask-h2.icloud.com", "keyvalueservice.icloud.com",
+            ]
+        ),
+        (
+            "Analytics",
+            [
+                "app-measurement.com", "firebase-settings.crashlytics.com",
+                "firebaseinstallations.googleapis.com", "app.link",
+                "settings.crashlytics.com",
+            ]
+        ),
+        (
+            "Apple CDN",
+            [
+                "swscan.apple.com", "swcdn.apple.com", "swdist.apple.com",
+                "oscdn.apple.com", "updates.cdn-apple.com", "updates-http.cdn-apple.com",
+            ]
+        ),
     ]
+
+    /// Flat list for backward compat.
+    static let noiseDomains: [String] = noiseCategoryDomains.flatMap(\.domains)
 
     /// Check whether a URL matches any noise domain pattern.
     static func isNoise(_ url: String) -> Bool {
+        noiseCategory(url) != nil
+    }
+
+    /// Returns the noise category a URL belongs to, or nil.
+    static func noiseCategory(_ url: String) -> String? {
         let lower = url.lowercased()
-        return noiseDomains.contains { lower.contains($0) }
+        for (category, domains) in noiseCategoryDomains {
+            if domains.contains(where: { lower.contains($0) }) {
+                return category
+            }
+        }
+        return nil
     }
 
     /// Get recent transactions, optionally filtered by URL substring.
@@ -634,7 +647,7 @@ final class PepperNetworkInterceptor {
         sinceMs: Int64? = nil,
         hideNoise: Bool = true,
         exclude: [String]? = nil
-    ) -> (transactions: [NetworkTransaction], total: Int) {
+    ) -> (transactions: [NetworkTransaction], total: Int, noiseCounts: [String: Int]) {
         queue.sync {
             var results = buffer
             if let sinceMs = sinceMs {
@@ -643,8 +656,15 @@ final class PepperNetworkInterceptor {
             if let filter = filter, !filter.isEmpty {
                 results = results.filter { $0.request.url.localizedCaseInsensitiveContains(filter) }
             }
+            var noiseCounts: [String: Int] = [:]
             if hideNoise {
-                results = results.filter { !Self.isNoise($0.request.url) }
+                results = results.filter { tx in
+                    if let cat = Self.noiseCategory(tx.request.url) {
+                        noiseCounts[cat, default: 0] += 1
+                        return false
+                    }
+                    return true
+                }
             }
             if let exclude = exclude, !exclude.isEmpty {
                 results = results.filter { tx in
@@ -653,7 +673,7 @@ final class PepperNetworkInterceptor {
             }
             let total = results.count
             let afterOffset = results.dropLast(min(offset, results.count))
-            return (Array(afterOffset.suffix(limit)), total)
+            return (Array(afterOffset.suffix(limit)), total, noiseCounts)
         }
     }
 

@@ -317,74 +317,97 @@ final class PepperConsoleInterceptor {
 
     // MARK: - Noise Filtering
 
-    /// Known system framework log prefixes and substrings that are rarely useful to app developers.
+    /// Known system framework noise patterns grouped by category.
     /// Matched as case-insensitive substrings against each log line.
-    static let noisePatterns: [String] = [
-        // Networking internals
-        "[BoringSSL]",
-        "[CFNetwork",
-        "nw_protocol_",
-        "nw_connection_",
-        "nw_endpoint_",
-        "nw_socket_",
-        "nw_path_",
-        "nw_listener_",
-        "nw_resolver_",
-        "NSURLSession/NSURLConnection HTTP load failed",
-        "TCP Conn",
-        "TIC ",
-        // Metal / GPU
-        "[Metal]",
-        "Metal GPU Frame Capture",
-        "Compiler failed",
-        "shader compilation",
-        // AutoLayout
-        "Unable to simultaneously satisfy constraints",
-        "Will attempt to recover by breaking constraint",
-        "Make a symbolic breakpoint at UIViewAlertForUnsatisfiableConstraints",
-        // CoreData
-        "CoreData: sql:",
-        "CoreData: annotation:",
-        "CoreData: debug:",
-        // UIKit internals
-        "[UIFocus]",
-        "[Accessibility]",
-        "[AXMediaCommon]",
-        "[AXRuntime]",
-        "[LayoutConstraints]",
-        // Location services (periodic updates every ~5s)
-        "[CoreLocation]",
-        "[LocationService]",
-        "[CLLocationManager]",
-        "locationd",
-        "com.apple.locationd",
-        // Network reachability
-        "[NetworkReachability]",
-        "[SCNetworkReachability]",
-        // System services
-        "[BackgroundTask]",
-        "[RunningBoardServices]",
-        "[LaunchServices]",
-        "[MobileGestalt]",
-        "[TCC]",
-        "[SystemGroup]",
-        "[PerformanceData]",
-        "[GCController]",
-        "[CoreBluetooth]",
-        "[libnetwork",
-        // Audio
-        "AVAudioSession",
-        "AURemoteIO",
-        // Process lifecycle
-        "[ProcessSuspend]",
-        "[FBSSystemService]",
-        "[assertion]",
+    static let noiseCategoryPatterns: [(category: String, patterns: [String])] = [
+        (
+            "Networking",
+            [
+                "[BoringSSL]", "[CFNetwork", "nw_protocol_", "nw_connection_",
+                "nw_endpoint_", "nw_socket_", "nw_path_", "nw_listener_", "nw_resolver_",
+                "NSURLSession/NSURLConnection HTTP load failed", "TCP Conn", "TIC ",
+                "[libnetwork",
+            ]
+        ),
+        (
+            "Metal/GPU",
+            [
+                "[Metal]", "Metal GPU Frame Capture", "Compiler failed", "shader compilation",
+            ]
+        ),
+        (
+            "AutoLayout",
+            [
+                "Unable to simultaneously satisfy constraints",
+                "Will attempt to recover by breaking constraint",
+                "Make a symbolic breakpoint at UIViewAlertForUnsatisfiableConstraints",
+                "[LayoutConstraints]",
+            ]
+        ),
+        (
+            "CoreData",
+            [
+                "CoreData: sql:", "CoreData: annotation:", "CoreData: debug:",
+            ]
+        ),
+        (
+            "Accessibility",
+            [
+                "[UIFocus]", "[Accessibility]", "[AXMediaCommon]", "[AXRuntime]",
+            ]
+        ),
+        (
+            "Location",
+            [
+                "[CoreLocation]", "[LocationService]", "[CLLocationManager]",
+                "locationd", "com.apple.locationd",
+            ]
+        ),
+        (
+            "Reachability",
+            [
+                "[NetworkReachability]", "[SCNetworkReachability]",
+            ]
+        ),
+        (
+            "System",
+            [
+                "[BackgroundTask]", "[RunningBoardServices]", "[LaunchServices]",
+                "[MobileGestalt]", "[TCC]", "[SystemGroup]", "[PerformanceData]",
+                "[GCController]", "[CoreBluetooth]",
+            ]
+        ),
+        (
+            "Audio",
+            [
+                "AVAudioSession", "AURemoteIO",
+            ]
+        ),
+        (
+            "Lifecycle",
+            [
+                "[ProcessSuspend]", "[FBSSystemService]", "[assertion]",
+            ]
+        ),
     ]
+
+    /// Flat list for backward compat with isNoise().
+    static let noisePatterns: [String] = noiseCategoryPatterns.flatMap(\.patterns)
 
     /// Check whether a log message matches any known noise pattern.
     static func isNoise(_ message: String) -> Bool {
+        noiseCategory(message) != nil
+    }
+
+    /// Returns the noise category a message belongs to, or nil if it's not noise.
+    static func noiseCategory(_ message: String) -> String? {
         let lower = message.lowercased()
-        return noisePatterns.contains { lower.contains($0.lowercased()) }
+        for (category, patterns) in noiseCategoryPatterns {
+            if patterns.contains(where: { lower.contains($0.lowercased()) }) {
+                return category
+            }
+        }
+        return nil
     }
 
     // MARK: - Query
@@ -399,14 +422,21 @@ final class PepperConsoleInterceptor {
     func recentLines(
         limit: Int = 20, offset: Int = 0, filter: String? = nil, sinceMs: Int64? = nil,
         hideNoise: Bool = true, exclude: [String]? = nil
-    ) -> (lines: [[String: AnyCodable]], total: Int) {
+    ) -> (lines: [[String: AnyCodable]], total: Int, noiseCounts: [String: Int]) {
         queue.sync {
             var results = buffer
             if let sinceMs = sinceMs {
                 results = results.filter { $0.timestampMs >= sinceMs }
             }
+            var noiseCounts: [String: Int] = [:]
             if hideNoise {
-                results = results.filter { !PepperConsoleInterceptor.isNoise($0.message) }
+                results = results.filter { entry in
+                    if let cat = PepperConsoleInterceptor.noiseCategory(entry.message) {
+                        noiseCounts[cat, default: 0] += 1
+                        return false
+                    }
+                    return true
+                }
             }
             if let exclude = exclude, !exclude.isEmpty {
                 let lowerExclude = exclude.map { $0.lowercased() }
@@ -427,7 +457,7 @@ final class PepperConsoleInterceptor {
                     "source": AnyCodable(entry.source),
                 ]
             }
-            return (page, total)
+            return (page, total, noiseCounts)
         }
     }
 

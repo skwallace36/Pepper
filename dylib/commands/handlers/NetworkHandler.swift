@@ -304,7 +304,7 @@ struct NetworkHandler: PepperHandler {
         let sinceMs: Int64? =
             (command.params?["since_ms"]?.value as? Int).map { Int64($0) }
             ?? (command.params?["since_ms"]?.value as? Int64)
-        let (transactions, total) = interceptor.recentTransactions(
+        let (transactions, total, noiseCounts) = interceptor.recentTransactions(
             limit: limit, offset: offset, filter: filter, sinceMs: sinceMs, hideNoise: hideNoise, exclude: exclude)
 
         var data: [String: AnyCodable] = [
@@ -317,8 +317,12 @@ struct NetworkHandler: PepperHandler {
                     AnyCodable($0.toDictionary(maxBody: maxBody, includeHeaders: includeHeaders))
                 }),
         ]
-        if hideNoise {
-            data["noise_filtered"] = AnyCodable(true)
+        if hideNoise && !noiseCounts.isEmpty {
+            let totalHidden = noiseCounts.values.reduce(0, +)
+            data["noise_summary"] = AnyCodable([
+                "hidden": AnyCodable(totalHidden),
+                "categories": AnyCodable(noiseCounts.mapValues { AnyCodable($0) }),
+            ])
         }
         if transactions.count > 0 {
             data["hint"] = AnyCodable(
