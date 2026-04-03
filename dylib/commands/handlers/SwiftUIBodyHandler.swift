@@ -84,12 +84,14 @@ struct SwiftUIBodyHandler: PepperHandler {
         let counts = tracker.currentCounts
         let totalEvals = counts.values.reduce(0, +)
 
-        return .ok(id: command.id, data: [
-            "active": AnyCodable(tracker.isActive),
-            "event_count": AnyCodable(tracker.totalEventCount),
-            "unique_view_types": AnyCodable(counts.count),
-            "total_evaluations": AnyCodable(totalEvals),
-        ])
+        return .ok(
+            id: command.id,
+            data: [
+                "active": AnyCodable(tracker.isActive),
+                "event_count": AnyCodable(tracker.totalEventCount),
+                "unique_view_types": AnyCodable(counts.count),
+                "total_evaluations": AnyCodable(totalEvals),
+            ])
     }
 
     private func handleLog(_ command: PepperCommand) -> PepperResponse {

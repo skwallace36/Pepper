@@ -43,7 +43,7 @@ def register_element_tools(mcp, resolve_and_send, act_and_look):
     @mcp.tool()
     async def tree(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
-        depth: int | None = Field(default=None, description="Max tree depth (default: 3 in summary, 50 in full mode; max: 50)"),
+        depth: int | None = Field(default=None, description="Max tree depth (default: 10 in summary, 50 in full mode; max: 50)"),
         element: str | None = Field(default=None, description="Scope to subtree of this accessibility ID"),
         detail: str = Field(
             default="summary",

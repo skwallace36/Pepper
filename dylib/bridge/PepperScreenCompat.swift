@@ -4,8 +4,9 @@ import UIKit
 extension UIScreen {
     static var pepper_screen: UIScreen {
         if #available(iOS 26.0, *),
-           let scene = UIApplication.shared.connectedScenes
-               .first(where: { $0 is UIWindowScene }) as? UIWindowScene {
+            let scene = UIApplication.shared.connectedScenes
+                .first(where: { $0 is UIWindowScene }) as? UIWindowScene
+        {
             return scene.screen
         }
         if #unavailable(iOS 26.0) {
@@ -18,8 +19,9 @@ extension UIScreen {
 extension UIWindow {
     static func pepper_makeWindow() -> UIWindow {
         if #available(iOS 26.0, *),
-           let scene = UIApplication.shared.connectedScenes
-               .first(where: { $0 is UIWindowScene }) as? UIWindowScene {
+            let scene = UIApplication.shared.connectedScenes
+                .first(where: { $0 is UIWindowScene }) as? UIWindowScene
+        {
             return UIWindow(windowScene: scene)
         }
         if #unavailable(iOS 26.0) {

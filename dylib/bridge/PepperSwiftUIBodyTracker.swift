@@ -289,10 +289,12 @@ final class PepperSwiftUIBodyTracker {
             let sectionName = "__swift5_proto"
             let segmentName = "__TEXT"
 
-            guard let sectionData = UnsafeRawPointer(header).withMemoryRebound(
-                to: mach_header_64.self, capacity: 1, {
-                    getsectiondata($0, segmentName, sectionName, &size)
-                })
+            guard
+                let sectionData = UnsafeRawPointer(header).withMemoryRebound(
+                    to: mach_header_64.self, capacity: 1,
+                    {
+                        getsectiondata($0, segmentName, sectionName, &size)
+                    })
             else { continue }
 
             // Each entry is a 4-byte relative pointer to a protocol conformance descriptor

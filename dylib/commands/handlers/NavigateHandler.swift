@@ -281,7 +281,8 @@ struct NavigateHandler: PepperHandler {
 
         // Try UIApplicationDelegate.application(_:open:options:) directly
         if let appDelegate = UIApplication.shared.delegate,
-           appDelegate.responds(to: #selector(UIApplicationDelegate.application(_:open:options:))) {
+            appDelegate.responds(to: #selector(UIApplicationDelegate.application(_:open:options:)))
+        {
             delivered = appDelegate.application?(UIApplication.shared, open: url, options: [:]) ?? false
         }
 
