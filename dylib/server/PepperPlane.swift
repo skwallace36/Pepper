@@ -253,6 +253,11 @@ public final class PepperPlane {
         server?.broadcast(event)
     }
 
+    /// Check if any connected client is subscribed to the given event type.
+    func hasSubscribers(for eventType: String) -> Bool {
+        server?.hasSubscribers(for: eventType) ?? false
+    }
+
     // MARK: - Swizzle Installation Tracking
 
     /// Calls `body()`, records the result, and logs before/after so crash logs

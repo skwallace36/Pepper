@@ -731,6 +731,7 @@ _CORE_INSTRUCTIONS = (
     "- To capture app logs (print + NSLog): use `console` start + log.\n"
     "- If a command returns APP CRASHED: investigate the crash, do NOT just redeploy.\n"
     "- If an element isn't found: the screen state is in the error. Read it before retrying.\n"
+    "- If `look` shows SYSTEM DIALOG BLOCKING APP: STOP and run `dialog dismiss_system` immediately. Do NOT use `tap` or `dialog dismiss button=` — system dialogs (permissions, notifications, location) live in SpringBoard, not the app. Only `dismiss_system` can reach them.\n"
     "- Use `deploy_sim(workspace, simulator)` to build + deploy. NEVER use raw `simctl launch`.\n\n"
     "TIPS:\n"
     "- Always `look` before interacting to confirm screen state.\n"

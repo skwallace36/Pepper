@@ -107,7 +107,10 @@ final class DialogHandler: PepperHandler {
                         "button": AnyCodable(buttonTitle ?? "default"),
                     ])
             } else {
-                return .error(id: command.id, message: "No pending dialog to dismiss (or button not found)")
+                let hint =
+                    "No in-app dialog found. If this is a system permission prompt, "
+                    + "use 'dialog dismiss_system' instead — system dialogs live in SpringBoard."
+                return .error(id: command.id, message: hint)
             }
 
         case "share_sheet":

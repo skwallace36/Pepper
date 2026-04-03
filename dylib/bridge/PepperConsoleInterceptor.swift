@@ -302,16 +302,18 @@ final class PepperConsoleInterceptor {
             : entry.message
         PepperFlightRecorder.shared.record(type: .console, summary: "[\(entry.source)] \(truncated)")
 
-        // Broadcast event for real-time streaming
-        let event = PepperEvent(
-            event: "console",
-            data: [
-                "timestamp_ms": AnyCodable(entry.timestampMs),
-                "message": AnyCodable(entry.message),
-                "source": AnyCodable(entry.source),
-            ])
-        DispatchQueue.main.async {
-            PepperPlane.shared.broadcast(event)
+        // Broadcast only if someone is subscribed (avoids JSON encoding per line)
+        if PepperPlane.shared.hasSubscribers(for: "console") {
+            let event = PepperEvent(
+                event: "console",
+                data: [
+                    "timestamp_ms": AnyCodable(entry.timestampMs),
+                    "message": AnyCodable(entry.message),
+                    "source": AnyCodable(entry.source),
+                ])
+            DispatchQueue.main.async {
+                PepperPlane.shared.broadcast(event)
+            }
         }
     }
 

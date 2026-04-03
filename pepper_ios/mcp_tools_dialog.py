@@ -202,7 +202,7 @@ def register_dialog_tools(mcp, resolve_and_send, resolve_simulator=None):
             default=None, description='JSON array of button titles for auto-dismiss (e.g. \'["Allow","OK"]\')'
         ),
     ) -> str:
-        """Interact with system dialogs — alerts, permission prompts, share sheets. Use dismiss_system to auto-handle permission dialogs."""
+        """Interact with dialogs. For system permission prompts (notifications, location, photos, etc.) ALWAYS use action='dismiss_system' — these are SpringBoard dialogs that 'dismiss' and 'tap' cannot reach. 'dismiss' with button= only works for in-app UIAlertControllers."""
         if action == "dismiss_system":
             result = await _dismiss_system_dialog(simulator, resolve_and_send, resolve_simulator)
             return json_dumps(result) if isinstance(result, dict) else result

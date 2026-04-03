@@ -67,6 +67,11 @@ final class PepperServer {
         connectionManager.broadcast(event: event)
     }
 
+    /// Check if any connected client is subscribed to the given event type.
+    func hasSubscribers(for eventType: String) -> Bool {
+        connectionManager.hasSubscribers(for: eventType)
+    }
+
     // MARK: - Command Processing
 
     private func handleTextMessage(_ data: Data, connectionID: String) {

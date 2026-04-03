@@ -386,14 +386,17 @@ def format_look(resp: dict) -> str:
     # System dialog warning
     dialog_data = data.get("system_dialog_blocking")
     if dialog_data:
+        lines.append("  ╔══════════════════════════════════════════════════════════╗")
+        lines.append("  ║  SYSTEM DIALOG BLOCKING APP — DISMISS BEFORE CONTINUING ║")
+        lines.append("  ╚══════════════════════════════════════════════════════════╝")
         for d in dialog_data.get("dialogs", []):
             title = d.get("title", "")
             buttons = d.get("buttons", [])
             btn_str = ", ".join(str(b) for b in buttons)
-            lines.append(f"  !! SYSTEM DIALOG: {title} [{btn_str}]")
-            for btn in buttons:
-                lines.append(f'       → dialog dismiss button="{btn}"')
-        lines.append("       → dialog dismiss_system (auto-detect and dismiss)")
+            lines.append(f"  Dialog: {title} [{btn_str}]")
+        lines.append("")
+        lines.append("  USE THIS COMMAND → dialog dismiss_system")
+        lines.append("  Do NOT tap buttons directly — they are in SpringBoard, not the app.")
         lines.append("")
 
     # Interactive rows
@@ -589,14 +592,17 @@ def format_look_slim(resp: dict) -> str:
     # System dialog warning
     dialog_data = data.get("system_dialog_blocking")
     if dialog_data:
+        lines.append("  ╔══════════════════════════════════════════════════════════╗")
+        lines.append("  ║  SYSTEM DIALOG BLOCKING APP — DISMISS BEFORE CONTINUING ║")
+        lines.append("  ╚══════════════════════════════════════════════════════════╝")
         for d in dialog_data.get("dialogs", []):
             title = d.get("title", "")
             buttons = d.get("buttons", [])
             btn_str = ", ".join(str(b) for b in buttons)
-            lines.append(f"  !! SYSTEM DIALOG: {title} [{btn_str}]")
-            for btn in buttons:
-                lines.append(f'       → dialog dismiss button="{btn}"')
-        lines.append("       → dialog dismiss_system (auto-detect and dismiss)")
+            lines.append(f"  Dialog: {title} [{btn_str}]")
+        lines.append("")
+        lines.append("  USE THIS COMMAND → dialog dismiss_system")
+        lines.append("  Do NOT tap buttons directly — they are in SpringBoard, not the app.")
         lines.append("")
 
     # Interactive elements — flat list, no y-range headers
@@ -940,15 +946,18 @@ def format_look_compact(resp: dict) -> str:
     # System dialog warning (compact but present)
     dialog_data = data.get("system_dialog_blocking")
     if dialog_data:
+        lines.append("  ╔══════════════════════════════════════════════════════════╗")
+        lines.append("  ║  SYSTEM DIALOG BLOCKING APP — DISMISS BEFORE CONTINUING ║")
+        lines.append("  ╚══════════════════════════════════════════════════════════╝")
         dialogs = dialog_data.get("dialogs", [])
         for d in dialogs:
             title = d.get("title", "")
             buttons = d.get("buttons", [])
             btn_str = ", ".join(str(b) for b in buttons) if buttons else ""
-            lines.append(f"  !! SYSTEM DIALOG: {title} [{btn_str}]")
-            for btn in buttons:
-                lines.append(f'       → dialog dismiss button="{btn}"')
-        lines.append("       → dialog dismiss_system (auto-detect and dismiss)")
+            lines.append(f"  Dialog: {title} [{btn_str}]")
+        lines.append("")
+        lines.append("  USE THIS COMMAND → dialog dismiss_system")
+        lines.append("  Do NOT tap buttons directly — they are in SpringBoard, not the app.")
 
     # Interactive elements
     if screen_changed or not prev_fp:

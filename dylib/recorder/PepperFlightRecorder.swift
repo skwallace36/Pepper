@@ -58,7 +58,9 @@ final class PepperFlightRecorder {
         interceptorsInstalled = true
 
         PepperNetworkInterceptor.shared.install()
-        PepperConsoleInterceptor.shared.install()
+        // Console interceptor is NOT auto-installed — it redirects stdout/stderr
+        // and processes every line, which causes unbounded memory growth on
+        // log-heavy apps. Only installed when `console action=start` is called.
         PepperRenderTracker.shared.install()
 
         record(type: .command, summary: "Flight recorder interceptors activated (deferred install)")

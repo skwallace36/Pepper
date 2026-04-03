@@ -211,6 +211,12 @@ final class PepperConnectionManager {
         broadcast(data: data)
     }
 
+    /// Check if any connected client is subscribed to the given event type.
+    func hasSubscribers(for eventType: String) -> Bool {
+        let snapshot = queue.sync { Array(connections.values) }
+        return snapshot.contains { $0.isSubscribed(to: eventType) }
+    }
+
     /// Broadcast an event to connections subscribed to its event type.
     func broadcast(event: PepperEvent) {
         guard let data = try? encoder.encode(event) else {
