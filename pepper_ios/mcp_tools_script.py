@@ -109,13 +109,22 @@ async def _replay(
     simulator: str | None,
     step_delay_ms: int | None,
 ) -> str:
-    """Replay a script's steps and return a summary."""
+    """Replay a script's steps and return a summary.
+
+    Resilient to optional screens: when a tap/input step fails with
+    "Element not found", checks if a later step's target exists on the
+    current screen and skips ahead. This handles flows that vary
+    (e.g. terms acceptance shown only on first launch).
+    """
     steps = script_data.get("steps", [])
     if not steps:
         return "Script has no steps."
 
     results = []
-    for i, step in enumerate(steps):
+    resp = None
+    i = 0
+    while i < len(steps):
+        step = steps[i]
         tool = step.get("tool", "")
         params = step.get("params", {})
         wait_ms = step_delay_ms if step_delay_ms is not None else step.get("wait_ms", 300)
@@ -128,12 +137,34 @@ async def _replay(
             else:
                 text = str(resp)
 
-            # Check for errors
-            if "Error:" in text[:50] or "APP CRASHED" in text[:50]:
+            # Hard failures: always abort
+            if "APP CRASHED" in text[:100]:
                 return (
                     f"Script '{script_data['name']}' failed at step {i + 1}/{len(steps)} "
                     f"({tool}):\n{text}"
                 )
+
+            # Soft failure: element not found — try to skip optional steps
+            if "Element not found" in text[:100]:
+                skipped_to = _try_skip_ahead(text, steps, i)
+                if skipped_to is not None:
+                    for s in range(i, skipped_to):
+                        results.append(f"  {s + 1}. {steps[s]['tool']} ⊘ (skipped)")
+                    i = skipped_to
+                    continue
+                # Can't skip — real failure
+                return (
+                    f"Script '{script_data['name']}' failed at step {i + 1}/{len(steps)} "
+                    f"({tool}):\n{text}"
+                )
+
+            # Other errors
+            if "Error:" in text[:50]:
+                return (
+                    f"Script '{script_data['name']}' failed at step {i + 1}/{len(steps)} "
+                    f"({tool}):\n{text}"
+                )
+
             results.append(f"  {i + 1}. {tool} ✓")
         except Exception as e:
             return (
@@ -144,6 +175,24 @@ async def _replay(
         # Wait between steps
         if i < len(steps) - 1 and wait_ms > 0:
             await asyncio.sleep(wait_ms / 1000)
+        i += 1
+
+
+def _try_skip_ahead(error_text: str, steps: list, current_idx: int) -> int | None:
+    """When a step fails with 'Element not found', check if a later step's
+    target exists on the current screen. Returns the index to skip to, or None."""
+    # Extract the screen content from the error
+    screen_text = error_text.lower()
+
+    # Look at the next few steps to see if any target is on this screen
+    for j in range(current_idx + 1, min(current_idx + 4, len(steps))):
+        future_step = steps[j]
+        future_params = future_step.get("params", {})
+        # Check if the future step's text target is visible
+        target = future_params.get("text", "")
+        if target and target.lower() in screen_text:
+            return j
+    return None
 
     # Return summary with final screen state from last action
     summary = f"Script '{script_data['name']}' completed ({len(steps)} steps):\n"
