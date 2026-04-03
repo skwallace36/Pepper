@@ -236,14 +236,32 @@ struct ScrollHandler: PepperHandler {
         if let parentText = command.params?["parent_of"]?.stringValue {
             let axis = command.params?["axis"]?.stringValue
             let (result, _) = PepperElementResolver.resolve(params: ["text": AnyCodable(parentText)], in: window)
-            if let result = result,
-                let sv = findAncestorScrollView(of: result.view, axis: axis)
-            {
-                let center = sv.convert(
-                    CGPoint(x: sv.bounds.midX, y: sv.bounds.midY), to: window)
-                return (sv, center)
+            if let result = result {
+                // If resolver returned window + tapPoint (SwiftUI interactive element),
+                // we can't walk the view hierarchy. Use findScrollViewAtPoint instead.
+                if result.view is UIWindow, let tapPoint = result.tapPoint {
+                    if let sv = findScrollViewAtPoint(tapPoint, in: window) {
+                        let scrollsH = sv.contentSize.width > sv.bounds.width + 1
+                        if axis == "horizontal" && !scrollsH {
+                            // Found scroll view doesn't match axis — skip
+                        } else if axis == "vertical"
+                            && !(sv.contentSize.height > sv.bounds.height + 1)
+                        {
+                            // Found scroll view doesn't match axis — skip
+                        } else {
+                            let center = sv.convert(
+                                CGPoint(x: sv.bounds.midX, y: sv.bounds.midY), to: window)
+                            return (sv, center)
+                        }
+                    }
+                }
+                // Normal UIView — walk ancestor chain
+                if let sv = findAncestorScrollView(of: result.view, axis: axis) {
+                    let center = sv.convert(
+                        CGPoint(x: sv.bounds.midX, y: sv.bounds.midY), to: window)
+                    return (sv, center)
+                }
             }
-            logger.warning("parent_of '\(parentText)' — no matching scroll view found")
         }
         if let atY = command.params?["at_y"]?.doubleValue {
             let point = CGPoint(x: window.bounds.midX, y: CGFloat(atY))
