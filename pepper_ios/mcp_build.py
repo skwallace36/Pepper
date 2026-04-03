@@ -513,10 +513,15 @@ async def deploy_app(
         if result.returncode != 0:
             return f"Install failed: {result.stderr.strip()}"
 
-    # Grant ALL privacy permissions at once (opt-out with skip_privacy=True).
-    # "grant all" covers every service simctl supports in one call.
+    # Grant common privacy permissions (opt-out with skip_privacy=True).
+    # Only grant what most apps need — bulk "grant all" triggers every iOS
+    # subsystem to initialize simultaneously, causing memory spikes and crashes.
     if not skip_privacy:
-        subprocess.run(["xcrun", "simctl", "privacy", simulator, "grant", "all", bid], capture_output=True, text=True)
+        for service in ["location-always", "photos", "contacts", "camera", "microphone"]:
+            subprocess.run(
+                ["xcrun", "simctl", "privacy", simulator, "grant", service, bid],
+                capture_output=True, text=True,
+            )
 
     # Enable VoiceOver accessibility flag so SwiftUI apps populate labels.
     # Many apps (Ice Cubes, etc.) only compute accessibilityLabel when VoiceOver is on.
