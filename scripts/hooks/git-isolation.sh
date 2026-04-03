@@ -26,6 +26,15 @@ if echo "$cmd" | grep -qE '^cd\s+(/[^ ]+)'; then
   cmd_dir=$(echo "$cmd" | sed -n 's/^cd \(\/[^ ]*\).*/\1/p')
 fi
 
+# Only enforce on the pepper repo — don't block other repos (adapter repo, app worktrees, etc.)
+PEPPER_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+if [ -n "$cmd_dir" ] && [ -d "$cmd_dir" ]; then
+  TARGET_ROOT="$(git -C "$cmd_dir" rev-parse --show-toplevel 2>/dev/null || echo "")"
+else
+  TARGET_ROOT="$REPO_ROOT"
+fi
+[ "$TARGET_ROOT" != "$PEPPER_ROOT" ] && exit 0
+
 if [ -n "$cmd_dir" ] && [ -d "$cmd_dir" ]; then
   branch=$(git -C "$cmd_dir" branch --show-current 2>/dev/null || echo "")
 else
