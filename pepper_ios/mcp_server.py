@@ -683,7 +683,17 @@ async def act_and_look(simulator: str | None, cmd: str, params: dict | None = No
         if look_resp.get("status") == "ok":
             screen_summary = format_look_compact(look_resp)
         else:
-            screen_summary = f"(look failed: {look_error_reason})"
+            # Partial state: try to get at least the screen name
+            partial = f"(look failed: {look_error_reason})"
+            try:
+                screen_resp = await bound_fn(port, "screen", {}, timeout=3)
+                if screen_resp.get("status") == "ok":
+                    screen_name = screen_resp.get("data", {}).get("screen", "")
+                    if screen_name:
+                        partial += f"\nScreen: {screen_name}"
+            except Exception:
+                pass
+            screen_summary = partial
     else:
         screen_summary = f"(look failed: {look_error_reason or 'no response from dylib'})"
 
