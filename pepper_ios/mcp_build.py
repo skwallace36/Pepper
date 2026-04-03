@@ -406,18 +406,22 @@ def _dylib_is_stale(dylib_path: str) -> bool:
     return False
 
 
-def _rebuild_dylib() -> tuple[bool, str]:
+def _rebuild_dylib(ios_target_version: str | None = None) -> tuple[bool, str]:
     """Rebuild the Pepper dylib. Returns (success, message)."""
     build_script = os.path.join(PEPPER_DIR, "tools", "build-dylib.sh")
     if not os.path.exists(build_script):
         return False, "build-dylib.sh not found — not a dev install"
+    env = os.environ.copy()
+    if ios_target_version:
+        env["IOS_TARGET_VERSION"] = ios_target_version
     result = subprocess.run(
         ["bash", build_script],
         capture_output=True, text=True, timeout=120,
-        cwd=PEPPER_DIR,
+        cwd=PEPPER_DIR, env=env,
     )
     if result.returncode == 0:
-        return True, "Dylib rebuilt"
+        target_msg = f" (IOS_TARGET_VERSION={ios_target_version})" if ios_target_version else ""
+        return True, f"Dylib rebuilt{target_msg}"
     return False, f"Dylib rebuild failed:\n{result.stderr[-500:]}"
 
 
@@ -533,14 +537,23 @@ async def deploy_app(
         text=True,
     )
 
-    # Check for minos mismatch that causes silent injection failure on iOS 26.3+
+    # Check for minos mismatch — auto-rebuild if needed
     if install_path and os.path.exists(install_path):
-        # dylib path may be the framework dir or the binary inside it
         dylib_for_check = dylib
         minos_warning = _check_minos_compat(install_path, dylib_for_check)
         if minos_warning:
-            logger.warning(minos_warning)
-            return f"Deploy blocked: {minos_warning}"
+            # Extract app minos and auto-rebuild
+            app_name = os.path.splitext(os.path.basename(install_path))[0]
+            app_binary = os.path.join(install_path, app_name)
+            app_minos = _get_binary_minos(app_binary) if os.path.exists(app_binary) else None
+            if app_minos:
+                logger.info("Auto-rebuilding dylib with IOS_TARGET_VERSION=%s", app_minos)
+                ok, msg = _rebuild_dylib(ios_target_version=app_minos)
+                if not ok:
+                    return f"Deploy blocked: {minos_warning}\nAuto-rebuild failed: {msg}"
+                logger.info("Dylib auto-rebuilt for minos %s", app_minos)
+            else:
+                return f"Deploy blocked: {minos_warning}"
 
     # DYLD_INSERT_LIBRARIES must be passed via SIMCTL_CHILD_ at exec() time.
     # launchctl setenv silently drops DYLD_INSERT_LIBRARIES (restricted var) on
