@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import hashlib
 import json
 import logging
 
@@ -47,6 +48,9 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
         resolve_and_send: async (simulator, cmd, params?, timeout?) -> dict
         act_and_look: async (simulator, cmd, params?, timeout?) -> str
     """
+
+    # Hash of last look response per simulator, for "no change" detection.
+    _last_look_hash: dict[str, str] = {}
 
     @mcp.tool()
     async def look(
@@ -176,6 +180,17 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
             text = format_look(resp)
         else:
             text = format_look_slim(resp)
+
+        # "No change" detection: hash the formatted text and compare to last call.
+        # Skip for raw/compact/visual modes (raw has its own use cases, compact
+        # already does diffing, visual always needs the screenshot).
+        if not raw and not compact and not visual:
+            text_hash = hashlib.md5(text.encode()).hexdigest()
+            sim_key = udid or "default"
+            if _last_look_hash.get(sim_key) == text_hash:
+                screen_name = data.get("screen", "")
+                return [TextContent(type="text", text=f"No change since last look. Screen: {screen_name}")]
+            _last_look_hash[sim_key] = text_hash
 
         result = [TextContent(type="text", text=text)]
         if screenshot_b64:
