@@ -273,17 +273,24 @@ struct NavigateHandler: PepperHandler {
 
         pepperLog.info("Opening deep link: \(url.absoluteString)", category: .commands, commandID: command.id)
 
-        // Deliver the URL directly to the app's delegate instead of going through
-        // the OS. UIApplication.open() with the app's own scheme doesn't reliably
-        // trigger the URL handler on iOS 26+ — the system may not route it back
-        // to the foreground app.
+        // Deliver the URL directly to the app instead of going through the OS.
+        // UIApplication.open() with the app's own scheme doesn't reliably trigger
+        // the URL handler on iOS 26+ — the system may not route it back.
         var delivered = false
 
-        // Try UIApplicationDelegate.application(_:open:options:) directly
-        if let appDelegate = UIApplication.shared.delegate,
-            appDelegate.responds(to: #selector(UIApplicationDelegate.application(_:open:options:)))
-        {
-            delivered = appDelegate.application?(UIApplication.shared, open: url, options: [:]) ?? false
+        // Deliver via app delegate. iOS 26 deprecated application(_:open:options:)
+        // and OpenURLOptionsKey, so we invoke dynamically to avoid compile errors.
+        if let appDelegate = UIApplication.shared.delegate as? NSObject {
+            let sel = NSSelectorFromString("application:openURL:options:")
+            if appDelegate.responds(to: sel) {
+                typealias OpenURLMethod =
+                    @convention(c) (
+                        AnyObject, Selector, UIApplication, URL, NSDictionary
+                    ) -> Bool
+                let imp = appDelegate.method(for: sel)
+                let method = unsafeBitCast(imp, to: OpenURLMethod.self)
+                delivered = method(appDelegate, sel, UIApplication.shared, url, [:])
+            }
         }
 
         // Fallback: UIApplication.open (goes through the OS)

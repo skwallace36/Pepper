@@ -72,7 +72,13 @@ fi
 # --- Detect architecture ---
 # Apple Silicon Macs run arm64 simulators; Intel runs x86_64
 ARCH=$(uname -m)
-IOS_TARGET_VERSION="${IOS_TARGET_VERSION:-18.0}"
+# Auto-detect iOS SDK major version so we compile against the same APIs
+# the host Xcode ships. This prevents "deprecated in iOS 26" errors from
+# being discovered only on machines running a newer Xcode.
+if [ -z "${IOS_TARGET_VERSION:-}" ]; then
+    SDK_VER=$(xcrun --sdk iphonesimulator --show-sdk-version 2>/dev/null || echo "18.0")
+    IOS_TARGET_VERSION="${SDK_VER%%.*}.0"
+fi
 if [ "$PLATFORM" = "device" ]; then
     TARGET="arm64-apple-ios${IOS_TARGET_VERSION}"
     SDK_NAME="iphoneos"
