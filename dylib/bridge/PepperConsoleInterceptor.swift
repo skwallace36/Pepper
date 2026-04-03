@@ -352,6 +352,15 @@ final class PepperConsoleInterceptor {
         "[AXMediaCommon]",
         "[AXRuntime]",
         "[LayoutConstraints]",
+        // Location services (periodic updates every ~5s)
+        "[CoreLocation]",
+        "[LocationService]",
+        "[CLLocationManager]",
+        "locationd",
+        "com.apple.locationd",
+        // Network reachability
+        "[NetworkReachability]",
+        "[SCNetworkReachability]",
         // System services
         "[BackgroundTask]",
         "[RunningBoardServices]",
