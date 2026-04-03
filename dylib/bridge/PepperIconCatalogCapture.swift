@@ -18,18 +18,28 @@ extension PepperIconCatalog {
     /// Capture a screen region, extract the foreground icon shape via brightness
     /// thresholding, and compute its dHash.
     func captureThresholdHash(frame: CGRect, window: UIWindow) -> Data? {
-        // Capture with slight padding to get background context
         let pad: CGFloat = 4
         let captureFrame = frame.insetBy(dx: -pad, dy: -pad)
         let size = 24
         let renderSize = CGSize(width: size, height: size)
         let renderer = UIGraphicsImageRenderer(size: renderSize)
-        let captured = renderer.image { ctx in
-            let sx = renderSize.width / captureFrame.width
-            let sy = renderSize.height / captureFrame.height
-            ctx.cgContext.scaleBy(x: sx, y: sy)
-            ctx.cgContext.translateBy(x: -captureFrame.origin.x, y: -captureFrame.origin.y)
-            window.drawHierarchy(in: window.bounds, afterScreenUpdates: false)
+        let captured: UIImage
+        if let snapshot = cachedSnapshot, cachedSnapshotWindow === window {
+            captured = renderer.image { ctx in
+                let sx = renderSize.width / captureFrame.width
+                let sy = renderSize.height / captureFrame.height
+                ctx.cgContext.scaleBy(x: sx, y: sy)
+                ctx.cgContext.translateBy(x: -captureFrame.origin.x, y: -captureFrame.origin.y)
+                snapshot.draw(in: window.bounds)
+            }
+        } else {
+            captured = renderer.image { ctx in
+                let sx = renderSize.width / captureFrame.width
+                let sy = renderSize.height / captureFrame.height
+                ctx.cgContext.scaleBy(x: sx, y: sy)
+                ctx.cgContext.translateBy(x: -captureFrame.origin.x, y: -captureFrame.origin.y)
+                window.drawHierarchy(in: window.bounds, afterScreenUpdates: false)
+            }
         }
 
         // Convert to grayscale pixels
@@ -101,12 +111,24 @@ extension PepperIconCatalog {
 
         let renderSize = CGSize(width: 24, height: 24)
         let renderer = UIGraphicsImageRenderer(size: renderSize)
-        let image = renderer.image { ctx in
-            let scaleX = renderSize.width / captureFrame.width
-            let scaleY = renderSize.height / captureFrame.height
-            ctx.cgContext.scaleBy(x: scaleX, y: scaleY)
-            ctx.cgContext.translateBy(x: -captureFrame.origin.x, y: -captureFrame.origin.y)
-            window.drawHierarchy(in: window.bounds, afterScreenUpdates: false)
+        let image: UIImage
+        if let snapshot = cachedSnapshot, cachedSnapshotWindow === window {
+            // Crop from cached snapshot — no drawHierarchy call
+            image = renderer.image { ctx in
+                let scaleX = renderSize.width / captureFrame.width
+                let scaleY = renderSize.height / captureFrame.height
+                ctx.cgContext.scaleBy(x: scaleX, y: scaleY)
+                ctx.cgContext.translateBy(x: -captureFrame.origin.x, y: -captureFrame.origin.y)
+                snapshot.draw(in: window.bounds)
+            }
+        } else {
+            image = renderer.image { ctx in
+                let scaleX = renderSize.width / captureFrame.width
+                let scaleY = renderSize.height / captureFrame.height
+                ctx.cgContext.scaleBy(x: scaleX, y: scaleY)
+                ctx.cgContext.translateBy(x: -captureFrame.origin.x, y: -captureFrame.origin.y)
+                window.drawHierarchy(in: window.bounds, afterScreenUpdates: false)
+            }
         }
 
         return computeDHash(image: image)
@@ -120,7 +142,6 @@ extension PepperIconCatalog {
     /// dominant color as the reference — correctly handling 3-class images where both
     /// the app background and decorative circle are similar brightness.
     func captureAndHashBgSub(frame: CGRect, window: UIWindow, scale: CGFloat) -> Data? {
-        // Same capture as captureAndHash
         let scaledW = frame.width * scale
         let scaledH = frame.height * scale
         let captureFrame = CGRect(
@@ -129,12 +150,23 @@ extension PepperIconCatalog {
         )
         let renderSize = CGSize(width: 24, height: 24)
         let renderer = UIGraphicsImageRenderer(size: renderSize)
-        let image = renderer.image { ctx in
-            let scaleX = renderSize.width / captureFrame.width
-            let scaleY = renderSize.height / captureFrame.height
-            ctx.cgContext.scaleBy(x: scaleX, y: scaleY)
-            ctx.cgContext.translateBy(x: -captureFrame.origin.x, y: -captureFrame.origin.y)
-            window.drawHierarchy(in: window.bounds, afterScreenUpdates: false)
+        let image: UIImage
+        if let snapshot = cachedSnapshot, cachedSnapshotWindow === window {
+            image = renderer.image { ctx in
+                let scaleX = renderSize.width / captureFrame.width
+                let scaleY = renderSize.height / captureFrame.height
+                ctx.cgContext.scaleBy(x: scaleX, y: scaleY)
+                ctx.cgContext.translateBy(x: -captureFrame.origin.x, y: -captureFrame.origin.y)
+                snapshot.draw(in: window.bounds)
+            }
+        } else {
+            image = renderer.image { ctx in
+                let scaleX = renderSize.width / captureFrame.width
+                let scaleY = renderSize.height / captureFrame.height
+                ctx.cgContext.scaleBy(x: scaleX, y: scaleY)
+                ctx.cgContext.translateBy(x: -captureFrame.origin.x, y: -captureFrame.origin.y)
+                window.drawHierarchy(in: window.bounds, afterScreenUpdates: false)
+            }
         }
         return computeDHashBgSub(image: image)
     }

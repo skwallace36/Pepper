@@ -28,6 +28,9 @@ extension ElementDiscoveryBridge {
 
         guard let window = UIWindow.pepper_keyWindow else { return [] }
 
+        // Snapshot the window once for icon identification (avoid N drawHierarchy calls)
+        PepperIconCatalog.shared.beginIdentifyBatch()
+
         let walkRoot: UIView = rootView ?? window
 
         // Phase 1: Enhanced accessibility walk (includes unlabeled interactive elements)
@@ -203,6 +206,9 @@ extension ElementDiscoveryBridge {
         }
 
         truncated = truncated || results.count >= maxElements
+
+        // Release window snapshot used for icon identification
+        PepperIconCatalog.shared.endIdentifyBatch()
 
         // Cache result for both window-scope and scoped calls
         lastInteractiveTruncated = truncated

@@ -26,7 +26,38 @@ final class PepperIconCatalog {
     var catalogBundle: String?
     private(set) var built = false
 
+    // Window snapshot cache — avoids repeated drawHierarchy calls within one introspection pass.
+    // Call beginIdentifyBatch() before a batch of identify() calls, endIdentifyBatch() after.
+    // Internal for extension access from PepperIconCatalogCapture.
+    var cachedSnapshot: UIImage?
+    var cachedSnapshotWindow: UIWindow?
+
+    // Result cache — same frame returns same result without re-rendering.
+    // Keyed by rounded frame string. Cleared on each batch.
+    var resultCache: [String: IconMatch?] = [:]
+
     private init() {}
+
+    // MARK: - Batch Lifecycle
+
+    /// Call before a batch of identify() calls (e.g., during introspection).
+    /// Captures the window once and caches it for all subsequent identify() calls.
+    func beginIdentifyBatch() {
+        guard let window = UIWindow.pepper_keyWindow else { return }
+        let renderer = UIGraphicsImageRenderer(size: window.bounds.size)
+        cachedSnapshot = renderer.image { _ in
+            window.drawHierarchy(in: window.bounds, afterScreenUpdates: false)
+        }
+        cachedSnapshotWindow = window
+        resultCache.removeAll()
+    }
+
+    /// Call after a batch of identify() calls to release the cached snapshot.
+    func endIdentifyBatch() {
+        cachedSnapshot = nil
+        cachedSnapshotWindow = nil
+        resultCache.removeAll()
+    }
 
     // MARK: - Catalog Build
 
@@ -363,6 +394,12 @@ final class PepperIconCatalog {
         guard let window = UIWindow.pepper_keyWindow else { return nil }
         guard frame.width >= 6 && frame.height >= 6 else { return nil }
 
+        // Check result cache (batch mode)
+        let cacheKey = "\(Int(frame.origin.x)),\(Int(frame.origin.y)),\(Int(frame.width)),\(Int(frame.height))"
+        if let cached = resultCache[cacheKey] {
+            return cached
+        }
+
         // Square non-square frames: icons are always square but accessibility frames
         // may not be (e.g., 28x36). Use the smaller dimension centered on the midpoint.
         let effectiveFrame: CGRect
@@ -409,7 +446,9 @@ final class PepperIconCatalog {
         }
 
         // Fallback: threshold-based matching for complex backgrounds (maps, gradients)
-        return bestMatch ?? identifyByThreshold(frame: effectiveFrame, window: window)
+        let result = bestMatch ?? identifyByThreshold(frame: effectiveFrame, window: window)
+        resultCache[cacheKey] = result
+        return result
     }
 
     /// Attempt identification at a single capture scale.
