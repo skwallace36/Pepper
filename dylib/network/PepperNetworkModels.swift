@@ -20,10 +20,12 @@ struct NetworkTransaction: Codable {
     /// Content type that triggered streaming detection (e.g. "text/event-stream").
     var streamContentType: String?
 
-    func toDictionary(maxBody: Int? = nil, includeHeaders: Bool = true) -> [String: AnyCodable] {
+    func toDictionary(maxBody: Int? = nil, includeHeaders: Bool = true, fullUrls: Bool = false) -> [String: AnyCodable]
+    {
         var dict: [String: AnyCodable] = [
             "id": AnyCodable(id),
-            "request": AnyCodable(request.toDictionary(maxBody: maxBody, includeHeaders: includeHeaders)),
+            "request": AnyCodable(
+                request.toDictionary(maxBody: maxBody, includeHeaders: includeHeaders, fullUrls: fullUrls)),
             "timing": AnyCodable(timing.toDictionary()),
         ]
         if let response = response {
@@ -66,9 +68,10 @@ struct NetworkRequestInfo: Codable {
     let originalBodySize: Int
     let timestampMs: Int64
 
-    func toDictionary(maxBody: Int? = nil, includeHeaders: Bool = true) -> [String: Any] {
+    func toDictionary(maxBody: Int? = nil, includeHeaders: Bool = true, fullUrls: Bool = false) -> [String: Any] {
+        let displayUrl = fullUrls ? url : Self.stripQuery(url)
         var dict: [String: Any] = [
-            "url": url,
+            "url": displayUrl,
             "method": method,
             "timestamp_ms": timestampMs,
             "original_body_size": originalBodySize,
@@ -89,6 +92,12 @@ struct NetworkRequestInfo: Codable {
             dict["body_encoding"] = encoding
         }
         return dict
+    }
+
+    /// Strip query string from URL for compact display.
+    static func stripQuery(_ url: String) -> String {
+        guard let idx = url.firstIndex(of: "?") else { return url }
+        return String(url[url.startIndex..<idx])
     }
 }
 

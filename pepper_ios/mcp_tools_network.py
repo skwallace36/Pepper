@@ -41,6 +41,10 @@ def register_network_tools(mcp, resolve_and_send):
         ),
         limit: int | None = Field(default=None, description="Max entries to return (for log action, default: 10)"),
         offset: int | None = Field(default=None, description="Skip this many recent entries for pagination (for log action, default: 0)"),
+        full_urls: bool | None = Field(
+            default=None,
+            description="Show full URLs with query strings (default: false — strips query params for compact output)",
+        ),
         include_headers: bool | None = Field(
             default=None,
             description="Include request/response headers in log output (default: false)",
@@ -152,6 +156,8 @@ Parameter relationships:
             params["limit"] = limit
         if offset is not None:
             params["offset"] = offset
+        if full_urls is not None:
+            params["full_urls"] = full_urls
         if include_headers is not None:
             params["include_headers"] = include_headers
         if include_body is not None:

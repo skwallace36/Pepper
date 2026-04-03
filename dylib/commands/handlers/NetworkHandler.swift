@@ -52,6 +52,10 @@ struct NetworkHandler: PepperHandler {
     let commandName = "network"
     private var logger: Logger { PepperLogger.logger(category: "network-handler") }
 
+    /// High-water mark: timestamp of the newest transaction returned by the last log call.
+    /// Used to auto-dedup when since_ms is not explicitly set.
+    private static var lastLogHighWaterMs: Int64 = 0
+
     func handle(_ command: PepperCommand) -> PepperResponse {
         guard let action = command.params?["action"]?.stringValue else {
             return .error(
@@ -280,6 +284,7 @@ struct NetworkHandler: PepperHandler {
         let filter = command.params?["filter"]?.stringValue
         let includeHeaders = command.params?["include_headers"]?.boolValue ?? false
         let includeBody = command.params?["include_body"]?.boolValue ?? false
+        let fullUrls = command.params?["full_urls"]?.boolValue ?? false
 
         // Noise filtering: hide_noise defaults to true, exclude is optional CSV
         let hideNoise = command.params?["hide_noise"]?.boolValue ?? true
@@ -301,11 +306,19 @@ struct NetworkHandler: PepperHandler {
         }
         let maxBody: Int? = maxBodyRaw > 0 ? maxBodyRaw : nil
 
-        let sinceMs: Int64? =
+        let explicitSinceMs: Int64? =
             (command.params?["since_ms"]?.value as? Int).map { Int64($0) }
             ?? (command.params?["since_ms"]?.value as? Int64)
+        // Auto-dedup: if no explicit since_ms and we have a high-water mark, use it
+        let sinceMs = explicitSinceMs ?? (Self.lastLogHighWaterMs > 0 ? Self.lastLogHighWaterMs : nil)
+
         let (transactions, total, noiseCounts) = interceptor.recentTransactions(
             limit: limit, offset: offset, filter: filter, sinceMs: sinceMs, hideNoise: hideNoise, exclude: exclude)
+
+        // Update high-water mark to newest transaction's start time
+        if let newest = transactions.last {
+            Self.lastLogHighWaterMs = newest.timing.startMs
+        }
 
         var data: [String: AnyCodable] = [
             "count": AnyCodable(transactions.count),
@@ -314,7 +327,7 @@ struct NetworkHandler: PepperHandler {
             "has_more": AnyCodable(offset + transactions.count < total),
             "transactions": AnyCodable(
                 transactions.map {
-                    AnyCodable($0.toDictionary(maxBody: maxBody, includeHeaders: includeHeaders))
+                    AnyCodable($0.toDictionary(maxBody: maxBody, includeHeaders: includeHeaders, fullUrls: fullUrls))
                 }),
         ]
         if hideNoise && !noiseCounts.isEmpty {
