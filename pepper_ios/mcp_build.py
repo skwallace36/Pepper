@@ -17,7 +17,7 @@ import tempfile
 from collections.abc import Callable
 
 from . import pepper_sessions
-from .pepper_common import PORT_DIR, get_config
+from .pepper_common import PEPPER_DIR, PORT_DIR, get_config
 from .pepper_format import format_look
 
 logger = logging.getLogger(__name__)
@@ -376,6 +376,51 @@ def _check_minos_compat(app_path: str, dylib_path: str) -> str | None:
     return None
 
 
+def _dylib_is_stale(dylib_path: str) -> bool:
+    """Check if the dylib is older than any source file in dylib/."""
+    if not os.path.exists(dylib_path):
+        return True
+    dylib_dir = os.path.join(PEPPER_DIR, "dylib")
+    if not os.path.isdir(dylib_dir):
+        return False  # Not a dev install — no source to compare
+    dylib_mtime = os.path.getmtime(dylib_path)
+    for root, _dirs, files in os.walk(dylib_dir):
+        for f in files:
+            if f.endswith((".swift", ".m", ".h", ".c")):
+                src_mtime = os.path.getmtime(os.path.join(root, f))
+                if src_mtime > dylib_mtime:
+                    return True
+    # Also check adapter source if present
+    adapters_dir = os.path.join(os.path.expanduser("~"), ".pepper", "adapters")
+    cfg = get_config()
+    adapter_type = cfg.get("adapter_type", "generic")
+    if adapter_type != "generic":
+        from .pepper_common import resolve_adapter_dir
+        adapter_dir = resolve_adapter_dir(adapter_type)
+        if adapter_dir:
+            for f in os.listdir(adapter_dir):
+                if f.endswith(".swift"):
+                    src_mtime = os.path.getmtime(os.path.join(adapter_dir, f))
+                    if src_mtime > dylib_mtime:
+                        return True
+    return False
+
+
+def _rebuild_dylib() -> tuple[bool, str]:
+    """Rebuild the Pepper dylib. Returns (success, message)."""
+    build_script = os.path.join(PEPPER_DIR, "tools", "build-dylib.sh")
+    if not os.path.exists(build_script):
+        return False, "build-dylib.sh not found — not a dev install"
+    result = subprocess.run(
+        ["bash", build_script],
+        capture_output=True, text=True, timeout=120,
+        cwd=PEPPER_DIR,
+    )
+    if result.returncode == 0:
+        return True, "Dylib rebuilt"
+    return False, f"Dylib rebuild failed:\n{result.stderr[-500:]}"
+
+
 async def deploy_app(
     simulator: str,
     send_fn: SendFn,
@@ -412,6 +457,16 @@ async def deploy_app(
             dylib = ensure_dylib()
         except Exception as e:
             return f"Pepper dylib not found at {dylib} and auto-download failed: {e}\nRun `make build` in pepper dir or check your pepper-ios version."
+
+    # Auto-rebuild dylib if source files are newer than the binary.
+    # This ensures agents in other worktrees pick up Pepper fixes without
+    # having to manually run `make build`.
+    if _dylib_is_stale(dylib):
+        logger.info("Dylib is stale — rebuilding before deploy")
+        ok, msg = _rebuild_dylib()
+        if not ok:
+            return f"Dylib auto-rebuild failed: {msg}"
+        logger.info("Dylib rebuilt successfully")
 
     # Session guard: refuse to deploy if another session owns this simulator
     session = pepper_sessions.is_claimed(simulator)
