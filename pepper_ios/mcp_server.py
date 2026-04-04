@@ -34,6 +34,9 @@ from .mcp_build import (
     build_app_device as _build_app_device,
 )
 from .mcp_build import (
+    bundle_id_from_app as _bundle_id_from_app,
+)
+from .mcp_build import (
     deploy_app as _deploy_app,
 )
 from .mcp_build import (
@@ -58,7 +61,6 @@ from .mcp_tools_biometric import register_biometric_tools
 from .mcp_tools_debug import register_debug_tools
 from .mcp_tools_dialog import register_dialog_tools
 from .mcp_tools_element import register_element_tools
-from .mcp_tools_issue import register_issue_tools
 from .mcp_tools_nav import register_nav_tools
 from .mcp_tools_network import register_network_tools
 from .mcp_tools_perf import register_perf_tools
@@ -992,7 +994,6 @@ async def _script_deploy(workspace, simulator, scheme=None, bundle_id=None, skip
     return f"{build_msg}\n\n{deploy_msg}"
 
 register_script_tools(mcp, act_and_look, resolve_and_send_json, deploy_fn=_script_deploy)
-register_issue_tools(mcp)
 register_prompts(mcp)
 
 
@@ -1073,6 +1074,7 @@ async def build_hardware(
     device: str | None = Field(
         default=None, description="Device xcodebuild ID (default: from .env DEVICE_XCODEBUILD_ID)"
     ),
+    bundle_id: str | None = Field(default=None, description="App bundle ID (default: auto-detected from built .app)"),
     install: bool = Field(default=True, description="Install on device after building"),
     launch: bool = Field(default=True, description="Launch app after installing"),
 ) -> str:
@@ -1106,7 +1108,7 @@ async def build_hardware(
             return "\n".join(parts)
 
     if launch and install:
-        bid = cfg["bundle_id"]
+        bid = bundle_id or (_bundle_id_from_app(app_path) if app_path else None) or cfg["bundle_id"]
         if not bid:
             parts.append("No bundle ID configured — skipping launch")
         else:

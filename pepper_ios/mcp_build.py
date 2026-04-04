@@ -448,7 +448,7 @@ async def deploy_app(
                 if app_to_check:
                     install_path = app_to_check
         if app_to_check:
-            bid = _bundle_id_from_app(app_to_check)
+            bid = bundle_id_from_app(app_to_check)
 
     bid = bid or cfg["bundle_id"]
 
@@ -647,7 +647,7 @@ async def deploy_app(
     return f"App launched (PID {pid}) but Pepper didn't respond within 10s. Check dylib injection. Port file exists: {os.path.exists(port_file)}"
 
 
-def _bundle_id_from_app(app_path: str) -> str | None:
+def bundle_id_from_app(app_path: str) -> str | None:
     """Read CFBundleIdentifier from an .app's Info.plist."""
     plist = os.path.join(app_path, "Info.plist")
     if not os.path.exists(plist):
