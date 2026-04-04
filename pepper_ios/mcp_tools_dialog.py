@@ -44,11 +44,12 @@ _ALL_PERMISSIONS = [
     "health",
 ]
 
-# Common permission dialog buttons in preference order
-_PERMISSION_BUTTONS = [
+# Common system dialog buttons in preference order
+_SYSTEM_BUTTONS = [
     "Allow While Using App",
     "Allow Once",
     "Allow",
+    "Open",  # deep link / universal link confirmation
     "OK",
 ]
 
@@ -159,7 +160,7 @@ async def _dismiss_system_dialog(simulator, resolve_and_send, resolve_simulator)
         }
 
     # Step 7: Last resort — try in-process button click (works for intercepted alerts)
-    for btn in _PERMISSION_BUTTONS:
+    for btn in _SYSTEM_BUTTONS:
         dismiss_resp = await resolve_and_send(simulator, CMD_DIALOG, {"action": "dismiss", "button": btn})
         dd = dismiss_resp.get("data", dismiss_resp)
         if dd.get("dismissed"):
@@ -202,7 +203,7 @@ def register_dialog_tools(mcp, resolve_and_send, resolve_simulator=None):
             default=None, description='JSON array of button titles for auto-dismiss (e.g. \'["Allow","OK"]\')'
         ),
     ) -> str:
-        """Interact with dialogs. For system permission prompts (notifications, location, photos, etc.) ALWAYS use action='dismiss_system' — these are SpringBoard dialogs that 'dismiss' and 'tap' cannot reach. 'dismiss' with button= only works for in-app UIAlertControllers."""
+        """Interact with dialogs. For system prompts (permissions, deep link confirmations, etc.) ALWAYS use action='dismiss_system' — these are SpringBoard dialogs that 'dismiss' and 'tap' cannot reach. 'dismiss' with button= only works for in-app UIAlertControllers."""
         if action == "dismiss_system":
             result = await _dismiss_system_dialog(simulator, resolve_and_send, resolve_simulator)
             return json_dumps(result) if isinstance(result, dict) else result

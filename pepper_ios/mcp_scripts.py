@@ -12,7 +12,7 @@ import os
 import time
 from datetime import datetime, timezone
 
-from .pepper_common import ADAPTERS_DIR, get_config, resolve_adapter_dir
+from .pepper_common import get_config, resolve_adapter_dir
 
 # Action tools that get recorded. Read-only tools (look, find, verify) are skipped.
 # These are dylib command names (not MCP tool names).

@@ -391,7 +391,6 @@ def _dylib_is_stale(dylib_path: str) -> bool:
                 if src_mtime > dylib_mtime:
                     return True
     # Also check adapter source if present
-    adapters_dir = os.path.join(os.path.expanduser("~"), ".pepper", "adapters")
     cfg = get_config()
     adapter_type = cfg.get("adapter_type", "generic")
     if adapter_type != "generic":

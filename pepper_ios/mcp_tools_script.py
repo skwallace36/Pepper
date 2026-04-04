@@ -7,7 +7,6 @@ explored, then replay them in a single tool call to save tokens.
 from __future__ import annotations
 
 import asyncio
-import json
 
 from pydantic import Field
 
@@ -30,7 +29,8 @@ def _resolve_adapter_config() -> dict:
     if adapter_type:
         adapter_dir = resolve_adapter_dir(adapter_type)
         if adapter_dir:
-            import json, os
+            import json
+            import os
             config_path = os.path.join(adapter_dir, "config.json")
             try:
                 with open(config_path) as f:
@@ -203,10 +203,7 @@ async def _replay(
 
             resp = await act_and_look_fn(simulator, tool, params)
             # act_and_look returns list of TextContent or a string
-            if isinstance(resp, list):
-                text = resp[-1].text if resp else ""
-            else:
-                text = str(resp)
+            text = (resp[-1].text if resp else "") if isinstance(resp, list) else str(resp)
 
             # Connection failures: act_and_look returns JSON string on error
             if _is_connection_error(text):

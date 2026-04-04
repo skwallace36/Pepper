@@ -2,7 +2,7 @@
 
 Uses ctypes to call macOS Accessibility APIs directly — no pyobjc dependency.
 Finds the Simulator.app window, walks the accessibility tree to locate system
-dialog buttons ("Allow", "Allow While Using App", etc.), and clicks them.
+dialog buttons (permissions, deep link confirmations, etc.), and clicks them.
 """
 
 from __future__ import annotations
@@ -195,8 +195,10 @@ DEFAULT_BUTTON_TITLES = [
     "Allow While Using App",
     "Allow Once",
     "Allow",
+    "Open",  # deep link / universal link confirmation
     "OK",
     "Continue",
+    "Cancel",
     "Not Now",
     "Don\u2019t Allow",  # curly apostrophe
     "Don't Allow",  # straight apostrophe
@@ -241,17 +243,21 @@ def _find_dialog_indicators(
 ) -> bool:
     """Check if the tree contains a dialog.
 
-    iOS simulator renders permission dialogs inside AXGroup (not AXSheet/AXDialog).
-    We detect them by looking for AXButton elements with permission-related
-    AXDescription values (Allow, Don't Allow, etc.) inside the iOSContentGroup.
+    iOS simulator renders system dialogs inside AXGroup (not AXSheet/AXDialog).
+    We detect them by looking for AXButton elements with known system dialog
+    AXDescription values (Allow, Open, Cancel, etc.) inside the iOSContentGroup.
     """
     role = _get_str_attr(element, "AXRole")
     if role in ("AXSheet", "AXDialog"):
         return True
-    # iOS sim dialogs: buttons with permission text in AXDescription
+    # iOS sim dialogs: buttons with known system dialog text in AXDescription
+    _DIALOG_DESCS = {
+        "Allow", "Allow Once", "Allow While Using App",
+        "Don\u2019t Allow", "Don't Allow", "OK", "Open", "Cancel",
+    }
     if role == "AXButton":
         desc = _get_str_attr(element, "AXDescription")
-        if desc and desc in ("Allow", "Allow Once", "Allow While Using App", "Don\u2019t Allow", "Don't Allow", "OK"):
+        if desc and desc in _DIALOG_DESCS:
             return True
     if depth >= max_depth:
         return False
@@ -286,7 +292,7 @@ def find_and_dismiss_dialog(
     if button_titles is None:
         button_titles = list(DEFAULT_BUTTON_TITLES)
     if preferred_titles is None:
-        preferred_titles = ["Allow While Using App", "Allow Once", "Allow", "OK"]
+        preferred_titles = ["Allow While Using App", "Allow Once", "Allow", "Open", "OK"]
 
     pids = _find_simulator_pids()
     if not pids:
