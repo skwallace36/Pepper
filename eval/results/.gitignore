@@ -1,4 +1,0 @@
-# Eval results contain verbose logs which may have environment-specific paths.
-# Keep the directory but ignore contents (except this file).
-*
-!.gitignore
