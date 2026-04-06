@@ -20,6 +20,7 @@ Usage:
   pepper-ctl test-report --file tests.json --format junit --output results.xml
   pepper-ctl ci-run                              # wait + smoke test + exit code
   pepper-ctl ci-run --file custom.json -o results.xml
+  pepper-ctl test-flow -f tests.yaml --verbose      # deterministic UI test flows
   pepper-ctl help
   pepper-ctl raw '{"cmd":"ping"}'
 
@@ -361,6 +362,18 @@ def build_parser():
     p = sub.add_parser("wait", help="Subscribe to events and wait")
     p.add_argument("events", nargs="+", help="Event types to subscribe to")
     p.add_argument("--wait-timeout", type=int, default=30, help="How long to listen (default: 30s)")
+
+    # test-flow
+    p = sub.add_parser("test-flow", help="Run deterministic UI test flows from a YAML file")
+    p.add_argument("--file", "-f", required=True, help="YAML test suite file")
+    p.add_argument(
+        "--format", choices=["tap", "json", "junit"], default="tap",
+        dest="report_format", help="Output format (default: tap)",
+    )
+    p.add_argument("--output", "-o", default=None, help="Output file (default: stdout)")
+    p.add_argument("--stop-on-failure", action="store_true", help="Stop on first test failure")
+    p.add_argument("--verbose", "-v", action="store_true", dest="flow_verbose",
+                   help="Print each step as it runs")
 
     # raw
     p = sub.add_parser("raw", help="Send raw JSON command")
@@ -1211,6 +1224,38 @@ async def cmd_wait(args):
     await wait_for_events(args.host, args.port, args.events, args.wait_timeout)
 
 
+async def cmd_test_flow(args):
+    """Run deterministic UI test flows from a YAML suite file."""
+    from .test_runner import format_json, format_junit, format_tap, run_suite
+
+    result = run_suite(
+        args.host, args.port, args.file,
+        verbose=getattr(args, "flow_verbose", False),
+        stop_on_failure=args.stop_on_failure,
+    )
+
+    formatters = {"tap": format_tap, "json": format_json, "junit": format_junit}
+    output = formatters[args.report_format](result)
+
+    if args.output:
+        with open(args.output, "w") as f:
+            f.write(output)
+        print(f"Report written to {args.output}", file=sys.stderr)
+    else:
+        print(output)
+
+    total = len(result.tests)
+    color = green if result.ok else red
+    print(
+        color(f"\n{total} tests: {result.passed} passed, {result.failed} failed, "
+              f"{result.errors} errors ({result.elapsed:.2f}s)"),
+        file=sys.stderr,
+    )
+
+    if not result.ok:
+        sys.exit(1)
+
+
 async def cmd_raw(args):
     try:
         msg = json.loads(args.json_str)
@@ -1347,6 +1392,7 @@ def main():
         "wait-for-server": cmd_wait_for_server,
         "test-report": cmd_test_report,
         "ci-run": cmd_ci_run,
+        "test-flow": cmd_test_flow,
         "wait": cmd_wait,
         "raw": cmd_raw,
     }

@@ -1,0 +1,45 @@
+name: UI Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: "Test suite YAML file (relative to repo root)"
+        required: false
+        default: "scripts/sample-flow.yaml"
+      simulator:
+        description: "Simulator device type"
+        required: false
+        default: "iPhone 16"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: macos-15
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install dependencies
+        run: pip3 install pyyaml
+
+      - name: Run UI tests
+        run: |
+          python3 -m pepper_ios.test_runner \
+            --file "${{ github.event.inputs.suite }}" \
+            --project test-app/PepperTestApp.xcodeproj \
+            --scheme PepperTestApp \
+            --format junit \
+            --output build/test-results.xml \
+            --verbose
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: test-results
+          path: build/test-results.xml

@@ -92,6 +92,10 @@ def _send_with_retry(host, port, msg, timeout=10, on_event=None, retries=0):
     raise last_err  # type: ignore[misc]
 
 
+# Public sync API for callers that don't need asyncio (e.g. test runner).
+send_command_sync = _send_with_retry
+
+
 async def send_command(host, port, msg, timeout=10, on_event=None, close_timeout=2, retries=0):
     """Open a connection, send *msg*, and return the matching response.
 

@@ -1,0 +1,166 @@
+# PepperTestApp regression test flows.
+# Run with: pepper-ctl test-flow -f scripts/sample-flow.yaml --verbose
+# Deterministic — no LLM, just Pepper commands.
+
+suite: pepper-regression
+config:
+  timeout: 10
+
+tests:
+  # ── Core ──
+
+  - name: tap increments counter
+    setup:
+      - tap: "Controls"
+      - cmd: scroll
+        params: {direction: "up", amount: 2000}
+      - tap: "Reset"
+    steps:
+      - tap: "Tap Me"
+      - verify: {text: "Count: 1"}
+      - tap: "Tap Me"
+      - verify: {text: "Count: 2"}
+
+  - name: reset clears counter
+    setup:
+      - tap: "Controls"
+      - cmd: scroll
+        params: {direction: "up", amount: 2000}
+    steps:
+      - tap: "Tap Me"
+      - tap: "Reset"
+      - verify: {text: "Count: 0"}
+
+  - name: look returns elements
+    steps:
+      - look:
+
+  # ── Tab navigation ──
+
+  - name: switch all tabs
+    steps:
+      - tap: "Controls"
+      - verify: {text: "Tap Me"}
+      - tap: "List"
+      - verify: {text: "Item 0"}
+      - tap: "Misc"
+      - wait_idle:
+      - tap: "Controls"
+      - verify: {text: "Tap Me"}
+
+  # ── List tab ──
+
+  # BUG-1153: back command fails on SwiftUI NavigationStack
+  # - name: list detail and back
+  #   steps:
+  #     - tap: "List"
+  #     - tap: "Item 0"
+  #     - wait_idle:
+  #     - verify: {text: "Subtitle for item 0"}
+  #     - back:
+  #     - verify: {text: "Item 1"}
+  #     - tap: "Controls"
+
+  - name: list detail navigates
+    steps:
+      - tap: "List"
+      - tap: "Item 0"
+      - wait_idle:
+      - verify: {text: "Subtitle for item 0"}
+      - tap: "List"
+
+  - name: list scroll
+    steps:
+      - tap: "List"
+      - scroll: "down"
+      - verify: {text: "Item 15"}
+      - tap: "Controls"
+
+  # ── Text input ──
+
+  - name: text field input and dismiss keyboard
+    setup:
+      - tap: "Controls"
+      - cmd: scroll
+        params: {direction: "up", amount: 2000}
+    steps:
+      - cmd: scroll
+        params: {direction: "down", amount: 400}
+      - tap: {text: "Enter text here"}
+      - input_text: {element: "text_field", text: "test 123"}
+      - verify: {text: "test 123"}
+      - dismiss_keyboard:
+
+  # ── Segmented control ──
+
+  - name: segmented control
+    setup:
+      - tap: "Controls"
+      - cmd: scroll
+        params: {direction: "up", amount: 2000}
+    steps:
+      - cmd: scroll
+        params: {direction: "down", amount: 200}
+      - tap: "Date"
+      - verify: {text: "Selected: Date"}
+      - tap: "Size"
+      - verify: {text: "Selected: Size"}
+      - tap: "Name"
+      - verify: {text: "Selected: Name"}
+
+  # ── Sheet ──
+
+  # BUG-1154: sheet/alert elements not found after presentation
+  # - name: show and dismiss sheet
+  # - name: show and dismiss alert
+
+  - name: show sheet presents
+    setup:
+      - tap: "Controls"
+      - cmd: scroll
+        params: {direction: "down", amount: 2000}
+    steps:
+      - tap: "Show Sheet"
+      - wait_idle:
+      - verify: {text: "Sheet Content"}
+      - swipe: {direction: "down", distance: 500}
+      - wait_idle:
+
+  # ── Deep navigation ──
+
+  # BUG-1153: back command fails on SwiftUI NavigationStack
+  - name: push detail navigates
+    setup:
+      - tap: "Controls"
+      - cmd: scroll
+        params: {direction: "down", amount: 2000}
+    steps:
+      - tap: "Push Detail"
+      - wait_idle:
+      - verify: {text: "Detail Screen"}
+      - tap: "Controls"
+
+  # ── Long press ──
+
+  - name: long press adds 100
+    setup:
+      - tap: "Controls"
+      - cmd: scroll
+        params: {direction: "up", amount: 2000}
+      - tap: "Reset"
+      - cmd: scroll
+        params: {direction: "down", amount: 2000}
+    steps:
+      - tap: {text: "Hold Me", duration: 1.0}
+      - verify: {text: "Count: 100"}
+
+  # ── Misc tab elements ──
+
+  - name: horizontal scroll
+    setup:
+      - tap: "Misc"
+    steps:
+      - cmd: scroll
+        params: {direction: "down", amount: 400}
+      - verify: {text: "Horizontal Scroll"}
+      - tap: "Controls"
