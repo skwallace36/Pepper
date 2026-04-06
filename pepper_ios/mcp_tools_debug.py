@@ -85,6 +85,9 @@ def register_debug_tools(mcp, resolve_and_send):
         """Fetch and parse recent crash reports — exception type, reason, and symbolicated stack trace."""
         cfg = get_config()
         bundle_id = cfg.get("bundle_id", "")
+        # Derive app name from bundle ID for fallback matching
+        # e.g. "com.barkinglabs.fi" -> "fi", matches "Fi" case-insensitively
+        app_name_hint = bundle_id.rsplit(".", 1)[-1].lower() if bundle_id else ""
         reports_dir = os.path.expanduser("~/Library/Logs/DiagnosticReports")
 
         if not os.path.isdir(reports_dir):
@@ -93,6 +96,7 @@ def register_debug_tools(mcp, resolve_and_send):
         cutoff = time.time() - seconds
         last_n = min(last_n, 5)
         candidates = []
+        all_app_reports = []  # All .ips matching our app (any age)
         try:
             for entry in os.scandir(reports_dir):
                 if entry.name.endswith(".ips"):
@@ -100,17 +104,54 @@ def register_debug_tools(mcp, resolve_and_send):
                         mtime = entry.stat().st_mtime
                         if mtime >= cutoff:
                             candidates.append((mtime, entry.path))
+                        # Track all reports matching our app name for throttle detection
+                        if app_name_hint:
+                            fname_lower = entry.name.lower()
+                            if fname_lower.startswith(app_name_hint + "-") or fname_lower.startswith(app_name_hint + "_"):
+                                all_app_reports.append((mtime, entry.path))
                     except OSError:
                         pass
         except OSError:
             return "Failed to read DiagnosticReports directory."
 
         if not candidates:
-            return f"No crash reports found in the last {seconds}s."
+            # No .ips files at all in the time window — check for throttling
+            throttle_warning = ""
+            if len(all_app_reports) >= 25:
+                throttle_warning = (
+                    f"\n\nWARNING: Found {len(all_app_reports)} total crash reports for "
+                    f"'{app_name_hint}' across all time. macOS ReportCrash throttles "
+                    f"after ~25 reports per process name. Delete old reports to reset:\n"
+                    f"  rm ~/Library/Logs/DiagnosticReports/{app_name_hint.capitalize()}-*.ips"
+                )
+            return f"No crash reports found in the last {seconds}s.{throttle_warning}"
 
         candidates.sort(reverse=True)
 
-        # Filter by bundle ID if we have one
+        def _matches_app(content: str, filepath: str) -> bool:
+            """Check if a crash report matches our app by bundle ID or app name."""
+            if not bundle_id:
+                return True
+            # Primary: bundle ID string anywhere in content
+            if bundle_id in content:
+                return True
+            # Fallback: match app_name in the JSON header or filename
+            if app_name_hint:
+                fname_lower = os.path.basename(filepath).lower()
+                if fname_lower.startswith(app_name_hint + "-") or fname_lower.startswith(app_name_hint + "_"):
+                    return True
+                # Check header app_name field
+                try:
+                    header_line = content.split("\n", 1)[0]
+                    header = json.loads(header_line)
+                    header_app = header.get("app_name", "").lower()
+                    if header_app == app_name_hint:
+                        return True
+                except (json.JSONDecodeError, IndexError):
+                    pass
+            return False
+
+        # Filter by app identity
         results = []
         for _, path in candidates:
             if len(results) >= last_n:
@@ -118,7 +159,7 @@ def register_debug_tools(mcp, resolve_and_send):
             try:
                 with open(path) as f:
                     content = f.read()
-                if bundle_id and bundle_id not in content:
+                if not _matches_app(content, path):
                     continue
                 parsed = parse_crash_report(path, content)
                 if parsed:
@@ -127,7 +168,25 @@ def register_debug_tools(mcp, resolve_and_send):
                 continue
 
         if not results:
-            return f"No crash reports matching {bundle_id} in the last {seconds}s. Found {len(candidates)} total .ips files."
+            # List what was found for debugging
+            other_names = set()
+            for _, path in candidates[:10]:
+                other_names.add(os.path.basename(path).split("-")[0])
+            others_str = ", ".join(sorted(other_names)) if other_names else "none"
+
+            throttle_warning = ""
+            if len(all_app_reports) >= 25:
+                throttle_warning = (
+                    f"\nWARNING: macOS ReportCrash likely throttled — "
+                    f"{len(all_app_reports)} reports exist for '{app_name_hint}'. "
+                    f"Delete old reports to reset:\n"
+                    f"  rm ~/Library/Logs/DiagnosticReports/{app_name_hint.capitalize()}-*.ips"
+                )
+
+            return (
+                f"No crash reports matching {bundle_id} in the last {seconds}s. "
+                f"Found {len(candidates)} total .ips files (from: {others_str}).{throttle_warning}"
+            )
 
         return "\n".join(results)
 

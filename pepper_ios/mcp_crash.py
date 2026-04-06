@@ -93,6 +93,7 @@ async def fetch_crash_info(sim_udid: str) -> str:
 
     cfg = get_config()
     bundle_id = cfg.get("bundle_id", "")
+    app_name_hint = bundle_id.rsplit(".", 1)[-1].lower() if bundle_id else ""
 
     reports_dir = os.path.expanduser("~/Library/Logs/DiagnosticReports")
     if not os.path.isdir(reports_dir):
@@ -121,17 +122,28 @@ async def fetch_crash_info(sim_udid: str) -> str:
 
     candidates.sort(reverse=True)
 
-    # Try to find one matching our bundle ID
+    # Try to find one matching our bundle ID or app name
     for _, path in candidates[:5]:
         try:
             with open(path) as f:
                 content = f.read()
             if bundle_id and bundle_id in content:
                 return parse_crash_report(path, content)
+            # Fallback: match by app name in filename or header
+            if app_name_hint:
+                fname_lower = os.path.basename(path).lower()
+                if fname_lower.startswith(app_name_hint + "-") or fname_lower.startswith(app_name_hint + "_"):
+                    return parse_crash_report(path, content)
+                try:
+                    header = json.loads(content.split("\n", 1)[0])
+                    if header.get("app_name", "").lower() == app_name_hint:
+                        return parse_crash_report(path, content)
+                except (json.JSONDecodeError, IndexError):
+                    pass
         except OSError:
             continue
 
-    # No bundle match — use most recent (likely ours if it just crashed)
+    # No bundle/name match — use most recent (likely ours if it just crashed)
     try:
         with open(candidates[0][1]) as f:
             content = f.read()
