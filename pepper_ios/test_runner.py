@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import signal
 import subprocess
 import sys
 import time
@@ -18,7 +19,11 @@ import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from pathlib import Path
 
-import yaml
+try:
+    import yaml
+except ImportError:
+    print("Error: pyyaml required. Install with: pip install pyyaml", file=sys.stderr)
+    sys.exit(2)
 
 from .pepper_common import DEFAULT_HOST, discover_port
 from .pepper_websocket import CrashError, make_command, send_command_sync
@@ -72,6 +77,16 @@ class SuiteResult:
 # Sugar expansion
 # ---------------------------------------------------------------------------
 
+def _expand_wait_for(v: dict) -> dict:
+    """Expand wait_for sugar — extract timeout to top level as timeout_ms."""
+    params: dict = {}
+    until = {k: v2 for k, v2 in v.items() if k != "timeout"}
+    params["until"] = until
+    if "timeout" in v:
+        params["timeout_ms"] = v["timeout"]
+    return params
+
+
 # Sugar keys that map to Pepper commands with shorthand params.
 _SUGAR = {
     "tap": lambda v: ("tap", {"text": v} if isinstance(v, str) else
@@ -84,7 +99,8 @@ _SUGAR = {
     "dismiss": lambda _v: ("dismiss", {}),
     "dismiss_keyboard": lambda _v: ("dismiss_keyboard", {}),
     "look": lambda _v: ("introspect", {"mode": "map"}),
-    "wait_for": lambda v: ("wait_for", {"until": v} if isinstance(v, dict) else {"until": {"text": v}}),
+    "wait_for": lambda v: ("wait_for", {"until": {"text": v}}) if isinstance(v, str) else
+                           ("wait_for", _expand_wait_for(v)),
     "wait_idle": lambda _v: ("wait_idle", {}),
     "verify": lambda v: ("verify", v if isinstance(v, dict) else {"text": v}),
     "toggle": lambda v: ("toggle", v if isinstance(v, dict) else {"element": v}),
@@ -336,7 +352,8 @@ def run_test(host: str, port: int, test_def: dict, config: dict,
 
 def run_suite(host: str, port: int, suite_path: str,
               verbose: bool = False, stop_on_failure: bool = False,
-              timeout_override: float | None = None) -> SuiteResult:
+              timeout_override: float | None = None,
+              test_filter: str | None = None) -> SuiteResult:
     """Load a YAML suite file and run all tests."""
     path = Path(suite_path)
     if not path.exists():
@@ -364,10 +381,28 @@ def run_suite(host: str, port: int, suite_path: str,
     if timeout_override is not None:
         config["timeout"] = timeout_override
 
+    # Filter tests by name
+    if test_filter:
+        tests = [t for t in tests if test_filter.lower() in t.get("name", "").lower()]
+        if not tests:
+            print(f"Error: No tests matching '{test_filter}'", file=sys.stderr)
+            sys.exit(2)
+
+    auto_reset = config.get("reset", True)
+
     t0 = time.monotonic()
     results = []
-    for test_def in tests:
+    for i, test_def in enumerate(tests):
         test_name = test_def.get("name", "unnamed")
+
+        # Reset app state between tests (pop nav, dismiss modals, etc.)
+        if auto_reset and i > 0:
+            try:
+                msg = make_command("test", {"action": "reset"})
+                send_command_sync(host, port, msg, timeout=5)
+            except (ConnectionRefusedError, TimeoutError, OSError, CrashError):
+                pass  # Best effort — don't fail the suite
+
         if verbose:
             print(f"\n--- {test_name} ---", file=sys.stderr)
 
@@ -497,6 +532,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--output", "-o", default=None, help="Output file (default: stdout)")
     parser.add_argument("--timeout", type=float, default=None, help="Per-step timeout override")
     parser.add_argument("--stop-on-failure", action="store_true", help="Stop on first test failure")
+    parser.add_argument("--test", "-t", default=None, help="Run only tests matching this name (substring)")
+    parser.add_argument("--dry-run", action="store_true", help="Parse and expand steps without executing")
     parser.add_argument("--verbose", "-v", action="store_true", help="Print each step as it runs")
 
     # Lifecycle flags — when --project is set, pepper-test handles the full
@@ -535,9 +572,78 @@ def _output_result(result: SuiteResult, args: argparse.Namespace) -> None:
         )
 
 
+def _dry_run(args: argparse.Namespace) -> None:
+    """Parse suite, expand all steps, print without executing."""
+    path = Path(args.file)
+    if not path.exists():
+        print(f"Error: File not found: {args.file}", file=sys.stderr)
+        sys.exit(2)
+
+    with open(path) as f:
+        data = yaml.safe_load(f)
+
+    tests = data.get("tests", [])
+    if args.test:
+        tests = [t for t in tests if args.test.lower() in t.get("name", "").lower()]
+
+    print(f"Suite: {data.get('suite', path.stem)}")
+    print(f"Tests: {len(tests)}\n")
+
+    for test_def in tests:
+        name = test_def.get("name", "unnamed")
+        print(f"--- {name} ---")
+        for phase in ("setup", "steps", "teardown"):
+            steps = test_def.get(phase, [])
+            if not steps:
+                continue
+            if phase != "steps":
+                print(f"  [{phase}]")
+            for step in steps:
+                try:
+                    kind, cmd, params, opts = expand_step(step)
+                    opt_str = f"  opts={opts}" if opts else ""
+                    if kind == "shell":
+                        print(f"    shell: {cmd}{opt_str}")
+                    else:
+                        print(f"    {cmd} {params}{opt_str}")
+                except ValueError as e:
+                    print(f"    ERROR: {e}", file=sys.stderr)
+                    sys.exit(2)
+        print()
+
+    print("Dry run complete — all steps parsed successfully.")
+
+
+def _load_config_file(args: argparse.Namespace) -> None:
+    """Load defaults from .pepper-test.yml if it exists and CLI flags aren't set."""
+    config_path = Path(".pepper-test.yml")
+    if not config_path.exists():
+        return
+    try:
+        with open(config_path) as f:
+            config = yaml.safe_load(f) or {}
+    except yaml.YAMLError:
+        return
+
+    # Only fill in values not already set via CLI
+    if not args.project and "project" in config:
+        args.project = config["project"]
+    if not args.scheme and "scheme" in config:
+        args.scheme = config["scheme"]
+    if not args.file and "suite" in config:
+        args.file = config["suite"]
+    if args.server_timeout == 30 and "server_timeout" in config:
+        args.server_timeout = config["server_timeout"]
+
+
 def main(argv: list[str] | None = None):
     parser = build_parser()
     args = parser.parse_args(argv)
+    _load_config_file(args)
+
+    if args.dry_run:
+        _dry_run(args)
+        return
 
     if args.project:
         # Lifecycle mode: build, deploy, test, teardown
@@ -549,12 +655,23 @@ def main(argv: list[str] | None = None):
             simulator=args.simulator,
             server_timeout=args.server_timeout,
         )
+
+        # Ensure teardown runs on Ctrl-C / kill
+        def _signal_teardown(signum: int, frame: object) -> None:
+            print("\nInterrupted — cleaning up...", file=sys.stderr)
+            teardown(sim, bundle_id)
+            sys.exit(130)
+
+        signal.signal(signal.SIGINT, _signal_teardown)
+        signal.signal(signal.SIGTERM, _signal_teardown)
+
         try:
             result = run_suite(
                 sim.host, sim.port, args.file,
                 verbose=args.verbose,
                 stop_on_failure=args.stop_on_failure,
                 timeout_override=args.timeout,
+                test_filter=args.test,
             )
             _output_result(result, args)
         finally:
@@ -578,6 +695,7 @@ def main(argv: list[str] | None = None):
         verbose=args.verbose,
         stop_on_failure=args.stop_on_failure,
         timeout_override=args.timeout,
+        test_filter=args.test,
     )
     _output_result(result, args)
     sys.exit(0 if result.ok else 1)
