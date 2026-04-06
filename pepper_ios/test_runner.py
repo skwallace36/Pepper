@@ -25,6 +25,7 @@ except ImportError:
     print("Error: pyyaml required. Install with: pip install pyyaml", file=sys.stderr)
     sys.exit(2)
 
+from .pepper_ax import find_and_dismiss_dialog
 from .pepper_common import DEFAULT_HOST, discover_port
 from .pepper_websocket import CrashError, make_command, send_command_sync
 
@@ -106,6 +107,7 @@ _SUGAR = {
     "toggle": lambda v: ("toggle", v if isinstance(v, dict) else {"element": v}),
     "gesture": lambda v: ("gesture", v),
     "dialog": lambda v: ("dialog", v if isinstance(v, dict) else {"action": v}),
+    "dismiss_system": lambda _v: ("dismiss_system", {}),
 }
 
 # Keys reserved for step options, not Pepper command params.
@@ -128,12 +130,20 @@ def expand_step(step: dict) -> tuple[str, str | None, dict, dict]:
 
     # Explicit form: {cmd: "...", params: {...}}
     if "cmd" in step:
-        return ("pepper", step["cmd"], step.get("params") or {}, opts)
+        cmd = step["cmd"]
+        params = step.get("params") or {}
+        # Route dismiss_system through AX, not the dylib websocket
+        if cmd == "dialog" and params.get("action") == "dismiss_system":
+            return ("dismiss_system", "dismiss_system", {}, opts)
+        return ("pepper", cmd, params, opts)
 
     # Sugar form: find the first key that matches a sugar mapping
     for key, expander in _SUGAR.items():
         if key in step:
             cmd, params = expander(step[key])
+            # dismiss_system routes through AX, not the dylib websocket
+            if cmd == "dismiss_system":
+                return ("dismiss_system", "dismiss_system", params, opts)
             return ("pepper", cmd, params, opts)
 
     # Unknown step -- treat first non-option key as a raw command
@@ -236,6 +246,40 @@ def run_shell_step(command: str, timeout: float) -> StepResult:
     return StepResult(name=name, status="pass", elapsed=elapsed)
 
 
+def run_dismiss_system_step(timeout: float) -> StepResult:
+    """Dismiss a system dialog via macOS Accessibility API."""
+    name = "dismiss_system"
+    t0 = time.monotonic()
+    deadline = t0 + timeout
+
+    # Retry until timeout — dialog may take a moment to appear
+    while time.monotonic() < deadline:
+        try:
+            result = find_and_dismiss_dialog()
+        except Exception as e:
+            return StepResult(
+                name=name, status="error",
+                elapsed=time.monotonic() - t0,
+                message=f"AX error: {e}",
+            )
+
+        if result.get("dismissed"):
+            return StepResult(
+                name=name, status="pass",
+                elapsed=time.monotonic() - t0,
+                response=result,
+            )
+
+        time.sleep(0.5)
+
+    # No dialog found — pass anyway (permission may have been pre-granted)
+    return StepResult(
+        name=name, status="pass",
+        elapsed=time.monotonic() - t0,
+        message="No system dialog found (already dismissed or not shown)",
+    )
+
+
 def _step_label(kind: str, cmd: str, params: dict) -> str:
     if kind == "shell":
         return f"shell: {cmd[:60]}"
@@ -270,6 +314,8 @@ def _run_steps(host: str, port: int, steps: list[dict], config: dict,
         for attempt in range(1 + retries):
             if kind == "shell":
                 result = run_shell_step(cmd, timeout)
+            elif kind == "dismiss_system":
+                result = run_dismiss_system_step(timeout)
             else:
                 result = run_pepper_step(host, port, cmd, params, timeout)
 
