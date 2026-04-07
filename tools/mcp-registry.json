@@ -1,7 +1,7 @@
 {
   "name": "pepper",
   "display_name": "Pepper",
-  "description": "Runtime control for iOS simulator apps. Dylib injected at launch \u2014 no source modifications needed. 68 MCP tools for navigation, debugging, state inspection, and automation.",
+  "description": "Runtime control for iOS simulator apps. Dylib injected at launch \u2014 no source modifications needed. 70 MCP tools for navigation, debugging, state inspection, and automation.",
   "repository": "https://github.com/skwallace36/Pepper",
   "homepage": "https://github.com/skwallace36/Pepper",
   "license": "MIT",
@@ -91,6 +91,7 @@
     {"name": "build_sim", "category": "build", "description": "Build the app for simulator (build only, no deploy)"},
     {"name": "build_hardware", "category": "build", "description": "Build the app for a physical device (USB/WiFi)"},
     {"name": "deploy_sim", "category": "build", "description": "Build (if workspace provided), install, and launch with Pepper"},
+    {"name": "http_call", "category": "network", "description": "Make HTTP requests to any URL — cloud functions, REST APIs, webhooks"},
     {"name": "screenshot", "category": "navigation", "description": "Capture a simulator screenshot"},
     {"name": "snapshot", "category": "navigation", "description": "Capture screen state as a named snapshot for diffing"},
     {"name": "diff", "category": "navigation", "description": "Quick view hierarchy diff between two look snapshots"},

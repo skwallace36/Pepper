@@ -61,6 +61,7 @@ from .mcp_tools_biometric import register_biometric_tools
 from .mcp_tools_debug import register_debug_tools
 from .mcp_tools_dialog import register_dialog_tools
 from .mcp_tools_element import register_element_tools
+from .mcp_tools_http import register_http_tools
 from .mcp_tools_nav import register_nav_tools
 from .mcp_tools_network import register_network_tools
 from .mcp_tools_perf import register_perf_tools
@@ -994,6 +995,7 @@ async def _script_deploy(workspace, simulator, scheme=None, bundle_id=None, skip
     return f"{build_msg}\n\n{deploy_msg}"
 
 register_script_tools(mcp, act_and_look, resolve_and_send_json, deploy_fn=_script_deploy)
+register_http_tools(mcp)
 register_prompts(mcp)
 
 
@@ -1125,6 +1127,7 @@ async def deploy_sim(
     scheme: str | None = Field(default=None, description="Build scheme (default: from .env APP_SCHEME)"),
     bundle_id: str | None = Field(default=None, description="App bundle ID (default: auto-detected from built .app)"),
     skip_privacy: bool = Field(default=False, description="Skip auto-granting privacy permissions"),
+    launch_args: str | None = Field(default=None, description="Space-separated launch arguments passed to the app (e.g. '--scenario member_with_activity --reset'). Available via ProcessInfo.processInfo.arguments at runtime."),
 ) -> str:
     """Build, install, and launch the app with Pepper injected. Returns screen state."""
     # Build
@@ -1132,6 +1135,9 @@ async def deploy_sim(
     if not success:
         return build_msg
     app_path = _find_built_app(workspace)
+
+    # Parse launch args string into list
+    args_list = launch_args.split() if launch_args else None
 
     # Deploy
     deploy_msg = await _deploy_app(
@@ -1141,6 +1147,7 @@ async def deploy_sim(
         install_path=app_path,
         workspace=workspace,
         skip_privacy=skip_privacy,
+        launch_args=args_list,
     )
 
     # Record the deploy step if a script recording is active

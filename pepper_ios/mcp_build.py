@@ -432,6 +432,7 @@ async def deploy_app(
     install_path: str | None = None,
     workspace: str | None = None,
     skip_privacy: bool = False,
+    launch_args: list[str] | None = None,
 ) -> str:
     """Deploy (terminate + install + launch with Pepper). Returns status message + screen."""
     cfg = get_config()
@@ -600,7 +601,10 @@ async def deploy_app(
     for key, val in pepper_vars.items():
         launch_env[f"SIMCTL_CHILD_{key}"] = val
 
-    result = subprocess.run(["xcrun", "simctl", "launch", simulator, bid], capture_output=True, text=True, env=launch_env)
+    launch_cmd = ["xcrun", "simctl", "launch", simulator, bid]
+    if launch_args:
+        launch_cmd.extend(launch_args)
+    result = subprocess.run(launch_cmd, capture_output=True, text=True, env=launch_env)
 
     # Clean up non-DYLD_ vars from launchd so they don't leak to other apps
     for key in pepper_vars:
