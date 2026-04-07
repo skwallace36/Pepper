@@ -35,5 +35,11 @@ __pycache__/
 *.p12
 *.pfx
 
+# Claude Code
+.claude/
+
+# Dist
+dist/
+
 # External
 .playwright-mcp/
