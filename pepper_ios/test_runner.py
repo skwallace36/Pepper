@@ -88,6 +88,38 @@ def _expand_wait_for(v: dict) -> dict:
     return params
 
 
+def _expand_input(v: str | dict) -> dict:
+    """Expand input sugar into Pepper input command params.
+
+    Supports:
+      - input: "hello"              → types into focused field
+      - input:
+          field: "person_name"      → find by accessibility identifier
+          value: "Test Person"
+      - input:
+          id: "email_field"         → alias for field
+          value: "test@example.com"
+    """
+    if isinstance(v, str):
+        return {"value": v}
+    params: dict = {}
+    if "value" in v:
+        params["value"] = v["value"]
+    elif "text" in v:
+        params["value"] = v["text"]
+    if "field" in v:
+        params["element"] = v["field"]
+    elif "id" in v:
+        params["element"] = v["id"]
+    elif "element" in v:
+        params["element"] = v["element"]
+    if v.get("clear"):
+        params["clear"] = True
+    if v.get("submit"):
+        params["submit"] = True
+    return params
+
+
 # Sugar keys that map to Pepper commands with shorthand params.
 _SUGAR = {
     "tap": lambda v: ("tap", {"text": v} if isinstance(v, str) else
@@ -95,6 +127,7 @@ _SUGAR = {
     "scroll": lambda v: ("scroll", {"direction": v} if isinstance(v, str) else v),
     "swipe": lambda v: ("swipe", v if isinstance(v, dict) else {"direction": v}),
     "input_text": lambda v: ("input", {"element": v["element"], "value": v["text"]}),
+    "input": lambda v: ("input", _expand_input(v)),
     "navigate": lambda v: ("navigate", {"screen": v} if isinstance(v, str) else v),
     "back": lambda _v: ("back", {}),
     "dismiss": lambda _v: ("dismiss", {}),
