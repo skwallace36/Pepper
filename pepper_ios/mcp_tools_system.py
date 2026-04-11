@@ -15,7 +15,7 @@ def register_system_tools(mcp, resolve_and_send, act_and_look):
 
     Args:
         mcp: FastMCP server instance.
-        resolve_and_send: async (simulator, cmd, params?, timeout?) -> str or dict
+        resolve_and_send: async (simulator, cmd, params?, timeout?) -> str (formatted text)
         act_and_look: async (simulator, cmd, params?, timeout?) -> list
     """
 
@@ -30,18 +30,21 @@ def register_system_tools(mcp, resolve_and_send, act_and_look):
         ),
     ) -> str:
         """Check Pepper connection health — bundle ID, version, port, connections, current screen. Add memory=true for process memory stats."""
+        if not memory and not memory_detail:
+            return await resolve_and_send(simulator, CMD_STATUS)
+        # Need to merge status + memory, so use raw dict path
+        from .mcp_server import resolve_and_send as raw_send
         from .pepper_format import format_data
 
-        result = await resolve_and_send(simulator, CMD_STATUS)
+        result = await raw_send(simulator, CMD_STATUS)
         if result.get("status") != "ok":
             return f"Error: {result.get('error', 'unknown')}"
         data = result.get("data", {})
-        if memory or memory_detail:
-            mem_params: dict = {}
-            if memory_detail:
-                mem_params["action"] = "vm"
-            mem_result = await resolve_and_send(simulator, CMD_MEMORY, mem_params)
-            data["memory"] = mem_result.get("data", mem_result)
+        mem_params: dict = {}
+        if memory_detail:
+            mem_params["action"] = "vm"
+        mem_result = await raw_send(simulator, CMD_MEMORY, mem_params)
+        data["memory"] = mem_result.get("data", mem_result)
         return format_data(data)
 
     @mcp.tool(name="ui_gesture")
