@@ -14,7 +14,7 @@ from .pepper_commands import (
     CMD_DEFAULTS,
     CMD_KEYCHAIN,
     CMD_SANDBOX,
-    CMD_STORAGE,
+    CMD_STORAGE,  # noqa: F401 — shelved tool, keep import for re-enable
     CMD_UNDO,
     CMD_VARS,
 )
@@ -160,27 +160,28 @@ def register_state_tools(mcp, resolve_and_send):
             params["max_length"] = max_length
         return await resolve_and_send(simulator, CMD_SANDBOX, params)
 
-    @mcp.tool()
-    async def storage(
-        simulator: str | None = Field(default=None, description="Simulator UDID"),
-        action: str = Field(default="summary", description="Action: summary, coredata, clear"),
-        entity: str | None = Field(
-            default=None, description="Core Data entity name (for coredata detail or clear coredata)"
-        ),
-        type: str | None = Field(
-            default=None, description="Storage type to clear: defaults, keychain, coredata (for clear action)"
-        ),
-        limit: int | None = Field(default=None, description="Max rows to return (for coredata, default 50)"),
-    ) -> str:
-        """Unified persistence overview — view UserDefaults, Keychain, and Core Data counts in one call. Use defaults/keychain for direct read/write."""
-        params: dict = {"action": action}
-        if entity:
-            params["entity"] = entity
-        if type:
-            params["type"] = type
-        if limit is not None:
-            params["limit"] = limit
-        return await resolve_and_send(simulator, CMD_STORAGE, params)
+    # Shelved: just aggregates defaults + keychain + coredata which exist as separate tools
+    # @mcp.tool()
+    # async def storage(
+    #     simulator: str | None = Field(default=None, description="Simulator UDID"),
+    #     action: str = Field(default="summary", description="Action: summary, coredata, clear"),
+    #     entity: str | None = Field(
+    #         default=None, description="Core Data entity name (for coredata detail or clear coredata)"
+    #     ),
+    #     type: str | None = Field(
+    #         default=None, description="Storage type to clear: defaults, keychain, coredata (for clear action)"
+    #     ),
+    #     limit: int | None = Field(default=None, description="Max rows to return (for coredata, default 50)"),
+    # ) -> str:
+    #     """Unified persistence overview — view UserDefaults, Keychain, and Core Data counts in one call. Use defaults/keychain for direct read/write."""
+    #     params: dict = {"action": action}
+    #     if entity:
+    #         params["entity"] = entity
+    #     if type:
+    #         params["type"] = type
+    #     if limit is not None:
+    #         params["limit"] = limit
+    #     return await resolve_and_send(simulator, CMD_STORAGE, params)
 
     @mcp.tool()
     async def coredata(

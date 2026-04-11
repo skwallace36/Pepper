@@ -20,7 +20,7 @@ from .pepper_ax import detect_dialog as _ax_detect
 from .pepper_commands import (
     CMD_BACK,
     CMD_DEEPLINKS,
-    CMD_DIFF,
+    CMD_DIFF,  # noqa: F401 — shelved tool, keep import for re-enable
     CMD_DISMISS,
     CMD_DISMISS_KEYBOARD,
     CMD_INPUT,
@@ -462,13 +462,14 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
             )
         )
 
-    @mcp.tool()
-    async def diff(
-        simulator: str | None = Field(default=None, description="Simulator UDID"),
-        action: str = Field(
-            default="start",
-            description="Action: 'start' (capture baseline), 'show' (compare to baseline), 'clear' (discard baseline)",
-        ),
-    ) -> str:
-        """Quick one-off view hierarchy diff — start a baseline, perform actions, then show to see added/removed/changed elements. Use diff for quick inline checks; use snapshot for named baselines you want to compare later."""
-        return json_dumps(await resolve_and_send(simulator, CMD_DIFF, {"action": action}))
+    # Shelved: snapshot covers this with named baselines; diff is a convenience shortcut
+    # @mcp.tool()
+    # async def diff(
+    #     simulator: str | None = Field(default=None, description="Simulator UDID"),
+    #     action: str = Field(
+    #         default="start",
+    #         description="Action: 'start' (capture baseline), 'show' (compare to baseline), 'clear' (discard baseline)",
+    #     ),
+    # ) -> str:
+    #     """Quick one-off view hierarchy diff — start a baseline, perform actions, then show to see added/removed/changed elements. Use diff for quick inline checks; use snapshot for named baselines you want to compare later."""
+    #     return json_dumps(await resolve_and_send(simulator, CMD_DIFF, {"action": action}))

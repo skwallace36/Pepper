@@ -43,12 +43,14 @@ local_only=(
 # MCP tool name -> dylib command name (where they differ).
 map_tool_name() {
   case "$1" in
-    input_text)    echo "input" ;;
-    read_element)  echo "read" ;;
-    undo_manager)  echo "undo" ;;
-    vars_inspect)  echo "vars" ;;
-    look)          echo "introspect" ;;
-    pepper_assert) echo "assert" ;;
+    input_text)       echo "input" ;;
+    network_mock)     echo "network" ;;
+    network_simulate) echo "network" ;;
+    read_element)     echo "read" ;;
+    undo_manager)     echo "undo" ;;
+    vars_inspect)     echo "vars" ;;
+    look)             echo "introspect" ;;
+    pepper_assert)    echo "assert" ;;
     *)             echo "$1" ;;
   esac
 }

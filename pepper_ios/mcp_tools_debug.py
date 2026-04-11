@@ -321,25 +321,27 @@ def register_debug_tools(mcp, resolve_and_send):
             params["limit"] = limit
         return await resolve_and_send(simulator, CMD_CONCURRENCY, params)
 
-    @mcp.tool()
-    async def loading(
-        simulator: str | None = Field(default=None, description="Simulator UDID"),
-        include_network: bool = Field(
-            default=True,
-            description="Cross-reference with in-flight network requests (default true)",
-        ),
-    ) -> str:
-        """Detect active loading indicators — spinners (UIActivityIndicatorView), progress bars (UIProgressView), and skeleton/shimmer views. Cross-references with in-flight network requests."""
-        params: dict = {"include_network": include_network}
-        return await resolve_and_send(simulator, "loading", params)
+    # Shelved: loading indicators are visible via `look` — dedicated tool adds clutter
+    # @mcp.tool()
+    # async def loading(
+    #     simulator: str | None = Field(default=None, description="Simulator UDID"),
+    #     include_network: bool = Field(
+    #         default=True,
+    #         description="Cross-reference with in-flight network requests (default true)",
+    #     ),
+    # ) -> str:
+    #     """Detect active loading indicators — spinners (UIActivityIndicatorView), progress bars (UIProgressView), and skeleton/shimmer views. Cross-references with in-flight network requests."""
+    #     params: dict = {"include_network": include_network}
+    #     return await resolve_and_send(simulator, "loading", params)
 
-    @mcp.tool()
-    async def formatters(
-        simulator: str | None = Field(default=None, description="Simulator UDID"),
-    ) -> str:
-        """Inspect date/time formatting across visible labels. Detects format patterns (12h/24h, ISO 8601, slash/dot dates, relative dates), reports locale context, and flags inconsistencies like mixed clock formats."""
-        params: dict = {}
-        return await resolve_and_send(simulator, "formatters", params)
+    # Shelved: niche i18n tool — re-enable when needed for locale testing
+    # @mcp.tool()
+    # async def formatters(
+    #     simulator: str | None = Field(default=None, description="Simulator UDID"),
+    # ) -> str:
+    #     """Inspect date/time formatting across visible labels. Detects format patterns (12h/24h, ISO 8601, slash/dot dates, relative dates), reports locale context, and flags inconsistencies like mixed clock formats."""
+    #     params: dict = {}
+    #     return await resolve_and_send(simulator, "formatters", params)
 
     @mcp.tool()
     async def frameworks(

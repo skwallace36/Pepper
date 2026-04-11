@@ -1,6 +1,6 @@
 """Network monitoring tool definitions for Pepper MCP.
 
-Tool definitions for: network, timeline.
+Tool definitions for: network, network_mock, network_simulate, timeline.
 """
 
 from __future__ import annotations
@@ -24,13 +24,13 @@ def register_network_tools(mcp, resolve_and_send):
     async def network(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
         action: str = Field(
-            description="Action: start, stop, log, status, clear, tasks, simulate, presets, conditions, remove_condition, clear_conditions, mock, mocks, remove_mock, clear_mocks, stream_log"
+            description="Action: start, stop, log, status, clear, tasks, stream_log"
         ),
         task_state: str | None = Field(
             default=None,
             description="Filter tasks by state: running, suspended, canceling, completed (for tasks action)",
         ),
-        filter_text: str | None = Field(default=None, description="Filter by URL pattern (for log action)"),
+        filter_text: str | None = Field(default=None, description="Filter by URL pattern (for log/tasks action)"),
         hide_noise: bool | None = Field(
             default=None,
             description="Hide known Apple/system telemetry traffic (default: true). Set false to see all requests.",
@@ -57,94 +57,26 @@ def register_network_tools(mcp, resolve_and_send):
             default=None,
             description="Max chars per body when include_body is true (default: 4096). Overrides include_body.",
         ),
-        preset: str | None = Field(
-            default=None,
-            description="Named condition preset for simulate: 3G, Edge, LTE, WiFi, High Latency DNS, 100% Loss",
-        ),
-        effect: str | None = Field(
-            default=None,
-            description="Condition effect for simulate: latency, fail_status, fail_error, throttle, offline",
-        ),
-        latency_ms: int | None = Field(default=None, description="Latency in ms (for effect=latency)"),
-        status_code: int | None = Field(default=None, description="HTTP status code (for effect=fail_status)"),
-        error_domain: str | None = Field(
-            default=None, description="NSError domain (for effect=fail_error, default: NSURLErrorDomain)"
-        ),
-        error_code: int | None = Field(default=None, description="NSError code (for effect=fail_error)"),
-        bytes_per_second: int | None = Field(
-            default=None, description="Bandwidth limit in bytes/sec (for effect=throttle)"
-        ),
-        url: str | None = Field(
-            default=None, description="URL pattern to match (for simulate/mock — substring, case-insensitive)"
-        ),
-        method: str | None = Field(
-            default=None, description="HTTP method to match (for simulate/mock — e.g., GET, POST)"
-        ),
-        condition_id: str | None = Field(
-            default=None, description="Condition ID (for remove_condition, or custom ID for simulate)"
-        ),
-        mock_status_code: int | None = Field(default=None, description="HTTP status code for mock response (default: 200)"),
-        mock_body: str | None = Field(default=None, description="Response body for mock (JSON string)"),
-        mock_id: str | None = Field(default=None, description="Mock ID (for remove_mock, or custom ID for mock)"),
         transaction_id: str | None = Field(
             default=None,
             description="Transaction ID of a streaming request (for stream_log action — get SSE/streaming chunks)",
         ),
     ) -> str:
-        """Monitor HTTP traffic, simulate network conditions (latency, errors, throttle, offline), and mock API responses. Tip: use `timeline(last_seconds=30)` to see network events correlated with console and screen transitions.
+        """Monitor HTTP traffic. Start interception, then query the log for captured requests.
 
-Common recipes (copy-paste ready):
+Recipes:
+  action="start"                                          → begin capturing
+  action="log"                                            → last 10 requests
+  action="log", filter_text="api.example.com", limit=50  → filter by URL
+  action="log", include_headers=True, include_body=True   → full details
+  action="tasks"                                          → active URLSession tasks
+  action="tasks", task_state="running"                    → only running tasks
+  action="stream_log", transaction_id="<id>"              → SSE/streaming chunks
+  action="status"                                         → interception state
+  action="clear"                                          → clear captured log
+  action="stop"                                           → stop interception
 
-1. Monitor traffic:
-   action="start"
-   action="log"                                          → last 10 requests (URL, status, duration)
-   action="log", filter_text="api.example.com", limit=50 → filter by URL substring
-   action="log", include_headers=True, include_body=True  → full request/response details
-   action="status"                                        → interception state + active conditions/mocks
-
-2. Inspect active URLSession tasks:
-   action="tasks"                                          → all tasks across all sessions
-   action="tasks", task_state="running"                    → only running tasks
-   action="tasks", filter_text="api.example.com"           → filter by URL
-
-3. Mock an API endpoint:
-   action="mock", url="api.example.com/users", mock_body='{"users": []}'
-   action="mock", url="api.example.com/users", mock_status_code=201, mock_body='{"id": 1}', method="POST"
-   action="mocks"              → list active mocks
-   action="remove_mock", mock_id="<id from mock call>"
-   action="clear_mocks"        → remove all mocks
-
-4. Simulate slow network (3G-like):
-   action="simulate", effect="throttle", bytes_per_second=50000
-   action="simulate", effect="latency", latency_ms=300
-   → Combine both for realistic 3G. Each creates a separate condition; use action="conditions" to list them.
-
-5. Fail a specific URL:
-   action="simulate", effect="fail_status", status_code=500, url="api.example.com/checkout"
-   action="simulate", effect="fail_error", error_code=-1009, url="api.example.com"  → NSURLErrorNotConnectedToInternet
-   action="simulate", effect="offline"                                                → all requests fail
-
-5. SSE / streaming responses:
-   Automatically detected for text/event-stream, application/x-ndjson, etc.
-   In action="log", streaming requests show is_streaming=true and stream_status="open"|"closed".
-   action="stream_log", transaction_id="<id>"  → get individual chunks from a streaming request
-   Real-time events: network_stream_start, network_stream_chunk, network_stream_end.
-
-6. Clean up:
-   action="conditions"          → list active conditions (latency/throttle/fail)
-   action="remove_condition", condition_id="<id>"
-   action="clear_conditions"    → remove all conditions
-   action="clear"               → clear captured traffic log
-   action="stop"                → stop interception entirely
-
-Parameter relationships:
-- mock_status_code, mock_body, mock_id → only with action="mock"
-- effect, latency_ms, status_code, error_domain, error_code, bytes_per_second → only with action="simulate"
-- condition_id → action="simulate" (custom ID) or action="remove_condition"
-- task_state, filter_text → with action="tasks" (filter_text also used by action="log")
-- filter_text, limit, offset, include_headers, include_body, max_body, hide_noise, exclude → only with action="log"
-- url, method → used by both action="simulate" and action="mock" to match requests
-- transaction_id → only with action="stream_log" """
+Use network_mock for API mocking. Use network_simulate for latency/failures."""
         params: dict = {"action": action}
         if filter_text:
             params["filter"] = filter_text
@@ -164,10 +96,108 @@ Parameter relationships:
             params["include_body"] = include_body
         if max_body is not None:
             params["max_body"] = max_body
-        if preset:
-            params["preset"] = preset
+        if task_state:
+            params["state"] = task_state
+        if transaction_id:
+            params["id"] = transaction_id
+        return await resolve_and_send(simulator, CMD_NETWORK, params)
+
+    @mcp.tool()
+    async def network_mock(
+        simulator: str | None = Field(default=None, description="Simulator UDID"),
+        action: str = Field(
+            description="Action: mock, mocks, remove_mock, clear_mocks"
+        ),
+        url: str | None = Field(
+            default=None, description="URL pattern to match (substring, case-insensitive)"
+        ),
+        method: str | None = Field(
+            default=None, description="HTTP method to match (e.g., GET, POST)"
+        ),
+        mock_status_code: int | None = Field(default=None, description="HTTP status code for mock response (default: 200)"),
+        mock_body: str | None = Field(default=None, description="Response body for mock (JSON string)"),
+        mock_id: str | None = Field(default=None, description="Mock ID (for remove_mock, or custom ID for mock)"),
+    ) -> str:
+        """Mock API responses. Intercept requests matching a URL pattern and return a custom response.
+
+Recipes:
+  action="mock", url="api.example.com/users", mock_body='{"users": []}'
+  action="mock", url="api.example.com/users", mock_status_code=201, mock_body='{"id": 1}', method="POST"
+  action="mocks"                                          → list active mocks
+  action="remove_mock", mock_id="<id from mock call>"
+  action="clear_mocks"                                    → remove all mocks
+
+Requires network interception to be running (network action="start")."""
+        params: dict = {"action": action}
+        if url:
+            params["url"] = url
+        if method:
+            params["method"] = method
+        if mock_status_code is not None:
+            params["status"] = mock_status_code
+        if mock_body is not None:
+            params["body"] = mock_body
+        if mock_id:
+            params["id"] = mock_id
+        return await resolve_and_send(simulator, CMD_NETWORK, params)
+
+    @mcp.tool()
+    async def network_simulate(
+        simulator: str | None = Field(default=None, description="Simulator UDID"),
+        action: str = Field(
+            description="Action: simulate, presets, conditions, remove_condition, clear_conditions"
+        ),
+        effect: str | None = Field(
+            default=None,
+            description="Condition effect: latency, fail_status, fail_error, throttle, offline",
+        ),
+        preset: str | None = Field(
+            default=None,
+            description="Named preset instead of manual effect: 3G, Edge, LTE, WiFi, High Latency DNS, 100% Loss",
+        ),
+        url: str | None = Field(
+            default=None, description="URL pattern to match (substring, case-insensitive). Omit for all requests."
+        ),
+        method: str | None = Field(
+            default=None, description="HTTP method to match (e.g., GET, POST)"
+        ),
+        latency_ms: int | None = Field(default=None, description="Latency in ms (for effect=latency)"),
+        status_code: int | None = Field(default=None, description="HTTP status code (for effect=fail_status)"),
+        error_domain: str | None = Field(
+            default=None, description="NSError domain (for effect=fail_error, default: NSURLErrorDomain)"
+        ),
+        error_code: int | None = Field(default=None, description="NSError code (for effect=fail_error)"),
+        bytes_per_second: int | None = Field(
+            default=None, description="Bandwidth limit in bytes/sec (for effect=throttle)"
+        ),
+        condition_id: str | None = Field(
+            default=None, description="Condition ID (for remove_condition, or custom ID for simulate)"
+        ),
+    ) -> str:
+        """Simulate network conditions — add latency, throttle bandwidth, fail requests, or go offline.
+
+Recipes:
+  action="simulate", effect="latency", latency_ms=300                    → add 300ms latency
+  action="simulate", effect="throttle", bytes_per_second=50000           → 3G-like bandwidth
+  action="simulate", effect="fail_status", status_code=500, url="checkout" → fail specific URL
+  action="simulate", effect="fail_error", error_code=-1009               → NSURLErrorNotConnectedToInternet
+  action="simulate", effect="offline"                                     → all requests fail
+  action="simulate", preset="3G"                                          → named preset
+  action="presets"                                                        → list available presets
+  action="conditions"                                                     → list active conditions
+  action="remove_condition", condition_id="<id>"
+  action="clear_conditions"                                               → remove all
+
+Requires network interception to be running (network action="start")."""
+        params: dict = {"action": action}
         if effect:
             params["effect"] = effect
+        if preset:
+            params["preset"] = preset
+        if url:
+            params["url"] = url
+        if method:
+            params["method"] = method
         if latency_ms is not None:
             params["latency_ms"] = latency_ms
         if status_code is not None:
@@ -178,24 +208,8 @@ Parameter relationships:
             params["error_code"] = error_code
         if bytes_per_second is not None:
             params["bytes_per_second"] = bytes_per_second
-        if url:
-            params["url"] = url
-        if method:
-            params["method"] = method
-        if condition_id and mock_id:
-            return "Error: condition_id and mock_id are mutually exclusive — use condition_id for simulate/remove_condition, mock_id for mock/remove_mock."
         if condition_id:
             params["id"] = condition_id
-        if mock_status_code is not None:
-            params["status"] = mock_status_code
-        if mock_body is not None:
-            params["body"] = mock_body
-        if mock_id:
-            params["id"] = mock_id
-        if task_state:
-            params["state"] = task_state
-        if transaction_id:
-            params["id"] = transaction_id
         return await resolve_and_send(simulator, CMD_NETWORK, params)
 
     @mcp.tool()
