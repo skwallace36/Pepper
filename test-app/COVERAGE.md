@@ -297,14 +297,15 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `swiftui_body` | counts | untested |  |  |
 | `swiftui_body` | scan | untested |  |  |
 | `swiftui_body` | reset | untested |  |  |
+| `target_actions` | — | untested | Any screen with UIControl subclasses (buttons, switches, sliders) | Lists UIControl target-action pairs. Walks view tree, enumerates allTargets and actions(forTarget:forControlEvent:). |
 | `frameworks` | list | untested |  |  |
 | `frameworks` | detail | ready | Any running app | Detailed info for a single loaded image |
 
 ## Summary
 
-**279 test points** across 78 commands.
+**280 test points** across 79 commands.
 
 - pass: 138
 - fail: 3
-- untested: 89
+- untested: 90
 
