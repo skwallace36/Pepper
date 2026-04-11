@@ -8,36 +8,28 @@ from .pepper_commands import CMD_ACCESSIBILITY_ACTION, CMD_ACCESSIBILITY_AUDIT, 
 
 
 def register_ui_accessibility_tools(mcp, resolve_and_send):
-    """Register the ui_accessibility grouped tool.
-
-    Args:
-        mcp: FastMCP server instance.
-        resolve_and_send: async (simulator, cmd, params?, timeout?) -> str (JSON)
-    """
+    """Register the ui_accessibility grouped tool."""
 
     @mcp.tool(name="ui_accessibility")
     async def ui_accessibility(
-        command: str = Field(
-            description="Subcommand: audit | action | events"
-        ),
+        command: str = Field(description="Subcommand: audit | action | events"),
         simulator: str | None = Field(default=None, description="Simulator UDID"),
-        # audit params
-        checks: str | None = Field(default=None, description="[audit] Comma-separated checks: missing_label, missing_trait, contrast, dynamic_type, touch_target, redundant_trait"),
-        severity: str | None = Field(default=None, description="[audit] Minimum severity: error, warning (default), info"),
-        # action params
-        action: str | None = Field(default=None, description="[action/events] For action: list/invoke/escape/magic_tap/increment/decrement. For events: start/stop/status/events/clear"),
-        element: str | None = Field(default=None, description="[action] Accessibility ID of target element"),
-        text: str | None = Field(default=None, description="[action] Text/label of target element"),
-        name: str | None = Field(default=None, description="[action] Custom action name to invoke"),
-        index: int | None = Field(default=None, description="[action] Custom action index to invoke"),
-        # events params
-        limit: int | None = Field(default=None, description="[events] Max events to return"),
-        since_ms: int | None = Field(default=None, description="[events] Only events after this epoch-ms"),
+        checks: str | None = Field(default=None, description="Comma-separated checks (audit): missing_label, missing_trait, contrast, dynamic_type, touch_target, redundant_trait"),
+        severity: str | None = Field(default=None, description="Min severity (audit): error, warning, info"),
+        action: str | None = Field(default=None, description="action: list/invoke/escape/magic_tap/increment/decrement. events: start/stop/status/events/clear"),
+        element: str | None = Field(default=None, description="Accessibility ID of target element (action)"),
+        text: str | None = Field(default=None, description="Text label of target element (action)"),
+        name: str | None = Field(default=None, description="Custom action name to invoke (action)"),
+        index: int | None = Field(default=None, description="Custom action index to invoke (action)"),
+        limit: int | None = Field(default=None, description="Max events to return (events)"),
+        since_ms: int | None = Field(default=None, description="Only events after this epoch-ms (events)"),
     ) -> str:
-        """Accessibility testing tools. Subcommands:
-        - audit: Audit screen for accessibility violations (missing labels, contrast, small tap targets)
-        - action: Test VoiceOver interactions (list/invoke custom actions, escape, magic_tap)
-        - events: Detect screen changes via UIAccessibility notifications"""
+        """Accessibility testing tools.
+
+Subcommands:
+- audit: Audit screen for violations (missing labels, contrast, small tap targets)
+- action: Test VoiceOver interactions (list/invoke custom actions, escape, magic_tap)
+- events: Detect screen changes via UIAccessibility notifications"""
 
         if command == "audit":
             params: dict = {}
@@ -49,7 +41,7 @@ def register_ui_accessibility_tools(mcp, resolve_and_send):
 
         elif command == "action":
             if not action:
-                return "Error: action required (list, invoke, escape, magic_tap, increment, decrement)"
+                return "Error: action required. Use: list, invoke, escape, magic_tap, increment, decrement"
             params = {"action": action}
             if element is not None:
                 params["element"] = element
@@ -63,7 +55,7 @@ def register_ui_accessibility_tools(mcp, resolve_and_send):
 
         elif command == "events":
             if not action:
-                return "Error: action required (start, stop, status, events, clear)"
+                return "Error: action required. Use: start, stop, status, events, clear"
             params = {"action": action}
             if limit is not None:
                 params["limit"] = limit
@@ -71,4 +63,4 @@ def register_ui_accessibility_tools(mcp, resolve_and_send):
                 params["since_ms"] = since_ms
             return await resolve_and_send(simulator, CMD_ACCESSIBILITY_EVENTS, params)
 
-        return f"Unknown command '{command}'. Use: audit, action, events"
+        return f"Error: unknown command '{command}'. Use: audit, action, events"

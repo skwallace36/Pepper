@@ -8,50 +8,39 @@ from .pepper_commands import CMD_ANIMATIONS, CMD_HEAP, CMD_HEAP_SNAPSHOT, CMD_PE
 
 
 def register_app_perf_tools(mcp, resolve_and_send):
-    """Register the app_perf grouped tool.
-
-    Args:
-        mcp: FastMCP server instance.
-        resolve_and_send: async (simulator, cmd, params?, timeout?) -> str (JSON)
-    """
+    """Register the app_perf grouped tool."""
 
     @mcp.tool(name="app_perf")
     async def app_perf(
-        command: str = Field(
-            description="Subcommand: perf | animations | heap | hangs | renders | timers"
-        ),
+        command: str = Field(description="Subcommand: perf | animations | heap | hangs | renders | timers"),
         simulator: str | None = Field(default=None, description="Simulator UDID"),
-        # perf params
-        action: str | None = Field(default=None, description="[perf] fps/hitches/redraws; [heap] classes/controllers/find/inspect/read/baseline/check/diff/snapshot/snapshot_clear/snapshot_status; [hangs] start/stop/status/hangs/clear; [renders] start/stop/status/log/clear/counts/snapshot/diff/reset/ag_probe/ag_server/ag_dump/signpost/why; [timers] start/stop/list/invalidate/status/clear"),
-        duration_ms: int | None = Field(default=None, description="[perf] Sampling duration in ms"),
-        threshold_ms: int | None = Field(default=None, description="[perf/hangs] Threshold in ms"),
-        # animations params
-        point: str | None = Field(default=None, description="[animations] Coordinates 'x,y' to trace"),
-        speed: float | None = Field(default=None, description="[animations] Animation speed multiplier (0=disabled, 0.1=slow-mo, 1=normal, 10=turbo)"),
-        # heap params
-        class_name: str | None = Field(default=None, description="[heap] Class name or pattern"),
-        pattern: str | None = Field(default=None, description="[heap] Pattern for classes search"),
-        key_path: str | None = Field(default=None, description="[heap] KVC key path to read (e.g. 'camera.zoom')"),
-        min_growth: int | None = Field(default=None, description="[heap] Min instance growth to report in diff"),
-        threshold: int | None = Field(default=None, description="[heap] Min instance growth to flag in check"),
-        # renders params
-        filter_text: str | None = Field(default=None, description="[renders/timers] Filter by name/pattern"),
-        since_ms: int | None = Field(default=None, description="[renders] Only events after this epoch-ms"),
-        name: str | None = Field(default=None, description="[renders] Snapshot name for ag_dump"),
-        sub: str | None = Field(default=None, description="[renders] Sub-action for signpost: install or drain"),
-        # timers params
-        timer_id: str | None = Field(default=None, description="[timers] Timer/display-link ID to invalidate"),
-        # shared
+        action: str | None = Field(default=None, description="Action for the subcommand"),
+        duration_ms: int | None = Field(default=None, description="Sampling duration in ms (perf)"),
+        threshold_ms: int | None = Field(default=None, description="Threshold in ms (perf/hangs)"),
+        point: str | None = Field(default=None, description="Coordinates 'x,y' to trace (animations)"),
+        speed: float | None = Field(default=None, description="Animation speed multiplier: 0=disabled, 0.1=slow-mo, 1=normal (animations)"),
+        class_name: str | None = Field(default=None, description="Class name or pattern (heap)"),
+        pattern: str | None = Field(default=None, description="Pattern for classes search (heap)"),
+        key_path: str | None = Field(default=None, description="KVC key path to read, e.g. 'camera.zoom' (heap)"),
+        min_growth: int | None = Field(default=None, description="Min instance growth to report in diff (heap)"),
+        threshold: int | None = Field(default=None, description="Min instance growth to flag in check (heap)"),
+        filter_text: str | None = Field(default=None, description="Filter by name/pattern (renders/timers)"),
+        since_ms: int | None = Field(default=None, description="Only events after this epoch-ms (renders)"),
+        name: str | None = Field(default=None, description="Snapshot name for ag_dump (renders)"),
+        sub: str | None = Field(default=None, description="Sub-action for signpost: install or drain (renders)"),
+        timer_id: str | None = Field(default=None, description="Timer/display-link ID to invalidate (timers)"),
         limit: int | None = Field(default=None, description="Max results to return"),
-        offset: int | None = Field(default=None, description="[heap] Skip this many results for pagination"),
+        offset: int | None = Field(default=None, description="Skip results for pagination (heap)"),
     ) -> str:
-        """Performance profiling tools. Subcommands:
-        - perf: Measure frame rate, detect main-thread hitches, find expensive redraws
-        - animations: Inspect running animations, trace movement, change animation speed
-        - heap: Find live objects, inspect properties, detect memory leaks via baseline/check
-        - hangs: Detect main thread hangs with symbolicated stack traces
-        - renders: Track SwiftUI re-renders and diagnose excessive view body evaluations
-        - timers: Track NSTimer and CADisplayLink instances, find leaked timers"""
+        """Performance profiling tools.
+
+Subcommands:
+- perf: Measure frame rate, detect hitches, find expensive redraws. Actions: fps, hitches, redraws
+- animations: Inspect running animations, trace movement, change speed. Actions: scan, trace, speed
+- heap: Find live objects, inspect properties, detect leaks. Actions: classes, controllers, find, inspect, read, baseline, check, diff, snapshot
+- hangs: Detect main thread hangs with stack traces. Actions: start, stop, status, hangs, clear
+- renders: Track SwiftUI re-renders. Actions: start, stop, status, log, clear, counts, snapshot, diff, reset
+- timers: Track NSTimer/CADisplayLink instances. Actions: start, stop, list, invalidate, status, clear"""
 
         if command == "perf":
             params: dict = {"action": action or "fps"}
@@ -110,7 +99,7 @@ def register_app_perf_tools(mcp, resolve_and_send):
 
         elif command == "renders":
             if not action:
-                return "Error: action required for renders (start, stop, status, log, clear, counts, snapshot, diff, reset, ag_probe, ag_server, ag_dump, signpost, why)"
+                return "Error: action required. Use: start, stop, status, log, clear, counts, snapshot, diff, reset"
             params = {"action": action}
             if limit is not None:
                 params["limit"] = limit
@@ -134,4 +123,4 @@ def register_app_perf_tools(mcp, resolve_and_send):
                 params["limit"] = limit
             return await resolve_and_send(simulator, CMD_TIMERS, params)
 
-        return f"Unknown command '{command}'. Use: perf, animations, heap, hangs, renders, timers"
+        return f"Error: unknown command '{command}'. Use: perf, animations, heap, hangs, renders, timers"

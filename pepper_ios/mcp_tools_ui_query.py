@@ -1,7 +1,4 @@
-"""Grouped UI query tool — find, tree, verify, read, pepper_assert as subcommands.
-
-Replaces 5 individual tools with one `ui_query` tool using a `command` parameter.
-"""
+"""Grouped UI query tool — find, tree, verify, read, assert as subcommands."""
 
 from __future__ import annotations
 
@@ -11,55 +8,42 @@ from .pepper_commands import CMD_ASSERT, CMD_FIND, CMD_READ, CMD_TREE, CMD_VERIF
 
 
 def register_ui_query_tools(mcp, resolve_and_send):
-    """Register the ui_query grouped tool on the given MCP server.
-
-    Args:
-        mcp: FastMCP server instance.
-        resolve_and_send: async (simulator, cmd, params?, timeout?) -> str (JSON)
-    """
+    """Register the ui_query grouped tool."""
 
     @mcp.tool(name="ui_query")
     async def ui_query(
-        command: str = Field(
-            description="Subcommand: find | tree | verify | read | assert"
-        ),
+        command: str = Field(description="Subcommand: find | tree | verify | read | assert"),
         simulator: str | None = Field(default=None, description="Simulator UDID"),
-        # find params
-        predicate: str | None = Field(
-            default=None,
-            description="[find/assert] NSPredicate format string. Properties: label, type, className, interactive, enabled, hitReachable, visible, heuristic, iconName, traits, x/y/width/height/centerX/centerY, viewController, presentationContext",
-        ),
-        action: str | None = Field(default=None, description="[find] Action: list (default), first, count"),
-        limit: int | None = Field(default=None, description="[find] Max results to return (default: 50)"),
-        # tree params
-        depth: int | None = Field(default=None, description="[tree] Max tree depth (default: 10 summary, 50 full; max: 50)"),
-        detail: str | None = Field(default=None, description="[tree] Detail level: 'summary' (default) or 'full'"),
-        # read params
-        element: str | None = Field(default=None, description="[read/verify/assert/tree] Accessibility ID of element"),
-        # verify params
-        text: str | None = Field(default=None, description="[verify/assert] Assert this text is visible on screen"),
-        screen: str | None = Field(default=None, description="[verify] Assert current screen matches this name"),
-        visible: bool | None = Field(default=None, description="[verify] Assert element is visible"),
-        enabled: bool | None = Field(default=None, description="[verify] Assert element is enabled"),
-        value: str | None = Field(default=None, description="[verify/assert] Assert element has this value"),
-        contains: str | None = Field(default=None, description="[verify] Assert screen contains this text"),
-        exact: bool | None = Field(default=None, description="[verify] Require exact text match"),
-        assertions: list[dict] | None = Field(default=None, description="[verify] Batch: list of assertion objects"),
-        # assert params
-        state: str | None = Field(default=None, description="[assert] State: exists, not_exists, visible, enabled, disabled, selected, has_value"),
-        expected: int | None = Field(default=None, description="[assert] Expected count (use with predicate)"),
-        compare: str | None = Field(default=None, description="[assert] Count comparison: eq, gte, lte, gt, lt"),
+        predicate: str | None = Field(default=None, description="NSPredicate format string (find/assert). Properties: label, type, className, interactive, enabled, visible, heuristic, iconName"),
+        action: str | None = Field(default=None, description="find: list (default), first, count"),
+        limit: int | None = Field(default=None, description="Max results (find, default 50)"),
+        depth: int | None = Field(default=None, description="Max tree depth (tree, default 10 summary / 50 full)"),
+        detail: str | None = Field(default=None, description="tree: 'summary' (default) or 'full'"),
+        element: str | None = Field(default=None, description="Accessibility ID (read/verify/assert/tree)"),
+        text: str | None = Field(default=None, description="Assert text visible on screen (verify/assert)"),
+        screen: str | None = Field(default=None, description="Assert current screen matches (verify)"),
+        visible: bool | None = Field(default=None, description="Assert element is visible (verify)"),
+        enabled: bool | None = Field(default=None, description="Assert element is enabled (verify)"),
+        value: str | None = Field(default=None, description="Assert element has this value (verify/assert)"),
+        contains: str | None = Field(default=None, description="Assert screen contains text (verify)"),
+        exact: bool | None = Field(default=None, description="Require exact text match (verify)"),
+        assertions: list[dict] | None = Field(default=None, description="Batch assertions list (verify)"),
+        state: str | None = Field(default=None, description="assert: exists, not_exists, visible, enabled, disabled, selected, has_value"),
+        expected: int | None = Field(default=None, description="Expected count for predicate (assert)"),
+        compare: str | None = Field(default=None, description="Count comparison: eq, gte, lte, gt, lt (assert)"),
     ) -> str:
-        """Query and inspect UI elements. Subcommands:
-        - find: Query elements using NSPredicate (e.g. "label CONTAINS 'Save' AND type == 'button'")
-        - tree: Dump UIView hierarchy (summary or full detail)
-        - read: Read element's value, type, and state by accessibility ID
-        - verify: Run pass/fail assertions on screen state
-        - assert: Assert element state, text presence, or element count"""
+        """Query and inspect UI elements.
+
+Subcommands:
+- find: Query elements using NSPredicate (e.g. "label CONTAINS 'Save' AND type == 'button'")
+- tree: Dump UIView hierarchy (summary or full detail)
+- read: Read element value, type, and state by accessibility ID
+- verify: Run pass/fail assertions on screen state
+- assert: Assert element state, text presence, or element count"""
 
         if command == "find":
             if not predicate:
-                return "Error: predicate required for find"
+                return "Error: predicate required. Use: ui_query command=find predicate=\"type == 'button'\""
             params: dict = {"predicate": predicate, "action": action or "list"}
             if limit is not None:
                 params["limit"] = limit
@@ -77,7 +61,7 @@ def register_ui_query_tools(mcp, resolve_and_send):
 
         elif command == "read":
             if not element:
-                return "Error: element required for read"
+                return "Error: element required. Use: ui_query command=read element='my_element_id'"
             return await resolve_and_send(simulator, CMD_READ, {"element": element})
 
         elif command == "verify":
@@ -120,4 +104,4 @@ def register_ui_query_tools(mcp, resolve_and_send):
                 params["compare"] = compare
             return await resolve_and_send(simulator, CMD_ASSERT, params)
 
-        return f"Unknown command '{command}'. Use: find, tree, verify, read, assert"
+        return f"Error: unknown command '{command}'. Use: find, tree, verify, read, assert"

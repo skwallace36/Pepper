@@ -18,50 +18,39 @@ from .pepper_common import require_parse_json, try_parse_json
 
 
 def register_state_grouped_tools(mcp, resolve_and_send):
-    """Register the state_tools grouped tool.
-
-    Args:
-        mcp: FastMCP server instance.
-        resolve_and_send: async (simulator, cmd, params?, timeout?) -> str (JSON)
-    """
+    """Register the state_tools grouped tool."""
 
     @mcp.tool(name="state_tools")
     async def state_tools(
-        command: str = Field(
-            description="Subcommand: defaults | keychain | clipboard | cookies | sandbox | coredata | undo_manager | flags"
-        ),
+        command: str = Field(description="Subcommand: defaults | keychain | clipboard | cookies | sandbox | coredata | undo_manager | flags"),
         simulator: str | None = Field(default=None, description="Simulator UDID"),
-        # shared
         action: str | None = Field(default=None, description="Action for the subcommand (e.g. read/write/list/get/set/clear)"),
-        key: str | None = Field(default=None, description="[defaults/flags] Key name"),
-        value: str | None = Field(default=None, description="[defaults/keychain/flags/clipboard] Value to set"),
-        # defaults params
-        prefix: str | None = Field(default=None, description="[defaults] Filter keys by prefix"),
-        suite: str | None = Field(default=None, description="[defaults] UserDefaults suite name (default: standard)"),
-        # keychain params
-        service: str | None = Field(default=None, description="[keychain] Service name filter"),
-        account: str | None = Field(default=None, description="[keychain] Account name filter"),
-        # cookies params
-        domain: str | None = Field(default=None, description="[cookies] Domain filter"),
-        name: str | None = Field(default=None, description="[cookies] Cookie name filter"),
-        # sandbox params
-        path: str | None = Field(default=None, description="[sandbox] File/directory path"),
-        content: str | None = Field(default=None, description="[sandbox] File content to write"),
-        base64: bool = Field(default=False, description="[sandbox] Content is base64 encoded"),
-        recursive: bool = Field(default=False, description="[sandbox] List directory recursively"),
-        max_length: int | None = Field(default=None, description="[sandbox] Max bytes to read"),
-        # undo params
-        index: int | None = Field(default=None, description="[undo_manager] Undo/redo to specific index"),
+        key: str | None = Field(default=None, description="Key name (defaults/flags)"),
+        value: str | None = Field(default=None, description="Value to set (defaults/keychain/flags/clipboard)"),
+        prefix: str | None = Field(default=None, description="Filter keys by prefix (defaults)"),
+        suite: str | None = Field(default=None, description="UserDefaults suite name (defaults)"),
+        service: str | None = Field(default=None, description="Service name filter (keychain)"),
+        account: str | None = Field(default=None, description="Account name filter (keychain)"),
+        domain: str | None = Field(default=None, description="Domain filter (cookies)"),
+        name: str | None = Field(default=None, description="Cookie name filter (cookies)"),
+        path: str | None = Field(default=None, description="File/directory path (sandbox)"),
+        content: str | None = Field(default=None, description="File content to write (sandbox)"),
+        base64: bool = Field(default=False, description="Content is base64 encoded (sandbox)"),
+        recursive: bool = Field(default=False, description="List directory recursively (sandbox)"),
+        max_length: int | None = Field(default=None, description="Max bytes to read (sandbox)"),
+        index: int | None = Field(default=None, description="Undo/redo to specific index (undo_manager)"),
     ) -> str:
-        """App state inspection and mutation tools. Subcommands:
-        - defaults: Read/write NSUserDefaults
-        - keychain: Inspect/modify iOS Keychain items
-        - clipboard: Read/write simulator clipboard
-        - cookies: Inspect HTTP cookies
-        - sandbox: Browse, read, write, delete files in app sandbox
-        - coredata: Inspect Core Data schema
-        - undo_manager: Inspect/control NSUndoManager
-        - flags: Override feature flags by intercepting network responses"""
+        """App state inspection and mutation.
+
+Subcommands:
+- defaults: Read/write NSUserDefaults. Actions: list, read, write, delete
+- keychain: Inspect/modify Keychain items. Actions: list, read, write, delete
+- clipboard: Read/write simulator clipboard. Actions: read, write
+- cookies: Inspect HTTP cookies. Actions: list, delete, clear
+- sandbox: Browse/read/write/delete app sandbox files. Actions: paths, list, read, write, delete, info, size
+- coredata: Inspect Core Data schema. Actions: schema
+- undo_manager: Inspect/control NSUndoManager. Actions: status, undo, redo
+- flags: Override feature flags via network interception. Actions: list, get, set, clear"""
 
         if command == "defaults":
             params: dict = {"action": action or "list"}
@@ -130,4 +119,4 @@ def register_state_grouped_tools(mcp, resolve_and_send):
                 params["value"] = try_parse_json(value)
             return await resolve_and_send(simulator, CMD_FLAGS, params)
 
-        return f"Unknown command '{command}'. Use: defaults, keychain, clipboard, cookies, sandbox, coredata, undo_manager, flags"
+        return f"Error: unknown command '{command}'. Use: defaults, keychain, clipboard, cookies, sandbox, coredata, undo_manager, flags"

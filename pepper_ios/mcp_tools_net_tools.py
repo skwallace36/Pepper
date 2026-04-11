@@ -13,7 +13,6 @@ from .pepper_commands import CMD_NETWORK, CMD_TIMELINE
 
 logger = logging.getLogger(__name__)
 
-# Reusable async client — connection pooling across calls.
 _client: httpx.AsyncClient | None = None
 
 
@@ -25,54 +24,45 @@ def _get_client() -> httpx.AsyncClient:
 
 
 def register_net_grouped_tools(mcp, resolve_and_send):
-    """Register the net_tools grouped tool.
-
-    Args:
-        mcp: FastMCP server instance.
-        resolve_and_send: async (simulator, cmd, params?, timeout?) -> str (JSON)
-    """
+    """Register the net_tools grouped tool."""
 
     @mcp.tool(name="net_tools")
     async def net_tools(
-        command: str = Field(
-            description="Subcommand: mock | simulate | http_call | timeline"
-        ),
+        command: str = Field(description="Subcommand: mock | simulate | http_call | timeline"),
         simulator: str | None = Field(default=None, description="Simulator UDID"),
-        # mock params
-        action: str | None = Field(default=None, description="[mock] add/remove/list/clear; [simulate] add/remove/list/clear/preset; [timeline] start/stop/log/status/clear"),
-        url: str | None = Field(default=None, description="[mock/simulate/http_call] URL pattern or full URL"),
-        method: str | None = Field(default=None, description="[mock/simulate/http_call] HTTP method"),
-        mock_status_code: int | None = Field(default=None, description="[mock] Response status code"),
-        mock_body: str | None = Field(default=None, description="[mock] Response body (JSON string or text)"),
-        mock_id: str | None = Field(default=None, description="[mock/simulate] Mock/condition ID for remove"),
-        # simulate params
-        effect: str | None = Field(default=None, description="[simulate] Effect: latency, error, throttle"),
-        preset: str | None = Field(default=None, description="[simulate] Preset: offline, slow_3g, lossy, flaky"),
-        latency_ms: int | None = Field(default=None, description="[simulate] Latency in milliseconds"),
-        status_code: int | None = Field(default=None, description="[simulate] Error status code"),
-        error_domain: str | None = Field(default=None, description="[simulate] NSError domain"),
-        error_code: int | None = Field(default=None, description="[simulate] NSError code"),
-        bytes_per_second: int | None = Field(default=None, description="[simulate] Throttle rate"),
-        condition_id: str | None = Field(default=None, description="[simulate] Condition ID for remove"),
-        # http_call params
-        headers: str | dict | None = Field(default=None, description="[http_call] Headers as JSON string or object"),
-        body: str | dict | list | None = Field(default=None, description="[http_call] Request body"),
-        content_type: str | None = Field(default=None, description="[http_call] Content-Type header"),
-        timeout: int | None = Field(default=None, description="[http_call] Request timeout in seconds"),
-        # timeline params
-        limit: int | None = Field(default=None, description="[timeline] Max events to return"),
-        types: list[str] | None = Field(default=None, description="[timeline] Filter by event types"),
-        last_seconds: int | None = Field(default=None, description="[timeline] Only events from last N seconds"),
-        since_ms: int | None = Field(default=None, description="[timeline] Only events after this epoch-ms"),
-        filter_text: str | None = Field(default=None, description="[timeline] Filter events by text"),
-        buffer_size: int | None = Field(default=None, description="[timeline] Set buffer size"),
-        recording: bool | None = Field(default=None, description="[timeline] Enable/disable recording"),
+        action: str | None = Field(default=None, description="mock: add/remove/list/clear. simulate: add/remove/list/clear/preset. timeline: start/stop/log/status/clear"),
+        url: str | None = Field(default=None, description="URL pattern or full URL (mock/simulate/http_call)"),
+        method: str | None = Field(default=None, description="HTTP method (mock/simulate/http_call)"),
+        mock_status_code: int | None = Field(default=None, description="Response status code (mock)"),
+        mock_body: str | None = Field(default=None, description="Response body, JSON or text (mock)"),
+        mock_id: str | None = Field(default=None, description="Mock/condition ID for remove (mock/simulate)"),
+        effect: str | None = Field(default=None, description="Effect: latency, error, throttle (simulate)"),
+        preset: str | None = Field(default=None, description="Preset: offline, slow_3g, lossy, flaky (simulate)"),
+        latency_ms: int | None = Field(default=None, description="Latency in milliseconds (simulate)"),
+        status_code: int | None = Field(default=None, description="Error status code (simulate)"),
+        error_domain: str | None = Field(default=None, description="NSError domain (simulate)"),
+        error_code: int | None = Field(default=None, description="NSError code (simulate)"),
+        bytes_per_second: int | None = Field(default=None, description="Throttle rate (simulate)"),
+        condition_id: str | None = Field(default=None, description="Condition ID for remove (simulate)"),
+        headers: str | dict | None = Field(default=None, description="Headers as JSON string or object (http_call)"),
+        body: str | dict | list | None = Field(default=None, description="Request body (http_call)"),
+        content_type: str | None = Field(default=None, description="Content-Type header (http_call)"),
+        timeout: int | None = Field(default=None, description="Request timeout in seconds (http_call)"),
+        limit: int | None = Field(default=None, description="Max events to return (timeline)"),
+        types: list[str] | None = Field(default=None, description="Filter by event types (timeline)"),
+        last_seconds: int | None = Field(default=None, description="Only events from last N seconds (timeline)"),
+        since_ms: int | None = Field(default=None, description="Only events after this epoch-ms (timeline)"),
+        filter_text: str | None = Field(default=None, description="Filter events by text (timeline)"),
+        buffer_size: int | None = Field(default=None, description="Set buffer size (timeline)"),
+        recording: bool | None = Field(default=None, description="Enable/disable recording (timeline)"),
     ) -> str:
-        """Network tools beyond basic monitoring. Subcommands:
-        - mock: Mock API responses (add/remove/list/clear)
-        - simulate: Simulate network conditions (latency, throttle, errors, presets)
-        - http_call: Make HTTP request to any URL (REST APIs, webhooks)
-        - timeline: Always-on flight recorder for network/console/screen events"""
+        """Network tools beyond basic monitoring.
+
+Subcommands:
+- mock: Mock API responses. Actions: add, remove, list, clear
+- simulate: Simulate network conditions (latency, throttle, errors). Actions: add, remove, list, clear, preset
+- http_call: Make HTTP request to any URL (REST APIs, webhooks)
+- timeline: Always-on flight recorder for network/console/screen events. Actions: start, stop, log, status, clear"""
 
         if command == "mock":
             params: dict = {"action": action or "list"}
@@ -124,7 +114,7 @@ def register_net_grouped_tools(mcp, resolve_and_send):
                     try:
                         req_headers = json.loads(headers)
                     except json.JSONDecodeError as e:
-                        return f"Invalid headers JSON: {e}"
+                        return f"Error: invalid headers JSON — {e}"
             body_str: str | None = None
             if body is not None:
                 body_str = json.dumps(body) if isinstance(body, (dict, list)) else body
@@ -144,11 +134,11 @@ def register_net_grouped_tools(mcp, resolve_and_send):
             try:
                 resp = await client.request(**kwargs)
             except httpx.TimeoutException:
-                return f"Request timed out after {timeout or 30}s"
+                return f"Error: request timed out after {timeout or 30}s"
             except httpx.ConnectError as e:
-                return f"Connection failed: {e}"
+                return f"Error: connection failed — {e}"
             except httpx.RequestError as e:
-                return f"Request error: {e}"
+                return f"Error: request failed — {e}"
             elapsed_ms = int((time.monotonic() - start) * 1000)
             parts = [f"HTTP {resp.status_code} ({elapsed_ms}ms)"]
             ct_resp = resp.headers.get("content-type", "")
@@ -187,4 +177,4 @@ def register_net_grouped_tools(mcp, resolve_and_send):
                 params["recording"] = recording
             return await resolve_and_send(simulator, CMD_TIMELINE, params)
 
-        return f"Unknown command '{command}'. Use: mock, simulate, http_call, timeline"
+        return f"Error: unknown command '{command}'. Use: mock, simulate, http_call, timeline"

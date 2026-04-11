@@ -54,48 +54,19 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
 
     @mcp.tool(name="app_look")
     async def look(
-        simulator: str | None = Field(default=None, description="Simulator UDID (optional if only one sim running)"),
-        scope: str | None = Field(
-            default=None,
-            description="Filter to elements inside a container. Pass an accessibility identifier or visible label (e.g. scope='Steps', scope='tab_bar'). Uses element resolution — same matching as tap/read_element.",
-        ),
-        region: str | None = Field(
-            default=None,
-            description="Filter to elements in a y-range. Pass 'minY-maxY' (e.g. region='390-532'). For exact box use raw JSON: {\"x\":0,\"y\":390,\"w\":390,\"h\":142}.",
-        ),
+        simulator: str | None = Field(default=None, description="Simulator UDID"),
+        scope: str | None = Field(default=None, description="Filter to elements inside a container by accessibility ID or label (e.g. 'Steps', 'tab_bar')"),
+        region: str | None = Field(default=None, description="Filter to y-range 'minY-maxY' (e.g. '390-532')"),
         raw: bool = Field(default=False, description="Return raw JSON instead of formatted summary"),
-        filter: str | None = Field(
-            default=None,
-            description="Raw mode only. Filter elements by type (e.g. filter='button', filter='staticText'). Case-insensitive substring match against element type.",
-        ),
-        fields: str | None = Field(
-            default=None,
-            description="Raw mode only. Comma-separated list of fields to include per element (e.g. fields='label,frame,type'). Reduces output to only the requested keys.",
-        ),
-        verbose: bool = Field(
-            default=False,
-            description="Show y-range group headers and full spatial layout. Useful for human debugging; agents rarely need this.",
-        ),
-        compact: bool = Field(
-            default=False,
-            description="Stateful diff: first call returns all elements with tap commands; subsequent calls show only added/changed/removed elements. Best for monitoring — call repeatedly and only see what changed. Resets on screen change.",
-        ),
-        ocr: bool = Field(
-            default=False,
-            description="Run OCR on the screen to find text not in the accessibility tree. Adds ~60-120ms. OCR-only results shown in a separate section.",
-        ),
-        visual: bool = Field(default=False, description="Include a simulator screenshot alongside the structured data"),
-        screenshot_quality: str = Field(
-            default="standard",
-            description="Screenshot quality: 'standard' (70% JPEG) or 'high' (95% JPEG, for PR validation)",
-        ),
-        save_screenshot: str | None = Field(
-            default=None, description="Save screenshot to this file path (in addition to returning it)"
-        ),
-        detail: str = Field(
-            default="summary",
-            description="Detail level: 'summary' (default) returns element names/types/tap commands — minimal tokens for agent use. 'full' includes frames, traits, heuristics, scroll_context — use when debugging layout.",
-        ),
+        filter: str | None = Field(default=None, description="Raw mode: filter elements by type (e.g. 'button', 'staticText')"),
+        fields: str | None = Field(default=None, description="Raw mode: comma-separated fields per element (e.g. 'label,frame,type')"),
+        verbose: bool = Field(default=False, description="Show y-range group headers and full spatial layout"),
+        compact: bool = Field(default=False, description="Stateful diff mode: shows only added/changed/removed elements between calls"),
+        ocr: bool = Field(default=False, description="Run OCR to find text not in the accessibility tree (+60-120ms)"),
+        visual: bool = Field(default=False, description="Include a simulator screenshot alongside structured data"),
+        screenshot_quality: str = Field(default="standard", description="Screenshot quality: 'standard' (70%% JPEG) or 'high' (95%% JPEG)"),
+        save_screenshot: str | None = Field(default=None, description="Save screenshot to this file path"),
+        detail: str = Field(default="summary", description="'summary' (default): names/types/tap commands. 'full': frames, traits, heuristics"),
     ) -> list:
         """Primary observation tool — returns all interactive elements with tap commands, plus visible text. Call before acting to know what's available."""
         try:

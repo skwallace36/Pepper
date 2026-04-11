@@ -60,20 +60,7 @@ def register_network_tools(mcp, resolve_and_send):
             description="Transaction ID of a streaming request (for stream_log action — get SSE/streaming chunks)",
         ),
     ) -> str:
-        """Monitor HTTP traffic. Start interception, then query the log for captured requests.
-
-Recipes:
-  action="start"                                          → begin capturing
-  action="log"                                            → last 10 requests
-  action="log", filter_text="api.example.com", limit=50  → filter by URL
-  action="log", include_headers=True, include_body=True   → full details
-  action="tasks"                                          → active URLSession tasks
-  action="stream_log", transaction_id="<id>"              → SSE/streaming chunks
-  action="status"                                         → interception state
-  action="clear"                                          → clear captured log
-  action="stop"                                           → stop interception
-
-Use net_tools mock for API mocking. Use net_tools simulate for latency/failures."""
+        """Monitor HTTP traffic. Start interception, then query the log. Actions: start, stop, log, status, clear, tasks, stream_log. Use net_tools for mocking and simulation."""
         params: dict = {"action": action}
         if filter_text:
             params["filter"] = filter_text
