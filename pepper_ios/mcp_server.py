@@ -56,21 +56,26 @@ from .mcp_build import (
 )
 from .mcp_crash import fetch_crash_info
 from .mcp_prompts import register_prompts
-from .mcp_tools_accessibility import register_accessibility_tools
-from .mcp_tools_biometric import register_biometric_tools
-from .mcp_tools_debug import register_debug_tools
-from .mcp_tools_dialog import register_dialog_tools
-from .mcp_tools_element import register_element_tools
-from .mcp_tools_http import register_http_tools
-from .mcp_tools_nav import register_nav_tools
-from .mcp_tools_network import register_network_tools
-from .mcp_tools_perf import register_perf_tools
-from .mcp_tools_record import register_record_tools
-from .mcp_tools_renders import register_renders_tools
-from .mcp_tools_script import register_script_tools
-from .mcp_tools_sim import register_sim_tools
-from .mcp_tools_state import register_state_tools
-from .mcp_tools_system import register_system_tools
+# Standalone tools (renamed with prefix convention)
+from .mcp_tools_debug import register_debug_tools  # app_console (standalone only)
+from .mcp_tools_dialog import register_dialog_tools  # nav_dialog
+from .mcp_tools_element import register_element_tools  # ui_toggle (standalone only)
+from .mcp_tools_nav import register_nav_tools  # app_look, ui_tap, ui_scroll, etc.
+from .mcp_tools_network import register_network_tools  # app_network (standalone only)
+from .mcp_tools_record import register_record_tools  # app_record
+from .mcp_tools_sim import register_sim_tools  # sim_control, sim_raw
+from .mcp_tools_state import register_state_tools  # state_vars (standalone only)
+from .mcp_tools_system import register_system_tools  # app_status, ui_gesture (standalone only)
+# Grouped tools (multiple subcommands per tool)
+from .mcp_tools_app_automation import register_app_automation_tools
+from .mcp_tools_app_debug import register_app_debug_tools
+from .mcp_tools_app_perf import register_app_perf_tools
+from .mcp_tools_app_swiftui import register_app_swiftui_tools
+from .mcp_tools_net_tools import register_net_grouped_tools
+from .mcp_tools_state_tools import register_state_grouped_tools
+from .mcp_tools_sys_tools import register_sys_grouped_tools
+from .mcp_tools_ui_accessibility import register_ui_accessibility_tools
+from .mcp_tools_ui_query import register_ui_query_tools
 from .pepper_websocket import CrashError, make_command
 from .pepper_websocket import send_command as ws_send_command
 
@@ -624,7 +629,7 @@ async def act_and_look(simulator: str | None, cmd: str, params: dict | None = No
             return [
                 TextContent(
                     type="text",
-                    text=f"Error: {err}\n\nPepper is not running. Use `build_and_deploy` to launch the app with Pepper injected.",
+                    text=f"Error: {err}\n\nPepper is not running. Use `app_build` to launch the app with Pepper injected.",
                 )
             ]
 
@@ -721,24 +726,24 @@ async def act_and_look(simulator: str | None, cmd: str, params: dict | None = No
 
 _CORE_INSTRUCTIONS = (
     "Pepper controls a running iOS app via a dylib injected into the simulator. "
-    "Use `look` to see what's on screen, `tap` to interact, `vars` to inspect/mutate state, "
-    "`layers` to debug rendering, `screen` for the current screen name. "
+    "Tools are organized by prefix: app_* (observe/manage app), ui_* (interact with UI), "
+    "nav_* (navigate between screens), state_* (inspect/change data), sim_* (simulator mgmt), "
+    "net_tools (network), sys_tools (device/OS). "
     "All tools accept an optional `simulator` UDID parameter for multi-sim setups.\n\n"
     "RULES:\n"
-    "- NEVER screenshot. Use `look` instead. Always.\n"
-    "- `look` first, always. Before tapping, navigating, or asserting.\n"
-    "- Use `look visual=true` to include a simulator screenshot alongside the structured data for visual validation.\n"
-    "- Action tools (tap, scroll, navigate, back, input) auto-include screen state in their response. Read it.\n"
-    "- To check property values: use `vars_inspect`, NOT print statements. No rebuild needed.\n"
-    "- To check API traffic: use `network` start + log, NOT print statements.\n"
-    "- To capture app logs (print + NSLog): use `console` start + log.\n"
+    "- `app_look` first, always. Before tapping, navigating, or asserting.\n"
+    "- Use `app_look visual=true` to include a simulator screenshot alongside the structured data for visual validation.\n"
+    "- Action tools (ui_tap, ui_scroll, nav_go, nav_back, ui_input) auto-include screen state in their response. Read it.\n"
+    "- To check property values: use `state_vars`, NOT print statements. No rebuild needed.\n"
+    "- To check API traffic: use `app_network` start + log, NOT print statements.\n"
+    "- To capture app logs (print + NSLog): use `app_console` start + log.\n"
     "- If a command returns APP CRASHED: investigate the crash, do NOT just redeploy.\n"
     "- If an element isn't found: the screen state is in the error. Read it before retrying.\n"
-    "- If `look` shows SYSTEM DIALOG BLOCKING APP: STOP and run `dialog dismiss_system` immediately. Do NOT use `tap` or `dialog dismiss button=` — system dialogs (permissions, notifications, location) live in SpringBoard, not the app. Only `dismiss_system` can reach them.\n"
-    "- Use `build_and_deploy(workspace, simulator)` to build + deploy. NEVER use raw `simctl launch`.\n\n"
+    "- If `app_look` shows SYSTEM DIALOG BLOCKING APP: STOP and run `nav_dialog dismiss_system` immediately. Do NOT use `ui_tap` or `nav_dialog dismiss button=` — system dialogs (permissions, notifications, location) live in SpringBoard, not the app. Only `dismiss_system` can reach them.\n"
+    "- Use `app_build(workspace, simulator)` to build + deploy. NEVER use raw `simctl launch`.\n\n"
     "TIPS:\n"
-    "- Always `look` before interacting to confirm screen state.\n"
-    "- Action tools (tap, scroll, navigate) auto-include screen state in response — read it.\n"
+    "- Always `app_look` before interacting to confirm screen state.\n"
+    "- Action tools (ui_tap, ui_scroll, nav_go) auto-include screen state in response — read it.\n"
     "- For recordings, use `pepper-ctl tap --point x,y` for fast chained actions (no look overhead).\n"
     "- Screenshots go to the repo where the PR lives, not pepper's repo.\n\n"
     "WORKFLOW GUIDES (read the resource when you need it):\n"
@@ -751,6 +756,21 @@ _adapter_preamble = load_adapter_preamble()
 _instructions = _CORE_INSTRUCTIONS + ("\n\n" + _adapter_preamble if _adapter_preamble else "")
 
 mcp = FastMCP("pepper", instructions=_instructions)
+
+# ---------------------------------------------------------------------------
+# Tool usage logging — wraps call_tool to record every invocation
+# ---------------------------------------------------------------------------
+from .pepper_usage import log_tool_call
+
+_original_call_tool = mcp.call_tool
+
+
+async def _logged_call_tool(name, arguments):
+    log_tool_call(name)
+    return await _original_call_tool(name, arguments)
+
+
+mcp.call_tool = _logged_call_tool
 
 
 # ---------------------------------------------------------------------------
@@ -766,8 +786,8 @@ _PR_VALIDATION_GUIDE = (
     "3. For each item:\n"
     "   a. Navigate to the relevant screen (deeplink or tap sequence).\n"
     "   b. Perform the interaction described in the test item.\n"
-    "   c. Verify the expected outcome with `look` (check text, elements, state).\n"
-    "   d. Capture screenshot: `look visual=true screenshot_quality=high "
+    "   c. Verify the expected outcome with `app_look` (check text, elements, state).\n"
+    "   d. Capture screenshot: `app_look visual=true screenshot_quality=high "
     "save_screenshot=/tmp/pr-NNNN-item.jpg`\n"
     "4. Upload all screenshots: `python3 <PEPPER_DIR>/tools/upload-screenshot "
     "--repo owner/repo --prefix pr-NNNN --markdown /tmp/pr-NNNN-*.jpg`\n"
@@ -776,14 +796,14 @@ _PR_VALIDATION_GUIDE = (
     "   Add a `### Screenshots` section (not 'Evidence'). Use HTML img tags with "
     "width=200 for thumbnails.\n"
     "   Label each screenshot with a bold caption above it. Example:\n"
-    '   `**Flag off** <img src="URL" width=200> **Flag on** <img src="URL" width=200>`'
+    '   `**Flag off** <img src="URL" width=200> **Flag on** <img src="URL" width=200>`\n'
 )
 
 _SCREEN_RECORDING_GUIDE = (
     "SCREEN RECORDING:\n"
     "For test items that need interaction sequences (toggle persistence, navigation flows):\n"
-    "- `record action=start` → do interactions → `record action=stop output=/tmp/clip.mp4`\n"
-    "- For tight clips: explore first with `look`, then chain taps with animation "
+    "- `app_record action=start` → do interactions → `app_record action=stop output=/tmp/clip.mp4`\n"
+    "- For tight clips: explore first with `app_look`, then chain taps with animation "
     "delays (0.3-0.7s per action).\n"
     "- Upload videos via Playwright MCP (browser automation) to get user-attachments "
     "URLs that autoplay in PRs.\n"
@@ -793,17 +813,17 @@ _SCREEN_RECORDING_GUIDE = (
 
 _LAUNCHING_GUIDE = (
     "LAUNCHING THE APP:\n"
-    "`build_and_deploy` builds, installs, launches with Pepper, and returns screen state.\n"
+    "`app_build` builds, installs, launches with Pepper, and returns screen state.\n"
     "Required params: workspace (path to .xcworkspace) and simulator (UDID).\n"
-    "Use `simulator action=list` to find available simulator UDIDs.\n"
+    "Use `sim_control action=list` to find available simulator UDIDs.\n"
     "NEVER use raw `simctl launch` — it skips Pepper injection.\n"
     "Bundle ID is auto-detected from the built .app. Pass it explicitly only if needed."
 )
 
 _ACTIONS_REFERENCE = """\
-ACTION REFERENCE — detailed docs for multi-action tools.
+ACTION REFERENCE — detailed docs for grouped tools (use as command= parameter).
 
-## heap
+## app_perf heap
 - classes: Search live heap classes by name pattern. Params: pattern, limit.
 - controllers: List live UIViewControllers.
 - find: Find singleton or specific instance. Params: class_name.
@@ -816,7 +836,7 @@ ACTION REFERENCE — detailed docs for multi-action tools.
 - snapshot_clear: Clear saved snapshots.
 - snapshot_status: Check snapshot state.
 
-## renders
+## app_perf renders / app_swiftui renders
 - start: Begin tracking SwiftUI body evaluations.
 - stop: Stop tracking.
 - status: Check if tracking is active.
@@ -832,7 +852,7 @@ ACTION REFERENCE — detailed docs for multi-action tools.
 - signpost: Install or drain os_signpost probes. Params: sub (install | drain).
 - why: Explain why a view re-rendered.
 
-## notifications
+## app_debug notifications
 - start: Begin tracking NSNotificationCenter observers.
 - stop: Stop tracking.
 - list: List registered observers. Params: filter_text, limit.
@@ -842,7 +862,7 @@ ACTION REFERENCE — detailed docs for multi-action tools.
 - status: Check tracking state.
 - clear: Clear recorded data.
 
-## timers
+## app_perf timers
 - start: Begin tracking NSTimer and CADisplayLink instances.
 - stop: Stop tracking.
 - list: List active timers. Params: filter_text, limit.
@@ -850,7 +870,7 @@ ACTION REFERENCE — detailed docs for multi-action tools.
 - status: Check tracking state.
 - clear: Clear recorded data.
 
-## simulator
+## sim_control
 - list: Show booted simulators with Pepper connection status.
 - install: Install app. Params: app_path.
 - uninstall: Remove app. Params: bundle_id.
@@ -867,14 +887,14 @@ permission_value (grant | revoke | reset), bundle_id.
 - erase: Factory-reset a simulator.
 - status_bar: Override status bar. Params: time (e.g. '09:41'), clear_time (bool).
 
-## vars_inspect
+## state_vars
 - list: List tracked ViewModels found via runtime scanning.
 - dump: Show @Published properties of a ViewModel. Params: class_name.
 - mirror: Show all properties (including non-Published) via Swift Mirror. Params: class_name.
 - set: Mutate a live property value. Params: path (e.g. 'MyVM.flag'), value.
 - discover: Re-scan the runtime for new ViewModel instances.
 
-## sandbox
+## state_tools sandbox
 - paths: Show app container directories (Documents, Caches, Library, tmp, Bundle).
 - list: List files in a directory. Params: path, recursive.
 - read: Read file contents (auto-detects text/plist/JSON/binary). Params: path, max_length.
@@ -905,7 +925,7 @@ def launching_guide() -> str:
 
 @mcp.resource("pepper://reference/actions")
 def actions_reference() -> str:
-    """Detailed action reference for multi-action tools (heap, renders, notifications, timers, simulator)."""
+    """Detailed action reference for grouped tools (app_perf, app_debug, sim_control, state_vars, state_tools)."""
     return _ACTIONS_REFERENCE
 
 
@@ -964,20 +984,18 @@ def _register_adapter_tools():
 _register_adapter_tools()
 
 
-register_nav_tools(mcp, send_command, resolve_and_send, act_and_look)
-register_state_tools(mcp, resolve_and_send_json)
-register_debug_tools(mcp, resolve_and_send_json)
-register_network_tools(mcp, resolve_and_send_json)
-register_perf_tools(mcp, resolve_and_send_json)
-register_accessibility_tools(mcp, resolve_and_send_json)
-register_renders_tools(mcp, resolve_and_send_json)
-register_system_tools(mcp, resolve_and_send_json, act_and_look)
-# dialog needs raw dict for _dismiss_system_dialog + detect_system internal logic
-register_dialog_tools(mcp, resolve_and_send, _resolve_simulator)
-register_element_tools(mcp, resolve_and_send_json, act_and_look)
-register_record_tools(mcp)
-register_sim_tools(mcp, resolve_and_send_json, _resolve_simulator)
-register_biometric_tools(mcp, _resolve_simulator)
+# --- Standalone tools (high-frequency, stay individual) ---
+register_nav_tools(mcp, send_command, resolve_and_send, act_and_look)  # app_look, ui_tap, ui_scroll, ui_swipe, ui_input, nav_go, nav_back, nav_dismiss, ui_swipe, nav_screen, nav_keyboard, app_snapshot
+register_debug_tools(mcp, resolve_and_send_json)  # app_console only (others moved to app_debug)
+register_network_tools(mcp, resolve_and_send_json)  # app_network only (others moved to net_tools)
+register_system_tools(mcp, resolve_and_send_json, act_and_look)  # app_status, ui_gesture only (others moved to sys_tools)
+register_dialog_tools(mcp, resolve_and_send, _resolve_simulator)  # nav_dialog
+register_element_tools(mcp, resolve_and_send_json, act_and_look)  # ui_toggle only (others moved to ui_query)
+register_state_tools(mcp, resolve_and_send_json)  # state_vars only (others moved to state_tools)
+register_record_tools(mcp)  # app_record
+register_sim_tools(mcp, resolve_and_send_json, _resolve_simulator)  # sim_control, sim_raw
+
+
 async def _script_deploy(workspace, simulator, scheme=None, bundle_id=None, skip_privacy=False):
     """Internal deploy for script replay — bypasses MCP tool decorator."""
     success, build_msg = await _build_app(workspace, scheme, simulator)
@@ -994,63 +1012,18 @@ async def _script_deploy(workspace, simulator, scheme=None, bundle_id=None, skip
     )
     return f"{build_msg}\n\n{deploy_msg}"
 
-register_script_tools(mcp, act_and_look, resolve_and_send_json, deploy_fn=_script_deploy)
-register_http_tools(mcp)
+
+# --- Grouped tools (multiple subcommands each) ---
+register_ui_query_tools(mcp, resolve_and_send_json)
+register_ui_accessibility_tools(mcp, resolve_and_send_json)
+register_app_debug_tools(mcp, resolve_and_send_json)
+register_app_perf_tools(mcp, resolve_and_send_json)
+register_app_swiftui_tools(mcp, resolve_and_send_json)
+register_app_automation_tools(mcp, resolve_and_send_json, act_and_look, deploy_fn=_script_deploy)
+register_state_grouped_tools(mcp, resolve_and_send_json)
+register_net_grouped_tools(mcp, resolve_and_send_json)
+register_sys_grouped_tools(mcp, resolve_and_send_json)
 register_prompts(mcp)
-
-
-@mcp.tool()
-async def wait_for(
-    simulator: str | None = Field(default=None, description="Simulator UDID"),
-    element: str | None = Field(default=None, description="Accessibility ID of element to wait for"),
-    state: str | None = Field(default=None, description="State to wait for: visible (default), exists, has_value"),
-    value: str | None = Field(default=None, description="Expected value (for has_value state)"),
-    text: str | None = Field(default=None, description="Wait for text to appear on screen (alternative to element)"),
-    screen: str | None = Field(default=None, description="Wait for a specific screen ID (alternative to element)"),
-    predicate: str | None = Field(default=None, description="NSPredicate format string to match elements (e.g. \"label == 'Submit' AND enabled == true\"). Same syntax as find tool."),
-    expect: str | None = Field(default=None, description="For predicate waits: match (default, wait for ≥1 match) or gone (wait for 0 matches)"),
-    timeout_ms: int | None = Field(default=None, description="Timeout in milliseconds (default: 5000)"),
-) -> str:
-    """Wait for a condition — element visible, text appears, screen changes, or predicate match/gone. Use after actions that trigger async UI updates."""
-    until: dict = {}
-    if element:
-        until["element"] = element
-        if state:
-            until["state"] = state
-        if value:
-            until["value"] = value
-    elif text:
-        until["text"] = text
-    elif screen:
-        until["screen"] = screen
-    elif predicate:
-        until["predicate"] = predicate
-        if expect:
-            until["expect"] = expect
-    else:
-        return "Error: specify element, text, screen, or predicate to wait for"
-    params: dict = {"until": until}
-    if timeout_ms is not None:
-        params["timeout_ms"] = timeout_ms
-    return await resolve_and_send_json(simulator, "wait_for", params, timeout=max(15, (timeout_ms or 5000) / 1000 + 2))
-
-
-@mcp.tool()
-async def wait_idle(
-    simulator: str | None = Field(default=None, description="Simulator UDID"),
-    timeout_ms: int | None = Field(default=None, description="Timeout in milliseconds (default: 3000)"),
-    include_network: bool = Field(default=False, description="Also wait for pending network requests"),
-    debug: bool = Field(default=False, description="Return what's blocking idle instead of waiting"),
-) -> str:
-    """Wait for the app to become idle — no animations or pending transitions. Use before inspecting after complex interactions."""
-    params: dict = {}
-    if timeout_ms is not None:
-        params["timeout_ms"] = timeout_ms
-    if include_network:
-        params["include_network"] = True
-    if debug:
-        params["debug"] = True
-    return await resolve_and_send_json(simulator, "wait_idle", params, timeout=max(10, (timeout_ms or 3000) / 1000 + 2))
 
 
 # ---------------------------------------------------------------------------
@@ -1058,7 +1031,7 @@ async def wait_idle(
 # ---------------------------------------------------------------------------
 
 
-@mcp.tool()
+@mcp.tool(name="app_build_hw")
 async def build_hardware(
     workspace: str = Field(description="Absolute path to the .xcworkspace to build"),
     scheme: str | None = Field(default=None, description="Build scheme (default: from .env APP_SCHEME)"),
@@ -1069,7 +1042,7 @@ async def build_hardware(
     install: bool = Field(default=True, description="Install on device after building"),
     launch: bool = Field(default=True, description="Launch app after installing"),
 ) -> str:
-    """Build the iOS app for a physical device connected via USB/WiFi. Not for simulators — use build_and_deploy instead."""
+    """Build the iOS app for a physical device connected via USB/WiFi. Not for simulators — use app_build instead."""
     cfg = get_config()
     devicectl_uuid = cfg["device_devicectl_uuid"]
 
@@ -1109,7 +1082,7 @@ async def build_hardware(
     return "\n".join(parts)
 
 
-@mcp.tool()
+@mcp.tool(name="app_build")
 async def build_and_deploy(
     workspace: str = Field(description="Absolute path to the .xcworkspace"),
     simulator: str = Field(description="Simulator UDID (use `simulator action=list` to find one)"),
@@ -1150,28 +1123,6 @@ async def build_and_deploy(
     maybe_record_step("deploy", {"workspace": workspace, "scheme": scheme}, sim_key=simulator)
 
     return f"{build_msg}\n\n{deploy_msg}"
-
-
-@mcp.tool()
-async def webview(
-    simulator: str | None = Field(default=None, description="Simulator UDID"),
-    action: str = Field(default="url", description="Action: url, evaluate, dom"),
-    script: str | None = Field(default=None, description="JavaScript to execute (for evaluate)"),
-    selector: str | None = Field(default=None, description="CSS selector for DOM query (default: '*', for dom)"),
-    index: int | None = Field(default=None, description="WKWebView index when multiple are present (default: 0)"),
-    limit: int | None = Field(default=None, description="Max DOM elements to return (default: 50, for dom)"),
-) -> str:
-    """Inspect and interact with WKWebView instances — get URLs, execute JavaScript, or query the DOM."""
-    params: dict = {"action": action}
-    if script is not None:
-        params["script"] = script
-    if selector is not None:
-        params["selector"] = selector
-    if index is not None:
-        params["index"] = index
-    if limit is not None:
-        params["limit"] = limit
-    return await resolve_and_send_json(simulator, "webview", params, timeout=15)
 
 
 def main():

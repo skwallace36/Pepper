@@ -191,7 +191,7 @@ def register_dialog_tools(mcp, resolve_and_send, resolve_simulator=None):
         resolve_simulator: (udid_or_none) -> str — resolve simulator UDID.
     """
 
-    @mcp.tool()
+    @mcp.tool(name="nav_dialog")
     async def dialog(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
         action: str = Field(

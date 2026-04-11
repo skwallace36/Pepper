@@ -8,11 +8,31 @@ Source of truth for dylib code is `dylib/`. Config via `.env` (see `.env.example
 
 ## MCP Tools
 
-Tool definitions and docstrings live in `pepper_ios/mcp_tools_*.py` modules. `.mcp.json` configures how to launch the MCP server; `tools/pepper-mcp` is the entry script. `look` is the primary observation tool — it's an MCP tool (and also available via `pepper-ctl look` on the CLI). It sends the `introspect` command with `mode=map`.
+Tool definitions live in `pepper_ios/mcp_tools_*.py` modules. `.mcp.json` configures how to launch the MCP server; `tools/pepper-mcp` is the entry script. `app_look` is the primary observation tool. It sends the `introspect` command with `mode=map`.
 
-look, tap, scroll, swipe, gesture, input_text, toggle, navigate, back, dismiss, dismiss_keyboard, dialog, screen, screenshot, snapshot, vars_inspect, hangs, heap, layers, console, network, network_mock, network_simulate, timeline, crash_log, animations, lifecycle, find, read_element, tree, verify, highlight, hook, defaults, clipboard, keychain, cookies, locale, flags, push, orientation, appearance, dynamic_type, status, wait_for, wait_idle, record, raw, script, simulator, build_and_deploy, build_hardware, http_call, constraints, accessibility_action, accessibility_audit, accessibility_events, concurrency, coredata, frameworks, notifications, perf, renders, responder_chain, sandbox, target_actions, timers, undo_manager, webview, swiftui_body
+app_look, app_build, app_build_hw, app_status, app_record, app_snapshot, app_console, app_network, app_debug, app_perf, app_swiftui, app_automation, ui_tap, ui_scroll, ui_swipe, ui_input, ui_toggle, ui_gesture, ui_query, ui_accessibility, nav_go, nav_back, nav_dismiss, nav_keyboard, nav_dialog, nav_screen, state_vars, state_tools, net_tools, sys_tools, sim_control, sim_raw
 
-**`raw` tool rules:** `raw` sends a registered dylib command over WebSocket. It is NOT a code evaluator — you cannot execute arbitrary Swift/ObjC. Don't invent command names; send `cmd="help"` to list valid commands. Prefer dedicated MCP tools over `raw` — only use it for commands without a dedicated tool (batch, deeplinks, identify_selected, identify_icons, memory, scroll_to, watch, unwatch) or to pass params not exposed by a tool's schema.
+Tools use a two-word prefix convention for routing. Standalone tools are high-frequency; grouped tools bundle related subcommands under one tool with a `command` parameter.
+
+**Standalone (22):**
+- **app_**: app_look, app_build, app_build_hw, app_status, app_record, app_snapshot, app_console, app_network
+- **ui_**: ui_tap, ui_scroll, ui_swipe, ui_input, ui_toggle, ui_gesture
+- **nav_**: nav_go, nav_back, nav_dismiss, nav_keyboard, nav_dialog, nav_screen
+- **state_**: state_vars
+- **sim_**: sim_control, sim_raw
+
+**Grouped (9):**
+- **ui_query** (find, tree, verify, read, assert)
+- **ui_accessibility** (audit, action, events)
+- **app_debug** (layers, crash_log, constraints, responder_chain, target_actions, highlight, lifecycle, notifications, webview)
+- **app_perf** (perf, animations, heap, hangs, renders, timers)
+- **app_swiftui** (renders, body)
+- **app_automation** (script, wait_for, wait_idle, concurrency)
+- **state_tools** (defaults, keychain, clipboard, cookies, sandbox, coredata, undo_manager, flags)
+- **net_tools** (mock, simulate, http_call, timeline)
+- **sys_tools** (push, orientation, locale, appearance, dynamic_type, hook, frameworks, usage)
+
+**`sim_raw` tool rules:** `sim_raw` sends a registered dylib command over WebSocket. It is NOT a code evaluator — you cannot execute arbitrary Swift/ObjC. Don't invent command names; send `cmd="help"` to list valid commands. Prefer dedicated MCP tools over `sim_raw` — only use it for commands without a dedicated tool (batch, deeplinks, identify_selected, identify_icons, memory, scroll_to, watch, unwatch) or to pass params not exposed by a tool's schema.
 
 ## Conventions
 

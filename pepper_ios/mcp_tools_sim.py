@@ -23,7 +23,7 @@ def register_sim_tools(mcp, resolve_and_send, resolve_simulator):
         resolve_simulator: (udid_or_none) -> str — resolve simulator UDID.
     """
 
-    @mcp.tool()
+    @mcp.tool(name="sim_raw")
     async def raw(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
         cmd: str = Field(description="Command name"),
@@ -51,9 +51,9 @@ def register_sim_tools(mcp, resolve_and_send, resolve_simulator):
         return await resolve_and_send(simulator, cmd, p, timeout)
 
     @mcp.tool()
-    async def simulator(
+    async def sim_control(
         action: str = Field(
-            description="Action: list | install | uninstall | location | permissions | privacy_reset | open_url | addmedia | boot | shutdown | erase | status_bar (use the biometric tool for Face ID / Touch ID simulation)"
+            description="Action: list | install | uninstall | location | permissions | privacy_reset | biometric | open_url | addmedia | boot | shutdown | erase | status_bar"
         ),
         simulator_id: str | None = Field(default=None, description="Simulator UDID (auto-resolved if only one booted)"),
         app_path: str | None = Field(default=None, description="Path to .app/.ipa for action=install"),
@@ -65,7 +65,8 @@ def register_sim_tools(mcp, resolve_and_send, resolve_simulator):
             description="Permission name (for action=permissions). See pepper://reference/actions for values.",
         ),
         permission_value: str | None = Field(default=None, description="Permission value: grant, revoke, reset"),
-        biometric_type: str | None = Field(default=None, description="Deprecated — use the biometric tool instead"),
+        biometric_action: str | None = Field(default=None, description="For action=biometric: enroll | match | nonmatch"),
+        biometric_type: str | None = Field(default=None, description="For action=biometric: face (Face ID) or finger (Touch ID). Default: face"),
         url: str | None = Field(default=None, description="URL for action=open_url (deep link or web)"),
         media_path: str | None = Field(default=None, description="Path to image/video file for action=addmedia"),
         clear_time: bool = Field(default=False, description="For action=status_bar: clear override instead of setting"),
@@ -169,8 +170,24 @@ def register_sim_tools(mcp, resolve_and_send, resolve_simulator):
                 else f"Failed: {result.stderr.strip()}"
             )
 
-        elif action == "biometrics":
-            return "Use the biometric tool for Face ID / Touch ID simulation (enroll, match, nonmatch with face/finger type)."
+        elif action in ("biometric", "biometrics"):
+            bio_action = biometric_action or "enroll"
+            bio_type = biometric_type or "face"
+            if bio_type not in ("face", "finger"):
+                return "Error: biometric_type must be 'face' or 'finger'"
+            if bio_action not in ("enroll", "match", "nonmatch"):
+                return f"Unknown biometric_action '{bio_action}'. Use: enroll, match, nonmatch"
+            flag = "--face" if bio_type == "face" else "--finger"
+            label = "Face ID" if bio_type == "face" else "Touch ID"
+            result = subprocess.run(
+                ["xcrun", "simctl", "ui", sim, "biometric", bio_action, flag],
+                capture_output=True,
+                text=True,
+            )
+            if result.returncode != 0:
+                return f"Failed: {result.stderr.strip()}"
+            msgs = {"enroll": f"{label} enrolled", "match": f"{label} match sent", "nonmatch": f"{label} non-match sent"}
+            return msgs[bio_action]
 
         elif action == "open_url":
             if not url:
@@ -212,4 +229,4 @@ def register_sim_tools(mcp, resolve_and_send, resolve_simulator):
             result = subprocess.run(cmd, capture_output=True, text=True)
             return "Status bar overridden" if result.returncode == 0 else f"Failed: {result.stderr.strip()}"
 
-        return f"Unknown action '{action}'. Use: list, install, uninstall, location, permissions, privacy_reset, open_url, addmedia, boot, shutdown, erase, status_bar"
+        return f"Unknown action '{action}'. Use: list, install, uninstall, location, permissions, privacy_reset, biometric, open_url, addmedia, boot, shutdown, erase, status_bar"

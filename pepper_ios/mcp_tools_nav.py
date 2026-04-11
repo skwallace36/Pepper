@@ -52,7 +52,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
     # Hash of last look response per simulator, for "no change" detection.
     _last_look_hash: dict[str, str] = {}
 
-    @mcp.tool()
+    @mcp.tool(name="app_look")
     async def look(
         simulator: str | None = Field(default=None, description="Simulator UDID (optional if only one sim running)"),
         scope: str | None = Field(
@@ -205,52 +205,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
                     result[0] = TextContent(type="text", text=f"{text}\n\n[Screenshot save failed: {e}]")
         return result
 
-    @mcp.tool()
-    async def screenshot(
-        simulator: str | None = Field(default=None, description="Simulator UDID"),
-        element: str | None = Field(default=None, description="Accessibility ID of a specific view to capture"),
-        text: str | None = Field(default=None, description="Visible text/label of a specific view to capture"),
-        quality: str = Field(default="standard", description="'standard' (70% JPEG) or 'high' (95% JPEG)"),
-        save_to: str | None = Field(default=None, description="Save screenshot to this file path"),
-    ) -> list:
-        """Capture a visual screenshot without structured element data. Prefer look with visual=true if you also need element data."""
-        try:
-            host, port, udid = discover_instance(simulator)
-        except RuntimeError as e:
-            return [TextContent(type="text", text=str(e))]
-
-        q = quality if quality in ("standard", "high") else "standard"
-        screenshot_b64 = await capture_screenshot_inprocess(
-            send_command,
-            port,
-            q,
-            element=element,
-            text=text,
-            host=host,
-        )
-        if screenshot_b64 is None:
-            # Fallback to simctl for full-screen only (no per-view support)
-            if element is None and text is None:
-                screenshot_b64 = await capture_screenshot(udid, q)
-            if screenshot_b64 is None:
-                return [TextContent(type="text", text="Screenshot capture failed")]
-
-        result: list = []
-        scope = "element" if (element or text) else "fullscreen"
-        result.append(ImageContent(type="image", data=screenshot_b64, mimeType="image/jpeg"))
-
-        if save_to:
-            try:
-                with open(save_to, "wb") as f:
-                    f.write(base64.b64decode(screenshot_b64))
-                result.append(TextContent(type="text", text=f"[{scope} screenshot saved to {save_to}]"))
-            except OSError as e:
-                result.append(TextContent(type="text", text=f"[Save failed: {e}]"))
-        else:
-            result.append(TextContent(type="text", text=f"[{scope} screenshot captured]"))
-        return result
-
-    @mcp.tool()
+    @mcp.tool(name="ui_tap")
     async def tap(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
         text: str | None = Field(default=None, description="Visible text or label to match (e.g. 'Save', 'Settings', 'Log Out')"),
@@ -293,7 +248,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
             params["debug"] = True
         return await act_and_look(simulator, CMD_TAP, params)
 
-    @mcp.tool()
+    @mcp.tool(name="ui_scroll")
     async def scroll(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
         direction: str = Field(default="down", description="Scroll direction: up, down, left, right (e.g. 'down' to see content below)"),
@@ -327,7 +282,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
             params["axis"] = axis
         return await act_and_look(simulator, CMD_SCROLL, params)
 
-    @mcp.tool()
+    @mcp.tool(name="ui_input")
     async def input_text(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
         element_id: str | None = Field(
@@ -362,7 +317,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
             params["submit"] = True
         return await act_and_look(simulator, CMD_INPUT, params)
 
-    @mcp.tool()
+    @mcp.tool(name="nav_go")
     async def navigate(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
         deeplink: str | None = Field(default=None, description="Deep link destination (e.g. 'home', 'settings')"),
@@ -396,21 +351,21 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
             return [TextContent(type="text", text="Error: specify deeplink, tab, or list_deeplinks=true")]
         return await act_and_look(simulator, CMD_NAVIGATE, params)
 
-    @mcp.tool()
+    @mcp.tool(name="nav_back")
     async def back(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
     ) -> list:
         """Go back one screen in a navigation stack. For modals/sheets use dismiss; for jumping to a screen use navigate."""
         return await act_and_look(simulator, CMD_BACK)
 
-    @mcp.tool()
+    @mcp.tool(name="nav_dismiss")
     async def dismiss(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
     ) -> list:
         """Close a modal, sheet, popover, or overlay. For navigation stack screens use back; for system dialogs use dialog."""
         return await act_and_look(simulator, CMD_DISMISS)
 
-    @mcp.tool()
+    @mcp.tool(name="ui_swipe")
     async def swipe(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
         direction: str = Field(description="Flick direction: up, down, left, right (e.g. 'left' for next page, 'down' to dismiss sheet)"),
@@ -419,21 +374,21 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
         Synthesizes a fast directional flick via HID. For slow content browsing, use scroll instead. Shows screen state after."""
         return await act_and_look(simulator, CMD_SWIPE, {"direction": direction})
 
-    @mcp.tool()
+    @mcp.tool(name="nav_screen")
     async def screen(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
     ) -> str:
         """Identify which screen is currently displayed. Returns screen name and view controller class — no element data."""
         return json_dumps(await resolve_and_send(simulator, CMD_SCREEN))
 
-    @mcp.tool()
+    @mcp.tool(name="nav_keyboard")
     async def dismiss_keyboard(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
     ) -> list:
         """Dismiss the on-screen keyboard. Call after input_text when you need to tap elements the keyboard covers."""
         return await act_and_look(simulator, CMD_DISMISS_KEYBOARD)
 
-    @mcp.tool()
+    @mcp.tool(name="app_snapshot")
     async def snapshot(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
         action: str = Field(

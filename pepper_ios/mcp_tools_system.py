@@ -1,6 +1,6 @@
-"""System and utility tool definitions for Pepper MCP.
+"""System tool definitions for Pepper MCP.
 
-Tools: push, status, highlight, orientation, locale, gesture, hook, flags, appearance, dynamic_type.
+Standalone tools: app_status, ui_gesture. Other system tools moved to sys_tools grouped tool.
 """
 
 from __future__ import annotations
@@ -9,57 +9,20 @@ import json
 
 from pydantic import Field
 
-from .pepper_commands import (
-    CMD_APPEARANCE,
-    CMD_DYNAMIC_TYPE,
-    CMD_FLAGS,
-    CMD_GESTURE,
-    CMD_HIGHLIGHT,
-    CMD_HOOK,
-    CMD_LOCALE,
-    CMD_MEMORY,
-    CMD_ORIENTATION,
-    CMD_PUSH,
-    CMD_STATUS,
-)
-from .pepper_common import json_dumps, require_parse_json, try_parse_json
+from .pepper_commands import CMD_GESTURE, CMD_MEMORY, CMD_STATUS
+from .pepper_common import json_dumps
 
 
 def register_system_tools(mcp, resolve_and_send, act_and_look):
-    """Register system/utility tools on the given MCP server.
+    """Register standalone system tools (status, gesture only).
 
     Args:
         mcp: FastMCP server instance.
-        resolve_and_send: async (simulator, cmd, params?, timeout?) -> dict
-        act_and_look: async (simulator, cmd, params?, timeout?) -> str
+        resolve_and_send: async (simulator, cmd, params?, timeout?) -> str or dict
+        act_and_look: async (simulator, cmd, params?, timeout?) -> list
     """
 
-    @mcp.tool()
-    async def push(
-        simulator: str | None = Field(default=None, description="Simulator UDID"),
-        action: str | None = Field(default=None, description="Action: deliver (default), pending, clear"),
-        title: str | None = Field(default=None, description="Notification title"),
-        body: str | None = Field(default=None, description="Notification body text"),
-        data: str | None = Field(
-            default=None, description='JSON userInfo payload for deeplink routing (e.g. \'{"type":"order_detail"}\')'
-        ),
-    ) -> str:
-        """Simulate push notifications in the running app — banner, sound, badge, and deeplink routing via data payload."""
-        params: dict = {}
-        if action:
-            params["action"] = action
-        if title:
-            params["title"] = title
-        if body:
-            params["body"] = body
-        if data:
-            try:
-                params["data"] = require_parse_json(data, "data")
-            except ValueError as e:
-                return f"Error: {e}"
-        return await resolve_and_send(simulator, CMD_PUSH, params)
-
-    @mcp.tool()
+    @mcp.tool(name="app_status")
     async def status(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
         memory: bool = Field(
@@ -84,75 +47,7 @@ def register_system_tools(mcp, resolve_and_send, act_and_look):
             return json_dumps(result)
         return result
 
-    @mcp.tool()
-    async def highlight(
-        simulator: str | None = Field(default=None, description="Simulator UDID"),
-        text: str | None = Field(default=None, description="Highlight element by text label"),
-        frame: str | None = Field(default=None, description="Highlight a frame: 'x,y,width,height'"),
-        color: str | None = Field(
-            default=None, description="Color name (blue/green/red/yellow/purple) or hex (#ff0000)"
-        ),
-        label: str | None = Field(default=None, description="Label text to show on the highlight"),
-        duration: float | None = Field(default=None, description="How long to show in seconds (default: 0.8)"),
-        clear: bool = Field(default=False, description="Clear all highlights"),
-    ) -> str:
-        """Draw a colored border around an element for visual debugging. Visible in screenshots and recordings."""
-        params: dict = {}
-        if clear:
-            params["clear"] = True
-        elif text:
-            params["text"] = text
-        elif frame:
-            try:
-                parts = [float(x) for x in frame.split(",")]
-                params["frame"] = {"x": parts[0], "y": parts[1], "width": parts[2], "height": parts[3]}
-            except (ValueError, IndexError):
-                return "Error: frame must be 'x,y,width,height' (e.g. '10,100,200,44')"
-        if color:
-            params["color"] = color
-        if label:
-            params["label"] = label
-        if duration is not None:
-            params["duration"] = duration
-        return await resolve_and_send(simulator, CMD_HIGHLIGHT, params)
-
-    @mcp.tool()
-    async def orientation(
-        simulator: str | None = Field(default=None, description="Simulator UDID"),
-        value: str | None = Field(
-            default=None,
-            description="Target orientation: portrait, landscape_left, landscape_right, portrait_upside_down",
-        ),
-    ) -> str:
-        """Get or set device orientation. Omit value to query; set to rotate the device programmatically."""
-        params: dict = {}
-        if value:
-            params["value"] = value
-        return await resolve_and_send(simulator, CMD_ORIENTATION, params)
-
-    @mcp.tool()
-    async def locale(
-        simulator: str | None = Field(default=None, description="Simulator UDID"),
-        action: str | None = Field(
-            default=None, description="Action: current (default), set, reset, lookup, languages"
-        ),
-        language: str | None = Field(default=None, description="Language code for set/lookup (e.g. 'es', 'ja')"),
-        region: str | None = Field(default=None, description="Region code for set (e.g. 'JP', 'US')"),
-        key: str | None = Field(default=None, description="Localization key to look up (for lookup action)"),
-    ) -> str:
-        """Override app locale at runtime without changing simulator settings."""
-        params: dict = {}
-        if action:
-            params["action"] = action
-        if language:
-            params["language"] = language
-        if region:
-            params["region"] = region
-        if key:
-            params["key"] = key
-        return await resolve_and_send(simulator, CMD_LOCALE, params)
-
-    @mcp.tool()
+    @mcp.tool(name="ui_gesture")
     async def gesture(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
         type: str = Field(description="Gesture type: 'pinch' for zoom in/out, 'rotate' for two-finger rotation"),
@@ -178,77 +73,3 @@ def register_system_tools(mcp, resolve_and_send, act_and_look):
             if center_y is not None:
                 params["center"]["y"] = center_y
         return await act_and_look(simulator, CMD_GESTURE, params)
-
-    @mcp.tool()
-    async def hook(
-        simulator: str | None = Field(default=None, description="Simulator UDID"),
-        action: str = Field(default="list", description="Action: install, remove, remove_all, list, log, clear"),
-        class_name: str | None = Field(
-            default=None, description="ObjC class name (for install, e.g. 'UIViewController')"
-        ),
-        method: str | None = Field(default=None, description="ObjC method name (for install, e.g. 'viewDidAppear:')"),
-        class_method: bool = Field(default=False, description="Hook class method (+) instead of instance method (-)"),
-        hook_id: str | None = Field(default=None, description="Hook ID (for remove, log, clear)"),
-        limit: int | None = Field(default=None, description="Max log entries to return (default: 50)"),
-    ) -> str:
-        """Hook ObjC methods at runtime to log every invocation. Non-destructive — the original method runs normally."""
-        params: dict = {"action": action}
-        if class_name:
-            params["class"] = class_name
-        if method:
-            params["method"] = method
-        if class_method:
-            params["class_method"] = True
-        if hook_id:
-            params["id"] = hook_id
-        if limit is not None:
-            params["limit"] = limit
-        return await resolve_and_send(simulator, CMD_HOOK, params)
-
-    @mcp.tool()
-    async def flags(
-        simulator: str | None = Field(default=None, description="Simulator UDID"),
-        action: str = Field(default="list", description="Action: list, get, set, clear"),
-        key: str | None = Field(default=None, description="Feature flag key"),
-        value: str | None = Field(default=None, description="Value to set (true/false for bools, or string/int)"),
-    ) -> str:
-        """Override feature flags by intercepting the network response that delivers them. Overrides persist across deploys."""
-        params: dict = {"action": action}
-        if key:
-            params["key"] = key
-        if value is not None:
-            params["value"] = try_parse_json(value)
-        return await resolve_and_send(simulator, CMD_FLAGS, params)
-
-    @mcp.tool()
-    async def appearance(
-        simulator: str | None = Field(default=None, description="Simulator UDID"),
-        mode: str | None = Field(
-            default=None,
-            description="Appearance mode: dark, light, system. Omit to query current mode.",
-        ),
-    ) -> str:
-        """Toggle light/dark mode at runtime. Omit mode to query current appearance."""
-        params: dict = {}
-        if mode:
-            params["mode"] = mode
-        return await resolve_and_send(simulator, CMD_APPEARANCE, params)
-
-    @mcp.tool()
-    async def dynamic_type(
-        simulator: str | None = Field(default=None, description="Simulator UDID"),
-        action: str | None = Field(
-            default=None, description="Action: current (default), set, reset, sizes"
-        ),
-        size: str | None = Field(
-            default=None,
-            description="Content size category for set (e.g. 'extraSmall', 'large', 'accessibilityExtraExtraExtraLarge')",
-        ),
-    ) -> str:
-        """Override Dynamic Type (preferred font size) at runtime to test text scaling and layout."""
-        params: dict = {}
-        if action:
-            params["action"] = action
-        if size:
-            params["size"] = size
-        return await resolve_and_send(simulator, CMD_DYNAMIC_TYPE, params)

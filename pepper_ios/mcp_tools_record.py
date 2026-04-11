@@ -25,7 +25,7 @@ def register_record_tools(mcp):
         mcp: FastMCP server instance.
     """
 
-    @mcp.tool()
+    @mcp.tool(name="app_record")
     async def record(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
         action: str = Field(description="Action: start, stop"),
