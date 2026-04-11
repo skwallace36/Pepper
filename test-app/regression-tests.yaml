@@ -394,8 +394,10 @@
   steps:
     - tool: navigate
       params: { screen: "MiscTab" }
+    - tool: scroll
+      params: { direction: "down", amount: 1500 }
     - tool: tap
-      params: { text: "Snapshot & Diff" }
+      params: { id: "snapshot_test_link" }
     - tool: snapshot
       params: { action: "save", name: "lifecycle_test" }
     - tool: snapshot
@@ -440,8 +442,10 @@
   steps:
     - tool: navigate
       params: { screen: "MiscTab" }
+    - tool: scroll
+      params: { direction: "down", amount: 1500 }
     - tool: tap
-      params: { text: "Snapshot & Diff" }
+      params: { id: "snapshot_test_link" }
     - tool: snapshot
       params: { action: "save", name: "assert_test" }
     - tool: snapshot
@@ -464,8 +468,10 @@
   steps:
     - tool: navigate
       params: { screen: "MiscTab" }
+    - tool: scroll
+      params: { direction: "down", amount: 1500 }
     - tool: tap
-      params: { text: "Snapshot & Diff" }
+      params: { id: "snapshot_test_link" }
     - tool: snapshot
       params: { action: "save", name: "transient_test" }
     - tool: snapshot
@@ -480,8 +486,10 @@
   steps:
     - tool: navigate
       params: { screen: "MiscTab" }
+    - tool: scroll
+      params: { direction: "down", amount: 1500 }
     - tool: tap
-      params: { text: "Snapshot & Diff" }
+      params: { id: "snapshot_test_link" }
     - tool: diff
       params: { action: "start" }
     - tool: diff

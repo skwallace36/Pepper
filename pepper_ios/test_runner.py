@@ -192,6 +192,31 @@ def expand_step(step: dict) -> tuple[str, str | None, dict, dict]:
 # Step execution
 # ---------------------------------------------------------------------------
 
+# Commands that mutate UI and need a settling delay before the next step.
+# Values match the MCP server's post-action settle times.
+_SETTLE_TIMES: dict[str, float] = {
+    "dismiss": 1.5,
+    "back": 0.8,
+    "navigate": 0.8,
+    "dismiss_keyboard": 0.8,
+}
+_DEFAULT_SETTLE = 0.3
+
+# Commands that are read-only and never need settling.
+_READ_ONLY_CMDS = frozenset({
+    "introspect", "look", "screen", "status", "verify", "find",
+    "read", "tree", "snapshot", "diff", "vars", "defaults",
+    "keychain", "clipboard", "cookies", "flags", "layers",
+    "heap", "console", "network", "timeline", "crash_log",
+    "animations", "lifecycle", "constraints", "concurrency",
+    "coredata", "frameworks", "notifications", "perf", "renders",
+    "responder_chain", "sandbox", "storage", "timers",
+    "undo", "webview", "wait_idle", "wait_for",
+    "accessibility_audit", "accessibility_events",
+    "target_actions", "swiftui_body",
+})
+
+
 def run_pepper_step(host: str, port: int, cmd: str, params: dict,
                     timeout: float) -> StepResult:
     """Send a Pepper command and return a StepResult."""
@@ -242,6 +267,12 @@ def run_pepper_step(host: str, port: int, cmd: str, params: dict,
             elapsed=elapsed, response=resp,
             message=err_msg or f"Command returned status: {status_val}",
         )
+
+    # Settle after UI-mutating commands so the next step sees updated state.
+    # Read-only commands skip this entirely.
+    if cmd not in _READ_ONLY_CMDS:
+        settle = _SETTLE_TIMES.get(cmd, _DEFAULT_SETTLE)
+        time.sleep(settle)
 
     return StepResult(name=name, status="pass", elapsed=elapsed, response=resp)
 
