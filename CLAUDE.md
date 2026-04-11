@@ -12,6 +12,8 @@ Tool definitions and docstrings live in `pepper_ios/mcp_tools_*.py` modules. `.m
 
 look, tap, scroll, swipe, gesture, input_text, toggle, navigate, back, dismiss, dismiss_keyboard, dialog, screen, screenshot, snapshot, vars_inspect, hangs, heap, layers, console, network, network_mock, network_simulate, timeline, crash_log, animations, lifecycle, find, read_element, tree, verify, highlight, hook, defaults, clipboard, keychain, cookies, locale, flags, push, orientation, appearance, dynamic_type, status, wait_for, wait_idle, record, raw, script, simulator, build_and_deploy, build_hardware, http_call, constraints, accessibility_action, accessibility_audit, accessibility_events, concurrency, coredata, frameworks, notifications, perf, renders, responder_chain, sandbox, target_actions, timers, undo_manager, webview, swiftui_body
 
+**`raw` tool rules:** `raw` sends a registered dylib command over WebSocket. It is NOT a code evaluator — you cannot execute arbitrary Swift/ObjC. Don't invent command names; send `cmd="help"` to list valid commands. Prefer dedicated MCP tools over `raw` — only use it for commands without a dedicated tool (batch, deeplinks, identify_selected, identify_icons, memory, scroll_to, watch, unwatch) or to pass params not exposed by a tool's schema.
+
 ## Conventions
 
 - Commit early and often at natural boundaries. A commit is a checkpoint, not a finish line.

@@ -30,7 +30,15 @@ def register_sim_tools(mcp, resolve_and_send, resolve_simulator):
         params: str | dict | None = Field(default=None, description="JSON params (string or object)"),
         timeout: float = Field(default=10, description="Timeout in seconds"),
     ) -> str:
-        """Send any raw command to the Pepper dylib. Escape hatch for commands not exposed as dedicated tools."""
+        """Send a raw command to the Pepper dylib. Escape hatch for commands not exposed as dedicated tools.
+
+        IMPORTANT: This is NOT a code evaluation tool. You cannot execute arbitrary Swift/ObjC at runtime.
+        Only registered dylib commands work. Send cmd="help" to list valid commands.
+
+        Most commands already have dedicated MCP tools — prefer those. Use raw only for:
+        - Commands without a dedicated tool (e.g. batch, deeplinks, identify_selected, identify_icons, memory, scroll_to, watch, unwatch)
+        - Passing unusual params not exposed by a dedicated tool's schema
+        """
         p = None
         if params:
             if isinstance(params, dict):

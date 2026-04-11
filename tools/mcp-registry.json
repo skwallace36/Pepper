@@ -88,7 +88,7 @@
     {"name": "wait_idle", "category": "system", "description": "Wait for the app to become idle"},
     {"name": "record", "category": "recording", "description": "Record a sequence of interactions"},
     {"name": "script", "category": "recording", "description": "Record, replay, and manage action sequences"},
-    {"name": "raw", "category": "simulator", "description": "Send a raw WebSocket command"},
+    {"name": "raw", "category": "simulator", "description": "Send a registered dylib command. NOT a code evaluator. Use cmd=help to list valid commands."},
     {"name": "simulator", "category": "simulator", "description": "Control simulator state (boot, shutdown, etc.)"},
     {"name": "build_and_deploy", "category": "build", "description": "Build, install, and launch with Pepper. Pass build_only=True to compile without deploying."},
     {"name": "build_hardware", "category": "build", "description": "Build the app for a physical device (USB/WiFi)"},
