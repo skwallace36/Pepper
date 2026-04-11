@@ -72,7 +72,7 @@ def _extract_build_errors(output: str, label: str = "BUILD FAILED") -> str:
 # grabbing another Claude session's sim when auto-resolving.
 _session_simulator: str | None = None
 
-# Session-level active app context — set by deploy_sim after a successful deploy.
+# Session-level active app context — set by build_and_deploy after a successful deploy.
 # Other parts of the system (preamble, scripts, adapter tools) use this to resolve
 # the correct adapter without depending on .env.
 _session_bundle_id: str | None = None

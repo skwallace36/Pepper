@@ -30,7 +30,7 @@ With Pepper injected, an AI agent can:
 - **Inspect state** — `vars_inspect` reads arbitrary properties, `heap` queries live objects, `defaults` / `keychain` / `cookies` / `clipboard` access storage layers.
 - **Debug** — `console` shows logs, `network` shows HTTP traffic, `crash_log` fetches crash reports, `layers` visualizes the view hierarchy, `timeline` replays events.
 - **Control the simulator** — `orientation`, `locale`, `push` (simulated push notifications), `status` (status bar overrides), `simulator` (simctl operations).
-- **Build and deploy** — `deploy_sim` builds (when workspace provided), installs, and launches with Pepper injected. One tool for the full cycle.
+- **Build and deploy** — `build_and_deploy` builds, installs, and launches with Pepper injected. One tool for the full cycle. Pass `build_only=True` to compile without deploying.
 
 No source access required. The agent operates on any iOS simulator app as-is.
 

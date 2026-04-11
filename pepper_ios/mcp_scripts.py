@@ -30,7 +30,7 @@ _recordings: dict[str, dict] = {}
 def scripts_dir() -> str:
     """Resolve the scripts directory for the active app.
 
-    Uses session context (set by deploy_sim) first, .env fallback.
+    Uses session context (set by build_and_deploy) first, .env fallback.
     """
     from .mcp_build import get_session_context
     ctx = get_session_context()

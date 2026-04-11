@@ -56,7 +56,7 @@ These commands have side effects that would double up on retry:
    d. If still failing, mark as fail and move on
 3. If app crash:
    a. Use `crash_log` to capture details
-   b. Restart with `make test-deploy` or `deploy_sim`
+   b. Restart with `make test-deploy` or `build_and_deploy`
    c. Retry the failed test once from the beginning
 ```
 

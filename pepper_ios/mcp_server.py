@@ -126,7 +126,7 @@ def load_adapter_tools() -> list[dict]:
     1. ~/.pepper/adapters/{type}/tools.json (co-located with adapter)
     2. ~/.pepper/tools/{adapter_type}.json (legacy location)
 
-    Uses the session's active adapter (set by deploy_sim), falling back to .env.
+    Uses the session's active adapter (set by build_and_deploy), falling back to .env.
     """
     adapter_type = _active_adapter_type()
     if adapter_type == "generic":
@@ -268,7 +268,7 @@ async def resolve_and_send(
     logger.debug("resolve_and_send cmd=%s simulator=%s params=%s", cmd, simulator, params)
     try:
         # Use session affinity: if no explicit sim, resolve via _resolve_simulator
-        # which remembers the last-used sim (set by deploy_sim).
+        # which remembers the last-used sim (set by build_and_deploy).
         resolved = simulator
         if not resolved:
             try:
@@ -624,7 +624,7 @@ async def act_and_look(simulator: str | None, cmd: str, params: dict | None = No
             return [
                 TextContent(
                     type="text",
-                    text=f"Error: {err}\n\nPepper is not running. Use `deploy_sim` to launch the app with Pepper injected.",
+                    text=f"Error: {err}\n\nPepper is not running. Use `build_and_deploy` to launch the app with Pepper injected.",
                 )
             ]
 
@@ -735,7 +735,7 @@ _CORE_INSTRUCTIONS = (
     "- If a command returns APP CRASHED: investigate the crash, do NOT just redeploy.\n"
     "- If an element isn't found: the screen state is in the error. Read it before retrying.\n"
     "- If `look` shows SYSTEM DIALOG BLOCKING APP: STOP and run `dialog dismiss_system` immediately. Do NOT use `tap` or `dialog dismiss button=` — system dialogs (permissions, notifications, location) live in SpringBoard, not the app. Only `dismiss_system` can reach them.\n"
-    "- Use `deploy_sim(workspace, simulator)` to build + deploy. NEVER use raw `simctl launch`.\n\n"
+    "- Use `build_and_deploy(workspace, simulator)` to build + deploy. NEVER use raw `simctl launch`.\n\n"
     "TIPS:\n"
     "- Always `look` before interacting to confirm screen state.\n"
     "- Action tools (tap, scroll, navigate) auto-include screen state in response — read it.\n"
@@ -793,7 +793,7 @@ _SCREEN_RECORDING_GUIDE = (
 
 _LAUNCHING_GUIDE = (
     "LAUNCHING THE APP:\n"
-    "`deploy_sim` builds, installs, launches with Pepper, and returns screen state.\n"
+    "`build_and_deploy` builds, installs, launches with Pepper, and returns screen state.\n"
     "Required params: workspace (path to .xcworkspace) and simulator (UDID).\n"
     "Use `simulator action=list` to find available simulator UDIDs.\n"
     "NEVER use raw `simctl launch` — it skips Pepper injection.\n"
@@ -899,7 +899,7 @@ def screen_recording_guide() -> str:
 
 @mcp.resource("pepper://guides/launching")
 def launching_guide() -> str:
-    """App build and launch workflow using deploy_sim."""
+    """App build and launch workflow using build_and_deploy."""
     return _LAUNCHING_GUIDE
 
 
@@ -1059,17 +1059,6 @@ async def wait_idle(
 
 
 @mcp.tool()
-async def build_sim(
-    workspace: str = Field(description="Absolute path to the .xcworkspace to build"),
-    simulator: str = Field(description="Simulator UDID for -destination"),
-    scheme: str | None = Field(default=None, description="Build scheme (default: from .env APP_SCHEME)"),
-) -> str:
-    """Compile the iOS app for simulator. Build only — does not install or launch. Use deploy_sim to build + deploy."""
-    success, message = await _build_app(workspace, scheme, simulator)
-    return message
-
-
-@mcp.tool()
 async def build_hardware(
     workspace: str = Field(description="Absolute path to the .xcworkspace to build"),
     scheme: str | None = Field(default=None, description="Build scheme (default: from .env APP_SCHEME)"),
@@ -1080,7 +1069,7 @@ async def build_hardware(
     install: bool = Field(default=True, description="Install on device after building"),
     launch: bool = Field(default=True, description="Launch app after installing"),
 ) -> str:
-    """Build the iOS app for a physical device connected via USB/WiFi. Not for simulators — use build_sim instead."""
+    """Build the iOS app for a physical device connected via USB/WiFi. Not for simulators — use build_and_deploy instead."""
     cfg = get_config()
     devicectl_uuid = cfg["device_devicectl_uuid"]
 
@@ -1121,19 +1110,25 @@ async def build_hardware(
 
 
 @mcp.tool()
-async def deploy_sim(
+async def build_and_deploy(
     workspace: str = Field(description="Absolute path to the .xcworkspace"),
     simulator: str = Field(description="Simulator UDID (use `simulator action=list` to find one)"),
     scheme: str | None = Field(default=None, description="Build scheme (default: from .env APP_SCHEME)"),
+    build_only: bool = Field(default=False, description="Build without installing or launching. Returns build output only."),
     bundle_id: str | None = Field(default=None, description="App bundle ID (default: auto-detected from built .app)"),
     skip_privacy: bool = Field(default=False, description="Skip auto-granting privacy permissions"),
     launch_args: str | None = Field(default=None, description="Space-separated launch arguments passed to the app (e.g. '--scenario member_with_activity --reset'). Available via ProcessInfo.processInfo.arguments at runtime."),
 ) -> str:
-    """Build, install, and launch the app with Pepper injected. Returns screen state."""
+    """Build, install, and launch the app with Pepper injected. Returns screen state. Pass build_only=True to compile without deploying."""
     # Build
     success, build_msg = await _build_app(workspace, scheme, simulator)
     if not success:
         return build_msg
+
+    # Early return for build-only mode
+    if build_only:
+        return build_msg
+
     app_path = _find_built_app(workspace)
 
     # Parse launch args string into list

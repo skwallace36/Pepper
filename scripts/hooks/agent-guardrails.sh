@@ -119,7 +119,7 @@ fi
 if echo "$TOOL" | grep -qE '^mcp__pepper__'; then
   # Block build_hardware entirely — agents only use simulators
   if [ "$TOOL" = "mcp__pepper__build_hardware" ]; then
-    deny "agents cannot build for hardware devices. Use deploy_sim only."
+    deny "agents cannot build for hardware devices. Use build_and_deploy only."
   fi
 
   # Block any MCP tool targeting a non-local simulator
@@ -142,8 +142,8 @@ if echo "$TOOL" | grep -qE '^mcp__pepper__'; then
     fi
   fi
 
-  # Block deploy_sim with non-whitelisted workspace paths
-  if [ "$TOOL" = "mcp__pepper__deploy_sim" ] || [ "$TOOL" = "mcp__pepper__build_sim" ]; then
+  # Block build_and_deploy with non-whitelisted workspace paths
+  if [ "$TOOL" = "mcp__pepper__build_and_deploy" ]; then
     WS_PARAM=$(echo "$INPUT" | jq -r '.tool_input.workspace // empty' 2>/dev/null)
     if [ -n "$WS_PARAM" ] && ! echo "$WS_PARAM" | grep -qE 'PepperTestApp|pepper.*test|IceCubes'; then
       deny "agents can only build/deploy the test app. Got workspace: $WS_PARAM"
