@@ -297,23 +297,23 @@ async def resolve_and_send(
 async def resolve_and_send_json(
     simulator: str | None, cmd: str, params: dict | None = None, timeout: float = 10
 ) -> str:
-    """Send command and return a readable string.
+    """Send command and return readable formatted text.
 
-    Strips the protocol wrapper (status/id) and returns just the data
-    as indented JSON. On error, returns "Error: {message}".
+    Strips the protocol wrapper (status/id) and formats the data payload
+    using format_data() for human/agent-readable output.
+    On error, returns "Error: {message}".
     """
+    from .pepper_format import format_data
+
     resp = await resolve_and_send(simulator, cmd, params, timeout)
     if resp.get("status") != "ok":
         error = resp.get("error", "")
         crash_info = resp.get("crash_info", "")
-        msg = error or json.dumps(resp.get("data", resp), indent=2)
+        msg = error or format_data(resp.get("data", resp))
         if crash_info:
             msg += f"\n\n{crash_info}"
         return f"Error: {msg}"
-    data = resp.get("data", {})
-    if isinstance(data, str):
-        return data
-    return json.dumps(data, indent=2)
+    return format_data(resp.get("data", {}))
 
 
 # Monitors known to be active, updated each act_and_look cycle.

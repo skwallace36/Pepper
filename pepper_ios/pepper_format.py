@@ -1044,3 +1044,189 @@ def format_look_compact(resp: dict) -> str:
         data, total_interactive, len(all_interactive), total_ni, len(ni)))
 
     return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# General-purpose data formatter for non-look tool responses
+# ---------------------------------------------------------------------------
+
+def format_data(data) -> str:
+    """Format a dylib response data payload as readable text.
+
+    Auto-detects response shape and formats accordingly:
+    - ViewModel instances (state_vars) → compact property list
+    - Transaction logs (network, console) → timestamped entries
+    - Simple key-value dicts → key: value lines
+    - Lists of dicts → compact table
+    - Strings → pass-through
+    """
+    if isinstance(data, str):
+        return data
+    if isinstance(data, list):
+        return _format_list(data)
+    if not isinstance(data, dict):
+        return str(data)
+
+    # ViewModel instances (state_vars list/dump)
+    if "instances" in data:
+        return _format_instances(data["instances"])
+
+    # Network log
+    if "transactions" in data:
+        return _format_transactions(data)
+
+    # Console log
+    if "lines" in data:
+        return _format_console_lines(data)
+
+    # Find results
+    if "matches" in data:
+        return _format_matches(data)
+
+    # Pass/fail (verify, assert)
+    if "pass" in data or "passed" in data:
+        return _format_assertion(data)
+
+    # Flat key-value dict (everything else)
+    return _format_kv(data)
+
+
+def _format_instances(instances: list) -> str:
+    lines = []
+    for inst in instances:
+        cls = inst.get("class", "?")
+        props = inst.get("properties", [])
+        lines.append(f"{cls} ({len(props)} properties):")
+        for p in props:
+            name = p.get("name", "?")
+            value = p.get("value")
+            ptype = p.get("type", "")
+            rw = "rw" if p.get("writable") else "ro"
+            if value is None:
+                val_str = "nil"
+            elif isinstance(value, str) and len(value) > 60:
+                val_str = f'"{value[:57]}..."'
+            elif isinstance(value, str):
+                val_str = f'"{value}"' if value else '""'
+            else:
+                val_str = str(value)
+            lines.append(f"  {name}: {val_str}  ({ptype}, {rw})")
+        lines.append("")
+    return "\n".join(lines).rstrip()
+
+
+def _format_transactions(data: dict) -> str:
+    txns = data.get("transactions", [])
+    total = data.get("total_recorded", len(txns))
+    active = data.get("active", False)
+    lines = [f"Network: {total} recorded, {'active' if active else 'stopped'}"]
+    if not txns:
+        return lines[0] + "\n(no transactions)"
+    for t in txns:
+        req = t.get("request", {})
+        resp = t.get("response", {})
+        timing = t.get("timing", {})
+        method = req.get("method", "?")
+        url = req.get("url", "")
+        status = resp.get("status_code", "...")
+        dur = timing.get("duration_ms", "")
+        if "//" in url:
+            url = url.split("//", 1)[-1]
+        if len(url) > 70:
+            url = url[:67] + "..."
+        dur_str = f" {dur}ms" if dur else ""
+        lines.append(f"  {method} {url} → {status}{dur_str}")
+    if data.get("has_more"):
+        lines.append(f"  ... ({total} total, use limit/offset for more)")
+    return "\n".join(lines)
+
+
+def _format_console_lines(data: dict) -> str:
+    entries = data.get("lines", [])
+    total = data.get("total", len(entries))
+    noise = data.get("noise_summary", {})
+    hidden = noise.get("hidden", 0)
+    lines = [f"Console: {total} captured" + (f" ({hidden} noise hidden)" if hidden else "")]
+    if not entries:
+        return lines[0] + "\n(no output)"
+    for e in entries:
+        msg = e.get("message", "") if isinstance(e, dict) else str(e)
+        source = e.get("source", "") if isinstance(e, dict) else ""
+        if len(msg) > 120:
+            msg = msg[:117] + "..."
+        prefix = f"[{source}] " if source and source != "print" else ""
+        lines.append(f"  {prefix}{msg}")
+    if data.get("has_more"):
+        lines.append(f"  ... ({total} total)")
+    return "\n".join(lines)
+
+
+def _format_matches(data: dict) -> str:
+    matches = data.get("matches", [])
+    count = data.get("count", len(matches))
+    predicate = data.get("predicate", "")
+    lines = [f"Found {count} match(es)" + (f" for: {predicate}" if predicate else "")]
+    for m in matches:
+        label = m.get("label", "")
+        etype = m.get("type", "?")
+        tap = m.get("tap_cmd", "")
+        center = m.get("center", [])
+        pos = f" at {center[0]},{center[1]}" if len(center) == 2 else ""
+        lines.append(f"  [{etype}] \"{label}\"{pos}  → tap {tap}")
+    return "\n".join(lines)
+
+
+def _format_assertion(data: dict) -> str:
+    passed = data.get("pass", data.get("passed", False))
+    result = "PASS" if passed else "FAIL"
+    lines = [result]
+    for key in ("assertion", "text", "element", "screen", "reason", "message", "expected", "actual"):
+        if key in data:
+            lines.append(f"  {key}: {data[key]}")
+    return "\n".join(lines)
+
+
+def _format_list(items: list) -> str:
+    if not items:
+        return "(empty)"
+    if isinstance(items[0], dict):
+        lines = []
+        for item in items[:50]:
+            label = item.get("name", item.get("label", item.get("class", item.get("id", ""))))
+            if label:
+                rest = {k: v for k, v in item.items() if k not in ("name", "label", "class", "id")}
+                detail = ", ".join(f"{k}: {v}" for k, v in rest.items()) if rest else ""
+                lines.append(f"  {label}" + (f"  ({detail})" if detail else ""))
+            else:
+                lines.append(f"  {item}")
+        if len(items) > 50:
+            lines.append(f"  ... ({len(items)} total)")
+        return "\n".join(lines)
+    return "\n".join(f"  {item}" for item in items[:50])
+
+
+def _format_kv(data: dict) -> str:
+    lines = []
+    for key, value in data.items():
+        if isinstance(value, dict):
+            lines.append(f"{key}:")
+            for k2, v2 in value.items():
+                lines.append(f"  {k2}: {v2}")
+        elif isinstance(value, list):
+            if not value:
+                lines.append(f"{key}: (empty)")
+            elif len(value) <= 3 and all(isinstance(v, (str, int, float, bool)) for v in value):
+                lines.append(f"{key}: {', '.join(str(v) for v in value)}")
+            else:
+                lines.append(f"{key}: ({len(value)} items)")
+                for item in value[:10]:
+                    if isinstance(item, dict):
+                        summary = ", ".join(f"{k}: {v}" for k, v in list(item.items())[:4])
+                        lines.append(f"  {summary}")
+                    else:
+                        lines.append(f"  {item}")
+                if len(value) > 10:
+                    lines.append(f"  ... ({len(value)} total)")
+        else:
+            lines.append(f"{key}: {value}")
+    return "\n".join(lines)
