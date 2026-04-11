@@ -609,3 +609,68 @@
     - tool: heap_snapshot
       params: { action: "check" }
   verify: returns leak_count, verdict, and severity classifications (high/medium/low counts)
+
+# ── Retain Cycle test surface (heap verification) ──
+
+- name: retain cycle surface exists on heap
+  priority: medium
+  steps:
+    - tool: tap
+      params: { text: "Misc" }
+    - tool: scroll
+      params: { direction: "down", amount: 1500 }
+    - tool: tap
+      params: { id: "retain_cycle_link" }
+    - tool: look
+    - tool: tap
+      params: { id: "create_retain_cycle_button" }
+    - tool: heap
+      params: { action: "scan", class: "RetainCycleA" }
+    - tool: heap
+      params: { action: "scan", class: "RetainCycleB" }
+  verify: heap scan finds at least 1 instance each of RetainCycleA and RetainCycleB after button tap
+
+- name: retain cycle count increments
+  priority: medium
+  steps:
+    - tool: tap
+      params: { id: "create_retain_cycle_button" }
+    - tool: read_element
+      params: { id: "retain_cycle_count" }
+  verify: retain_cycle_count text shows "Leaked pairs: 2" after second tap
+
+# ── SwiftUI body tracking (slow body surface) ──
+
+- name: swiftui body tracks slow view
+  priority: medium
+  steps:
+    - tool: back
+    - tool: scroll
+      params: { direction: "down", amount: 1500 }
+    - tool: tap
+      params: { id: "slow_body_link" }
+    - tool: look
+    - tool: swiftui_body
+      params: { action: "start" }
+    - tool: tap
+      params: { id: "trigger_rerender_button" }
+    - tool: tap
+      params: { id: "trigger_rerender_button" }
+    - tool: swiftui_body
+      params: { action: "log" }
+    - tool: swiftui_body
+      params: { action: "stop" }
+  verify: log output contains SlowChildView entries with duration > 10us, confirming body_track detects slow views
+
+- name: swiftui body counts per view type
+  priority: medium
+  steps:
+    - tool: swiftui_body
+      params: { action: "start" }
+    - tool: tap
+      params: { id: "trigger_rerender_button" }
+    - tool: swiftui_body
+      params: { action: "counts" }
+    - tool: swiftui_body
+      params: { action: "reset" }
+  verify: counts include SlowChildView with count >= 1

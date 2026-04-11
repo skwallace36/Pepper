@@ -497,6 +497,22 @@ struct MiscTab: View {
                     .accessibilityIdentifier("coredata_link")
                 }
 
+                // MARK: - Retain Cycles (for retain_cycles / heap testing)
+                GroupBox("Retain Cycles") {
+                    NavigationLink("Retain Cycle Screen") {
+                        RetainCycleView()
+                    }
+                    .accessibilityIdentifier("retain_cycle_link")
+                }
+
+                // MARK: - Slow Body (for swiftui_body / body_track testing)
+                GroupBox("Slow Body") {
+                    NavigationLink("Slow Body Screen") {
+                        SlowBodyView()
+                    }
+                    .accessibilityIdentifier("slow_body_link")
+                }
+
                 // MARK: - Context Menu
                 GroupBox("Context Menu") {
                     Text("Long press me")

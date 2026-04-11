@@ -38,6 +38,8 @@
 		A100001E /* SandboxBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A200001E; };
 		A100001F /* RenderTrackingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A200001F; };
 		A1000020 /* DynamicTypeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000020; };
+		A1000021 /* RetainCycleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000021; };
+		A1000022 /* SlowBodyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000022; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -73,6 +75,8 @@
 		A200001E /* SandboxBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SandboxBrowserView.swift; sourceTree = "<group>"; };
 		A200001F /* RenderTrackingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RenderTrackingView.swift; sourceTree = "<group>"; };
 		A2000020 /* DynamicTypeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DynamicTypeView.swift; sourceTree = "<group>"; };
+		A2000021 /* RetainCycleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RetainCycleView.swift; sourceTree = "<group>"; };
+		A2000022 /* SlowBodyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlowBodyView.swift; sourceTree = "<group>"; };
 		A3000001 /* PepperTestApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PepperTestApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -130,6 +134,8 @@
 				A200001E /* SandboxBrowserView.swift */,
 				A200001F /* RenderTrackingView.swift */,
 				A2000020 /* DynamicTypeView.swift */,
+				A2000021 /* RetainCycleView.swift */,
+				A2000022 /* SlowBodyView.swift */,
 			);
 			path = PepperTestApp;
 			sourceTree = "<group>";
@@ -236,6 +242,8 @@
 				A100001E /* SandboxBrowserView.swift in Sources */,
 				A100001F /* RenderTrackingView.swift in Sources */,
 				A1000020 /* DynamicTypeView.swift in Sources */,
+				A1000021 /* RetainCycleView.swift in Sources */,
+				A1000022 /* SlowBodyView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
