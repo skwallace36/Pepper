@@ -1,7 +1,8 @@
 """Debug and introspection tool definitions for Pepper MCP.
 
 Tool definitions for: layers, console, crash_log, lifecycle, responder_chain,
-notifications, constraints, timers, concurrency, loading, formatters, frameworks.
+notifications, constraints, timers, concurrency, loading, formatters, frameworks,
+target_actions.
 """
 
 from __future__ import annotations
@@ -363,3 +364,24 @@ def register_debug_tools(mcp, resolve_and_send):
         if filter is not None:
             params["filter"] = filter
         return await resolve_and_send(simulator, "frameworks", params)
+
+    @mcp.tool()
+    async def target_actions(
+        simulator: str | None = Field(default=None, description="Simulator UDID"),
+        element: str | None = Field(
+            default=None, description="Accessibility identifier of a specific control"
+        ),
+        text: str | None = Field(default=None, description="Text label of a specific control"),
+        control_class: str | None = Field(
+            default=None, description="Filter by control class name (e.g. 'UISwitch', 'UIButton')"
+        ),
+    ) -> str:
+        """List all UIControl target-action pairs in the view hierarchy. Shows which buttons trigger which actions — like Chisel's pactions."""
+        params: dict = {}
+        if element:
+            params["element"] = element
+        if text:
+            params["text"] = text
+        if control_class:
+            params["class"] = control_class
+        return await resolve_and_send(simulator, "target_actions", params)

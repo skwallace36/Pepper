@@ -114,6 +114,7 @@ extension PepperDispatcher {
         registerLazy("swizzle_check") { SwizzleCheckHandler() }
         registerLazy("formatters") { FormattersHandler() }
         registerLazy("swiftui_body") { SwiftUIBodyHandler() }
+        registerLazy("target_actions") { TargetActionsHandler() }
         registerLazy("frameworks") { FrameworksHandler() }
     }
 }

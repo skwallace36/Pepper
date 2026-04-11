@@ -106,6 +106,7 @@
     {"name": "renders", "category": "debug", "description": "Track view render counts and off-screen renders"},
     {"name": "swiftui_body", "category": "debug", "description": "Track per-view SwiftUI body evaluations with timing"},
     {"name": "responder_chain", "category": "debug", "description": "Dump the UIResponder chain"},
+    {"name": "target_actions", "category": "debug", "description": "List UIControl target-action pairs in the view hierarchy"},
     {"name": "sandbox", "category": "state", "description": "Browse the app sandbox filesystem"},
     {"name": "storage", "category": "state", "description": "Inspect app storage (files, databases, caches)"},
     {"name": "timers", "category": "debug", "description": "Inspect active NSTimer and DispatchSourceTimer instances"},

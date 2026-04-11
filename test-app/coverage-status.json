@@ -805,6 +805,11 @@
     "status": "ready",
     "surface": "Any interactive element (Controls tab button for regression)"
   },
+  "target_actions": {
+    "notes": "Lists UIControl target-action pairs. Walks view tree, enumerates allTargets and actions(forTarget:forControlEvent:).",
+    "status": "untested",
+    "surface": "Any screen with UIControl subclasses (buttons, switches, sliders)"
+  },
   "sandbox": {
     "notes": "App sandbox file system browser. List, read, write, delete files in Documents/Library/Caches/tmp. Supports plist/JSON auto-detection and directory size summaries. Seeded: documents/notes.json, documents/settings.plist, caches/cached-image.txt, tmp/temp-data.txt.",
     "status": "supported",
