@@ -5,8 +5,6 @@ Standalone tools: app_status, ui_gesture. Other system tools moved to sys_tools 
 
 from __future__ import annotations
 
-import json
-
 from pydantic import Field
 
 from .pepper_commands import CMD_GESTURE, CMD_MEMORY, CMD_STATUS
@@ -32,21 +30,19 @@ def register_system_tools(mcp, resolve_and_send, act_and_look):
         ),
     ) -> str:
         """Check Pepper connection health — bundle ID, version, port, connections, current screen. Add memory=true for process memory stats."""
+        from .pepper_format import format_data
+
         result = await resolve_and_send(simulator, CMD_STATUS)
-        if isinstance(result, str):
-            result = json.loads(result)
         if result.get("status") != "ok":
             return f"Error: {result.get('error', 'unknown')}"
-        data = result.get("data", result)
+        data = result.get("data", {})
         if memory or memory_detail:
             mem_params: dict = {}
             if memory_detail:
                 mem_params["action"] = "vm"
             mem_result = await resolve_and_send(simulator, CMD_MEMORY, mem_params)
-            if isinstance(mem_result, str):
-                mem_result = json.loads(mem_result)
             data["memory"] = mem_result.get("data", mem_result)
-        return json.dumps(data, indent=2)
+        return format_data(data)
 
     @mcp.tool(name="ui_gesture")
     async def gesture(
