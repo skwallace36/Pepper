@@ -747,8 +747,7 @@ _CORE_INSTRUCTIONS = (
     "- For recordings, use `pepper-ctl tap --point x,y` for fast chained actions (no look overhead).\n"
     "- Screenshots go to the repo where the PR lives, not pepper's repo.\n\n"
     "WORKFLOW GUIDES (read the resource when you need it):\n"
-    "- pepper://guides/pr-validation — PR test plan validation workflow\n"
-    "- pepper://guides/screen-recording — screen recording and upload workflow\n"
+    "- pepper://guides/screen-recording — screen recording workflow\n"
     "- pepper://guides/launching — app build and launch workflow"
 )
 
@@ -777,38 +776,12 @@ mcp.call_tool = _logged_call_tool
 # Workflow guide resources (on-demand, not in every session's instructions)
 # ---------------------------------------------------------------------------
 
-_PR_VALIDATION_GUIDE = (
-    "PR TEST PLAN VALIDATION:\n"
-    "When asked to validate a PR, use this workflow:\n"
-    "1. Read the PR: `gh pr view NNNN --repo owner/repo` for description, "
-    "`gh pr diff NNNN --repo owner/repo` for changes.\n"
-    "2. Parse the test plan — each checkbox is a validation item.\n"
-    "3. For each item:\n"
-    "   a. Navigate to the relevant screen (deeplink or tap sequence).\n"
-    "   b. Perform the interaction described in the test item.\n"
-    "   c. Verify the expected outcome with `app_look` (check text, elements, state).\n"
-    "   d. Capture screenshot: `app_look visual=true screenshot_quality=high "
-    "save_screenshot=/tmp/pr-NNNN-item.jpg`\n"
-    "4. Upload all screenshots: `python3 <PEPPER_DIR>/tools/upload-screenshot "
-    "--repo owner/repo --prefix pr-NNNN --markdown /tmp/pr-NNNN-*.jpg`\n"
-    "5. Update PR description: `gh pr edit NNNN --repo owner/repo --body '...'` "
-    "— check off validated items.\n"
-    "   Add a `### Screenshots` section (not 'Evidence'). Use HTML img tags with "
-    "width=200 for thumbnails.\n"
-    "   Label each screenshot with a bold caption above it. Example:\n"
-    '   `**Flag off** <img src="URL" width=200> **Flag on** <img src="URL" width=200>`\n'
-)
-
 _SCREEN_RECORDING_GUIDE = (
     "SCREEN RECORDING:\n"
-    "For test items that need interaction sequences (toggle persistence, navigation flows):\n"
+    "For interaction sequences (toggle persistence, navigation flows):\n"
     "- `app_record action=start` → do interactions → `app_record action=stop output=/tmp/clip.mp4`\n"
     "- For tight clips: explore first with `app_look`, then chain taps with animation "
-    "delays (0.3-0.7s per action).\n"
-    "- Upload videos via Playwright MCP (browser automation) to get user-attachments "
-    "URLs that autoplay in PRs.\n"
-    "- Upload screenshots via `upload-screenshot` tool (release assets, always works).\n"
-    "- See /validate-pr skill for the full browser upload workflow."
+    "delays (0.3-0.7s per action)."
 )
 
 _LAUNCHING_GUIDE = (
@@ -905,15 +878,9 @@ permission_value (grant | revoke | reset), bundle_id.
 """
 
 
-@mcp.resource("pepper://guides/pr-validation")
-def pr_validation_guide() -> str:
-    """PR test plan validation workflow: read PR, validate each checkbox, capture screenshots, update PR."""
-    return _PR_VALIDATION_GUIDE
-
-
 @mcp.resource("pepper://guides/screen-recording")
 def screen_recording_guide() -> str:
-    """Screen recording and video upload workflow for PR evidence."""
+    """Screen recording workflow."""
     return _SCREEN_RECORDING_GUIDE
 
 
