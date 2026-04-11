@@ -52,6 +52,9 @@ WT_REMOVED=0
 for wt in $(git worktree list --porcelain 2>/dev/null | grep "^worktree .*/\.claude/worktrees/" | sed 's/^worktree //'); do
   echo "  Removing worktree: $(basename "$wt")"
   git worktree remove --force "$wt" 2>/dev/null || true
+  # Clean up the ~/.claude/projects/ entry for this worktree
+  _proj_entry=$(echo "$wt" | tr '/.' '-' | sed 's|^-||')
+  rm -rf "${HOME}/.claude/projects/-${_proj_entry}" 2>/dev/null || true
   WT_REMOVED=$((WT_REMOVED + 1))
 done
 git worktree prune 2>/dev/null || true

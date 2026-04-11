@@ -35,6 +35,9 @@ for wt in $(git worktree list --porcelain 2>/dev/null | grep "^worktree .*/\.cla
   done
   if [ "$OWNED" = false ]; then
     git worktree remove --force "$wt" 2>/dev/null || true
+    # Also clean up the ~/.claude/projects/ entry for this worktree
+    _proj_entry=$(echo "$wt" | tr '/.' '-' | sed 's|^-||')
+    rm -rf "${HOME}/.claude/projects/-${_proj_entry}" 2>/dev/null || true
   fi
 done
 git worktree prune 2>/dev/null || true
@@ -95,6 +98,10 @@ release_simulator('$CLAIMED_SIM', pid=$$)
   # Worktree cleanup — only remove OUR worktree, not sibling agents'
   if [ -n "$OUR_WORKTREE" ]; then
     git worktree remove --force "$OUR_WORKTREE" 2>/dev/null || true
+    # Clean up the ~/.claude/projects/ entry for this worktree
+    local projects_entry
+    projects_entry=$(echo "$OUR_WORKTREE" | tr '/.' '-' | sed 's|^-||')
+    rm -rf "${HOME}/.claude/projects/-${projects_entry}" 2>/dev/null || true
   fi
 
   # Release claimed issue — remove in-progress label if agent didn't open a PR
