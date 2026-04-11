@@ -297,14 +297,23 @@ async def resolve_and_send(
 async def resolve_and_send_json(
     simulator: str | None, cmd: str, params: dict | None = None, timeout: float = 10
 ) -> str:
-    """Like resolve_and_send but returns a JSON string.
+    """Send command and return a readable string.
 
-    Use this from MCP tool handlers that declare -> str return type.
-    FastMCP validates return types via pydantic — returning a dict when the
-    handler declares -> str causes a validation error.
+    Strips the protocol wrapper (status/id) and returns just the data
+    as indented JSON. On error, returns "Error: {message}".
     """
     resp = await resolve_and_send(simulator, cmd, params, timeout)
-    return json_dumps(resp)
+    if resp.get("status") != "ok":
+        error = resp.get("error", "")
+        crash_info = resp.get("crash_info", "")
+        msg = error or json.dumps(resp.get("data", resp), indent=2)
+        if crash_info:
+            msg += f"\n\n{crash_info}"
+        return f"Error: {msg}"
+    data = resp.get("data", {})
+    if isinstance(data, str):
+        return data
+    return json.dumps(data, indent=2)
 
 
 # Monitors known to be active, updated each act_and_look cycle.

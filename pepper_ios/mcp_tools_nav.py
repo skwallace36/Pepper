@@ -301,7 +301,8 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
             params: dict = {}
             if category:
                 params["category"] = category
-            return json_dumps(await resolve_and_send(simulator, CMD_DEEPLINKS, params))
+            resp = await resolve_and_send(simulator, CMD_DEEPLINKS, params)
+            return json.dumps(resp.get("data", resp), indent=2)
         params = {}
         if deeplink:
             params["deeplink"] = deeplink
@@ -350,7 +351,11 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
         simulator: str | None = Field(default=None, description="Simulator UDID"),
     ) -> str:
         """Identify which screen is currently displayed. Returns screen name and view controller class — no element data."""
-        return json_dumps(await resolve_and_send(simulator, CMD_SCREEN))
+        resp = await resolve_and_send(simulator, CMD_SCREEN)
+        data = resp.get("data", resp)
+        if isinstance(data, dict):
+            return json.dumps(data, indent=2)
+        return str(data)
 
     @mcp.tool(name="nav_keyboard")
     async def dismiss_keyboard(

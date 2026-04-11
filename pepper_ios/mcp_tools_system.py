@@ -10,7 +10,6 @@ import json
 from pydantic import Field
 
 from .pepper_commands import CMD_GESTURE, CMD_MEMORY, CMD_STATUS
-from .pepper_common import json_dumps
 
 
 def register_system_tools(mcp, resolve_and_send, act_and_look):
@@ -34,18 +33,20 @@ def register_system_tools(mcp, resolve_and_send, act_and_look):
     ) -> str:
         """Check Pepper connection health — bundle ID, version, port, connections, current screen. Add memory=true for process memory stats."""
         result = await resolve_and_send(simulator, CMD_STATUS)
+        if isinstance(result, str):
+            result = json.loads(result)
+        if result.get("status") != "ok":
+            return f"Error: {result.get('error', 'unknown')}"
+        data = result.get("data", result)
         if memory or memory_detail:
             mem_params: dict = {}
             if memory_detail:
                 mem_params["action"] = "vm"
             mem_result = await resolve_and_send(simulator, CMD_MEMORY, mem_params)
-            if isinstance(result, str):
-                result = json.loads(result)
             if isinstance(mem_result, str):
                 mem_result = json.loads(mem_result)
-            result["memory"] = mem_result.get("data", mem_result)
-            return json_dumps(result)
-        return result
+            data["memory"] = mem_result.get("data", mem_result)
+        return json.dumps(data, indent=2)
 
     @mcp.tool(name="ui_gesture")
     async def gesture(
