@@ -33,6 +33,7 @@ local_only=(
   build_hardware
   crash_log
   deploy_sim
+  http_call
   raw
   record
   script
