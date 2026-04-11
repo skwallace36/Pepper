@@ -28,24 +28,24 @@ def register_system_tools(mcp, resolve_and_send, act_and_look):
         memory_detail: bool = Field(
             default=False, description="Include detailed VM breakdown (internal, compressed, purgeable)"
         ),
-    ) -> str:
+    ) -> list:
         """Check Pepper connection health — bundle ID, version, port, connections, current screen. Add memory=true for process memory stats."""
         if not memory and not memory_detail:
             return await resolve_and_send(simulator, CMD_STATUS)
         # Need to merge status + memory, so use raw dict path
         from .mcp_server import resolve_and_send as raw_send
-        from .pepper_format import format_data
+        from .pepper_format import format_data, text_content
 
         result = await raw_send(simulator, CMD_STATUS)
         if result.get("status") != "ok":
-            return f"Error: {result.get('error', 'unknown')}"
+            return text_content(f"Error: {result.get('error', 'unknown')}")
         data = result.get("data", {})
         mem_params: dict = {}
         if memory_detail:
             mem_params["action"] = "vm"
         mem_result = await raw_send(simulator, CMD_MEMORY, mem_params)
         data["memory"] = mem_result.get("data", mem_result)
-        return format_data(data)
+        return text_content(format_data(data))
 
     @mcp.tool(name="ui_gesture")
     async def gesture(

@@ -15,7 +15,7 @@ from .pepper_commands import (
 from .pepper_common import require_parse_json
 
 
-def register_sys_grouped_tools(mcp, resolve_and_send):
+def register_sys_grouped_tools(mcp, resolve_and_send, text_fn):
     """Register the sys_tools grouped tool."""
 
     @mcp.tool(name="sys_tools")
@@ -40,7 +40,7 @@ def register_sys_grouped_tools(mcp, resolve_and_send):
         name: str | None = Field(default=None, description="Image name substring to match (frameworks)"),
         filter_text: str | None = Field(default=None, description="Filter images by name (frameworks)"),
         days: int | None = Field(default=None, description="Look back this many days, default 30 (usage)"),
-    ) -> str:
+    ) -> list:
         """System and device tools.
 
 Subcommands:
@@ -128,4 +128,4 @@ Subcommands:
             summary = get_usage_summary(days=days or 30)
             return json.dumps(summary, indent=2)
 
-        return f"Error: unknown command '{command}'. Use: push, orientation, locale, appearance, dynamic_type, hook, frameworks, usage"
+        return text_fn(f"Error: unknown command '{command}'. Use: push, orientation, locale, appearance, dynamic_type, hook, frameworks, usage")

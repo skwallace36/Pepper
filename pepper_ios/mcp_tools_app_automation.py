@@ -7,7 +7,7 @@ from pydantic import Field
 from .pepper_commands import CMD_CONCURRENCY
 
 
-def register_app_automation_tools(mcp, resolve_and_send, act_and_look_fn, deploy_fn=None):
+def register_app_automation_tools(mcp, resolve_and_send, text_fn, act_and_look_fn, deploy_fn=None):
     """Register the app_automation grouped tool."""
 
     @mcp.tool(name="app_automation")
@@ -31,7 +31,7 @@ def register_app_automation_tools(mcp, resolve_and_send, act_and_look_fn, deploy
         pattern: str | None = Field(default=None, description="Filter actor classes by pattern (concurrency)"),
         address: str | None = Field(default=None, description="Task address to cancel, hex (concurrency)"),
         limit: int | None = Field(default=None, description="Max results to return (concurrency)"),
-    ) -> str:
+    ) -> list:
         """Automation and concurrency tools.
 
 Subcommands:
@@ -49,41 +49,41 @@ Subcommands:
                 from .mcp_build import get_session_context
                 sim_key = get_session_context().get("simulator")
             if not sim_key and action in ("record", "stop", "run"):
-                return "Error: simulator required for record/stop/run"
+                return text_fn("Error: simulator required for record/stop/run")
 
             act = action or "list"
             if act == "record":
                 if not name:
-                    return "Error: name required for record"
+                    return text_fn("Error: name required for record")
                 return start_recording(name, description or "", sim_key)
             elif act == "stop":
                 msg, _ = stop_recording(sim_key)
                 return msg
             elif act == "run":
                 if not name:
-                    return "Error: name required for run"
+                    return text_fn("Error: name required for run")
                 data = load_script(name)
                 if not data:
                     available = [s["name"] for s in list_scripts()]
-                    return f"Error: script '{name}' not found. Available: {available}"
+                    return text_fn(f"Error: script '{name}' not found. Available: {available}")
                 from .mcp_tools_script import _replay
                 return await _replay(data, act_and_look_fn, simulator, step_delay_ms, deploy_fn)
             elif act == "list":
                 scripts = list_scripts()
                 if not scripts:
-                    return "No scripts available."
+                    return text_fn("No scripts available.")
                 lines = [f"  {s['name']} ({s['steps']} steps) — {s['description'] or 'no description'}" for s in scripts]
-                return "Available scripts:\n" + "\n".join(lines)
+                return text_fn("Available scripts:\n" + "\n".join(lines))
             elif act == "show":
                 if not name:
-                    return "Error: name required for show"
+                    return text_fn("Error: name required for show")
                 data = load_script(name)
                 return json_dumps(data) if data else f"Error: script '{name}' not found"
             elif act == "delete":
                 if not name:
-                    return "Error: name required for delete"
+                    return text_fn("Error: name required for delete")
                 return delete_script(name)
-            return f"Error: unknown script action '{act}'. Use: record, stop, run, list, show, delete"
+            return text_fn(f"Error: unknown script action '{act}'. Use: record, stop, run, list, show, delete")
 
         elif command == "wait_for":
             until: dict = {}
@@ -102,7 +102,7 @@ Subcommands:
                 if expect:
                     until["expect"] = expect
             else:
-                return "Error: specify element, text, screen, or predicate to wait for"
+                return text_fn("Error: specify element, text, screen, or predicate to wait for")
             params: dict = {"until": until}
             if timeout_ms is not None:
                 params["timeout_ms"] = timeout_ms
@@ -128,4 +128,4 @@ Subcommands:
                 params["limit"] = limit
             return await resolve_and_send(simulator, CMD_CONCURRENCY, params)
 
-        return f"Error: unknown command '{command}'. Use: script, wait_for, wait_idle, concurrency"
+        return text_fn(f"Error: unknown command '{command}'. Use: script, wait_for, wait_idle, concurrency")

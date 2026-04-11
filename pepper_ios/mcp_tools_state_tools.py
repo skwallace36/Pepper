@@ -17,7 +17,7 @@ from .pepper_commands import (
 from .pepper_common import require_parse_json, try_parse_json
 
 
-def register_state_grouped_tools(mcp, resolve_and_send):
+def register_state_grouped_tools(mcp, resolve_and_send, text_fn):
     """Register the state_tools grouped tool."""
 
     @mcp.tool(name="state_tools")
@@ -39,7 +39,7 @@ def register_state_grouped_tools(mcp, resolve_and_send):
         recursive: bool = Field(default=False, description="List directory recursively (sandbox)"),
         max_length: int | None = Field(default=None, description="Max bytes to read (sandbox)"),
         index: int | None = Field(default=None, description="Undo/redo to specific index (undo_manager)"),
-    ) -> str:
+    ) -> list:
         """App state inspection and mutation.
 
 Subcommands:
@@ -119,4 +119,4 @@ Subcommands:
                 params["value"] = try_parse_json(value)
             return await resolve_and_send(simulator, CMD_FLAGS, params)
 
-        return f"Error: unknown command '{command}'. Use: defaults, keychain, clipboard, cookies, sandbox, coredata, undo_manager, flags"
+        return text_fn(f"Error: unknown command '{command}'. Use: defaults, keychain, clipboard, cookies, sandbox, coredata, undo_manager, flags")

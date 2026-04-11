@@ -33,7 +33,7 @@ def register_debug_tools(mcp, resolve_and_send):
         ),
         limit: int | None = Field(default=None, description="Max lines to return (for log action, default: 20)"),
         offset: int | None = Field(default=None, description="Skip this many recent lines for pagination (for log action, default: 0)"),
-    ) -> str:
+    ) -> list:
         """Capture and read app console output — both print() (stdout) and os_log/NSLog (stderr). Start, then log to read. System framework noise is filtered by default. Tip: use `timeline(last_seconds=30)` to see console events correlated with network and screen transitions."""
         params: dict = {"action": action}
         if filter_text:

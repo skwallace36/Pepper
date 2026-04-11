@@ -7,7 +7,7 @@ from pydantic import Field
 from .pepper_commands import CMD_ACCESSIBILITY_ACTION, CMD_ACCESSIBILITY_AUDIT, CMD_ACCESSIBILITY_EVENTS
 
 
-def register_ui_accessibility_tools(mcp, resolve_and_send):
+def register_ui_accessibility_tools(mcp, resolve_and_send, text_fn):
     """Register the ui_accessibility grouped tool."""
 
     @mcp.tool(name="ui_accessibility")
@@ -23,7 +23,7 @@ def register_ui_accessibility_tools(mcp, resolve_and_send):
         index: int | None = Field(default=None, description="Custom action index to invoke (action)"),
         limit: int | None = Field(default=None, description="Max events to return (events)"),
         since_ms: int | None = Field(default=None, description="Only events after this epoch-ms (events)"),
-    ) -> str:
+    ) -> list:
         """Accessibility testing tools.
 
 Subcommands:
@@ -41,7 +41,7 @@ Subcommands:
 
         elif command == "action":
             if not action:
-                return "Error: action required. Use: list, invoke, escape, magic_tap, increment, decrement"
+                return text_fn("Error: action required. Use: list, invoke, escape, magic_tap, increment, decrement")
             params = {"action": action}
             if element is not None:
                 params["element"] = element
@@ -55,7 +55,7 @@ Subcommands:
 
         elif command == "events":
             if not action:
-                return "Error: action required. Use: start, stop, status, events, clear"
+                return text_fn("Error: action required. Use: start, stop, status, events, clear")
             params = {"action": action}
             if limit is not None:
                 params["limit"] = limit
@@ -63,4 +63,4 @@ Subcommands:
                 params["since_ms"] = since_ms
             return await resolve_and_send(simulator, CMD_ACCESSIBILITY_EVENTS, params)
 
-        return f"Error: unknown command '{command}'. Use: audit, action, events"
+        return text_fn(f"Error: unknown command '{command}'. Use: audit, action, events")

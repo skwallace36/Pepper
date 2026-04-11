@@ -7,7 +7,7 @@ from pydantic import Field
 from .pepper_commands import CMD_ASSERT, CMD_FIND, CMD_READ, CMD_TREE, CMD_VERIFY
 
 
-def register_ui_query_tools(mcp, resolve_and_send):
+def register_ui_query_tools(mcp, resolve_and_send, text_fn):
     """Register the ui_query grouped tool."""
 
     @mcp.tool(name="ui_query")
@@ -31,7 +31,7 @@ def register_ui_query_tools(mcp, resolve_and_send):
         state: str | None = Field(default=None, description="assert: exists, not_exists, visible, enabled, disabled, selected, has_value"),
         expected: int | None = Field(default=None, description="Expected count for predicate (assert)"),
         compare: str | None = Field(default=None, description="Count comparison: eq, gte, lte, gt, lt (assert)"),
-    ) -> str:
+    ) -> list:
         """Query and inspect UI elements.
 
 Subcommands:
@@ -43,7 +43,7 @@ Subcommands:
 
         if command == "find":
             if not predicate:
-                return "Error: predicate required. Use: ui_query command=find predicate=\"type == 'button'\""
+                return text_fn("Error: predicate required. Use: ui_query command=find predicate=\"type == 'button'\"")
             params: dict = {"predicate": predicate, "action": action or "list"}
             if limit is not None:
                 params["limit"] = limit
@@ -61,7 +61,7 @@ Subcommands:
 
         elif command == "read":
             if not element:
-                return "Error: element required. Use: ui_query command=read element='my_element_id'"
+                return text_fn("Error: element required. Use: ui_query command=read element='my_element_id'")
             return await resolve_and_send(simulator, CMD_READ, {"element": element})
 
         elif command == "verify":
@@ -104,4 +104,4 @@ Subcommands:
                 params["compare"] = compare
             return await resolve_and_send(simulator, CMD_ASSERT, params)
 
-        return f"Error: unknown command '{command}'. Use: find, tree, verify, read, assert"
+        return text_fn(f"Error: unknown command '{command}'. Use: find, tree, verify, read, assert")

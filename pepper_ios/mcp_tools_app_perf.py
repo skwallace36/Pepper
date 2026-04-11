@@ -7,7 +7,7 @@ from pydantic import Field
 from .pepper_commands import CMD_ANIMATIONS, CMD_HEAP, CMD_HEAP_SNAPSHOT, CMD_PERF, CMD_RENDERS, CMD_TIMERS
 
 
-def register_app_perf_tools(mcp, resolve_and_send):
+def register_app_perf_tools(mcp, resolve_and_send, text_fn):
     """Register the app_perf grouped tool."""
 
     @mcp.tool(name="app_perf")
@@ -31,7 +31,7 @@ def register_app_perf_tools(mcp, resolve_and_send):
         timer_id: str | None = Field(default=None, description="Timer/display-link ID to invalidate (timers)"),
         limit: int | None = Field(default=None, description="Max results to return"),
         offset: int | None = Field(default=None, description="Skip results for pagination (heap)"),
-    ) -> str:
+    ) -> list:
         """Performance profiling tools.
 
 Subcommands:
@@ -99,7 +99,7 @@ Subcommands:
 
         elif command == "renders":
             if not action:
-                return "Error: action required. Use: start, stop, status, log, clear, counts, snapshot, diff, reset"
+                return text_fn("Error: action required. Use: start, stop, status, log, clear, counts, snapshot, diff, reset")
             params = {"action": action}
             if limit is not None:
                 params["limit"] = limit
@@ -123,4 +123,4 @@ Subcommands:
                 params["limit"] = limit
             return await resolve_and_send(simulator, CMD_TIMERS, params)
 
-        return f"Error: unknown command '{command}'. Use: perf, animations, heap, hangs, renders, timers"
+        return text_fn(f"Error: unknown command '{command}'. Use: perf, animations, heap, hangs, renders, timers")

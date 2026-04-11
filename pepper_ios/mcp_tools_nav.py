@@ -295,14 +295,15 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
         tab: int | str | None = Field(default=None, description="Tab index (0-based) or tab name to switch to"),
         list_deeplinks: bool = Field(default=False, description="List all available deep link destinations"),
         category: str | None = Field(default=None, description="Filter deep link list by category"),
-    ) -> list | str:
+    ) -> list:
         """Jump to a specific screen via deeplink or switch tabs. Use list_deeplinks=true to see available destinations. Shows screen state after."""
         if list_deeplinks:
+            from .pepper_format import format_data, text_content
             params: dict = {}
             if category:
                 params["category"] = category
             resp = await resolve_and_send(simulator, CMD_DEEPLINKS, params)
-            return json.dumps(resp.get("data", resp), indent=2)
+            return text_content(format_data(resp.get("data", resp)))
         params = {}
         if deeplink:
             params["deeplink"] = deeplink
@@ -349,13 +350,11 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
     @mcp.tool(name="nav_screen")
     async def screen(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
-    ) -> str:
+    ) -> list:
         """Identify which screen is currently displayed. Returns screen name and view controller class — no element data."""
+        from .pepper_format import format_data, text_content
         resp = await resolve_and_send(simulator, CMD_SCREEN)
-        data = resp.get("data", resp)
-        if isinstance(data, dict):
-            return json.dumps(data, indent=2)
-        return str(data)
+        return text_content(format_data(resp.get("data", resp)))
 
     @mcp.tool(name="nav_keyboard")
     async def dismiss_keyboard(
@@ -378,20 +377,22 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
         assert_no_diff: bool = Field(
             default=False, description="Return error if any diff is detected (for regression testing)"
         ),
-    ) -> str:
+    ) -> list:
         """Save a named baseline of screen state and compare later. Use snapshot for named baselines you want to compare later or assert on with assert_no_diff."""
-        return json_dumps(
-            await resolve_and_send(
-                simulator,
-                CMD_SNAPSHOT,
-                {
-                    "action": action,
-                    "name": name,
-                    "ignore_transient": ignore_transient,
-                    "assert_no_diff": assert_no_diff,
-                },
-            )
+        from .pepper_format import format_data, text_content
+        resp = await resolve_and_send(
+            simulator,
+            CMD_SNAPSHOT,
+            {
+                "action": action,
+                "name": name,
+                "ignore_transient": ignore_transient,
+                "assert_no_diff": assert_no_diff,
+            },
         )
+        if resp.get("status") != "ok":
+            return text_content(f"Error: {resp.get('error', 'unknown')}")
+        return text_content(format_data(resp.get("data", {})))
 
     # Shelved: snapshot covers this with named baselines; diff is a convenience shortcut
     # @mcp.tool()

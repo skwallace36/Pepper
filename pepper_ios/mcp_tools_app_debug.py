@@ -20,7 +20,7 @@ from .pepper_commands import (
 from .pepper_common import get_config
 
 
-def register_app_debug_tools(mcp, resolve_and_send):
+def register_app_debug_tools(mcp, resolve_and_send, text_fn):
     """Register the app_debug grouped tool."""
 
     @mcp.tool(name="app_debug")
@@ -49,7 +49,7 @@ def register_app_debug_tools(mcp, resolve_and_send):
         script: str | None = Field(default=None, description="JavaScript to execute (webview evaluate)"),
         selector: str | None = Field(default=None, description="CSS selector for DOM query (webview dom)"),
         index: int | None = Field(default=None, description="WKWebView index when multiple present (webview)"),
-    ) -> str:
+    ) -> list:
         """Deep debugging tools.
 
 Subcommands:
@@ -65,7 +65,7 @@ Subcommands:
 
         if command == "layers":
             if not point:
-                return "Error: point required, e.g. '200,400'"
+                return text_fn("Error: point required, e.g. '200,400'")
             params: dict = {"point": point}
             if depth is not None:
                 params["depth"] = depth
@@ -78,7 +78,7 @@ Subcommands:
             reports_dir = os.path.expanduser("~/Library/Logs/DiagnosticReports")
 
             if not os.path.isdir(reports_dir):
-                return "No DiagnosticReports directory found."
+                return text_fn("No DiagnosticReports directory found.")
 
             cutoff = time.time() - (seconds or 300)
             n = min(last_n or 1, 5)
@@ -98,7 +98,7 @@ Subcommands:
                         except OSError:
                             pass
             except OSError:
-                return "Failed to read DiagnosticReports directory."
+                return text_fn("Failed to read DiagnosticReports directory.")
 
             if not candidates:
                 throttle_warning = ""
@@ -108,7 +108,7 @@ Subcommands:
                         f"'{app_name_hint}'. macOS throttles after ~25. Delete old reports:\n"
                         f"  rm ~/Library/Logs/DiagnosticReports/{app_name_hint.capitalize()}-*.ips"
                     )
-                return f"No crash reports found in the last {seconds or 300}s.{throttle_warning}"
+                return text_fn(f"No crash reports found in the last {seconds or 300}s.{throttle_warning}")
 
             candidates.sort(reverse=True)
 
@@ -161,7 +161,7 @@ Subcommands:
                     f"No crash reports matching {bundle_id} in the last {seconds or 300}s. "
                     f"Found {len(candidates)} .ips files (from: {others_str}).{throttle_warning}"
                 )
-            return "\n".join(results)
+            return text_fn("\n".join(results))
 
         elif command == "constraints":
             params = {}
@@ -219,12 +219,12 @@ Subcommands:
 
         elif command == "lifecycle":
             if not action:
-                return "Error: action required. Use: background, foreground, memory_warning"
+                return text_fn("Error: action required. Use: background, foreground, memory_warning")
             return await resolve_and_send(simulator, CMD_LIFECYCLE, {"action": action})
 
         elif command == "notifications":
             if not action:
-                return "Error: action required. Use: start, stop, list, counts, post, events, status, clear"
+                return text_fn("Error: action required. Use: start, stop, list, counts, post, events, status, clear")
             params = {"action": action}
             if name:
                 params["name"] = name
@@ -235,7 +235,7 @@ Subcommands:
                     try:
                         params["user_info"] = json.loads(user_info)
                     except json.JSONDecodeError:
-                        return "Error: user_info must be valid JSON"
+                        return text_fn("Error: user_info must be valid JSON")
                 else:
                     params["user_info"] = user_info
             if limit is not None:
@@ -254,4 +254,4 @@ Subcommands:
                 params["limit"] = limit
             return await resolve_and_send(simulator, "webview", params, timeout=15)
 
-        return f"Error: unknown command '{command}'. Use: layers, crash_log, constraints, responder_chain, target_actions, highlight, lifecycle, notifications, webview"
+        return text_fn(f"Error: unknown command '{command}'. Use: layers, crash_log, constraints, responder_chain, target_actions, highlight, lifecycle, notifications, webview")
