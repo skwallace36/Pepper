@@ -404,6 +404,14 @@ final class PepperVarRegistry {
         for child in mirror.children {
             guard let label = child.label, label.hasPrefix("_") else { continue }
 
+            // Skip types that are unsafe to reflect (Bindings store raw pointers to SwiftUI state)
+            let rawTypeName = String(describing: type(of: child.value))
+            let unsafeTypes = [
+                "Binding<", "UnsafePointer", "UnsafeMutablePointer", "UnsafeRawPointer", "UnsafeBufferPointer",
+                "Unmanaged<", "OpaquePointer",
+            ]
+            if unsafeTypes.contains(where: { rawTypeName.contains($0) }) { continue }
+
             let childTypeName = String(describing: Mirror(reflecting: child.value).subjectType)
             guard childTypeName.hasPrefix("Published<") else { continue }
 
@@ -445,6 +453,14 @@ final class PepperVarRegistry {
             if label.hasPrefix("_$") { continue }
             // @ObservationTracked properties have underscore-prefixed backing storage
             guard label.hasPrefix("_") else { continue }
+
+            // Skip types that are unsafe to reflect (Bindings store raw pointers to SwiftUI state)
+            let rawTypeName = String(describing: type(of: child.value))
+            let unsafeTypes = [
+                "Binding<", "UnsafePointer", "UnsafeMutablePointer", "UnsafeRawPointer", "UnsafeBufferPointer",
+                "Unmanaged<", "OpaquePointer",
+            ]
+            if unsafeTypes.contains(where: { rawTypeName.contains($0) }) { continue }
 
             let propertyName = String(label.dropFirst())
             let childTypeName = String(describing: Mirror(reflecting: child.value).subjectType)

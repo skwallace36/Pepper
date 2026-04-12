@@ -83,7 +83,12 @@ final class PepperNotificationTracker {
     // MARK: - Recording (called from swizzled methods)
 
     func recordAddObserver(observer: AnyObject, name: NSNotification.Name?, selector: Selector?) {
-        queue.async(flags: .barrier) {
+        // Capture observer metadata synchronously — observer may be deallocated before the closure runs
+        let observerClass = String(describing: type(of: observer))
+        let observerAddress = String(format: "%p", unsafeBitCast(observer, to: Int.self))
+        let selectorStr = selector.map { NSStringFromSelector($0) }
+
+        queue.async(flags: .barrier) { [observerClass, observerAddress, selectorStr] in
             guard self.isActive else { return }
 
             let id = "obs_\(self.nextId)"
@@ -93,9 +98,9 @@ final class PepperNotificationTracker {
             let record = ObserverRecord(
                 id: id,
                 notificationName: name?.rawValue,
-                observerClass: String(describing: type(of: observer)),
-                observerAddress: String(format: "%p", unsafeBitCast(observer, to: Int.self)),
-                selector: selector.map { NSStringFromSelector($0) },
+                observerClass: observerClass,
+                observerAddress: observerAddress,
+                selector: selectorStr,
                 isBlock: false,
                 timestamp: Int64(Date().timeIntervalSince1970 * 1000)
             )
@@ -112,7 +117,11 @@ final class PepperNotificationTracker {
     }
 
     func recordAddBlockObserver(name: NSNotification.Name?, observerRef: AnyObject) {
-        queue.async(flags: .barrier) {
+        // Capture observer metadata synchronously — observerRef may be deallocated before the closure runs
+        let observerClass = String(describing: type(of: observerRef))
+        let observerAddress = String(format: "%p", unsafeBitCast(observerRef, to: Int.self))
+
+        queue.async(flags: .barrier) { [observerClass, observerAddress] in
             guard self.isActive else { return }
 
             let id = "obs_\(self.nextId)"
@@ -122,8 +131,8 @@ final class PepperNotificationTracker {
             let record = ObserverRecord(
                 id: id,
                 notificationName: name?.rawValue,
-                observerClass: String(describing: type(of: observerRef)),
-                observerAddress: String(format: "%p", unsafeBitCast(observerRef, to: Int.self)),
+                observerClass: observerClass,
+                observerAddress: observerAddress,
                 selector: nil,
                 isBlock: true,
                 timestamp: Int64(Date().timeIntervalSince1970 * 1000)
@@ -141,14 +150,17 @@ final class PepperNotificationTracker {
     }
 
     func recordRemoveObserver(observer: AnyObject, name: NSNotification.Name?) {
-        queue.async(flags: .barrier) {
+        // Capture observer metadata synchronously — observer may be deallocated before the closure runs
+        let address = String(format: "%p", unsafeBitCast(observer, to: Int.self))
+        let observerClass = String(describing: type(of: observer))
+
+        queue.async(flags: .barrier) { [address, observerClass] in
             guard self.isActive else { return }
 
-            let address = String(format: "%p", unsafeBitCast(observer, to: Int.self))
             let now = Int64(Date().timeIntervalSince1970 * 1000)
 
             // Remove matching records
-            var removedClass = String(describing: type(of: observer))
+            var removedClass = observerClass
             let keysToRemove = self.observers.filter { _, record in
                 if record.observerAddress == address {
                     if let name = name {

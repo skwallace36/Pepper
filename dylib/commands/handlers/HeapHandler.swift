@@ -56,6 +56,14 @@ struct HeapHandler: PepperHandler {
             )
         }
 
+        // If found via heap scan, findOnHeap retained the object to prevent TOCTOU races.
+        // Release after inspection is complete.
+        defer {
+            if method == "heap_scan" {
+                Unmanaged.passUnretained(obj as AnyObject).release()
+            }
+        }
+
         let mirror = Mirror(reflecting: obj)
         var props: [[String: AnyCodable]] = []
         walkMirror(mirror) { name, type, value in
@@ -96,6 +104,13 @@ struct HeapHandler: PepperHandler {
 
         guard let (obj, resolvedClass, method) = findInstance(className: className) else {
             return .error(id: command.id, message: "No instance found for '\(className)'.")
+        }
+
+        // If found via heap scan, findOnHeap retained the object. Release after use.
+        defer {
+            if method == "heap_scan" {
+                Unmanaged.passUnretained(obj as AnyObject).release()
+            }
         }
 
         guard let nsObj = obj as? NSObject else {
@@ -353,8 +368,9 @@ struct HeapHandler: PepperHandler {
         var classesPtr: UnsafeMutablePointer<UnsafeRawPointer?>?
         var count: Int32 = 0
 
-        let result = targetPtrs.withUnsafeMutableBufferPointer { buf in
-            pepper_heap_find_instances(buf.baseAddress!, Int32(buf.count), &instancesPtr, &classesPtr, &count)
+        let result = targetPtrs.withUnsafeMutableBufferPointer { buf -> Int32 in
+            guard let base = buf.baseAddress else { return -1 }
+            return pepper_heap_find_instances(base, Int32(buf.count), &instancesPtr, &classesPtr, &count)
         }
 
         guard result == 0, count > 0, let instances = instancesPtr, let classes = classesPtr else { return nil }
@@ -374,7 +390,11 @@ struct HeapHandler: PepperHandler {
             let isaPtr = instancePtr.load(as: UnsafeRawPointer.self)
             guard isaPtr == expectedClassPtr else { continue }
 
-            return Unmanaged<AnyObject>.fromOpaque(instancePtr).takeUnretainedValue()
+            // Retain to prevent deallocation during inspection (TOCTOU race: another thread
+            // can deallocate between the isa check above and Mirror usage in the caller)
+            let obj = Unmanaged<AnyObject>.fromOpaque(instancePtr).takeUnretainedValue()
+            _ = Unmanaged.passUnretained(obj).retain()
+            return obj
         }
 
         return nil
@@ -386,10 +406,17 @@ struct HeapHandler: PepperHandler {
         if let superMirror = mirror.superclassMirror, depth < 5 {
             walkMirror(superMirror, depth: depth + 1, handler: handler)
         }
+        // Types that are unsafe to reflect (raw pointers, Bindings to SwiftUI state)
+        let unsafeTypes = [
+            "Binding<", "UnsafePointer", "UnsafeMutablePointer", "UnsafeRawPointer", "UnsafeBufferPointer",
+            "Unmanaged<", "OpaquePointer",
+        ]
         for child in mirror.children {
             guard let label = child.label else { continue }
             let name = label.hasPrefix("_") ? String(label.dropFirst()) : label
             let type = String(describing: Swift.type(of: child.value))
+            // Skip properties with types that crash during reflection
+            if unsafeTypes.contains(where: { type.contains($0) }) { continue }
             let value = describeValue(child.value)
             handler(name, type, value)
         }
