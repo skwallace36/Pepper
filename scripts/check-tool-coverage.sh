@@ -36,6 +36,7 @@ local_only=(
   raw
   record
   script
+  sim_control
   simulator
 )
 
