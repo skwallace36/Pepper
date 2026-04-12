@@ -27,7 +27,7 @@ def register_state_tools(mcp, resolve_and_send):
         path: str | None = Field(default=None, description="Property path (for set, e.g. 'MyVM.flag')"),
         value: str | None = Field(default=None, description="Value to set (for set action)"),
         limit: int | None = Field(default=None, description="Max results for list/discover (default 50, prevents crashes on large apps)"),
-    ) -> list:
+    ) -> str:
         """Check or change ViewModel @Published properties at runtime — no rebuild needed."""
         params: dict = {"action": action}
         if class_name:

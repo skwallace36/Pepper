@@ -12,7 +12,6 @@ from pydantic import Field
 
 from . import pepper_sessions
 from .pepper_common import get_config, list_simulators, require_parse_json
-from .pepper_format import text_content as text_fn
 
 
 def register_sim_tools(mcp, resolve_and_send, resolve_simulator):
@@ -30,7 +29,7 @@ def register_sim_tools(mcp, resolve_and_send, resolve_simulator):
         cmd: str = Field(description="Command name"),
         params: str | dict | None = Field(default=None, description="JSON params (string or object)"),
         timeout: float = Field(default=10, description="Timeout in seconds"),
-    ) -> list:
+    ) -> str:
         """Send a raw dylib command. NOT a code evaluator. Send cmd='help' to list valid commands. Prefer dedicated tools; use this for commands without one (batch, deeplinks, identify_selected, identify_icons, memory, scroll_to, watch, unwatch)."""
         p = None
         if params:
@@ -40,7 +39,7 @@ def register_sim_tools(mcp, resolve_and_send, resolve_simulator):
                 try:
                     p = require_parse_json(params, "params")
                 except ValueError as e:
-                    return text_fn(f"Error: {e}")
+                    return f"Error: {e}"
         return await resolve_and_send(simulator, cmd, p, timeout)
 
     @mcp.tool()
@@ -64,7 +63,7 @@ def register_sim_tools(mcp, resolve_and_send, resolve_simulator):
         media_path: str | None = Field(default=None, description="Path to image/video file for action=addmedia"),
         clear_time: bool = Field(default=False, description="For action=status_bar: clear override instead of setting"),
         time: str | None = Field(default=None, description="For action=status_bar: time string like '09:41'"),
-    ) -> list:
+    ) -> str:
         """Control the iOS Simulator environment via simctl — permissions, GPS, biometrics, installed apps, and device lifecycle."""
 
         sim = simulator_id
@@ -105,14 +104,14 @@ def register_sim_tools(mcp, resolve_and_send, resolve_simulator):
 
         if action == "install":
             if not app_path:
-                return text_fn("Error: app_path required for install")
+                return "Error: app_path required for install"
             result = subprocess.run(["xcrun", "simctl", "install", sim, app_path], capture_output=True, text=True)
             return text_fn(f"Installed {app_path}" if result.returncode == 0 else f"Install failed: {result.stderr.strip()}")
 
         elif action == "uninstall":
             bid = bundle_id or get_config().get("bundle_id")
             if not bid:
-                return text_fn("Error: bundle_id required for uninstall")
+                return "Error: bundle_id required for uninstall"
             result = subprocess.run(["xcrun", "simctl", "uninstall", sim, bid], capture_output=True, text=True)
             return text_fn(f"Uninstalled {bid}" if result.returncode == 0 else f"Uninstall failed: {result.stderr.strip()}")
 
@@ -133,14 +132,14 @@ def register_sim_tools(mcp, resolve_and_send, resolve_simulator):
                     if result.returncode == 0
                     else f"Failed: {result.stderr.strip()}"
                 )
-            return text_fn("Error: latitude and longitude required for location")
+            return "Error: latitude and longitude required for location"
 
         elif action == "permissions":
             bid = bundle_id or get_config().get("bundle_id")
             if not bid or not permission or not permission_value:
-                return text_fn("Error: bundle_id, permission, and permission_value required")
+                return "Error: bundle_id, permission, and permission_value required"
             if permission_value not in ("grant", "revoke", "reset"):
-                return text_fn("Error: permission_value must be grant, revoke, or reset")
+                return "Error: permission_value must be grant, revoke, or reset"
             result = subprocess.run(
                 ["xcrun", "simctl", "privacy", sim, permission_value, permission, bid], capture_output=True, text=True
             )
@@ -153,7 +152,7 @@ def register_sim_tools(mcp, resolve_and_send, resolve_simulator):
         elif action == "privacy_reset":
             bid = bundle_id or get_config().get("bundle_id")
             if not bid:
-                return text_fn("Error: bundle_id required for privacy_reset")
+                return "Error: bundle_id required for privacy_reset"
             result = subprocess.run(
                 ["xcrun", "simctl", "privacy", sim, "reset", "all", bid], capture_output=True, text=True
             )
@@ -167,7 +166,7 @@ def register_sim_tools(mcp, resolve_and_send, resolve_simulator):
             bio_action = biometric_action or "enroll"
             bio_type = biometric_type or "face"
             if bio_type not in ("face", "finger"):
-                return text_fn("Error: biometric_type must be 'face' or 'finger'")
+                return "Error: biometric_type must be 'face' or 'finger'"
             if bio_action not in ("enroll", "match", "nonmatch"):
                 return text_fn(f"Unknown biometric_action '{bio_action}'. Use: enroll, match, nonmatch")
             flag = "--face" if bio_type == "face" else "--finger"
@@ -184,15 +183,15 @@ def register_sim_tools(mcp, resolve_and_send, resolve_simulator):
 
         elif action == "open_url":
             if not url:
-                return text_fn("Error: url required for open_url")
+                return "Error: url required for open_url"
             result = subprocess.run(["xcrun", "simctl", "openurl", sim, url], capture_output=True, text=True)
             return text_fn(f"Opened {url}" if result.returncode == 0 else f"Failed: {result.stderr.strip()}")
 
         elif action == "addmedia":
             if not media_path:
-                return text_fn("Error: media_path required for addmedia (path to image or video file)")
+                return "Error: media_path required for addmedia (path to image or video file)"
             if not os.path.exists(media_path):
-                return text_fn(f"Error: file not found: {media_path}")
+                return f"Error: file not found: {media_path}"
             result = subprocess.run(["xcrun", "simctl", "addmedia", sim, media_path], capture_output=True, text=True)
             return (
                 f"Added {os.path.basename(media_path)} to camera roll"

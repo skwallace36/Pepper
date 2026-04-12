@@ -24,7 +24,7 @@ def register_element_tools(mcp, resolve_and_send, act_and_look):
         simulator: str | None = Field(default=None, description="Simulator UDID"),
         element: str = Field(description="Accessibility ID of the switch/segment to toggle"),
         value: int | None = Field(default=None, description="Target segment index (for segmented controls)"),
-    ) -> list:
+    ) -> str:
         """Flip a switch or change a segmented control by accessibility ID. Prefer over tap for switches. Shows screen state after."""
         params: dict = {"element": element}
         if value is not None:

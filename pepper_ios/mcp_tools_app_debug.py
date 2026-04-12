@@ -20,7 +20,7 @@ from .pepper_commands import (
 from .pepper_common import get_config
 
 
-def register_app_debug_tools(mcp, resolve_and_send, text_fn):
+def register_app_debug_tools(mcp, resolve_and_send):
     """Register the app_debug grouped tool."""
 
     @mcp.tool(name="app_debug")
@@ -49,7 +49,7 @@ def register_app_debug_tools(mcp, resolve_and_send, text_fn):
         script: str | None = Field(default=None, description="JavaScript to execute (webview evaluate)"),
         selector: str | None = Field(default=None, description="CSS selector for DOM query (webview dom)"),
         index: int | None = Field(default=None, description="WKWebView index when multiple present (webview)"),
-    ) -> list:
+    ) -> str:
         """Deep debugging tools.
 
 Subcommands:
@@ -65,7 +65,7 @@ Subcommands:
 
         if command == "layers":
             if not point:
-                return text_fn("Error: point required, e.g. '200,400'")
+                return "Error: point required, e.g. '200,400'"
             params: dict = {"point": point}
             if depth is not None:
                 params["depth"] = depth
@@ -219,12 +219,12 @@ Subcommands:
 
         elif command == "lifecycle":
             if not action:
-                return text_fn("Error: action required. Use: background, foreground, memory_warning")
+                return "Error: action required. Use: background, foreground, memory_warning"
             return await resolve_and_send(simulator, CMD_LIFECYCLE, {"action": action})
 
         elif command == "notifications":
             if not action:
-                return text_fn("Error: action required. Use: start, stop, list, counts, post, events, status, clear")
+                return "Error: action required. Use: start, stop, list, counts, post, events, status, clear"
             params = {"action": action}
             if name:
                 params["name"] = name
@@ -235,7 +235,7 @@ Subcommands:
                     try:
                         params["user_info"] = json.loads(user_info)
                     except json.JSONDecodeError:
-                        return text_fn("Error: user_info must be valid JSON")
+                        return "Error: user_info must be valid JSON"
                 else:
                     params["user_info"] = user_info
             if limit is not None:
@@ -254,4 +254,4 @@ Subcommands:
                 params["limit"] = limit
             return await resolve_and_send(simulator, "webview", params, timeout=15)
 
-        return text_fn(f"Error: unknown command '{command}'. Use: layers, crash_log, constraints, responder_chain, target_actions, highlight, lifecycle, notifications, webview")
+        return f"Error: unknown command '{command}'. Use: layers, crash_log, constraints, responder_chain, target_actions, highlight, lifecycle, notifications, webview"

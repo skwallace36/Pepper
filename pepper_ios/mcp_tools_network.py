@@ -59,7 +59,7 @@ def register_network_tools(mcp, resolve_and_send):
             default=None,
             description="Transaction ID of a streaming request (for stream_log action — get SSE/streaming chunks)",
         ),
-    ) -> list:
+    ) -> str:
         """Monitor HTTP traffic. Start interception, then query the log. Actions: start, stop, log, status, clear, tasks, stream_log. Use net_tools for mocking and simulation."""
         params: dict = {"action": action}
         if filter_text:

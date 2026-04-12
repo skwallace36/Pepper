@@ -294,17 +294,15 @@ async def resolve_and_send(
     return resp
 
 
-from .pepper_format import text_content as _text
 
 
 async def resolve_and_send_json(
     simulator: str | None, cmd: str, params: dict | None = None, timeout: float = 10
-) -> list:
-    """Send command and return formatted TextContent.
+) -> str:
+    """Send command and return readable formatted text.
 
     Strips the protocol wrapper (status/id) and formats the data payload
     using format_data() for human/agent-readable output.
-    Returns list[TextContent] for consistent MCP rendering.
     """
     from .pepper_format import format_data
 
@@ -315,8 +313,8 @@ async def resolve_and_send_json(
         msg = error or format_data(resp.get("data", resp))
         if crash_info:
             msg += f"\n\n{crash_info}"
-        return _text(f"Error: {msg}")
-    return _text(format_data(resp.get("data", {})))
+        return f"Error: {msg}"
+    return format_data(resp.get("data", {}))
 
 
 # Monitors known to be active, updated each act_and_look cycle.
@@ -993,15 +991,15 @@ async def _script_deploy(workspace, simulator, scheme=None, bundle_id=None, skip
 
 
 # --- Grouped tools (multiple subcommands each) ---
-register_ui_query_tools(mcp, resolve_and_send_json, _text)
-register_ui_accessibility_tools(mcp, resolve_and_send_json, _text)
-register_app_debug_tools(mcp, resolve_and_send_json, _text)
-register_app_perf_tools(mcp, resolve_and_send_json, _text)
-register_app_swiftui_tools(mcp, resolve_and_send_json, _text)
-register_app_automation_tools(mcp, resolve_and_send_json, _text, act_and_look, deploy_fn=_script_deploy)
-register_state_grouped_tools(mcp, resolve_and_send_json, _text)
-register_net_grouped_tools(mcp, resolve_and_send_json, _text)
-register_sys_grouped_tools(mcp, resolve_and_send_json, _text)
+register_ui_query_tools(mcp, resolve_and_send_json)
+register_ui_accessibility_tools(mcp, resolve_and_send_json)
+register_app_debug_tools(mcp, resolve_and_send_json)
+register_app_perf_tools(mcp, resolve_and_send_json)
+register_app_swiftui_tools(mcp, resolve_and_send_json)
+register_app_automation_tools(mcp, resolve_and_send_json, act_and_look, deploy_fn=_script_deploy)
+register_state_grouped_tools(mcp, resolve_and_send_json)
+register_net_grouped_tools(mcp, resolve_and_send_json)
+register_sys_grouped_tools(mcp, resolve_and_send_json)
 register_prompts(mcp)
 
 

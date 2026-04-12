@@ -28,24 +28,24 @@ def register_system_tools(mcp, resolve_and_send, act_and_look):
         memory_detail: bool = Field(
             default=False, description="Include detailed VM breakdown (internal, compressed, purgeable)"
         ),
-    ) -> list:
+    ) -> str:
         """Check Pepper connection health — bundle ID, version, port, connections, current screen. Add memory=true for process memory stats."""
         if not memory and not memory_detail:
             return await resolve_and_send(simulator, CMD_STATUS)
         # Need to merge status + memory, so use raw dict path
         from .mcp_server import resolve_and_send as raw_send
-        from .pepper_format import format_data, text_content
+        from .pepper_format import format_data
 
         result = await raw_send(simulator, CMD_STATUS)
         if result.get("status") != "ok":
-            return text_content(f"Error: {result.get('error', 'unknown')}")
+            return f"Error: {result.get('error', 'unknown')}"
         data = result.get("data", {})
         mem_params: dict = {}
         if memory_detail:
             mem_params["action"] = "vm"
         mem_result = await raw_send(simulator, CMD_MEMORY, mem_params)
         data["memory"] = mem_result.get("data", mem_result)
-        return text_content(format_data(data))
+        return format_data(data)
 
     @mcp.tool(name="ui_gesture")
     async def gesture(
@@ -56,7 +56,7 @@ def register_system_tools(mcp, resolve_and_send, act_and_look):
         angle: float | None = Field(default=None, description="Rotation angle in degrees (for rotate; e.g. 90 for quarter turn, -45 for reverse)"),
         center_x: float | None = Field(default=None, description="Center X coordinate — defaults to screen center (e.g. 200.0)"),
         center_y: float | None = Field(default=None, description="Center Y coordinate — defaults to screen center (e.g. 400.0)"),
-    ) -> list:
+    ) -> str:
         """Use this for multi-touch gestures like pinch-to-zoom or two-finger rotation on maps, images, or zoomable views.
         Synthesizes two-finger touch events via HID injection. Shows screen state after."""
         params: dict = {"type": type}

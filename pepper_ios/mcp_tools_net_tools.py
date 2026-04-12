@@ -23,7 +23,7 @@ def _get_client() -> httpx.AsyncClient:
     return _client
 
 
-def register_net_grouped_tools(mcp, resolve_and_send, text_fn):
+def register_net_grouped_tools(mcp, resolve_and_send):
     """Register the net_tools grouped tool."""
 
     @mcp.tool(name="net_tools")
@@ -55,7 +55,7 @@ def register_net_grouped_tools(mcp, resolve_and_send, text_fn):
         filter_text: str | None = Field(default=None, description="Filter events by text (timeline)"),
         buffer_size: int | None = Field(default=None, description="Set buffer size (timeline)"),
         recording: bool | None = Field(default=None, description="Enable/disable recording (timeline)"),
-    ) -> list:
+    ) -> str:
         """Network tools beyond basic monitoring.
 
 Subcommands:
@@ -104,7 +104,7 @@ Subcommands:
 
         elif command == "http_call":
             if not url:
-                return text_fn("Error: url required for http_call")
+                return "Error: url required for http_call"
             client = _get_client()
             req_headers: dict = {}
             if headers:
@@ -114,7 +114,7 @@ Subcommands:
                     try:
                         req_headers = json.loads(headers)
                     except json.JSONDecodeError as e:
-                        return text_fn(f"Error: invalid headers JSON — {e}")
+                        return f"Error: invalid headers JSON — {e}"
             body_str: str | None = None
             if body is not None:
                 body_str = json.dumps(body) if isinstance(body, (dict, list)) else body
@@ -134,11 +134,11 @@ Subcommands:
             try:
                 resp = await client.request(**kwargs)
             except httpx.TimeoutException:
-                return text_fn(f"Error: request timed out after {timeout or 30}s")
+                return f"Error: request timed out after {timeout or 30}s"
             except httpx.ConnectError as e:
-                return text_fn(f"Error: connection failed — {e}")
+                return f"Error: connection failed — {e}"
             except httpx.RequestError as e:
-                return text_fn(f"Error: request failed — {e}")
+                return f"Error: request failed — {e}"
             elapsed_ms = int((time.monotonic() - start) * 1000)
             parts = [f"HTTP {resp.status_code} ({elapsed_ms}ms)"]
             ct_resp = resp.headers.get("content-type", "")
@@ -177,4 +177,4 @@ Subcommands:
                 params["recording"] = recording
             return await resolve_and_send(simulator, CMD_TIMELINE, params)
 
-        return text_fn(f"Error: unknown command '{command}'. Use: mock, simulate, http_call, timeline")
+        return f"Error: unknown command '{command}'. Use: mock, simulate, http_call, timeline"

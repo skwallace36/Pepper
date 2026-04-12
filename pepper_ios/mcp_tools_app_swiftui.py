@@ -7,7 +7,7 @@ from pydantic import Field
 from .pepper_commands import CMD_RENDERS
 
 
-def register_app_swiftui_tools(mcp, resolve_and_send, text_fn):
+def register_app_swiftui_tools(mcp, resolve_and_send):
     """Register the app_swiftui grouped tool."""
 
     @mcp.tool(name="app_swiftui")
@@ -22,7 +22,7 @@ def register_app_swiftui_tools(mcp, resolve_and_send, text_fn):
         sub: str | None = Field(default=None, description="Sub-action for signpost: install or drain (renders)"),
         element: str | None = Field(default=None, description="Accessibility ID of a SwiftUI view (body)"),
         text: str | None = Field(default=None, description="Text label of a SwiftUI view (body)"),
-    ) -> list:
+    ) -> str:
         """SwiftUI debugging tools.
 
 Subcommands:
@@ -31,7 +31,7 @@ Subcommands:
 
         if command == "renders":
             if not action:
-                return text_fn("Error: action required. Use: start, stop, status, log, clear, counts, snapshot, diff, reset, why")
+                return "Error: action required. Use: start, stop, status, log, clear, counts, snapshot, diff, reset, why"
             params: dict = {"action": action}
             if limit is not None:
                 params["limit"] = limit
@@ -53,4 +53,4 @@ Subcommands:
                 params["text"] = text
             return await resolve_and_send(simulator, "swiftui_body", params)
 
-        return text_fn(f"Error: unknown command '{command}'. Use: renders, body")
+        return f"Error: unknown command '{command}'. Use: renders, body"
