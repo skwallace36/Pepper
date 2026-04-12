@@ -210,7 +210,7 @@ print(len(failed))
 
 # The last line is the count; preceding lines are details
 FAIL_COUNT=$(echo "$FAILURES" | tail -1)
-FAIL_DETAILS=$(echo "$FAILURES" | head -n -1)
+FAIL_DETAILS=$(echo "$FAILURES" | sed '$d')
 
 if [ -n "$FAIL_DETAILS" ]; then
     echo "$FAIL_DETAILS"
