@@ -1,16 +1,72 @@
 import SwiftUI
 
-struct UndoDemoView: View {
-    @State private var items: [String] = ["Item 1", "Item 2", "Item 3"]
-    @State private var nextIndex: Int = 4
-    @State private var statusText: String = "Ready"
+@Observable
+final class UndoDemoModel {
+    var items: [String] = ["Item 1", "Item 2", "Item 3"]
+    var nextIndex: Int = 4
+    let undoManager = UndoManager()
 
-    private let undoManager = UndoManager()
+    func addItem() {
+        let name = "Item \(nextIndex)"
+        let index = items.count
+        items.append(name)
+        nextIndex += 1
+
+        undoManager.registerUndo(withTarget: self) { model in
+            model.removeItem(at: index)
+        }
+        undoManager.setActionName("Add \(name)")
+        print("[PepperTest] Undo: added \(name)")
+    }
+
+    func removeItem(at index: Int) {
+        guard index < items.count else { return }
+        let name = items[index]
+        items.remove(at: index)
+
+        undoManager.registerUndo(withTarget: self) { model in
+            model.insertItem(name, at: index)
+        }
+        undoManager.setActionName("Delete \(name)")
+        print("[PepperTest] Undo: removed \(name)")
+    }
+
+    func insertItem(_ name: String, at index: Int) {
+        let safeIndex = min(index, items.count)
+        items.insert(name, at: safeIndex)
+
+        undoManager.registerUndo(withTarget: self) { model in
+            model.removeItem(at: safeIndex)
+        }
+        undoManager.setActionName("Add \(name)")
+        print("[PepperTest] Undo: inserted \(name) at \(safeIndex)")
+    }
+
+    func deleteItems(at offsets: IndexSet) {
+        for index in offsets {
+            removeItem(at: index)
+        }
+    }
+
+    var statusText: String {
+        var parts: [String] = []
+        parts.append("canUndo:\(undoManager.canUndo)")
+        parts.append("canRedo:\(undoManager.canRedo)")
+        let undoName = undoManager.undoActionName
+        let redoName = undoManager.redoActionName
+        if !undoName.isEmpty { parts.append("undo:\"\(undoName)\"") }
+        if !redoName.isEmpty { parts.append("redo:\"\(redoName)\"") }
+        return parts.joined(separator: "  ")
+    }
+}
+
+struct UndoDemoView: View {
+    @State private var model = UndoDemoModel()
 
     var body: some View {
         VStack(spacing: 0) {
             // Status label
-            Text(statusText)
+            Text(model.statusText)
                 .font(.caption.monospacedDigit())
                 .foregroundStyle(.secondary)
                 .padding(.horizontal)
@@ -21,119 +77,38 @@ struct UndoDemoView: View {
 
             // Item list
             List {
-                ForEach(items, id: \.self) { item in
+                ForEach(model.items, id: \.self) { item in
                     Text(item)
                         .accessibilityIdentifier("undo_item_\(item.lowercased().replacingOccurrences(of: " ", with: "_"))")
                 }
-                .onDelete(perform: deleteItems)
+                .onDelete(perform: model.deleteItems)
             }
             .accessibilityIdentifier("undo_item_list")
 
             // Controls
             HStack(spacing: 12) {
                 Button("Add Item") {
-                    addItem()
+                    model.addItem()
                 }
                 .buttonStyle(.borderedProminent)
                 .accessibilityIdentifier("undo_add_button")
 
                 Button("Undo") {
-                    undoManager.undo()
-                    refreshStatus()
+                    model.undoManager.undo()
                 }
                 .buttonStyle(.bordered)
-                .disabled(!undoManager.canUndo)
+                .disabled(!model.undoManager.canUndo)
                 .accessibilityIdentifier("undo_undo_button")
 
                 Button("Redo") {
-                    undoManager.redo()
-                    refreshStatus()
+                    model.undoManager.redo()
                 }
                 .buttonStyle(.bordered)
-                .disabled(!undoManager.canRedo)
+                .disabled(!model.undoManager.canRedo)
                 .accessibilityIdentifier("undo_redo_button")
             }
             .padding()
         }
         .navigationTitle("Undo Demo")
-        .onAppear { refreshStatus() }
-    }
-
-    // MARK: - Actions
-
-    private func addItem() {
-        let name = "Item \(nextIndex)"
-        let index = items.count
-        items.append(name)
-        nextIndex += 1
-
-        undoManager.registerUndo(withTarget: UndoTarget(items: $items, nextIndex: $nextIndex)) { target in
-            target.removeItem(at: index, undoManager: undoManager)
-        }
-        undoManager.setActionName("Add \(name)")
-
-        print("[PepperTest] Undo: added \(name)")
-        refreshStatus()
-    }
-
-    private func deleteItems(at offsets: IndexSet) {
-        for index in offsets {
-            let name = items[index]
-            items.remove(at: index)
-
-            undoManager.registerUndo(withTarget: UndoTarget(items: $items, nextIndex: $nextIndex)) { target in
-                target.insertItem(name, at: index, undoManager: undoManager)
-            }
-            undoManager.setActionName("Delete \(name)")
-
-            print("[PepperTest] Undo: deleted \(name)")
-        }
-        refreshStatus()
-    }
-
-    private func refreshStatus() {
-        let canUndo = undoManager.canUndo
-        let canRedo = undoManager.canRedo
-        let undoName = undoManager.undoActionName
-        let redoName = undoManager.redoActionName
-        var parts: [String] = []
-        parts.append("canUndo:\(canUndo)")
-        parts.append("canRedo:\(canRedo)")
-        if !undoName.isEmpty { parts.append("undo:\"\(undoName)\"") }
-        if !redoName.isEmpty { parts.append("redo:\"\(redoName)\"") }
-        statusText = parts.joined(separator: "  ")
-    }
-}
-
-// MARK: - UndoTarget (NSObject required by registerUndo)
-
-private final class UndoTarget: NSObject {
-    private let items: Binding<[String]>
-    private let nextIndex: Binding<Int>
-
-    init(items: Binding<[String]>, nextIndex: Binding<Int>) {
-        self.items = items
-        self.nextIndex = nextIndex
-    }
-
-    func removeItem(at index: Int, undoManager: UndoManager) {
-        guard index < items.wrappedValue.count else { return }
-        let name = items.wrappedValue[index]
-        items.wrappedValue.remove(at: index)
-        undoManager.registerUndo(withTarget: self) { target in
-            target.insertItem(name, at: index, undoManager: undoManager)
-        }
-        undoManager.setActionName("Add \(name)")
-        print("[PepperTest] Undo: removed \(name)")
-    }
-
-    func insertItem(_ name: String, at index: Int, undoManager: UndoManager) {
-        let safeIndex = min(index, items.wrappedValue.count)
-        items.wrappedValue.insert(name, at: safeIndex)
-        undoManager.registerUndo(withTarget: self) { target in
-            target.removeItem(at: safeIndex, undoManager: undoManager)
-        }
-        undoManager.setActionName("Delete \(name)")
-        print("[PepperTest] Undo: inserted \(name) at \(safeIndex)")
     }
 }
