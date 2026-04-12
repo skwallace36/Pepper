@@ -71,9 +71,9 @@ Subcommands:
             elif act == "list":
                 scripts = list_scripts()
                 if not scripts:
-                    return text_fn("No scripts available.")
+                    return "No scripts available."
                 lines = [f"  {s['name']} ({s['steps']} steps) — {s['description'] or 'no description'}" for s in scripts]
-                return text_fn("Available scripts:\n" + "\n".join(lines))
+                return "Available scripts:\n" + "\n".join(lines)
             elif act == "show":
                 if not name:
                     return "Error: name required for show"

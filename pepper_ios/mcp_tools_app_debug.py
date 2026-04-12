@@ -78,7 +78,7 @@ Subcommands:
             reports_dir = os.path.expanduser("~/Library/Logs/DiagnosticReports")
 
             if not os.path.isdir(reports_dir):
-                return text_fn("No DiagnosticReports directory found.")
+                return ("No DiagnosticReports directory found.")
 
             cutoff = time.time() - (seconds or 300)
             n = min(last_n or 1, 5)
@@ -98,7 +98,7 @@ Subcommands:
                         except OSError:
                             pass
             except OSError:
-                return text_fn("Failed to read DiagnosticReports directory.")
+                return ("Failed to read DiagnosticReports directory.")
 
             if not candidates:
                 throttle_warning = ""
@@ -108,7 +108,7 @@ Subcommands:
                         f"'{app_name_hint}'. macOS throttles after ~25. Delete old reports:\n"
                         f"  rm ~/Library/Logs/DiagnosticReports/{app_name_hint.capitalize()}-*.ips"
                     )
-                return text_fn(f"No crash reports found in the last {seconds or 300}s.{throttle_warning}")
+                return (f"No crash reports found in the last {seconds or 300}s.{throttle_warning}")
 
             candidates.sort(reverse=True)
 
@@ -161,7 +161,7 @@ Subcommands:
                     f"No crash reports matching {bundle_id} in the last {seconds or 300}s. "
                     f"Found {len(candidates)} .ips files (from: {others_str}).{throttle_warning}"
                 )
-            return text_fn("\n".join(results))
+            return ("\n".join(results))
 
         elif command == "constraints":
             params = {}

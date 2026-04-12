@@ -67,7 +67,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
         screenshot_quality: str = Field(default="standard", description="Screenshot quality: 'standard' (70%% JPEG) or 'high' (95%% JPEG)"),
         save_screenshot: str | None = Field(default=None, description="Save screenshot to this file path"),
         detail: str = Field(default="summary", description="'summary' (default): names/types/tap commands. 'full': frames, traits, heuristics"),
-    ) -> str:
+    ) -> list:
         """Primary observation tool — returns all interactive elements with tap commands, plus visible text. Call before acting to know what's available."""
         try:
             host, port, udid = discover_instance(simulator)
@@ -190,7 +190,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
             default=False,
             description="Include tap diagnostics: hit-test result, gesture recognizers, responder chain, and overlapping views. Use when a tap doesn't produce the expected result.",
         ),
-    ) -> str:
+    ) -> list:
         """Use this to interact with a button, link, or any tappable element on screen.
         Resolves the element by text label, icon_name, heuristic, or coordinate, then synthesizes a real touch via HID. Specify exactly one targeting method. Shows screen state after."""
         params = {}
@@ -229,7 +229,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
         parent_of: str | None = Field(default=None, description="Scroll within the container that holds this visible text — targets a nested scroll view instead of the outermost one (e.g. 'Share location')"),
         at_y: int | None = Field(default=None, description="Scroll the innermost container at this Y coordinate (e.g. 748). Ignored when target is set."),
         axis: str | None = Field(default=None, description="Axis hint: 'horizontal' or 'vertical' — helps find the right nested scroll view when combined with parent_of"),
-    ) -> str:
+    ) -> list:
         """Use this to browse content that extends beyond the visible screen area.
         Scrolls by direction and amount via touch synthesis, or pass target to scroll until specific text is visible.
         Use parent_of to scroll a nested container (e.g. a horizontal list inside a vertical page). Shows screen state after."""
@@ -267,7 +267,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
         value: str | None = Field(default=None, description="Text to type (also accepted as 'text' when no field-matching text is needed)"),
         clear: bool = Field(default=False, description="Clear existing text before typing"),
         submit: bool = Field(default=False, description="Submit/return after typing"),
-    ) -> str:
+    ) -> list:
         """Enter or replace text in a field. Focuses the field and types in one step — don't tap first. Shows screen state after."""
         # When agents send text= instead of value= (common mistake), and no
         # element_id is set, treat text as the value to type rather than as a
@@ -295,7 +295,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
         tab: int | str | None = Field(default=None, description="Tab index (0-based) or tab name to switch to"),
         list_deeplinks: bool = Field(default=False, description="List all available deep link destinations"),
         category: str | None = Field(default=None, description="Filter deep link list by category"),
-    ) -> str:
+    ) -> list:
         """Jump to a specific screen via deeplink or switch tabs. Use list_deeplinks=true to see available destinations. Shows screen state after."""
         if list_deeplinks:
             from .pepper_format import format_data
@@ -327,14 +327,14 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
     @mcp.tool(name="nav_back")
     async def back(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
-    ) -> str:
+    ) -> list:
         """Go back one screen in a navigation stack. For modals/sheets use dismiss; for jumping to a screen use navigate."""
         return await act_and_look(simulator, CMD_BACK)
 
     @mcp.tool(name="nav_dismiss")
     async def dismiss(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
-    ) -> str:
+    ) -> list:
         """Close a modal, sheet, popover, or overlay. For navigation stack screens use back; for system dialogs use dialog."""
         return await act_and_look(simulator, CMD_DISMISS)
 
@@ -342,7 +342,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
     async def swipe(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
         direction: str = Field(description="Flick direction: up, down, left, right (e.g. 'left' for next page, 'down' to dismiss sheet)"),
-    ) -> str:
+    ) -> list:
         """Use this for quick flick gestures — swiping between pages, dismissing cards, or pull-to-refresh.
         Synthesizes a fast directional flick via HID. For slow content browsing, use scroll instead. Shows screen state after."""
         return await act_and_look(simulator, CMD_SWIPE, {"direction": direction})
@@ -350,7 +350,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
     @mcp.tool(name="nav_screen")
     async def screen(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
-    ) -> str:
+    ) -> list:
         """Identify which screen is currently displayed. Returns screen name and view controller class — no element data."""
         from .pepper_format import format_data
         resp = await resolve_and_send(simulator, CMD_SCREEN)
@@ -359,7 +359,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
     @mcp.tool(name="nav_keyboard")
     async def dismiss_keyboard(
         simulator: str | None = Field(default=None, description="Simulator UDID"),
-    ) -> str:
+    ) -> list:
         """Dismiss the on-screen keyboard. Call after input_text when you need to tap elements the keyboard covers."""
         return await act_and_look(simulator, CMD_DISMISS_KEYBOARD)
 
@@ -377,7 +377,7 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
         assert_no_diff: bool = Field(
             default=False, description="Return error if any diff is detected (for regression testing)"
         ),
-    ) -> str:
+    ) -> list:
         """Save a named baseline of screen state and compare later. Use snapshot for named baselines you want to compare later or assert on with assert_no_diff."""
         from .pepper_format import format_data
         resp = await resolve_and_send(

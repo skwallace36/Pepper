@@ -157,7 +157,7 @@ Subcommands:
                     pass
             if body_text:
                 parts.append(f"\n{body_text}")
-            return text_fn("\n".join(parts))
+            return "\n".join(parts)
 
         elif command == "timeline":
             params = {"action": action or "log"}
