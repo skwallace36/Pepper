@@ -64,14 +64,22 @@ struct HeapHandler: PepperHandler {
             }
         }
 
-        let mirror = Mirror(reflecting: obj)
+        let address = String(format: "%p", unsafeBitCast(obj as AnyObject, to: Int.self))
+
+        // Heap-scanned objects may have dangling pointers in their fields (e.g. retain
+        // cycles with partially-deallocated peers). Mirror tries to retain every field
+        // value, which crashes on invalid pointers. Only mirror objects found via safe
+        // methods (singletons, VC hierarchy) where fields are guaranteed valid.
         var props: [[String: AnyCodable]] = []
-        walkMirror(mirror) { name, type, value in
-            props.append([
-                "name": AnyCodable(name),
-                "type": AnyCodable(type),
-                "value": AnyCodable(value),
-            ])
+        if method != "heap_scan" {
+            let mirror = Mirror(reflecting: obj)
+            walkMirror(mirror) { name, type, value in
+                props.append([
+                    "name": AnyCodable(name),
+                    "type": AnyCodable(type),
+                    "value": AnyCodable(value),
+                ])
+            }
         }
 
         return .ok(
@@ -79,7 +87,7 @@ struct HeapHandler: PepperHandler {
             data: [
                 "class": AnyCodable(resolvedClass),
                 "found_via": AnyCodable(method),
-                "address": AnyCodable(String(format: "%p", unsafeBitCast(obj as AnyObject, to: Int.self))),
+                "address": AnyCodable(address),
                 "property_count": AnyCodable(props.count),
                 "properties": AnyCodable(props),
             ])
