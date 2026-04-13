@@ -22,31 +22,21 @@ final class PepperAccessibility {
 
     private init() {}
 
-    // MARK: - VoiceOver Swizzle
-
-    /// Swizzle UIAccessibility.isVoiceOverRunning to return true.
-    /// Many SwiftUI apps only populate accessibility labels when VoiceOver is active.
-    /// Without this, Pepper sees empty labels on feed cells, list rows, etc.
-    /// VoiceOver interposition is handled by accessibility_hook.c (DYLD_INTERPOSE).
-    /// Post the status-change notification so SwiftUI re-reads the (now-true) value.
-    /// Fire immediately AND after a delay to catch both early and late readers.
-    static func installVoiceOverSwizzle() {
-        // The DYLD_INTERPOSE in accessibility_hook.c makes
-        // UIAccessibilityIsVoiceOverRunning() return true from dylib load.
-        // That covers direct function calls. SwiftUI's
-        // @Environment(\.accessibilityVoiceOverEnabled) additionally needs
-        // a notification to re-read the value.
-        //
-        // We DON'T post the notification here (pre-main) — it triggers a full
-        // SwiftUI re-render that blocks the main thread for seconds on complex
-        // apps like Ice Cubes. Instead, PepperPlane.start() posts it after
-        // didFinishLaunching, when the app has settled and the re-render
-        // won't compete with initialization.
-    }
+    // MARK: - VoiceOver Notification
 
     /// Post the VoiceOver status-change notification so SwiftUI re-reads
     /// accessibilityVoiceOverEnabled. Call from PepperPlane.start() after
     /// the app has finished launching — NOT during pre-main bootstrap.
+    ///
+    /// The DYLD_INTERPOSE in accessibility_hook.c makes
+    /// UIAccessibilityIsVoiceOverRunning() return true from dylib load.
+    /// That covers direct function calls. SwiftUI's
+    /// @Environment(\.accessibilityVoiceOverEnabled) additionally needs
+    /// this notification to re-read the value.
+    ///
+    /// Posting during pre-main triggers a full SwiftUI re-render that blocks
+    /// the main thread for seconds on complex apps like Ice Cubes. Posting
+    /// after didFinishLaunching lets the app settle first.
     static func postVoiceOverNotification() {
         NotificationCenter.default.post(
             name: UIAccessibility.voiceOverStatusDidChangeNotification,

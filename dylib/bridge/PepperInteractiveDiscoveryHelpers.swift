@@ -272,6 +272,91 @@ extension ElementDiscoveryBridge {
         return "a11y"
     }
 
+    /// Resolve a label for an unlabeled control by looking at sibling and parent views.
+    ///
+    /// SwiftUI Toggle creates a UISwitch + Text pair as siblings. UIKit forms often
+    /// place a UILabel next to a UISwitch/UISlider. This walks the sibling views
+    /// looking for the nearest preceding label text.
+    func resolveLabelFromContext(for view: UIView) -> String? {
+        guard let parent = view.superview else { return nil }
+
+        let viewFrame = view.convert(view.bounds, to: nil)
+
+        // Strategy 1: Check siblings — find the nearest UILabel or text-bearing view
+        // that precedes this control in the subview order (reading order heuristic).
+        var bestLabel: String?
+        var bestDistance: CGFloat = .greatestFiniteMagnitude
+
+        for sibling in parent.subviews where sibling !== view {
+            guard !sibling.isHidden, sibling.alpha > 0.01 else { continue }
+
+            let text = extractText(from: sibling)
+            guard let text = text, !text.isEmpty else { continue }
+
+            let siblingFrame = sibling.convert(sibling.bounds, to: nil)
+            // Candidate must be close vertically (same row) or directly above
+            let verticalDist = abs(siblingFrame.midY - viewFrame.midY)
+            let horizontalDist = abs(siblingFrame.midX - viewFrame.midX)
+            let distance = verticalDist + horizontalDist * 0.5  // Weight horizontal proximity
+
+            // Accept labels within reasonable proximity (200pt max)
+            if distance < bestDistance && distance < 200 {
+                bestDistance = distance
+                bestLabel = text
+            }
+        }
+        if let label = bestLabel { return label }
+
+        // Strategy 2: Check parent's accessibility label
+        if let parentLabel = pepperSanitizeLabel(parent.accessibilityLabel),
+            !parentLabel.isEmpty
+        {
+            return parentLabel
+        }
+
+        // Strategy 3: Walk up one more level for grouped form rows
+        if let grandparent = parent.superview {
+            for sibling in grandparent.subviews where sibling !== parent {
+                guard !sibling.isHidden, sibling.alpha > 0.01 else { continue }
+                let text = extractText(from: sibling)
+                guard let text = text, !text.isEmpty else { continue }
+
+                let siblingFrame = sibling.convert(sibling.bounds, to: nil)
+                let verticalDist = abs(siblingFrame.midY - viewFrame.midY)
+                if verticalDist < 30 {  // Same row only
+                    return text
+                }
+            }
+        }
+
+        return nil
+    }
+
+    /// Extract visible text from a view (UILabel, or recursively from children).
+    private func extractText(from view: UIView) -> String? {
+        if let label = view as? UILabel, let text = label.text, !text.isEmpty {
+            return text
+        }
+        // SwiftUI Text renders into a subview hierarchy; check accessibility label
+        if let accLabel = view.accessibilityLabel, !accLabel.isEmpty,
+            view.accessibilityTraits.contains(.staticText)
+        {
+            return accLabel
+        }
+        // Check first-level children for a UILabel
+        for child in view.subviews {
+            if let label = child as? UILabel, let text = label.text, !text.isEmpty {
+                return text
+            }
+            if let accLabel = child.accessibilityLabel, !accLabel.isEmpty,
+                child.accessibilityTraits.contains(.staticText)
+            {
+                return accLabel
+            }
+        }
+        return nil
+    }
+
     /// Classify a UIControl into a control type string.
     func classifyControlType(_ view: UIView) -> String? {
         switch view {

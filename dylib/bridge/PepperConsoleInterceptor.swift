@@ -327,8 +327,11 @@ final class PepperConsoleInterceptor {
             [
                 "[BoringSSL]", "[CFNetwork", "nw_protocol_", "nw_connection_",
                 "nw_endpoint_", "nw_socket_", "nw_path_", "nw_listener_", "nw_resolver_",
+                "nw_association_", "nw_write_request_", "nw_read_request_",
+                "nw_flow_", "nw_parameters_", "nw_frame_",
                 "NSURLSession/NSURLConnection HTTP load failed", "TCP Conn", "TIC ",
                 "[libnetwork",
+                "Send error: POSIX", "Send cancelled",
             ]
         ),
         (

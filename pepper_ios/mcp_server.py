@@ -507,8 +507,12 @@ async def _gather_telemetry(port: int, pre_counts: dict, send_fn) -> str:
             if data.get("has_transient_animations"):
                 anim = data.get("blocking_anim_key", "unknown")
                 blockers.append(f"animation: {anim}")
-            if data.get("pending_dispatches", 0) > 0:
-                blockers.append(f"{data['pending_dispatches']} pending dispatch(es)")
+            pending = data.get("pending_dispatches", 0)
+            if pending > 50:
+                blockers.append(f"{pending} pending dispatch(es) \u26a0")
+            elif pending > 5:
+                blockers.append(f"{pending} pending dispatch(es)")
+            # 0-5 dispatches: normal background noise, not shown
             if blockers:
                 lines.append(f"settling: {', '.join(blockers)}")
 

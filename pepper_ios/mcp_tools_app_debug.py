@@ -72,8 +72,19 @@ Subcommands:
             return await resolve_and_send(simulator, CMD_LAYERS, params)
 
         elif command == "crash_log":
-            cfg = get_config()
-            bundle_id = cfg.get("bundle_id", "")
+            # Prefer the running app's bundle ID from the Pepper connection.
+            # Falls back to .env config if the status call fails.
+            bundle_id = ""
+            try:
+                from .mcp_server import resolve_and_send as _raw_send
+                status_resp = await _raw_send(simulator, "status", {})
+                if status_resp.get("status") == "ok":
+                    bundle_id = (status_resp.get("data", {}).get("app", {}).get("bundle_id", ""))
+            except Exception:
+                pass
+            if not bundle_id:
+                cfg = get_config()
+                bundle_id = cfg.get("bundle_id", "")
             app_name_hint = bundle_id.rsplit(".", 1)[-1].lower() if bundle_id else ""
             reports_dir = os.path.expanduser("~/Library/Logs/DiagnosticReports")
 

@@ -10,10 +10,11 @@ import os
 ///   - **dynamic_type**: Labels/text views using fixed fonts instead of Dynamic Type scaled fonts.
 ///   - **touch_target**: Interactive elements smaller than 44x44pt minimum tap target.
 ///   - **redundant_trait**: Elements with conflicting traits (e.g. button + link).
+///   - **duplicate_label**: Multiple interactive elements sharing the same accessibility label.
 ///
 /// Parameters:
 ///   - checks: Comma-separated list of checks to run (default: all).
-///             Options: missing_label, missing_trait, contrast, dynamic_type, touch_target, redundant_trait
+///             Options: missing_label, missing_trait, contrast, dynamic_type, touch_target, redundant_trait, duplicate_label
 ///   - severity: Minimum severity to include: "error", "warning", "info" (default: "warning").
 struct AccessibilityAuditHandler: PepperHandler {
     let commandName = "accessibility_audit"
@@ -33,6 +34,7 @@ struct AccessibilityAuditHandler: PepperHandler {
         if checksParam == "all" {
             enabledChecks = [
                 "missing_label", "missing_trait", "contrast", "dynamic_type", "touch_target", "redundant_trait",
+                "duplicate_label",
             ]
         } else {
             enabledChecks = Set(
@@ -70,6 +72,9 @@ struct AccessibilityAuditHandler: PepperHandler {
         }
         if enabledChecks.contains("redundant_trait") {
             issues.append(contentsOf: checkRedundantTraits(screenElements))
+        }
+        if enabledChecks.contains("duplicate_label") {
+            issues.append(contentsOf: checkDuplicateLabels(screenElements))
         }
 
         // Filter by severity
@@ -359,6 +364,37 @@ struct AccessibilityAuditHandler: PepperHandler {
                         ))
                 }
             }
+        }
+        return issues
+    }
+
+    // MARK: - Check: Duplicate Labels
+
+    private func checkDuplicateLabels(_ elements: [PepperAccessibilityElement]) -> [AuditIssue] {
+        // Group interactive elements by their accessibility label
+        var labelGroups: [String: [(type: String, element: String)]] = [:]
+        for elem in elements {
+            guard elem.isInteractive else { continue }
+            guard let label = elem.label, !label.isEmpty else { continue }
+            labelGroups[label, default: []].append(
+                (type: elem.type, element: describeElement(elem))
+            )
+        }
+
+        var issues: [AuditIssue] = []
+        for (label, group) in labelGroups where group.count > 1 {
+            let typeList = group.map { $0.type }
+            let uniqueTypes = Set(typeList)
+            let typeSummary = uniqueTypes.sorted().joined(separator: ", ")
+            issues.append(
+                AuditIssue(
+                    check: "duplicate_label",
+                    severity: .warning,
+                    message:
+                        "\(group.count) interactive elements share label \"\(truncate(label, 40))\" (types: \(typeSummary))",
+                    element: group.first?.element ?? label,
+                    frame: .zero
+                ))
         }
         return issues
     }

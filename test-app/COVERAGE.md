@@ -63,8 +63,6 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `swipe` | up | pass | List tab (30 rows) | Swiped up from center (201,437) to (201,37). List scrolled from Items 0-9 to Items 11-24. Swipe up = finger moves up = content scrolls up. |
 | `swipe` | left | pass | List tab (30 rows) | Swiped left from center (201,437) to (-199,437). Command executed without error. No swipe-action rows in test app to reveal delete/actions, but gesture injected correctly. |
 | `swipe` | right | pass | List tab (30 rows) | Swiped right from center (201,437) to (601,437). Command executed without error. Gesture injected correctly. |
-| `watch` | — | pass | Watch counter label by label match | Returns {watch_id, initial:{center, type, label, frame}}. Tested: watch label='Count' found 'Count: 0' staticText. Point-based watch also works: returns initial={} for empty area. Missing target returns proper error. |
-| `unwatch` | — | pass | After watch | Stops watch by ID or all. Tested: unwatch all=true returns {stopped_count:1, stopped:['w2']}. Nonexistent watch_id returns proper error. |
 | `network` | start | pass | Any state | Returns {active:true, buffer_size:500}. Accepts buffer_size param. URLProtocol-based interception activates correctly. |
 | `network` | stop | pass | After start | Returns {active:false, transactions_captured:N}. Correctly deactivates interception. |
 | `network` | status | pass | Any state | Returns active, buffer_size, buffer_count, total_recorded. All fields accurate across start/stop/clear lifecycle. |
@@ -303,9 +301,9 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 
 ## Summary
 
-**280 test points** across 79 commands.
+**278 test points** across 77 commands.
 
-- pass: 138
+- pass: 136
 - fail: 3
 - untested: 90
 

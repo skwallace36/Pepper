@@ -32,17 +32,10 @@ final class PepperServer {
         self.transport = transport
         self.dispatcher = dispatcher
         self.transport.delegate = self
-        registerServerHandlers()
     }
 
     /// The port the underlying transport is listening on.
     var port: UInt16 { transport.port }
-
-    /// Register handlers that need access to the server (e.g. subscribe/unsubscribe).
-    private func registerServerHandlers() {
-        dispatcher.register(SubscribeHandler(connectionManager: connectionManager))
-        dispatcher.register(UnsubscribeHandler(connectionManager: connectionManager))
-    }
 
     // MARK: - Server Lifecycle
 

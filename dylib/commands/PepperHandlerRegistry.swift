@@ -53,9 +53,6 @@ extension PepperDispatcher {
         registerLazy("screen") { CurrentScreenHandler() }
         registerLazy("introspect") { IntrospectHandler() }
         registerLazy("swipe") { SwipeHandler() }
-        registerLazy("watch") { WatchHandler() }
-        registerLazy("unwatch") { UnwatchHandler() }
-
         registerLazy("network") { NetworkHandler() }
         registerLazy("test") { TestHandler() }
         registerLazy("dialog") { DialogHandler() }

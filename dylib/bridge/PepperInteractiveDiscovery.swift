@@ -122,6 +122,10 @@ extension ElementDiscoveryBridge {
             {
                 label = placeholder
             }
+            // Fall back to sibling/parent label for unlabeled controls (UISwitch, UISlider, etc.)
+            if (label == nil || label?.isEmpty == true) && view is UIControl {
+                label = resolveLabelFromContext(for: view)
+            }
             let labeled = label?.isEmpty == false
             let isControl = view is UIControl
             let controlType = classifyControlType(view)
