@@ -13,6 +13,10 @@ import time
 
 # Persistent temp dir for eval artifacts
 EVAL_DIR = os.path.join(tempfile.gettempdir(), "pepper-eval")
+
+# PepperEvalSDK.swift — compiled alongside eval code for Pepper.* API access
+_REPO_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_SDK_PATH = os.path.join(_REPO_DIR, "dylib", "eval", "PepperEvalSDK.swift")
 os.makedirs(EVAL_DIR, exist_ok=True)
 
 # REPL wrapper template — user writes an expression, we wrap it
@@ -194,6 +198,10 @@ def compile_eval(
     # Add app module paths if found (for type info, not linking)
     if module_dir:
         cmd.extend(["-I", module_dir])
+
+    # Include PepperEvalSDK for Pepper.* API access
+    if os.path.exists(_SDK_PATH):
+        cmd.append(_SDK_PATH)
 
     cmd.append(source_path)
 
