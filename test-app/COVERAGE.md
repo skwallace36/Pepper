@@ -301,12 +301,15 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `crashes` | status | untested |  |  |
 | `crashes` | list | untested |  |  |
 | `crashes` | clear | untested |  |  |
+| `eval` | run | untested |  |  |
+| `eval` | cleanup | untested |  |  |
+| `eval` | status | untested |  |  |
 
 ## Summary
 
-**281 test points** across 78 commands.
+**284 test points** across 79 commands.
 
 - pass: 136
 - fail: 3
-- untested: 93
+- untested: 96
 
