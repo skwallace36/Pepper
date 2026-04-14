@@ -56,24 +56,26 @@ from .mcp_build import (
 )
 from .mcp_crash import fetch_crash_info
 from .mcp_prompts import register_prompts
-# Standalone tools (renamed with prefix convention)
-from .mcp_tools_debug import register_debug_tools  # app_console (standalone only)
-from .mcp_tools_dialog import register_dialog_tools  # nav_dialog
-from .mcp_tools_element import register_element_tools  # ui_toggle (standalone only)
-from .mcp_tools_nav import register_nav_tools  # app_look, ui_tap, ui_scroll, etc.
-from .mcp_tools_network import register_network_tools  # app_network (standalone only)
-from .mcp_tools_record import register_record_tools  # app_record
-from .mcp_tools_sim import register_sim_tools  # sim_control, sim_raw
-from .mcp_tools_state import register_state_tools  # state_vars (standalone only)
-from .mcp_tools_system import register_system_tools  # app_status, ui_gesture (standalone only)
+
 # Grouped tools (multiple subcommands per tool)
 from .mcp_tools_app_automation import register_app_automation_tools
 from .mcp_tools_app_debug import register_app_debug_tools
 from .mcp_tools_app_perf import register_app_perf_tools
 from .mcp_tools_app_swiftui import register_app_swiftui_tools
+
+# Standalone tools (renamed with prefix convention)
+from .mcp_tools_debug import register_debug_tools  # app_console (standalone only)
+from .mcp_tools_dialog import register_dialog_tools  # nav_dialog
+from .mcp_tools_element import register_element_tools  # ui_toggle (standalone only)
+from .mcp_tools_nav import register_nav_tools  # app_look, ui_tap, ui_scroll, etc.
 from .mcp_tools_net_tools import register_net_grouped_tools
+from .mcp_tools_network import register_network_tools  # app_network (standalone only)
+from .mcp_tools_record import register_record_tools  # app_record
+from .mcp_tools_sim import register_sim_tools  # sim_control, sim_raw
+from .mcp_tools_state import register_state_tools  # state_vars (standalone only)
 from .mcp_tools_state_tools import register_state_grouped_tools
 from .mcp_tools_sys_tools import register_sys_grouped_tools
+from .mcp_tools_system import register_system_tools  # app_status, ui_gesture (standalone only)
 from .mcp_tools_ui_accessibility import register_ui_accessibility_tools
 from .mcp_tools_ui_query import register_ui_query_tools
 from .pepper_websocket import CrashError, make_command

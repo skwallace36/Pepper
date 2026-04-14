@@ -123,8 +123,9 @@ Subcommands:
             return await resolve_and_send(simulator, "frameworks", params)
 
         elif command == "usage":
-            from .pepper_usage import get_usage_summary
             import json
+
+            from .pepper_usage import get_usage_summary
             summary = get_usage_summary(days=days or 30)
             return json.dumps(summary, indent=2)
 

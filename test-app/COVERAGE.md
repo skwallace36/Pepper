@@ -298,12 +298,15 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `target_actions` | — | untested | Any screen with UIControl subclasses (buttons, switches, sliders) | Lists UIControl target-action pairs. Walks view tree, enumerates allTargets and actions(forTarget:forControlEvent:). |
 | `frameworks` | list | untested |  |  |
 | `frameworks` | detail | ready | Any running app | Detailed info for a single loaded image |
+| `crashes` | status | untested |  |  |
+| `crashes` | list | untested |  |  |
+| `crashes` | clear | untested |  |  |
 
 ## Summary
 
-**278 test points** across 77 commands.
+**281 test points** across 78 commands.
 
 - pass: 136
 - fail: 3
-- untested: 90
+- untested: 93
 

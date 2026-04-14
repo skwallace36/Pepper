@@ -513,6 +513,24 @@ struct MiscTab: View {
                     .accessibilityIdentifier("slow_body_link")
                 }
 
+                // MARK: - Crash Test (for crash capture testing)
+                GroupBox("Crash Test") {
+                    VStack(spacing: 8) {
+                        Button("ObjC Exception Crash", role: .destructive) {
+                            // Force an unrecognized selector on NSObject
+                            let obj = NSObject()
+                            obj.perform(NSSelectorFromString("thisMethodDoesNotExist"))
+                        }
+                        .accessibilityIdentifier("objc_crash_button")
+
+                        Button("Array Out of Bounds", role: .destructive) {
+                            let arr = NSArray(array: ["a", "b"])
+                            _ = arr.object(at: 99)
+                        }
+                        .accessibilityIdentifier("array_crash_button")
+                    }
+                }
+
                 // MARK: - Context Menu
                 GroupBox("Context Menu") {
                     Text("Long press me")

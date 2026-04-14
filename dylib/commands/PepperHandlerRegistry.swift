@@ -113,5 +113,6 @@ extension PepperDispatcher {
         registerLazy("swiftui_body") { SwiftUIBodyHandler() }
         registerLazy("target_actions") { TargetActionsHandler() }
         registerLazy("frameworks") { FrameworksHandler() }
+        registerLazy("crashes") { CrashCaptureHandler() }
     }
 }

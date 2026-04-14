@@ -14,7 +14,7 @@ from .pepper_commands import (
     CMD_SANDBOX,
     CMD_UNDO,
 )
-from .pepper_common import require_parse_json, try_parse_json
+from .pepper_common import try_parse_json
 
 
 def register_state_grouped_tools(mcp, resolve_and_send):

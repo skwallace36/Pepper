@@ -121,6 +121,11 @@ public final class PepperPlane {
             // and partial-install state can be diagnosed via swizzleHealth.
             swizzleHealth = []
 
+            // Install crash capture first — catches uncaught ObjC exceptions and fatal
+            // signals (SIGABRT, SIGSEGV, SIGBUS, SIGTRAP) with symbolicated stacks.
+            // Must be early so it's active before other swizzles that might fault.
+            installTracked("PepperCrashCapture") { PepperCrashCapture.shared.install() }
+
             // Install idle monitor — swizzles viewWillAppear for VC transition tracking
             // (Layer 1) and animation detection (Layer 2).
             installTracked("PepperIdleMonitor") { PepperIdleMonitor.shared.install() }

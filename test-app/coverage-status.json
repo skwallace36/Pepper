@@ -155,6 +155,11 @@
     "status": "untested",
     "surface": "App with Core Data"
   },
+  "crashes": {
+    "notes": "Captures uncaught ObjC exceptions and fatal signals (SIGABRT, SIGSEGV, SIGBUS, SIGTRAP) with symbolicated stacks. Persists to disk, loads on relaunch. Actions: status, list, clear.",
+    "status": "untested",
+    "surface": "Misc tab crash test buttons"
+  },
   "db": {
     "notes": "Blocked: db command not yet implemented (#417). Test surface ready: pepper_test.db seeded at app launch (AppSeeding.swift) with users(10), posts(10), settings(10) tables covering TEXT/INTEGER/REAL/BLOB column types. Core Data SQLite store at PepperCoreData.sqlite also seeded with Item entity (10 rows: title/count/value/createdAt). Both files live in Library/Application Support/.",
     "status": "blocked",
@@ -309,6 +314,11 @@
     "notes": "Stores override in UserDefaults. Returns key, value, ok. Smoke test sets boolean flag.",
     "status": "ready",
     "surface": "Any state"
+  },
+  "formatters": {
+    "notes": "New command. Returns active locale formatters (date, number, currency) and their current output.",
+    "status": "untested",
+    "surface": "Any app"
   },
   "frameworks": {
     "notes": "Enumerates loaded dylibs/frameworks via Mach-O headers",
@@ -795,20 +805,10 @@
     "status": "untested",
     "surface": "SwiftUI app"
   },
-  "swiftui_body": {
-    "notes": "Per-view SwiftUI body tracking via Mach-O protocol conformance scanning and hosting view hooking.",
-    "status": "untested",
-    "surface": "SwiftUI app"
-  },
   "responder_chain": {
     "notes": "Dumps gesture recognizers, responder chain, and hit-test path. Smoke test hits point (200,400). Regression test uses text='Tap Me'.",
     "status": "ready",
     "surface": "Any interactive element (Controls tab button for regression)"
-  },
-  "target_actions": {
-    "notes": "Lists UIControl target-action pairs. Walks view tree, enumerates allTargets and actions(forTarget:forControlEvent:).",
-    "status": "untested",
-    "surface": "Any screen with UIControl subclasses (buttons, switches, sliders)"
   },
   "sandbox": {
     "notes": "App sandbox file system browser. List, read, write, delete files in Documents/Library/Caches/tmp. Supports plist/JSON auto-detection and directory size summaries. Seeded: documents/notes.json, documents/settings.plist, caches/cached-image.txt, tmp/temp-data.txt.",
@@ -913,6 +913,11 @@
     "status": "pass",
     "surface": "Any state"
   },
+  "swiftui_body": {
+    "notes": "Per-view SwiftUI body tracking via Mach-O protocol conformance scanning and hosting view hooking.",
+    "status": "untested",
+    "surface": "SwiftUI app"
+  },
   "swipe.down": {
     "notes": "Swiped down from center (201,437) to (201,837). List scrolled back to top showing Item 0. Swipe down = finger moves down = content scrolls down.",
     "status": "pass",
@@ -932,11 +937,6 @@
     "notes": "Swiped up from center (201,437) to (201,37). List scrolled from Items 0-9 to Items 11-24. Swipe up = finger moves up = content scrolls up.",
     "status": "pass",
     "surface": "List tab (30 rows)"
-  },
-  "formatters": {
-    "notes": "New command. Returns active locale formatters (date, number, currency) and their current output.",
-    "status": "untested",
-    "surface": "Any app"
   },
   "swizzle_check": {
     "notes": "New command. Calls each swizzled authorization API and verifies the swizzle intercepted (completion fired synchronously with auto-grant value). Covers: notifications, photos, tracking, camera, contacts, location, eventkit_events, eventkit_reminders.",
@@ -977,6 +977,11 @@
     "notes": "",
     "status": "pass",
     "surface": "Tap Me button, tab bar items"
+  },
+  "target_actions": {
+    "notes": "Lists UIControl target-action pairs. Walks view tree, enumerates allTargets and actions(forTarget:forControlEvent:).",
+    "status": "untested",
+    "surface": "Any screen with UIControl subclasses (buttons, switches, sliders)"
   },
   "test.reset": {
     "notes": "Resets test state. Returns {reset:true}. Works both with and without active test session.",
