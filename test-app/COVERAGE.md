@@ -304,12 +304,15 @@ Bugs: see [GitHub Issues](https://github.com/skwallace36/Pepper/issues?q=label%3
 | `eval` | run | untested |  |  |
 | `eval` | cleanup | untested |  |  |
 | `eval` | status | untested |  |  |
+| `profile` | start | untested |  |  |
+| `profile` | stop | untested |  |  |
+| `profile` | status | untested |  |  |
 
 ## Summary
 
-**284 test points** across 79 commands.
+**287 test points** across 80 commands.
 
 - pass: 136
 - fail: 3
-- untested: 96
+- untested: 99
 
