@@ -12,7 +12,7 @@ def register_app_perf_tools(mcp, resolve_and_send):
 
     @mcp.tool(name="app_perf")
     async def app_perf(
-        command: str = Field(description="Subcommand: perf | animations | heap | hangs | renders | timers"),
+        command: str = Field(description="Subcommand: perf | animations | heap | hangs | renders | timers | profile"),
         simulator: str | None = Field(default=None, description="Simulator UDID"),
         action: str | None = Field(default=None, description="Action for the subcommand"),
         duration_ms: int | None = Field(default=None, description="Sampling duration in ms (perf)"),
@@ -31,6 +31,7 @@ def register_app_perf_tools(mcp, resolve_and_send):
         timer_id: str | None = Field(default=None, description="Timer/display-link ID to invalidate (timers)"),
         limit: int | None = Field(default=None, description="Max results to return"),
         offset: int | None = Field(default=None, description="Skip results for pagination (heap)"),
+        interval_us: int | None = Field(default=None, description="Sampling interval in microseconds, default 1000 (profile)"),
     ) -> str:
         """Performance profiling tools.
 
@@ -40,7 +41,8 @@ Subcommands:
 - heap: Find live objects, inspect properties, detect leaks. Actions: classes, controllers, find, inspect, read, baseline, check, diff, snapshot
 - hangs: Detect main thread hangs with stack traces. Actions: start, stop, status, hangs, clear
 - renders: Track SwiftUI re-renders. Actions: start, stop, status, log, clear, counts, snapshot, diff, reset
-- timers: Track NSTimer/CADisplayLink instances. Actions: start, stop, list, invalidate, status, clear"""
+- timers: Track NSTimer/CADisplayLink instances. Actions: start, stop, list, invalidate, status, clear
+- profile: Sampling profiler — captures main thread stacks at 1ms intervals. Actions: start, stop, status. Start profiling, use the app, stop to get top functions and hot paths."""
 
         if command == "perf":
             params: dict = {"action": action or "fps"}
@@ -123,4 +125,10 @@ Subcommands:
                 params["limit"] = limit
             return await resolve_and_send(simulator, CMD_TIMERS, params)
 
-        return f"Error: unknown command '{command}'. Use: perf, animations, heap, hangs, renders, timers"
+        elif command == "profile":
+            params = {"action": action or "status"}
+            if interval_us is not None:
+                params["interval_us"] = interval_us
+            return await resolve_and_send(simulator, "profile", params, timeout=30)
+
+        return f"Error: unknown command '{command}'. Use: perf, animations, heap, hangs, renders, timers, profile"

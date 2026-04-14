@@ -115,5 +115,6 @@ extension PepperDispatcher {
         registerLazy("frameworks") { FrameworksHandler() }
         registerLazy("crashes") { CrashCaptureHandler() }
         registerLazy("eval") { EvalHandler() }
+        registerLazy("profile") { SamplingProfilerHandler() }
     }
 }
