@@ -60,6 +60,7 @@ from .mcp_prompts import register_prompts
 # Grouped tools (multiple subcommands per tool)
 from .mcp_tools_app_automation import register_app_automation_tools
 from .mcp_tools_app_debug import register_app_debug_tools
+from .mcp_tools_eval import register_eval_tools
 from .mcp_tools_app_perf import register_app_perf_tools
 from .mcp_tools_app_swiftui import register_app_swiftui_tools
 
@@ -761,7 +762,10 @@ _CORE_INSTRUCTIONS = (
     "- Always `app_look` before interacting to confirm screen state.\n"
     "- Action tools (ui_tap, ui_scroll, nav_go) auto-include screen state in response — read it.\n"
     "- For recordings, use `pepper-ctl tap --point x,y` for fast chained actions (no look overhead).\n"
-    "- Screenshots go to the repo where the PR lives, not pepper's repo.\n\n"
+    "- Screenshots go to the repo where the PR lives, not pepper's repo.\n"
+    "- When existing tools can't do what you need, use `app_eval` to run arbitrary Swift inside the app. "
+    "Write a Swift expression (mode='expr') and get the result. Full access to UIKit, SwiftUI, "
+    "the app's own types via @testable import, ObjC runtime, and Mirror. ~500ms compile.\n\n"
     "WORKFLOW GUIDES (read the resource when you need it):\n"
     "- pepper://guides/screen-recording — screen recording workflow\n"
     "- pepper://guides/launching — app build and launch workflow"
@@ -1006,6 +1010,7 @@ register_app_automation_tools(mcp, resolve_and_send_json, act_and_look, deploy_f
 register_state_grouped_tools(mcp, resolve_and_send_json)
 register_net_grouped_tools(mcp, resolve_and_send_json)
 register_sys_grouped_tools(mcp, resolve_and_send_json)
+register_eval_tools(mcp, resolve_and_send_json)
 register_prompts(mcp)
 
 

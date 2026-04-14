@@ -114,5 +114,6 @@ extension PepperDispatcher {
         registerLazy("target_actions") { TargetActionsHandler() }
         registerLazy("frameworks") { FrameworksHandler() }
         registerLazy("crashes") { CrashCaptureHandler() }
+        registerLazy("eval") { EvalHandler() }
     }
 }

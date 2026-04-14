@@ -54,6 +54,7 @@
     {"name": "app_perf", "category": "app", "description": "Performance: perf, animations, heap, hangs, renders, timers"},
     {"name": "app_swiftui", "category": "app", "description": "SwiftUI debugging: renders tracking, body inspection"},
     {"name": "app_automation", "category": "app", "description": "Automation: script, wait_for, wait_idle, concurrency"},
+    {"name": "app_eval", "category": "app", "description": "Compile and execute arbitrary Swift inside the running app. Full access to UIKit, SwiftUI, Foundation, and the app's own types. Use for runtime introspection, state mutation, or anything the existing tools can't do."},
     {"name": "ui_tap", "category": "ui", "description": "Tap an element by label, icon, heuristic, or coordinates"},
     {"name": "ui_scroll", "category": "ui", "description": "Scroll by direction or scroll until target text is visible"},
     {"name": "ui_swipe", "category": "ui", "description": "Quick flick gestures between pages or dismiss"},
