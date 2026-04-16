@@ -202,8 +202,7 @@ async def _replay(
                 continue
 
             resp = await act_and_look_fn(simulator, tool, params)
-            # act_and_look returns list of TextContent or a string
-            text = (resp[-1].text if resp else "") if isinstance(resp, list) else str(resp)
+            text = str(resp)
 
             # Connection failures: act_and_look returns JSON string on error
             if _is_connection_error(text):

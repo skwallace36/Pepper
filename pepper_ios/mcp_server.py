@@ -589,7 +589,7 @@ def _look_error_reason(resp) -> str | None:
     return resp.get("error") or resp.get("data", {}).get("message") or "unknown error"
 
 
-async def act_and_look(simulator: str | None, cmd: str, params: dict | None = None, timeout: float = 10) -> list:
+async def act_and_look(simulator: str | None, cmd: str, params: dict | None = None, timeout: float = 10) -> str:
     """Send a command, then automatically run look to show screen state after the action.
     Returns: action result + screen summary + telemetry. Forces the check-act-verify loop."""
     from .pepper_format import format_look_compact, format_look_slim
@@ -620,15 +620,13 @@ async def act_and_look(simulator: str | None, cmd: str, params: dict | None = No
         data_msg = action_resp.get("data", {}).get("message", "")
         err = error_msg or data_msg
 
-        from mcp.types import TextContent
-
         # Crash — don't try to look (app is dead), but fetch crash info
         if "APP CRASHED" in err:
             result = json_dumps(action_resp)
             crash_info = await fetch_crash_info(udid)
             if crash_info:
                 result += crash_info
-            return [TextContent(type="text", text=result)]
+            return result
 
         # Element not found — show what IS on screen
         if "not found" in err.lower() or "no hit-reachable" in err.lower():
@@ -639,18 +637,13 @@ async def act_and_look(simulator: str | None, cmd: str, params: dict | None = No
             else:
                 reason = _look_error_reason(look_resp)
                 screen_summary = f"(look failed: {reason})"
-            return [TextContent(type="text", text=f"Error: {err}\n--- What's actually on screen ---\n{screen_summary}")]
+            return f"Error: {err}\n--- What's actually on screen ---\n{screen_summary}"
 
         # Connection error
         if "refused" in err.lower() or "connect" in err.lower():
-            return [
-                TextContent(
-                    type="text",
-                    text=f"Error: {err}\n\nPepper is not running. Use `app_build` to launch the app with Pepper injected.",
-                )
-            ]
+            return f"Error: {err}\n\nPepper is not running. Use `app_build` to launch the app with Pepper injected."
 
-        return [TextContent(type="text", text=json_dumps(action_resp))]
+        return json_dumps(action_resp)
 
     # Brief pause for UI to settle after interaction.
     # Navigation commands (dismiss, back, navigate) need more time for
@@ -732,9 +725,8 @@ async def act_and_look(simulator: str | None, cmd: str, params: dict | None = No
     result = f"Action: {action_summary}\n--- Screen after {cmd} ---\n{screen_summary}"
     if telemetry:
         result += f"\n{telemetry.lstrip()}"
-    from mcp.types import TextContent
 
-    return [TextContent(type="text", text=result)]
+    return result
 
 
 # ---------------------------------------------------------------------------

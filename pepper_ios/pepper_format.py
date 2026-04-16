@@ -21,10 +21,9 @@ def _strip_sf_symbols(text: str) -> str:
     return re.sub(r"\s+", " ", cleaned)
 
 
-def text_content(msg: str) -> list:
-    """Wrap a string in list[TextContent] for consistent MCP rendering."""
-    from mcp.types import TextContent
-    return [TextContent(type="text", text=msg)]
+def text_content(msg: str) -> str:
+    """Return a string for MCP rendering (FastMCP auto-wraps into TextContent)."""
+    return msg
 
 
 # ---------------------------------------------------------------------------

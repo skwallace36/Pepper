@@ -64,7 +64,7 @@ def register_sim_tools(mcp, resolve_and_send, resolve_simulator):
         media_path: str | None = Field(default=None, description="Path to image/video file for action=addmedia"),
         clear_time: bool = Field(default=False, description="For action=status_bar: clear override instead of setting"),
         time: str | None = Field(default=None, description="For action=status_bar: time string like '09:41'"),
-    ) -> list:
+    ) -> str:
         """Control the iOS Simulator environment via simctl — permissions, GPS, biometrics, installed apps, and device lifecycle."""
 
         sim = simulator_id
