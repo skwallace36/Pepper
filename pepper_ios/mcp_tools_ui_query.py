@@ -14,7 +14,7 @@ def register_ui_query_tools(mcp, resolve_and_send):
     async def ui_query(
         command: str = Field(description="Subcommand: find | tree | verify | read | assert"),
         simulator: str | None = Field(default=None, description="Simulator UDID"),
-        predicate: str | None = Field(default=None, description="NSPredicate format string (find/assert). Properties: label, type, className, interactive, enabled, visible, heuristic, iconName"),
+        predicate: str | None = Field(default=None, description="NSPredicate format string (find/assert). Properties: label, identifier, type, className, interactive, enabled, visible, heuristic, iconName"),
         action: str | None = Field(default=None, description="find: list (default), first, count"),
         limit: int | None = Field(default=None, description="Max results (find, default 50)"),
         depth: int | None = Field(default=None, description="Max tree depth (tree, default 10 summary / 50 full)"),

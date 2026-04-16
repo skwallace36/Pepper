@@ -9,6 +9,7 @@ import os
 ///
 /// Available properties for queries:
 ///   label         String?   Accessibility label / visible text
+///   identifier    String?   UIKit accessibilityIdentifier / SwiftUI .accessibilityIdentifier(...)
 ///   type          String    Element type: button, toggle, text, searchField, tab, etc.
 ///   className     String    UIKit class name
 ///   interactive   Bool      Is the element interactive (tappable)
@@ -32,6 +33,7 @@ import os
 ///
 /// Examples:
 ///   {"cmd": "find", "params": {"predicate": "label CONTAINS 'Save'"}}
+///   {"cmd": "find", "params": {"predicate": "identifier == 'tab.live'"}}
 ///   {"cmd": "find", "params": {"predicate": "type == 'button' AND hitReachable == true"}}
 ///   {"cmd": "find", "params": {"predicate": "'selected' IN traits"}}
 ///   {"cmd": "find", "params": {"predicate": "label LIKE '*Settings*'", "limit": 5}}

@@ -149,6 +149,9 @@ struct PepperAccessibilityElement {
 struct PepperInteractiveElement {
     let className: String
     let label: String?
+    /// Accessibility identifier from `UIView.accessibilityIdentifier` or the
+    /// SwiftUI `.accessibilityIdentifier()` modifier. Nil when absent.
+    let identifier: String?
     let center: CGPoint
     let frame: CGRect
     let labeled: Bool
@@ -185,6 +188,9 @@ struct PepperInteractiveElement {
 
         if let label = label {
             dict["label"] = AnyCodable(label)
+        }
+        if let identifier = identifier, !identifier.isEmpty {
+            dict["id"] = AnyCodable(identifier)
         }
         // Only include when element is occluded
         if !hitReachable {

@@ -25,6 +25,10 @@ enum PepperPredicateQuery {
         // `label == ''` works for all unlabeled elements.
         let sanitizedLabel = pepperSanitizeLabel(el.label)
         dict["label"] = (sanitizedLabel ?? "") as NSString
+        // Accessibility identifier (UIKit accessibilityIdentifier or SwiftUI
+        // `.accessibilityIdentifier()`). Empty string when absent so predicates
+        // like `identifier == ''` work symmetrically with `label == ''`.
+        dict["identifier"] = (el.identifier ?? "") as NSString
         dict["className"] = el.className as NSString
         dict["source"] = el.source as NSString
         dict["heuristic"] = el.heuristic as NSString? ?? NSNull()
@@ -148,6 +152,9 @@ enum PepperPredicateQuery {
         ]
         if let label = label, !label.isEmpty {
             dict["label"] = AnyCodable(label)
+        }
+        if let id = el.identifier, !id.isEmpty {
+            dict["id"] = AnyCodable(id)
         }
         if !el.hitReachable {
             dict["hit_reachable"] = AnyCodable(false)

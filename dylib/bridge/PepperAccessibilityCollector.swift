@@ -369,7 +369,23 @@ extension ElementDiscoveryBridge {
         }
         let value = pepperSanitizeLabel(element.accessibilityValue)
         let hint = pepperSanitizeLabel(element.accessibilityHint)
-        let identifier = (element as? UIAccessibilityIdentification)?.accessibilityIdentifier
+        // Read accessibilityIdentifier. UIView exposes it directly; SwiftUI's
+        // `.accessibilityIdentifier(...)` ends up on a private `AccessibilityNode`
+        // proxy that responds to the selector but does not visibly conform to
+        // `UIAccessibilityIdentification`, so a Swift `as?` cast drops it. Fall
+        // back to a selector-based KVC read.
+        let identifier: String? = {
+            if let v = element as? UIView, let id = v.accessibilityIdentifier, !id.isEmpty {
+                return id
+            }
+            if element.responds(to: NSSelectorFromString("accessibilityIdentifier")),
+                let id = element.value(forKey: "accessibilityIdentifier") as? String,
+                !id.isEmpty
+            {
+                return id
+            }
+            return nil
+        }()
         var traits = element.accessibilityTraits
         let frame = element.accessibilityFrame
 

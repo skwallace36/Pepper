@@ -73,6 +73,7 @@ extension ElementDiscoveryBridge {
                 PepperInteractiveElement(
                     className: acc.className,
                     label: acc.label,
+                    identifier: acc.identifier,
                     center: CGPoint(x: acc.frame.midX, y: acc.frame.midY),
                     frame: acc.frame,
                     labeled: labeled,
@@ -147,10 +148,12 @@ extension ElementDiscoveryBridge {
                 labeled
                 ? Self.classifyLabelSource(view: view, label: label ?? "")
                 : nil
+            let viewIdentifier = view.accessibilityIdentifier
             results.append(
                 PepperInteractiveElement(
                     className: className,
                     label: label,
+                    identifier: (viewIdentifier?.isEmpty == false) ? viewIdentifier : nil,
                     center: CGPoint(x: viewFrame.midX, y: viewFrame.midY),
                     frame: viewFrame,
                     labeled: labeled,
@@ -363,6 +366,7 @@ extension ElementDiscoveryBridge {
                     PepperInteractiveElement(
                         className: String(describing: type(of: layer)),
                         label: nil,
+                        identifier: nil,
                         center: centerInWindow,
                         frame: frameInWindow,
                         labeled: false,
