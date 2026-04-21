@@ -81,11 +81,22 @@ final class PepperIdleMonitor {
         // viewWillAppear — detect navigation transitions and register coordinator callbacks.
         // viewDidAppear/viewDidDisappear are handled by PepperState's existing swizzles,
         // which call vcDidAppear/vcDidDisappear on this monitor as fallback clearing.
-        swizzleMethod(
-            cls: UIViewController.self,
-            original: #selector(UIViewController.viewWillAppear(_:)),
-            swizzled: #selector(UIViewController.pepper_viewWillAppear(_:))
-        )
+        //
+        // Uses IMP chaining (method_setImplementation), not method_exchangeImplementations.
+        // Exchange renames the selector, which breaks instrumentation agents (NRMA, Sentry,
+        // etc.) that assume _cmd equals the selector their handler was attached to — NRMA
+        // throws NRInvalidArgumentException from NRMA__beginMethod in that case.
+        PepperVCLifecycleSwizzle.install(
+            selector: #selector(UIViewController.viewWillAppear(_:))
+        ) { vc, _ in
+            PepperIdleMonitor.shared.vcWillAppear(vc)
+
+            // Clear stale overlays immediately on real navigation transitions
+            // (push/pop/modal with coordinator). Next capture cycle redraws for the new screen.
+            if vc.transitionCoordinator != nil {
+                PepperOverlayView.shared.dismissAll()
+            }
+        }
 
         logger.info("Idle monitor installed (VC transition tracking + animation detection)")
     }
@@ -358,46 +369,4 @@ final class PepperIdleMonitor {
         return false
     }
 
-    // MARK: - Swizzle Helper
-
-    private func swizzleMethod(cls: AnyClass, original: Selector, swizzled: Selector) {
-        guard let originalMethod = class_getInstanceMethod(cls, original),
-            let swizzledMethod = class_getInstanceMethod(cls, swizzled)
-        else {
-            logger.error("Failed to swizzle \(NSStringFromSelector(original))")
-            return
-        }
-
-        let didAdd = class_addMethod(
-            cls, original,
-            method_getImplementation(swizzledMethod),
-            method_getTypeEncoding(swizzledMethod)
-        )
-
-        if didAdd {
-            class_replaceMethod(
-                cls, swizzled,
-                method_getImplementation(originalMethod),
-                method_getTypeEncoding(originalMethod)
-            )
-        } else {
-            method_exchangeImplementations(originalMethod, swizzledMethod)
-        }
-    }
-}
-
-// MARK: - UIViewController Swizzled Methods (Idle Monitor)
-
-extension UIViewController {
-
-    @objc func pepper_viewWillAppear(_ animated: Bool) {
-        pepper_viewWillAppear(animated)  // calls original (swizzled)
-        PepperIdleMonitor.shared.vcWillAppear(self)
-
-        // Clear stale overlays immediately on real navigation transitions
-        // (push/pop/modal with coordinator). Next capture cycle redraws for the new screen.
-        if self.transitionCoordinator != nil {
-            PepperOverlayView.shared.dismissAll()
-        }
-    }
 }
