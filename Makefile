@@ -23,8 +23,8 @@ DYLIB_PATH  := $(PROJECT_DIR)/build/Pepper.framework/Pepper
 
 LOGS_DIR    := $(PROJECT_DIR)/build/logs
 
-TEST_APP_DIR  := /Users/cdillard/Documents/Workspace/newrelic-ios-agent-copy/newrelic-ios-agent/
-TEST_APP_BUNDLE := com.newrelic.NRApp.bitcode
+TEST_APP_DIR  := $(PROJECT_DIR)/test-app
+TEST_APP_BUNDLE := com.pepper.testapp
 
 WIKI_BUNDLE_ID := org.wikimedia.wikipedia
 
@@ -245,17 +245,17 @@ py-test:
 
 ## test-app: Build and install the test app on the booted simulator
 test-app:
-	@echo "Building NRTestApp..."
-	@xcodebuild -workspace "$(TEST_APP_DIR)/Agent.xcworkspace" \
-		-scheme NRTestApp -sdk iphonesimulator \
+	@echo "Building PepperTestApp..."
+	@xcodebuild -project "$(TEST_APP_DIR)/PepperTestApp.xcodeproj" \
+		-scheme PepperTestApp -sdk iphonesimulator \
 		-destination "id=$(SIMULATOR_ID)" \
 		-configuration Debug build \
 		-quiet 2>&1 | tail -1
-	@APP=$$(find ~/Library/Developer/Xcode/DerivedData/Agent-*/Build/Products/Debug-iphonesimulator -name "NRTestApp.app" -type d 2>/dev/null | head -1); \
+	@APP=$$(find ~/Library/Developer/Xcode/DerivedData/PepperTestApp-*/Build/Products/Debug-iphonesimulator -name "PepperTestApp.app" -type d 2>/dev/null | head -1); \
 	if [ -z "$$APP" ]; then echo "Build failed — app not found." >&2; exit 1; fi; \
 	echo "Installing on $(SIMULATOR_ID)..."; \
 	xcrun simctl install "$(SIMULATOR_ID)" "$$APP"; \
-	echo "NRTestApp installed. Run 'make deploy BUNDLE_ID=$(TEST_APP_BUNDLE)' to inject Pepper."
+	echo "PepperTestApp installed. Run 'make deploy BUNDLE_ID=$(TEST_APP_BUNDLE)' to inject Pepper."
 
 ## demo: Run interactive demo walkthrough (build + inject + observe + interact)
 demo:
