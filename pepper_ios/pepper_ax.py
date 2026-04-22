@@ -207,26 +207,71 @@ DEFAULT_BUTTON_TITLES = [
 # AXRole values for clickable elements
 _BUTTON_ROLES = {"AXButton"}
 
+# Fast-path detection: AXDescriptions seen on common iOS permission prompts.
+# Not exhaustive — dialogs whose buttons aren't in this set still get caught
+# by the shape-based detector in _find_dialog_indicators.
+_KNOWN_DIALOG_DESCS = frozenset(DEFAULT_BUTTON_TITLES)
+
+
+def _find_ios_content_group(
+    element: AXUIElementRef,
+    depth: int = 0,
+    max_depth: int = 8,
+) -> AXUIElementRef | None:
+    """Find the AXGroup with subrole "iOSContentGroup" — the root of the iOS
+    content area inside a Simulator window. Returns a CFRetain'd ref that the
+    caller must CFRelease, or None.
+
+    Scoping searches to this subtree skips the Simulator's hardware buttons
+    (Action, Volume Up, Sleep/Wake, Home, Rotate) and the macOS menu bar,
+    which would otherwise show up as noise in button enumeration.
+    """
+    if depth > max_depth:
+        return None
+    subrole = _get_str_attr(element, "AXSubrole")
+    if subrole == "iOSContentGroup":
+        _cf.CFRetain(element)
+        return element
+    children = _get_children(element)
+    found: AXUIElementRef | None = None
+    for child in children:
+        if found is None:
+            found = _find_ios_content_group(child, depth + 1, max_depth)
+        _cf.CFRelease(child)
+    return found
+
+
+def _button_title(element: AXUIElementRef) -> str | None:
+    """Read a button's visible label. iOS sim dialogs expose labels via
+    AXDescription; native AppKit buttons use AXTitle. Try both."""
+    title = _get_str_attr(element, "AXTitle")
+    if title:
+        return title
+    return _get_str_attr(element, "AXDescription")
+
 
 def _find_buttons_recursive(
     element: AXUIElementRef,
-    target_titles: set[str],
+    target_titles: set[str] | None,
     found: list[tuple[str, AXUIElementRef]],
     depth: int = 0,
     max_depth: int = 15,
 ):
-    """Walk the accessibility tree and collect buttons matching target titles."""
+    """Walk the accessibility tree and collect buttons.
+
+    If target_titles is None, collects every AXButton encountered (used for
+    dynamic dialog button enumeration — permission prompts can add new button
+    titles each iOS release, and a hardcoded allowlist drops the ones we
+    haven't heard of). If target_titles is a set, only buttons whose title
+    is in the set are collected.
+    """
     if depth > max_depth:
         return
 
     role = _get_str_attr(element, "AXRole")
     if role in _BUTTON_ROLES:
-        # Check both AXTitle and AXDescription — iOS simulator dialogs
-        # expose button labels as AXDescription, not AXTitle.
-        title = _get_str_attr(element, "AXTitle")
-        if not title or title not in target_titles:
-            title = _get_str_attr(element, "AXDescription")
-        if title and title in target_titles:
+        title = _button_title(element)
+        if title and (target_titles is None or title in target_titles):
             _cf.CFRetain(element)
             found.append((title, element))
 
@@ -241,23 +286,21 @@ def _find_dialog_indicators(
     depth: int = 0,
     max_depth: int = 10,
 ) -> bool:
-    """Check if the tree contains a dialog.
+    """Check if the tree contains a system dialog.
 
     iOS simulator renders system dialogs inside AXGroup (not AXSheet/AXDialog).
     We detect them by looking for AXButton elements with known system dialog
-    AXDescription values (Allow, Open, Cancel, etc.) inside the iOSContentGroup.
+    AXDescription values. A shape-based fallback was tried but the Simulator's
+    AX tree flattens the iOS content (dialog buttons and app UI buttons appear
+    as siblings) which made the shape heuristic unreliable — pending a better
+    scoping approach, we stick with the fast allowlist check here.
     """
     role = _get_str_attr(element, "AXRole")
     if role in ("AXSheet", "AXDialog"):
         return True
-    # iOS sim dialogs: buttons with known system dialog text in AXDescription
-    _DIALOG_DESCS = {
-        "Allow", "Allow Once", "Allow While Using App",
-        "Don\u2019t Allow", "Don't Allow", "OK", "Open", "Cancel",
-    }
     if role == "AXButton":
         desc = _get_str_attr(element, "AXDescription")
-        if desc and desc in _DIALOG_DESCS:
+        if desc and desc in _KNOWN_DIALOG_DESCS:
             return True
     if depth >= max_depth:
         return False
@@ -278,27 +321,48 @@ def _find_dialog_indicators(
 def find_and_dismiss_dialog(
     button_titles: list[str] | None = None,
     preferred_titles: list[str] | None = None,
+    target_title: str | None = None,
 ) -> dict:
     """Find a system dialog in the Simulator and click a button to dismiss it.
 
+    Enumerates every AXButton under the detected dialog (no title allowlist),
+    so callers see every available option via the `buttons` field in the
+    response. The choice of which button to tap is explicit:
+
+    - `target_title`: tap this exact title if present; otherwise don't tap
+      (return the full list so the caller can pick).
+    - `preferred_titles`: tap the first match from this list. Defaults to the
+      common "allow"-style titles. If nothing matches, return the full list
+      without tapping — safer than picking an arbitrary button (Cancel,
+      Don't Allow) that would deny the permission.
+
     Args:
-        button_titles: Buttons to search for. Defaults to DEFAULT_BUTTON_TITLES.
-        preferred_titles: Subset to prefer clicking (e.g. ["Allow While Using App", "Allow"]).
-            If None, uses the first 4 of DEFAULT_BUTTON_TITLES (the "allow" ones).
+        button_titles: If given, only return/consider buttons with these
+            titles. Default (None) enumerates every button.
+        preferred_titles: Titles to try tapping in order. Ignored when
+            `target_title` is set.
+        target_title: Exact title to tap. Takes precedence over
+            preferred_titles.
 
     Returns:
-        dict with keys: dismissed (bool), button (str|None), method (str), error (str|None)
+        dict with keys:
+          dismissed: bool
+          button: str | None (title of button that was tapped, if any)
+          buttons: list[str] (all button titles found under the dialog)
+          method: "ax"
+          error: str | None
     """
-    if button_titles is None:
-        button_titles = list(DEFAULT_BUTTON_TITLES)
     if preferred_titles is None:
         preferred_titles = ["Allow While Using App", "Allow Once", "Allow", "Open", "OK"]
 
     pids = _find_simulator_pids()
     if not pids:
-        return {"dismissed": False, "button": None, "method": "ax", "error": "No Simulator.app process found"}
+        return {
+            "dismissed": False, "button": None, "buttons": [],
+            "method": "ax", "error": "No Simulator.app process found",
+        }
 
-    target_set = set(button_titles)
+    target_set: set[str] | None = set(button_titles) if button_titles else None
     all_found: list[tuple[str, AXUIElementRef, int]] = []  # (title, element, pid)
 
     for pid in pids:
@@ -306,32 +370,65 @@ def find_and_dismiss_dialog(
         if not app_ref:
             continue
         try:
-            # Check if there's a dialog/sheet before doing full button scan
             if not _find_dialog_indicators(app_ref):
                 continue
+            # Scope button search to iOSContentGroup to skip Simulator
+            # hardware buttons and macOS chrome. Fall back to whole tree if
+            # the iOS content group isn't found (older sim builds).
+            search_root = _find_ios_content_group(app_ref) or app_ref
             found: list[tuple[str, AXUIElementRef]] = []
-            _find_buttons_recursive(app_ref, target_set, found)
+            _find_buttons_recursive(search_root, target_set, found)
+            if search_root is not app_ref:
+                _cf.CFRelease(search_root)
             for title, el in found:
                 all_found.append((title, el, pid))
         finally:
             _cf.CFRelease(app_ref)
 
-    if not all_found:
-        return {"dismissed": False, "button": None, "method": "ax", "error": "No dialog buttons found in Simulator"}
+    button_names: list[str] = []
+    seen: set[str] = set()
+    for title, _, _ in all_found:
+        if title not in seen:
+            seen.add(title)
+            button_names.append(title)
 
-    # Pick best button: prefer preferred_titles in order
-    chosen = None
-    for pref in preferred_titles:
+    if not all_found:
+        return {
+            "dismissed": False, "button": None, "buttons": [],
+            "method": "ax", "error": "No dialog buttons found in Simulator",
+        }
+
+    chosen: tuple[str, AXUIElementRef, int] | None = None
+    if target_title:
         for title, el, pid in all_found:
-            if title == pref:
+            if title == target_title:
                 chosen = (title, el, pid)
                 break
-        if chosen:
-            break
+    else:
+        for pref in preferred_titles:
+            for title, el, pid in all_found:
+                if title == pref:
+                    chosen = (title, el, pid)
+                    break
+            if chosen:
+                break
 
-    # Fall back to first found button
     if not chosen:
-        chosen = all_found[0]
+        # Don't fall back to tapping an arbitrary button — a "Cancel" or
+        # "Don't Allow" tap here would deny the permission silently. Let the
+        # caller decide by reading `buttons` and calling again with
+        # target_title.
+        reason = (
+            f"No button matching target_title={target_title!r}"
+            if target_title
+            else "No preferred button found among dialog buttons"
+        )
+        for _, el, _ in all_found:
+            _cf.CFRelease(el)
+        return {
+            "dismissed": False, "button": None, "buttons": button_names,
+            "method": "ax", "error": reason,
+        }
 
     title, element, pid = chosen
     action = _cfstr("AXPress")
@@ -339,12 +436,13 @@ def find_and_dismiss_dialog(
         err = _ax.AXUIElementPerformAction(element, action)
         if err == kAXErrorSuccess:
             logger.info("AX dismissed dialog via button '%s' (pid %d)", title, pid)
-            return {"dismissed": True, "button": title, "method": "ax", "error": None}
+            return {
+                "dismissed": True, "button": title, "buttons": button_names,
+                "method": "ax", "error": None,
+            }
         return {
-            "dismissed": False,
-            "button": title,
-            "method": "ax",
-            "error": f"AXPress failed with error code {err}",
+            "dismissed": False, "button": title, "buttons": button_names,
+            "method": "ax", "error": f"AXPress failed with error code {err}",
         }
     finally:
         _cf.CFRelease(action)
@@ -355,6 +453,10 @@ def find_and_dismiss_dialog(
 def detect_dialog() -> dict:
     """Check if a system dialog is visible in any Simulator window.
 
+    Returns every AXButton title under the detected dialog — not filtered
+    against a hardcoded allowlist — so callers see new iOS options (e.g.
+    "Limit Access", "Allow Access to All Photos") as soon as they appear.
+
     Returns:
         dict with keys: detected (bool), buttons (list[str]), pids (list[int])
     """
@@ -362,9 +464,8 @@ def detect_dialog() -> dict:
     if not pids:
         return {"detected": False, "buttons": [], "pids": []}
 
-    target_set = set(DEFAULT_BUTTON_TITLES)
     dialog_pids = []
-    button_titles_found = []
+    button_titles_found: list[str] = []
 
     for pid in pids:
         app_ref = _ax.AXUIElementCreateApplication(pid)
@@ -374,8 +475,13 @@ def detect_dialog() -> dict:
             if not _find_dialog_indicators(app_ref):
                 continue
             dialog_pids.append(pid)
+            # Scope enumeration to iOSContentGroup to skip Simulator hardware
+            # buttons and macOS chrome.
+            search_root = _find_ios_content_group(app_ref) or app_ref
             found: list[tuple[str, AXUIElementRef]] = []
-            _find_buttons_recursive(app_ref, target_set, found)
+            _find_buttons_recursive(search_root, None, found)  # None = no title filter
+            if search_root is not app_ref:
+                _cf.CFRelease(search_root)
             for title, el in found:
                 if title not in button_titles_found:
                     button_titles_found.append(title)
