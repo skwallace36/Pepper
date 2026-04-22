@@ -1,7 +1,8 @@
 """Dialog tool definition for Pepper MCP.
 
 Tool definitions for: dialog.
-Includes system-dialog dismiss helper with simctl privacy grant + AX fallback.
+Includes system-dialog dismiss helper that prefers AX button taps and falls
+back to simctl privacy grant only when taps fail (TCC writes SIGKILL the app).
 """
 
 from __future__ import annotations
@@ -65,10 +66,15 @@ def _infer_permissions(text: str) -> list[str]:
 
 
 async def _dismiss_system_dialog(simulator, resolve_and_send, resolve_simulator):
-    """Detect and dismiss a system dialog via simctl privacy grant + button click fallback."""
-    # Step 1: Detect system dialog — combine in-process (dylib) + AX (macOS) detection,
-    # same as the detect_system MCP action.  Previously this only checked the dylib,
-    # so SpringBoard-rendered dialogs (permissions, tracking) were invisible here.
+    """Detect and dismiss a system dialog.
+
+    Try real button taps first (AX, then in-process), and fall back to
+    `simctl privacy grant` only as a last resort. TCC writes on a running app
+    cause iOS to SIGKILL the process, which takes the injected dylib with it,
+    so the caller has to redeploy. AX taps click the real button in the
+    Simulator window and leave the app alive.
+    """
+    # Step 1: Detect system dialog — combine in-process (dylib) + AX (macOS) detection.
     detect_resp = await resolve_and_send(simulator, CMD_DIALOG, {"action": "detect_system"})
 
     if detect_resp.get("status") == "error":
@@ -77,18 +83,46 @@ async def _dismiss_system_dialog(simulator, resolve_and_send, resolve_simulator)
     data = detect_resp.get("data", detect_resp)
     dylib_detected = data.get("detected", False)
 
-    # Also check via macOS Accessibility API (catches SpringBoard dialogs)
-    ax_result = {"detected": False, "buttons": [], "pids": []}
+    ax_detect_result = {"detected": False, "buttons": [], "pids": []}
     if not dylib_detected:
         try:
-            ax_result = await asyncio.get_running_loop().run_in_executor(None, _ax_detect)
+            ax_detect_result = await asyncio.get_running_loop().run_in_executor(None, _ax_detect)
         except Exception:
             pass
 
-    if not dylib_detected and not ax_result.get("detected", False):
+    if not dylib_detected and not ax_detect_result.get("detected", False):
         return {"status": "ok", "dismissed": False, "reason": "No system dialog detected"}
 
-    # Step 2: Resolve simulator + bundle ID for simctl
+    # Step 2: AX click — real tap on the Simulator window, no TCC write, app stays alive.
+    # Handles SpringBoard-rendered dialogs (permissions, tracking, deep links).
+    try:
+        ax_result = await asyncio.get_running_loop().run_in_executor(None, _ax_dismiss)
+    except Exception as e:
+        ax_result = {"dismissed": False, "error": str(e)}
+    if ax_result.get("dismissed"):
+        return {
+            "status": "ok",
+            "dismissed": True,
+            "method": "ax_accessibility",
+            "button": ax_result.get("button"),
+        }
+
+    # Step 3: In-process button click — handles UIAlertControllers caught by the
+    # present() swizzle (AX can't see these; they don't reach the window tree).
+    for btn in _SYSTEM_BUTTONS:
+        dismiss_resp = await resolve_and_send(simulator, CMD_DIALOG, {"action": "dismiss", "button": btn})
+        dd = dismiss_resp.get("data", dismiss_resp)
+        if dd.get("dismissed"):
+            return {
+                "status": "ok",
+                "dismissed": True,
+                "method": "button_click",
+                "button": btn,
+            }
+
+    # Step 4: Last resort — simctl privacy grant. TCC mutations invalidate the
+    # running process's entitlements and iOS SIGKILLs it. Only reach here when
+    # the tap paths above couldn't dismiss, and warn the caller in the response.
     if not resolve_simulator:
         return {"status": "error", "error": "resolve_simulator not available"}
     try:
@@ -100,20 +134,16 @@ async def _dismiss_system_dialog(simulator, resolve_and_send, resolve_simulator)
     if not bid:
         return {"status": "error", "error": "No bundle_id configured (set APP_BUNDLE_ID in .env)"}
 
-    # Step 3: Infer permissions from intercepted dialog text (if available)
-    permissions_to_try = []
+    permissions_to_try: list[str] = []
     if data.get("intercepted_dialog_count", 0) > 0:
         current_resp = await resolve_and_send(simulator, CMD_DIALOG, {"action": "current"})
         cd = current_resp.get("data", current_resp)
         title = cd.get("title", "")
         message = cd.get("message", "")
         permissions_to_try = _infer_permissions(f"{title} {message}")
-
-    # Fall back to all common permissions if we couldn't infer
     if not permissions_to_try:
         permissions_to_try = list(_ALL_PERMISSIONS)
 
-    # Step 4: Grant permissions via simctl
     granted = []
     for perm in permissions_to_try:
         result = subprocess.run(
@@ -124,10 +154,8 @@ async def _dismiss_system_dialog(simulator, resolve_and_send, resolve_simulator)
         if result.returncode == 0:
             granted.append(perm)
 
-    # Brief wait for dialog to clear
     await asyncio.sleep(0.5)
 
-    # Step 5: Re-detect (dylib + AX, same merged approach)
     recheck_resp = await resolve_and_send(simulator, CMD_DIALOG, {"action": "detect_system"})
     recheck_data = recheck_resp.get("data", recheck_resp)
     recheck_detected = recheck_data.get("detected", False)
@@ -144,41 +172,18 @@ async def _dismiss_system_dialog(simulator, resolve_and_send, resolve_simulator)
             "dismissed": True,
             "method": "privacy_grant",
             "permissions_granted": granted,
+            "warning": (
+                "simctl privacy grant writes to TCC and SIGKILLs the target app. "
+                "The Pepper dylib died with it — redeploy via app_build before further Pepper calls."
+            ),
         }
 
-    # Step 6: Fall back to macOS Accessibility API (AXUIElement) — clicks buttons
-    # directly in the Simulator window, works for SpringBoard-rendered dialogs
-    # that the in-process interceptor can't reach.
-    ax_result = await asyncio.get_running_loop().run_in_executor(None, _ax_dismiss)
-    if ax_result.get("dismissed"):
-        return {
-            "status": "ok",
-            "dismissed": True,
-            "method": "ax_accessibility",
-            "button": ax_result.get("button"),
-            "permissions_granted": granted,
-        }
-
-    # Step 7: Last resort — try in-process button click (works for intercepted alerts)
-    for btn in _SYSTEM_BUTTONS:
-        dismiss_resp = await resolve_and_send(simulator, CMD_DIALOG, {"action": "dismiss", "button": btn})
-        dd = dismiss_resp.get("data", dismiss_resp)
-        if dd.get("dismissed"):
-            return {
-                "status": "ok",
-                "dismissed": True,
-                "method": "button_click",
-                "button": btn,
-                "permissions_granted": granted,
-            }
-
-    # Could not dismiss
     return {
         "status": "ok",
         "dismissed": False,
         "reason": "System dialog detected but could not dismiss",
         "permissions_granted": granted,
-        "suggestion": "Try tapping the dialog button manually or use 'simulator permissions' tool",
+        "suggestion": "Tap the dialog button manually in the Simulator.",
     }
 
 
