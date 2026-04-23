@@ -76,41 +76,112 @@ def _detect_sdk() -> tuple[str, str, str]:
 def _find_app_module(bundle_id: str | None, scheme: str | None) -> tuple[str | None, str | None, str | None]:
     """Find the app's .swiftmodule and binary from DerivedData.
 
-    Returns (module_dir, binary_dir, module_name) or (None, None, None) if not found.
+    Scans every DerivedData-* worktree in /tmp plus the default Xcode
+    DerivedData, collects all products dirs that contain a matching
+    .swiftmodule, and picks the most recently modified. This matters when
+    multiple worktrees have built the same scheme — the first match isn't
+    necessarily the build the user is currently running, and picking a
+    stale/partial DerivedData can yield empty dependency frameworks (e.g.
+    Lottie.framework with no .swiftinterface, causing 'missing required
+    module' errors).
+
+    Returns (module_dir, binary_dir, module_name) or (None, None, None) if
+    not found.
     """
     if not scheme and not bundle_id:
         return None, None, None
 
-    # Search common DerivedData locations
-    search_dirs = []
+    # Collect every DerivedData root, then every products dir under them.
+    search_dirs: list[str] = []
+    try:
+        for entry in os.scandir("/tmp"):
+            if entry.name.startswith("DerivedData-") and entry.is_dir():
+                search_dirs.append(entry.path)
+    except OSError:
+        pass
 
-    # Worktree-isolated DerivedData
-    for entry in os.scandir("/tmp"):
-        if entry.name.startswith("DerivedData-") and entry.is_dir():
-            search_dirs.append(entry.path)
-
-    # Default Xcode DerivedData
     default_dd = os.path.expanduser("~/Library/Developer/Xcode/DerivedData")
     if os.path.isdir(default_dd):
         search_dirs.append(default_dd)
 
+    # For each products dir, look for a matching .swiftmodule and record its
+    # mtime. Pick the newest.
+    candidates: list[tuple[float, str, str]] = []  # (mtime, products_dir, module_name)
     for dd_root in search_dirs:
-        products_dirs = _find_all_products_dirs(dd_root)
-        for products_dir in products_dirs:
+        for products_dir in _find_all_products_dirs(dd_root):
             if scheme:
-                # Look for exact scheme match first
-                swiftmodule = os.path.join(products_dir, f"{scheme}.swiftmodule")
-                if os.path.isdir(swiftmodule):
-                    return products_dir, products_dir, scheme
+                sm = os.path.join(products_dir, f"{scheme}.swiftmodule")
+                if os.path.isdir(sm):
+                    try:
+                        candidates.append((os.path.getmtime(sm), products_dir, scheme))
+                        continue
+                    except OSError:
+                        pass
+            try:
+                for entry in os.scandir(products_dir):
+                    if entry.name.endswith(".swiftmodule") and entry.is_dir():
+                        mod_name = entry.name.removesuffix(".swiftmodule")
+                        if not scheme or mod_name == scheme:
+                            try:
+                                candidates.append((entry.stat().st_mtime, products_dir, mod_name))
+                            except OSError:
+                                pass
+            except OSError:
+                continue
 
-            # Try scanning products dir for any .swiftmodule
-            for entry in os.scandir(products_dir):
-                if entry.name.endswith(".swiftmodule") and entry.is_dir():
-                    mod_name = entry.name.removesuffix(".swiftmodule")
-                    if not scheme or mod_name == scheme:
-                        return products_dir, products_dir, mod_name
+    if not candidates:
+        return None, None, None
 
-    return None, None, None
+    candidates.sort(reverse=True)  # newest first
+    _, products_dir, mod_name = candidates[0]
+    return products_dir, products_dir, mod_name
+
+
+def _xcframework_sim_search_paths(products_dir: str) -> list[tuple[str | None, str | None]]:
+    """Return (framework_search_path, header_search_path) tuples for every
+    xcframework's simulator slice under SourcePackages/artifacts.
+
+    Handles both layouts:
+    - Framework slice: <slice>/Foo.framework → add <slice> as -F
+    - Bare-headers slice: <slice>/Headers/module.modulemap → add <slice>/Headers as -I
+
+    products_dir is .../Build/Products/Debug-iphonesimulator; SourcePackages
+    is a sibling of Build.
+    """
+    results: list[tuple[str | None, str | None]] = []
+    # Navigate up to DerivedData root: .../Build/Products/<config> → parent × 3
+    try:
+        dd_root = os.path.abspath(os.path.join(products_dir, "..", "..", ".."))
+    except Exception:
+        return results
+    artifacts = os.path.join(dd_root, "SourcePackages", "artifacts")
+    if not os.path.isdir(artifacts):
+        return results
+    try:
+        for pkg_entry in os.scandir(artifacts):
+            if not pkg_entry.is_dir():
+                continue
+            for name_entry in os.scandir(pkg_entry.path):
+                if not name_entry.is_dir():
+                    continue
+                for xcf_entry in os.scandir(name_entry.path):
+                    if not xcf_entry.is_dir() or not xcf_entry.name.endswith(".xcframework"):
+                        continue
+                    for slice_entry in os.scandir(xcf_entry.path):
+                        if not slice_entry.is_dir() or "simulator" not in slice_entry.name:
+                            continue
+                        slice_path = slice_entry.path
+                        has_framework = any(
+                            e.name.endswith(".framework") for e in os.scandir(slice_path) if e.is_dir()
+                        )
+                        headers = os.path.join(slice_path, "Headers")
+                        has_headers = os.path.isdir(headers)
+                        results.append(
+                            (slice_path if has_framework else None, headers if has_headers else None)
+                        )
+    except OSError:
+        pass
+    return results
 
 
 def _find_all_products_dirs(dd_root: str) -> list[str]:
@@ -195,9 +266,29 @@ def compile_eval(
     # Allow unresolved symbols — they'll resolve at dlopen time from the host process
     cmd.extend(["-Xlinker", "-undefined", "-Xlinker", "dynamic_lookup"])
 
-    # Add app module paths if found (for type info, not linking)
+    # Add app module and dependency search paths. @testable import of the app
+    # module pulls in its transitive imports — Lottie, GoogleMaps, etc. —
+    # which swiftc must be able to resolve, or compilation fails with
+    # "missing required module 'X'". SPM packages ship in several layouts,
+    # so we pass a fan-out of search paths:
+    #   -I <products>                   standalone .swiftmodule dirs
+    #   -F <products>                   framework products (Apollo, etc.)
+    #   -F <products>/PackageFrameworks SPM-built framework products
+    #   -F <slice>                      xcframework sim slices with .framework
+    #   -I <slice>/Headers              xcframework sim slices with bare headers
+    # Slice paths come from walking SourcePackages/artifacts/*/*/*.xcframework/
+    # and picking directories whose name contains "simulator".
     if module_dir:
         cmd.extend(["-I", module_dir])
+        cmd.extend(["-F", module_dir])
+        package_fw = os.path.join(module_dir, "PackageFrameworks")
+        if os.path.isdir(package_fw):
+            cmd.extend(["-F", package_fw])
+        for frame_path, include_path in _xcframework_sim_search_paths(module_dir):
+            if frame_path:
+                cmd.extend(["-F", frame_path])
+            if include_path:
+                cmd.extend(["-I", include_path])
 
     # Include PepperEvalSDK for Pepper.* API access
     if os.path.exists(_SDK_PATH):

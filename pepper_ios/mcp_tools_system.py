@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from pydantic import Field
 
+from . import __version__ as _mcp_version
 from .pepper_commands import CMD_GESTURE, CMD_MEMORY, CMD_STATUS
 
 
@@ -29,10 +30,12 @@ def register_system_tools(mcp, resolve_and_send, act_and_look):
             default=False, description="Include detailed VM breakdown (internal, compressed, purgeable)"
         ),
     ) -> str:
-        """Check Pepper connection health — bundle ID, version, port, connections, current screen. Add memory=true for process memory stats."""
-        if not memory and not memory_detail:
-            return await resolve_and_send(simulator, CMD_STATUS)
-        # Need to merge status + memory, so use raw dict path
+        """Check Pepper connection health — MCP server version, bundle ID, app version, port, connections, current screen. Add memory=true for process memory stats."""
+        # Always use raw dict path so we can inject the MCP server version
+        # (lives in Python, the dylib doesn't know it) alongside the dylib
+        # status fields. mcp_version lets callers confirm which build of the
+        # tools they're talking to — helpful after upgrading pepper-ios on
+        # PyPI to verify the new code is actually loaded.
         from .mcp_server import resolve_and_send as raw_send
         from .pepper_format import format_data
 
@@ -40,11 +43,18 @@ def register_system_tools(mcp, resolve_and_send, act_and_look):
         if result.get("status") != "ok":
             return f"Error: {result.get('error', 'unknown')}"
         data = result.get("data", {})
-        mem_params: dict = {}
-        if memory_detail:
-            mem_params["action"] = "vm"
-        mem_result = await raw_send(simulator, CMD_MEMORY, mem_params)
-        data["memory"] = mem_result.get("data", mem_result)
+        pepper_info = data.get("pepper") if isinstance(data.get("pepper"), dict) else None
+        if pepper_info is not None:
+            pepper_info["mcp_version"] = _mcp_version
+        else:
+            data["pepper"] = {"mcp_version": _mcp_version}
+
+        if memory or memory_detail:
+            mem_params: dict = {}
+            if memory_detail:
+                mem_params["action"] = "vm"
+            mem_result = await raw_send(simulator, CMD_MEMORY, mem_params)
+            data["memory"] = mem_result.get("data", mem_result)
         return format_data(data)
 
     @mcp.tool(name="ui_gesture")
