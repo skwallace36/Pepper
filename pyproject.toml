@@ -26,3 +26,9 @@ packages = ["pepper_ios"]
 
 [tool.hatch.build.targets.wheel.force-include]
 ".claude/skills" = "pepper_ios/skills"
+
+# Hatchling excludes dotfiles from sdists by default. Force-include here so
+# the PyPI publish path (python -m build → sdist → wheel-from-sdist) can find
+# the skills when the wheel target's force-include resolves.
+[tool.hatch.build.targets.sdist.force-include]
+".claude/skills" = ".claude/skills"
