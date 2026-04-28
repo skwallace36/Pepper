@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from importlib import resources
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
@@ -24,17 +25,32 @@ _SKILLS = [
 ]
 
 
-def _skills_dir() -> Path:
-    """Return the .claude/skills/ directory relative to the repo root."""
-    # mcp_server sets PEPPER_ROOT, fall back to relative path from this file
-    root = os.environ.get("PEPPER_ROOT", str(Path(__file__).resolve().parent.parent))
-    return Path(root) / ".claude" / "skills"
+def _read_skill(dirname: str) -> str | None:
+    """Read a SKILL.md file, stripping YAML frontmatter. Returns None if not found.
 
+    Tries package data first (installed wheel), then falls back to the repo's
+    .claude/skills/ directory (dev checkout).
+    """
+    text: str | None = None
 
-def _read_skill(dirname: str) -> str:
-    """Read a SKILL.md file, stripping YAML frontmatter if present."""
-    path = _skills_dir() / dirname / "SKILL.md"
-    text = path.read_text()
+    # Package data (bundled via pyproject.toml force-include)
+    try:
+        pkg_skill = resources.files("pepper_ios") / "skills" / dirname / "SKILL.md"
+        if pkg_skill.is_file():
+            text = pkg_skill.read_text(encoding="utf-8")
+    except (FileNotFoundError, ModuleNotFoundError, AttributeError):
+        pass
+
+    # Dev-checkout fallback: <repo>/.claude/skills/<dirname>/SKILL.md
+    if text is None:
+        root = os.environ.get("PEPPER_ROOT", str(Path(__file__).resolve().parent.parent))
+        path = Path(root) / ".claude" / "skills" / dirname / "SKILL.md"
+        if path.is_file():
+            text = path.read_text(encoding="utf-8")
+
+    if text is None:
+        return None
+
     # Strip YAML frontmatter (--- ... ---)
     if text.startswith("---"):
         end = text.find("---", 3)
@@ -44,9 +60,14 @@ def _read_skill(dirname: str) -> str:
 
 
 def register_prompts(mcp) -> None:
-    """Register all skills as MCP prompts on the given FastMCP instance."""
+    """Register all skills as MCP prompts on the given FastMCP instance.
+
+    Skills with missing SKILL.md content are skipped — the server still starts.
+    """
     for prompt_name, description, skill_dir, has_screen_arg in _SKILLS:
         skill_content = _read_skill(skill_dir)
+        if skill_content is None:
+            continue
         _register_one(mcp, prompt_name, description, skill_content, has_screen_arg)
 
 

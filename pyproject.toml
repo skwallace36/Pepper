@@ -23,3 +23,6 @@ pepper-test = "pepper_ios.test_runner:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["pepper_ios"]
+
+[tool.hatch.build.targets.wheel.force-include]
+".claude/skills" = "pepper_ios/skills"
