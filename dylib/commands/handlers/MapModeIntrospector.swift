@@ -1065,31 +1065,13 @@ struct MapModeIntrospector {
                         AnyCodable("simulator permissions — pre-grant permissions to avoid dialogs"),
                     ]),
                 ] as [String: AnyCodable])
-        } else if interceptor.systemDialogSuspected {
-            // SpringBoard system dialog detected via key window resignation.
-            // The in-process interceptor can't capture SpringBoard dialogs (they
-            // render outside the app process), but PepperWindowMonitor noticed the
-            // app lost key window status with no app-side modal pending.
-            data["system_dialog_blocking"] = AnyCodable(
-                [
-                    "warning": AnyCodable("\u{26a0}\u{fe0f} system_dialog_suspected"),
-                    "description": AnyCodable(
-                        "A system dialog (e.g. permission prompt) appears to be overlaying the app. UI elements may not be interactable."
-                    ),
-                    "dialogs": AnyCodable([
-                        AnyCodable(
-                            [
-                                "title": AnyCodable("System Dialog (detected via window monitor)"),
-                                "buttons": AnyCodable([] as [String]),
-                            ] as [String: AnyCodable])
-                    ]),
-                    "suggested_actions": AnyCodable([
-                        AnyCodable("dialog detect_system — run full system dialog detection"),
-                        AnyCodable("dialog dismiss_system — auto-detect and dismiss system dialog"),
-                        AnyCodable("simulator permissions — pre-grant permissions to avoid dialogs"),
-                    ]),
-                ] as [String: AnyCodable])
         }
+        // The window-resign heuristic (`systemDialogSuspected`) is too noisy
+        // to surface here — it fires on Simulator backgrounding, focus steal,
+        // and SwiftUI sheets the swizzle missed, with no button list to act
+        // on. Auto-dismiss + the `system_dialog_detected` event still trigger
+        // from PepperWindowMonitor; AX-based detection in mcp_server.py is
+        // the source of truth for SpringBoard dialogs.
 
         return .ok(id: command.id, data: data)
     }

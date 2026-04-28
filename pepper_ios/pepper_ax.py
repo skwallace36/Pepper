@@ -407,6 +407,48 @@ def _collect_buttons_with_frames(
         _cf.CFRelease(child)
 
 
+def _collect_buttons_classified(
+    element: AXUIElementRef,
+    in_screen: bool,
+    inside: list[tuple[str, float, float, float, float, AXUIElementRef]],
+    outside: list[tuple[str, float, float, float, float, AXUIElementRef]],
+    depth: int = 0,
+    max_depth: int = 20,
+):
+    """Walk the window tree and split AXButtons into two buckets by ancestry:
+    `inside` (descended from an iOSContentGroup) and `outside` (not). Caller
+    owns the CFRetained refs in both lists.
+
+    System dialog buttons render in a sibling subtree of iOSContentGroup, so
+    they land in `outside`. Plain app UI buttons land in `inside` and must be
+    excluded from the cluster fallback — toggle rows, segmented controls, and
+    tab bars routinely satisfy the same-x same-width shape and would
+    otherwise misfire as a "system dialog blocking app" warning.
+    """
+    if depth > max_depth:
+        return
+    subrole = _get_str_attr(element, "AXSubrole")
+    is_screen = in_screen or (subrole == "iOSContentGroup")
+    role = _get_str_attr(element, "AXRole")
+    if role in _BUTTON_ROLES:
+        title = _button_title(element)
+        frame = _get_frame(element)
+        if title and frame is not None:
+            x, y, w, h = frame
+            _cf.CFRetain(element)
+            tup = (title, x, y, w, h, element)
+            if is_screen:
+                inside.append(tup)
+            else:
+                outside.append(tup)
+    children = _get_children(element)
+    for child in children:
+        _collect_buttons_classified(
+            child, is_screen, inside, outside, depth + 1, max_depth
+        )
+        _cf.CFRelease(child)
+
+
 def _find_dialog_cluster(
     buttons: list[tuple[str, float, float, float, float, AXUIElementRef]],
 ) -> list[tuple[str, float, float, float, float, AXUIElementRef]] | None:
@@ -500,18 +542,20 @@ def _find_dialog_buttons_in_app(
     Detection is structural — no title allowlist. The flow, scoped per window:
 
     1. For each AXWindow under the app, find its iOSContentGroup rect.
-    2. Walk that window's subtree to collect every AXButton with a frame.
-       System permission dialogs render into a sibling subtree of the same
-       Simulator window (outside iOSContentGroup but within the window).
+    2. Walk the window collecting AXButtons split by ancestry into "inside
+       iOSContentGroup" (the iOS screen — plain app UI) and "outside"
+       (sibling subtree — where SpringBoard renders permission dialogs).
     3. Filter geometrically: keep only buttons whose center sits within
-       this window's iOSContentGroup rect. That excludes the Simulator's
-       hardware buttons (Action, Volume Up, Home, etc.), which live in the
-       bezel outside the iOS screen region. Per-window scoping is critical
-       when multiple simulators are booted side-by-side, because window B's
-       bezel buttons can geometrically overlap window A's iOSContentGroup.
-    4. If AXSheet/AXDialog role is present, return all geometry-filtered
-       buttons. Otherwise look for a vertical cluster of ≥2 same-x same-width
-       buttons — the universal shape of an iOS alert / action sheet.
+       the iOSContentGroup rect. That excludes the Simulator's hardware
+       buttons (Action, Volume Up, Home, etc.), which live in the bezel
+       outside the iOS screen region. Per-window scoping is critical when
+       multiple simulators are booted side-by-side, because window B's bezel
+       buttons can geometrically overlap window A's iOSContentGroup.
+    4. If AXSheet/AXDialog role is present, trust it and return all
+       geometry-filtered buttons. Otherwise run the cluster heuristic only
+       against the "outside iOSContentGroup" set — the same-x same-width
+       shape inside the app subtree is too common in normal UI (toggle
+       rows, segmented controls) to be treated as a dialog signal.
 
     Caller owns CFRetained refs in the returned tuples and must CFRelease each.
     """
@@ -533,6 +577,65 @@ def _find_dialog_buttons_in_app(
         _cf.CFRelease(windows)
 
 
+def _select_dialog_buttons(
+    inside: list[tuple[str, float, float, float, float, object]],
+    outside: list[tuple[str, float, float, float, float, object]],
+    screen_rects: list[tuple[float, float, float, float]],
+    sheet_present: bool,
+) -> tuple[
+    list[tuple[str, float, float, float, float, object]],
+    list[tuple[str, float, float, float, float, object]],
+]:
+    """Pure decision over pre-collected button data. Returns (kept, dropped).
+
+    Caller is responsible for CFRetaining elements in the input lists and
+    CFReleasing every element in `dropped`. Splitting the decision from the
+    AX walk lets the structural logic be exercised in unit tests without a
+    live Simulator.
+
+    Rules:
+    - Filter out buttons whose center sits outside every iOSContentGroup
+      rect (Simulator hardware bezel, native AppKit menus, etc.).
+    - When AXSheet/AXDialog role is present anywhere in the window, return
+      every on-screen button regardless of subtree — the role is the signal.
+    - Otherwise the cluster fallback runs only against `outside` (sibling
+      subtree). Inside-iOSContentGroup buttons forming the same shape are
+      plain app UI (toggle rows, segmented controls) and are dropped.
+    """
+    def _split_on_screen(buttons):
+        keep, drop = [], []
+        for tup in buttons:
+            _, x, y, w, h, _el = tup
+            if any(_frame_inside((x, y, w, h), rect) for rect in screen_rects):
+                keep.append(tup)
+            else:
+                drop.append(tup)
+        return keep, drop
+
+    on_screen_inside, off_screen_inside = _split_on_screen(inside)
+    on_screen_outside, off_screen_outside = _split_on_screen(outside)
+    dropped: list = list(off_screen_inside) + list(off_screen_outside)
+
+    if sheet_present:
+        return on_screen_inside + on_screen_outside, dropped
+
+    dropped.extend(on_screen_inside)
+
+    cluster = _find_dialog_cluster(on_screen_outside)
+    if cluster is None:
+        dropped.extend(on_screen_outside)
+        return [], dropped
+
+    cluster_ids = {id(t[5]) for t in cluster}
+    kept = []
+    for t in on_screen_outside:
+        if id(t[5]) in cluster_ids:
+            kept.append(t)
+        else:
+            dropped.append(t)
+    return kept, dropped
+
+
 def _find_dialog_buttons_in_window(
     window: AXUIElementRef,
 ) -> list[tuple[str, float, float, float, float, AXUIElementRef]]:
@@ -544,33 +647,13 @@ def _find_dialog_buttons_in_window(
 
     sheet_present = _has_sheet_or_dialog_role(window)
 
-    all_buttons: list[tuple[str, float, float, float, float, AXUIElementRef]] = []
-    _collect_buttons_with_frames(window, all_buttons, max_depth=20)
+    inside: list[tuple[str, float, float, float, float, AXUIElementRef]] = []
+    outside: list[tuple[str, float, float, float, float, AXUIElementRef]] = []
+    _collect_buttons_classified(window, False, inside, outside, max_depth=20)
 
-    on_screen: list[tuple[str, float, float, float, float, AXUIElementRef]] = []
-    for tup in all_buttons:
-        _, x, y, w, h, el = tup
-        if any(_frame_inside((x, y, w, h), rect) for rect in screen_rects):
-            on_screen.append(tup)
-        else:
-            _cf.CFRelease(el)
-
-    if sheet_present:
-        return on_screen
-
-    cluster = _find_dialog_cluster(on_screen)
-    if cluster is None:
-        for _, _, _, _, _, el in on_screen:
-            _cf.CFRelease(el)
-        return []
-
-    cluster_ids = {id(t[5]) for t in cluster}
-    kept = []
-    for t in on_screen:
-        if id(t[5]) in cluster_ids:
-            kept.append(t)
-        else:
-            _cf.CFRelease(t[5])
+    kept, dropped = _select_dialog_buttons(inside, outside, screen_rects, sheet_present)
+    for _, _, _, _, _, el in dropped:
+        _cf.CFRelease(el)
     return kept
 
 
