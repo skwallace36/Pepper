@@ -15,6 +15,10 @@
 	</array>
 	<key>NSCameraUsageDescription</key>
 	<string>Pepper test app needs camera access for swizzle testing</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Pepper test app needs photo library access for swizzle testing</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Pepper test app needs photo library write access for swizzle testing</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Pepper test app needs microphone access for swizzle testing</string>
 	<key>NSLocationWhenInUseUsageDescription</key>

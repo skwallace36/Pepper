@@ -87,8 +87,24 @@ _ax.AXUIElementCopyAttributeNames.argtypes = [AXUIElementRef, ctypes.POINTER(CFA
 _ax.AXUIElementPerformAction.restype = AXError
 _ax.AXUIElementPerformAction.argtypes = [AXUIElementRef, CFStringRef]
 
+# AXValue (boxed CGPoint/CGSize) accessor
+_ax.AXValueGetValue.restype = ctypes.c_bool
+_ax.AXValueGetValue.argtypes = [ctypes.c_void_p, ctypes.c_uint32, ctypes.c_void_p]
+
 # AXError codes
 kAXErrorSuccess = 0
+
+# AXValue type tags
+kAXValueCGPointType = 1
+kAXValueCGSizeType = 2
+
+
+class CGPoint(ctypes.Structure):
+    _fields_ = [("x", ctypes.c_double), ("y", ctypes.c_double)]
+
+
+class CGSize(ctypes.Structure):
+    _fields_ = [("width", ctypes.c_double), ("height", ctypes.c_double)]
 
 
 # ---------------------------------------------------------------------------
@@ -190,7 +206,9 @@ def _find_simulator_pids() -> list[int]:
 # Tree walking: find dialog buttons
 # ---------------------------------------------------------------------------
 
-# Button titles we look for, in preference order
+# Buttons we prefer to tap, in priority order. Used by find_and_dismiss_dialog
+# to choose a default action when no target_title is given. Not used for
+# detection — detection is structural (role + frame clustering).
 DEFAULT_BUTTON_TITLES = [
     "Allow While Using App",
     "Allow Once",
@@ -207,10 +225,15 @@ DEFAULT_BUTTON_TITLES = [
 # AXRole values for clickable elements
 _BUTTON_ROLES = {"AXButton"}
 
-# Fast-path detection: AXDescriptions seen on common iOS permission prompts.
-# Not exhaustive — dialogs whose buttons aren't in this set still get caught
-# by the shape-based detector in _find_dialog_indicators.
-_KNOWN_DIALOG_DESCS = frozenset(DEFAULT_BUTTON_TITLES)
+# Frame-cluster tolerances. iOS alerts and action sheets stack equal-width
+# buttons at a shared x-origin with a thin separator between them.
+_CLUSTER_X_TOLERANCE = 5.0
+_CLUSTER_W_TOLERANCE = 5.0
+# Native separators are ~0.5pt; action-sheet "Cancel" buttons are detached
+# by ~8pt; allow slack for scaling and theme variations.
+_CLUSTER_MAX_GAP = 30.0
+# Min cluster size. 2 covers the common Allow / Don't Allow alert.
+_MIN_CLUSTER_SIZE = 2
 
 
 def _find_ios_content_group(
@@ -218,14 +241,9 @@ def _find_ios_content_group(
     depth: int = 0,
     max_depth: int = 8,
 ) -> AXUIElementRef | None:
-    """Find the AXGroup with subrole "iOSContentGroup" — the root of the iOS
-    content area inside a Simulator window. Returns a CFRetain'd ref that the
-    caller must CFRelease, or None.
-
-    Scoping searches to this subtree skips the Simulator's hardware buttons
-    (Action, Volume Up, Sleep/Wake, Home, Rotate) and the macOS menu bar,
-    which would otherwise show up as noise in button enumeration.
-    """
+    """Find the first AXGroup with subrole "iOSContentGroup". Returns a
+    CFRetain'd ref the caller must CFRelease, or None. Used as a fallback
+    when only one screen region is needed."""
     if depth > max_depth:
         return None
     subrole = _get_str_attr(element, "AXSubrole")
@@ -239,6 +257,49 @@ def _find_ios_content_group(
             found = _find_ios_content_group(child, depth + 1, max_depth)
         _cf.CFRelease(child)
     return found
+
+
+def _find_ios_screen_rects(
+    element: AXUIElementRef,
+    out: list[tuple[float, float, float, float]],
+    depth: int = 0,
+    max_depth: int = 12,
+):
+    """Walk the tree collecting frames of every iOSContentGroup. Each booted
+    simulator window contributes one rect; we use these as the "iOS screen"
+    regions. Used to filter buttons by geometry — the AX tree may surface
+    system-dialog buttons in a sibling window (not under iOSContentGroup),
+    but they always render visually on top of an iOS screen region."""
+    if depth > max_depth:
+        return
+    subrole = _get_str_attr(element, "AXSubrole")
+    if subrole == "iOSContentGroup":
+        frame = _get_frame(element)
+        if frame is not None:
+            out.append(frame)
+        # Don't recurse into the content group — its frame already covers it.
+        return
+    children = _get_children(element)
+    for child in children:
+        _find_ios_screen_rects(child, out, depth + 1, max_depth)
+        _cf.CFRelease(child)
+
+
+def _frame_inside(
+    inner: tuple[float, float, float, float],
+    outer: tuple[float, float, float, float],
+    tolerance: float = 1.0,
+) -> bool:
+    """True when the inner rect's center sits within `outer` (with slack).
+    Center-test rather than full-containment because iOS dialogs sometimes
+    render with a shadow that extends a few points past the screen edge."""
+    ix, iy, iw, ih = inner
+    ox, oy, ow, oh = outer
+    cx = ix + iw / 2
+    cy = iy + ih / 2
+    return (ox - tolerance) <= cx <= (ox + ow + tolerance) and (
+        oy - tolerance
+    ) <= cy <= (oy + oh + tolerance)
 
 
 def _button_title(element: AXUIElementRef) -> str | None:
@@ -281,36 +342,236 @@ def _find_buttons_recursive(
         _cf.CFRelease(child)
 
 
-def _find_dialog_indicators(
+def _get_frame(element: AXUIElementRef) -> tuple[float, float, float, float] | None:
+    """Read AXPosition + AXSize and return (x, y, w, h). None if either is missing."""
+    pos_ref = _get_attr(element, "AXPosition")
+    if pos_ref is None:
+        return None
+    size_ref = _get_attr(element, "AXSize")
+    if size_ref is None:
+        _cf.CFRelease(pos_ref)
+        return None
+    pt = CGPoint()
+    sz = CGSize()
+    ok_p = _ax.AXValueGetValue(pos_ref, kAXValueCGPointType, ctypes.byref(pt))
+    ok_s = _ax.AXValueGetValue(size_ref, kAXValueCGSizeType, ctypes.byref(sz))
+    _cf.CFRelease(pos_ref)
+    _cf.CFRelease(size_ref)
+    if not ok_p or not ok_s:
+        return None
+    return (pt.x, pt.y, sz.width, sz.height)
+
+
+def _has_sheet_or_dialog_role(
     element: AXUIElementRef,
     depth: int = 0,
     max_depth: int = 10,
 ) -> bool:
-    """Check if the tree contains a system dialog.
-
-    iOS simulator renders system dialogs inside AXGroup (not AXSheet/AXDialog).
-    We detect them by looking for AXButton elements with known system dialog
-    AXDescription values. A shape-based fallback was tried but the Simulator's
-    AX tree flattens the iOS content (dialog buttons and app UI buttons appear
-    as siblings) which made the shape heuristic unreliable — pending a better
-    scoping approach, we stick with the fast allowlist check here.
-    """
+    """Walk the tree looking for AXSheet/AXDialog roles. Free positive signal
+    when iOS exposes it — most modern dialogs don't, hence the cluster fallback."""
     role = _get_str_attr(element, "AXRole")
     if role in ("AXSheet", "AXDialog"):
         return True
-    if role == "AXButton":
-        desc = _get_str_attr(element, "AXDescription")
-        if desc and desc in _KNOWN_DIALOG_DESCS:
-            return True
     if depth >= max_depth:
         return False
     children = _get_children(element)
+    found = False
     for child in children:
-        result = _find_dialog_indicators(child, depth + 1, max_depth)
+        if not found:
+            found = _has_sheet_or_dialog_role(child, depth + 1, max_depth)
         _cf.CFRelease(child)
-        if result:
-            return True
-    return False
+    return found
+
+
+def _collect_buttons_with_frames(
+    element: AXUIElementRef,
+    out: list[tuple[str, float, float, float, float, AXUIElementRef]],
+    depth: int = 0,
+    max_depth: int = 15,
+):
+    """Walk the tree collecting (title, x, y, w, h, retained_element) for every
+    AXButton with a readable frame. Caller owns the retained refs."""
+    if depth > max_depth:
+        return
+    role = _get_str_attr(element, "AXRole")
+    if role in _BUTTON_ROLES:
+        title = _button_title(element)
+        frame = _get_frame(element)
+        if title and frame is not None:
+            x, y, w, h = frame
+            _cf.CFRetain(element)
+            out.append((title, x, y, w, h, element))
+    children = _get_children(element)
+    for child in children:
+        _collect_buttons_with_frames(child, out, depth + 1, max_depth)
+        _cf.CFRelease(child)
+
+
+def _find_dialog_cluster(
+    buttons: list[tuple[str, float, float, float, float, AXUIElementRef]],
+) -> list[tuple[str, float, float, float, float, AXUIElementRef]] | None:
+    """Find a cluster of equal-sized buttons aligned along a single axis.
+
+    Two shapes qualify, both universal fingerprints of an iOS alert / action
+    sheet:
+
+    - Vertical: ≥2 buttons sharing x-origin and width, stacked with small
+      vertical gaps. (iOS action sheet, 3+ button alert.)
+    - Horizontal: ≥2 buttons sharing y-origin and height, sitting side-by-side
+      with small horizontal gaps. (Standard 2-button alert: Allow / Don't Allow.)
+
+    App UIs rarely satisfy either shape with ≥2 elements that share both
+    cross-axis position AND cross-axis size.
+
+    Returns the cluster (sorted along its axis) or None.
+    """
+    return (
+        _find_axis_cluster(buttons, axis="vertical")
+        or _find_axis_cluster(buttons, axis="horizontal")
+    )
+
+
+def _find_axis_cluster(
+    buttons: list[tuple[str, float, float, float, float, AXUIElementRef]],
+    axis: str,
+) -> list[tuple[str, float, float, float, float, AXUIElementRef]] | None:
+    """Find a cluster aligned along the given axis. See `_find_dialog_cluster`.
+
+    For axis="vertical": cluster on (x, width); progress along y.
+    For axis="horizontal": cluster on (y, height); progress along x.
+    """
+    if len(buttons) < _MIN_CLUSTER_SIZE:
+        return None
+
+    if axis == "vertical":
+        align_idx, size_idx, progress_idx, progress_size_idx = 1, 3, 2, 4
+    else:
+        align_idx, size_idx, progress_idx, progress_size_idx = 2, 4, 1, 3
+
+    from collections import defaultdict
+
+    qa = max(1.0, _CLUSTER_X_TOLERANCE / 2)
+    qs = max(1.0, _CLUSTER_W_TOLERANCE / 2)
+    buckets: dict[tuple[int, int], list[tuple[str, float, float, float, float, AXUIElementRef]]] = defaultdict(list)
+    for b in buttons:
+        a = b[align_idx]
+        s = b[size_idx]
+        buckets[(int(round(a / qa)), int(round(s / qs)))].append(b)
+
+    best: list[tuple[str, float, float, float, float, AXUIElementRef]] | None = None
+    for items in buckets.values():
+        if len(items) < _MIN_CLUSTER_SIZE:
+            continue
+        ref_a, ref_s = items[0][align_idx], items[0][size_idx]
+        tight = [
+            it for it in items
+            if abs(it[align_idx] - ref_a) <= _CLUSTER_X_TOLERANCE
+            and abs(it[size_idx] - ref_s) <= _CLUSTER_W_TOLERANCE
+        ]
+        if len(tight) < _MIN_CLUSTER_SIZE:
+            continue
+        tight.sort(key=lambda it: it[progress_idx])
+        run: list[tuple[str, float, float, float, float, AXUIElementRef]] = [tight[0]]
+        for it in tight[1:]:
+            prev = run[-1]
+            gap = it[progress_idx] - (prev[progress_idx] + prev[progress_size_idx])
+            if -2.0 <= gap <= _CLUSTER_MAX_GAP:
+                run.append(it)
+            else:
+                if len(run) >= _MIN_CLUSTER_SIZE and (best is None or len(run) > len(best)):
+                    best = run
+                run = [it]
+        if len(run) >= _MIN_CLUSTER_SIZE and (best is None or len(run) > len(best)):
+            best = run
+    return best
+
+
+# ---------------------------------------------------------------------------
+# Per-app dialog detection (shared by detect_dialog and find_and_dismiss_dialog)
+# ---------------------------------------------------------------------------
+
+
+def _find_dialog_buttons_in_app(
+    app_ref: AXUIElementRef,
+) -> list[tuple[str, float, float, float, float, AXUIElementRef]]:
+    """Return the AXButtons that make up the system dialog inside this Simulator
+    app, or an empty list if no dialog is visible.
+
+    Detection is structural — no title allowlist. The flow, scoped per window:
+
+    1. For each AXWindow under the app, find its iOSContentGroup rect.
+    2. Walk that window's subtree to collect every AXButton with a frame.
+       System permission dialogs render into a sibling subtree of the same
+       Simulator window (outside iOSContentGroup but within the window).
+    3. Filter geometrically: keep only buttons whose center sits within
+       this window's iOSContentGroup rect. That excludes the Simulator's
+       hardware buttons (Action, Volume Up, Home, etc.), which live in the
+       bezel outside the iOS screen region. Per-window scoping is critical
+       when multiple simulators are booted side-by-side, because window B's
+       bezel buttons can geometrically overlap window A's iOSContentGroup.
+    4. If AXSheet/AXDialog role is present, return all geometry-filtered
+       buttons. Otherwise look for a vertical cluster of ≥2 same-x same-width
+       buttons — the universal shape of an iOS alert / action sheet.
+
+    Caller owns CFRetained refs in the returned tuples and must CFRelease each.
+    """
+    windows = _get_attr(app_ref, "AXWindows")
+    if windows is None:
+        return []
+    try:
+        if _cf.CFGetTypeID(windows) != _cf.CFArrayGetTypeID():
+            return []
+        count = _cf.CFArrayGetCount(windows)
+        results: list[tuple[str, float, float, float, float, AXUIElementRef]] = []
+        for i in range(count):
+            w = _cf.CFArrayGetValueAtIndex(windows, i)
+            if not w:
+                continue
+            results.extend(_find_dialog_buttons_in_window(w))
+        return results
+    finally:
+        _cf.CFRelease(windows)
+
+
+def _find_dialog_buttons_in_window(
+    window: AXUIElementRef,
+) -> list[tuple[str, float, float, float, float, AXUIElementRef]]:
+    """Per-window scan. See `_find_dialog_buttons_in_app` for the strategy."""
+    screen_rects: list[tuple[float, float, float, float]] = []
+    _find_ios_screen_rects(window, screen_rects)
+    if not screen_rects:
+        return []
+
+    sheet_present = _has_sheet_or_dialog_role(window)
+
+    all_buttons: list[tuple[str, float, float, float, float, AXUIElementRef]] = []
+    _collect_buttons_with_frames(window, all_buttons, max_depth=20)
+
+    on_screen: list[tuple[str, float, float, float, float, AXUIElementRef]] = []
+    for tup in all_buttons:
+        _, x, y, w, h, el = tup
+        if any(_frame_inside((x, y, w, h), rect) for rect in screen_rects):
+            on_screen.append(tup)
+        else:
+            _cf.CFRelease(el)
+
+    if sheet_present:
+        return on_screen
+
+    cluster = _find_dialog_cluster(on_screen)
+    if cluster is None:
+        for _, _, _, _, _, el in on_screen:
+            _cf.CFRelease(el)
+        return []
+
+    cluster_ids = {id(t[5]) for t in cluster}
+    kept = []
+    for t in on_screen:
+        if id(t[5]) in cluster_ids:
+            kept.append(t)
+        else:
+            _cf.CFRelease(t[5])
+    return kept
 
 
 # ---------------------------------------------------------------------------
@@ -325,9 +586,9 @@ def find_and_dismiss_dialog(
 ) -> dict:
     """Find a system dialog in the Simulator and click a button to dismiss it.
 
-    Enumerates every AXButton under the detected dialog (no title allowlist),
-    so callers see every available option via the `buttons` field in the
-    response. The choice of which button to tap is explicit:
+    Enumerates every AXButton under the detected dialog so callers see every
+    available option via the `buttons` field in the response. The choice of
+    which button to tap is explicit:
 
     - `target_title`: tap this exact title if present; otherwise don't tap
       (return the full list so the caller can pick).
@@ -335,22 +596,6 @@ def find_and_dismiss_dialog(
       common "allow"-style titles. If nothing matches, return the full list
       without tapping — safer than picking an arbitrary button (Cancel,
       Don't Allow) that would deny the permission.
-
-    Args:
-        button_titles: If given, only return/consider buttons with these
-            titles. Default (None) enumerates every button.
-        preferred_titles: Titles to try tapping in order. Ignored when
-            `target_title` is set.
-        target_title: Exact title to tap. Takes precedence over
-            preferred_titles.
-
-    Returns:
-        dict with keys:
-          dismissed: bool
-          button: str | None (title of button that was tapped, if any)
-          buttons: list[str] (all button titles found under the dialog)
-          method: "ax"
-          error: str | None
     """
     if preferred_titles is None:
         preferred_titles = ["Allow While Using App", "Allow Once", "Allow", "Open", "OK"]
@@ -370,17 +615,11 @@ def find_and_dismiss_dialog(
         if not app_ref:
             continue
         try:
-            if not _find_dialog_indicators(app_ref):
-                continue
-            # Scope button search to iOSContentGroup to skip Simulator
-            # hardware buttons and macOS chrome. Fall back to whole tree if
-            # the iOS content group isn't found (older sim builds).
-            search_root = _find_ios_content_group(app_ref) or app_ref
-            found: list[tuple[str, AXUIElementRef]] = []
-            _find_buttons_recursive(search_root, target_set, found)
-            if search_root is not app_ref:
-                _cf.CFRelease(search_root)
-            for title, el in found:
+            buttons = _find_dialog_buttons_in_app(app_ref)
+            for title, _x, _y, _w, _h, el in buttons:
+                if target_set is not None and title not in target_set:
+                    _cf.CFRelease(el)
+                    continue
                 all_found.append((title, el, pid))
         finally:
             _cf.CFRelease(app_ref)
@@ -414,10 +653,6 @@ def find_and_dismiss_dialog(
                 break
 
     if not chosen:
-        # Don't fall back to tapping an arbitrary button — a "Cancel" or
-        # "Don't Allow" tap here would deny the permission silently. Let the
-        # caller decide by reading `buttons` and calling again with
-        # target_title.
         reason = (
             f"No button matching target_title={target_title!r}"
             if target_title
@@ -450,39 +685,58 @@ def find_and_dismiss_dialog(
             _cf.CFRelease(el)
 
 
+def _has_visible_windows(app_ref: AXUIElementRef) -> bool:
+    """Return True iff macOS Accessibility currently exposes ≥1 window for this
+    application. AX returns an empty AXWindows array when the app is not the
+    frontmost process — every read against a backgrounded app appears empty,
+    which we can't distinguish from "really has no windows" without this check."""
+    val = _get_attr(app_ref, "AXWindows")
+    if val is None:
+        return False
+    try:
+        if _cf.CFGetTypeID(val) != _cf.CFArrayGetTypeID():
+            return False
+        return _cf.CFArrayGetCount(val) > 0
+    finally:
+        _cf.CFRelease(val)
+
+
 def detect_dialog() -> dict:
     """Check if a system dialog is visible in any Simulator window.
 
-    Returns every AXButton title under the detected dialog — not filtered
-    against a hardcoded allowlist — so callers see new iOS options (e.g.
-    "Limit Access", "Allow Access to All Photos") as soon as they appear.
+    Returns every AXButton title found under the detected dialog so callers
+    see new iOS options (e.g. "Limit Access", "Allow Full Access") as soon
+    as they appear — detection is structural, not name-matched.
+
+    `inconclusive` is True when AX could not see Simulator's windows at all
+    (typically because Simulator is not the focused macOS app). Distinct
+    from `detected=False` so callers can render an honest "probe blind"
+    hint rather than a confident "no dialog" claim.
 
     Returns:
-        dict with keys: detected (bool), buttons (list[str]), pids (list[int])
+        dict with keys: detected (bool), inconclusive (bool),
+        buttons (list[str]), pids (list[int])
     """
     pids = _find_simulator_pids()
     if not pids:
-        return {"detected": False, "buttons": [], "pids": []}
+        return {"detected": False, "inconclusive": False, "buttons": [], "pids": []}
 
-    dialog_pids = []
+    dialog_pids: list[int] = []
     button_titles_found: list[str] = []
+    any_windows_visible = False
 
     for pid in pids:
         app_ref = _ax.AXUIElementCreateApplication(pid)
         if not app_ref:
             continue
         try:
-            if not _find_dialog_indicators(app_ref):
+            if _has_visible_windows(app_ref):
+                any_windows_visible = True
+            buttons = _find_dialog_buttons_in_app(app_ref)
+            if not buttons:
                 continue
             dialog_pids.append(pid)
-            # Scope enumeration to iOSContentGroup to skip Simulator hardware
-            # buttons and macOS chrome.
-            search_root = _find_ios_content_group(app_ref) or app_ref
-            found: list[tuple[str, AXUIElementRef]] = []
-            _find_buttons_recursive(search_root, None, found)  # None = no title filter
-            if search_root is not app_ref:
-                _cf.CFRelease(search_root)
-            for title, el in found:
+            for title, _x, _y, _w, _h, el in buttons:
                 if title not in button_titles_found:
                     button_titles_found.append(title)
                 _cf.CFRelease(el)
@@ -491,6 +745,7 @@ def detect_dialog() -> dict:
 
     return {
         "detected": len(dialog_pids) > 0,
+        "inconclusive": not any_windows_visible and not dialog_pids,
         "buttons": button_titles_found,
         "pids": dialog_pids,
     }
