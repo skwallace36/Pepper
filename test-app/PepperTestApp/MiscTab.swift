@@ -1,12 +1,14 @@
 import SwiftUI
 import WebKit
 import MapKit
+import Photos
 import UserNotifications
 import os
 
 struct MiscTab: View {
     @Environment(AppState.self) private var state
     @State private var notificationStatus: String = "unknown"
+    @State private var photoStatus: String = "unknown"
     @AppStorage("pepper_feature_new_ui") private var newUIFlag: Bool = false
     @AppStorage("pepper_feature_beta") private var betaFlag: Bool = false
     @State private var allFeatureFlags: String = "none"
@@ -26,9 +28,24 @@ struct MiscTab: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .accessibilityIdentifier("notification_permission_status")
+
+                        Divider()
+
+                        Button("Request Photo Library Permission") {
+                            requestPhotoLibraryPermission()
+                        }
+                        .accessibilityIdentifier("request_photos_button")
+
+                        Text("Status: \(photoStatus)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .accessibilityIdentifier("photo_permission_status")
                     }
                 }
-                .onAppear { refreshNotificationStatus() }
+                .onAppear {
+                    refreshNotificationStatus()
+                    refreshPhotoStatus()
+                }
 
                 // MARK: - Layers (colors, shadows, gradients)
                 GroupBox("Layers") {
@@ -585,6 +602,26 @@ struct MiscTab: View {
                 @unknown default: notificationStatus = "unknown"
                 }
             }
+        }
+    }
+
+    // MARK: - Photo Library Permission
+
+    private func requestPhotoLibraryPermission() {
+        PHPhotoLibrary.requestAuthorization(for: .readWrite) { _ in
+            DispatchQueue.main.async { refreshPhotoStatus() }
+        }
+    }
+
+    private func refreshPhotoStatus() {
+        let status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+        switch status {
+        case .authorized: photoStatus = "authorized"
+        case .denied: photoStatus = "denied"
+        case .notDetermined: photoStatus = "not determined"
+        case .restricted: photoStatus = "restricted"
+        case .limited: photoStatus = "limited"
+        @unknown default: photoStatus = "unknown"
         }
     }
 }

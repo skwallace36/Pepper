@@ -140,6 +140,23 @@ def register_nav_tools(mcp, send_command, resolve_and_send, act_and_look):
                     "dialog detect_system",
                 ],
             }
+        # When AX couldn't see Simulator windows (Simulator backgrounded), we
+        # can't confirm or rule out a system dialog. Surface a hint so the
+        # caller knows the absence of system_dialog_blocking is not authoritative.
+        elif (
+            ax_result
+            and ax_result.get("inconclusive")
+            and not data.get("system_dialog_blocking")
+        ):
+            data["system_dialog_unknown"] = {
+                "reason": "simulator_backgrounded",
+                "description": (
+                    "AX dialog probe was inconclusive — Simulator.app is not the "
+                    "frontmost macOS application, so its windows aren't readable. "
+                    "Focus the Simulator window and re-run app_look if you suspect "
+                    "a system dialog is on screen."
+                ),
+            }
 
         if raw:
             if filter or fields:

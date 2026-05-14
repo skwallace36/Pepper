@@ -269,6 +269,7 @@ def register_dialog_tools(mcp, resolve_and_send, resolve_simulator=None):
                     },
                     "system": {
                         "detected": ax_result.get("detected", False),
+                        "inconclusive": ax_result.get("inconclusive", False),
                         "buttons": ax_result.get("buttons", []),
                     },
                 }
