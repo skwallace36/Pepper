@@ -36,7 +36,7 @@ __pycache__/
 *.pfx
 
 # Claude Code
-.claude/
+#.claude/
 
 # Dist
 dist/

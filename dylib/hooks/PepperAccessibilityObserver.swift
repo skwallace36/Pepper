@@ -108,7 +108,7 @@ final class PepperAccessibilityObserver {
 
     // MARK: - Recording (called from NotificationCenter callbacks and VC swizzle)
 
-    /// Signal a screen_changed event — called from `pepper_viewDidAppear`.
+    /// Signal a screen_changed event — called from the PepperState viewDidAppear chain swizzle.
     func signalScreenChanged() {
         signalEvent(type: "screen_changed")
     }

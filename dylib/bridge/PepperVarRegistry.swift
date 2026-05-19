@@ -5,9 +5,9 @@ import UIKit
 /// Discovers and catalogs @Published properties on ObservableObject instances at runtime.
 /// Supports reading and writing values, triggering SwiftUI re-renders on mutation.
 ///
-/// Discovery is triggered automatically from `pepper_viewDidAppear` — each VC's view
-/// hierarchy is walked to find UIHostingController rootViews and regular VC stored properties
-/// that conform to ObservableObject.
+/// Discovery is triggered automatically from the PepperState viewDidAppear chain swizzle —
+/// each VC's view hierarchy is walked to find UIHostingController rootViews and regular VC
+/// stored properties that conform to ObservableObject.
 ///
 /// Additionally, `discoverFromHeap()` scans the process heap for @Observable instances
 /// (classes with a `_$observationRegistrar` ivar) — independent of SwiftUI view tree structure.
@@ -60,7 +60,7 @@ final class PepperVarRegistry {
     // MARK: - Discovery
 
     /// Discover ObservableObject instances from a view controller's hierarchy.
-    /// Called from pepper_viewDidAppear.
+    /// Called from the PepperState viewDidAppear chain swizzle.
     func discoverFromViewController(_ vc: UIViewController) {
         // Skip container VCs
         if vc is UINavigationController || vc is UITabBarController || vc is UISplitViewController {

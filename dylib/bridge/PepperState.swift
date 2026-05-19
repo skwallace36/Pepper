@@ -45,21 +45,36 @@ final class PepperState {
 
     /// Install method swizzling to observe viewDidAppear / viewDidDisappear.
     /// Must be called once on the main thread.
+    ///
+    /// Uses IMP chaining (method_setImplementation), not method_exchangeImplementations.
+    /// Exchange renames the selector on the shared IMP, which breaks instrumentation
+    /// agents (NRMA, Sentry, etc.) that assume `_cmd` equals the selector their handler
+    /// was attached to — NRMA throws NRInvalidArgumentException in that case.
     func install() {
         guard !Self.swizzled else { return }
         Self.swizzled = true
 
-        Self.swizzleMethod(
-            cls: UIViewController.self,
-            original: #selector(UIViewController.viewDidAppear(_:)),
-            swizzled: #selector(UIViewController.pepper_viewDidAppear(_:))
-        )
+        PepperVCLifecycleSwizzle.install(
+            selector: #selector(UIViewController.viewDidAppear(_:))
+        ) { vc, _ in
+            PepperState.shared.screenAppeared(vc)
+            PepperIdleMonitor.shared.vcDidAppear(vc)
+            PepperVarRegistry.shared.discoverFromViewController(vc)
+            PepperAccessibilityObserver.shared.signalScreenChanged()
 
-        Self.swizzleMethod(
-            cls: UIViewController.self,
-            original: #selector(UIViewController.viewDidDisappear(_:)),
-            swizzled: #selector(UIViewController.pepper_viewDidDisappear(_:))
-        )
+            // Auto-tag interactive elements with accessibility IDs after layout settles
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak vc] in
+                guard let vc else { return }
+                PepperAccessibility.shared.tagElements(in: vc)
+            }
+        }
+
+        PepperVCLifecycleSwizzle.install(
+            selector: #selector(UIViewController.viewDidDisappear(_:))
+        ) { vc, _ in
+            PepperState.shared.screenDisappeared(vc)
+            PepperIdleMonitor.shared.vcDidDisappear(vc)
+        }
 
         pepperLog.info("State observation installed", category: .bridge)
     }
@@ -198,59 +213,4 @@ final class PepperState {
         )
     }
 
-    // MARK: - Swizzling Helper
-
-    private static func swizzleMethod(cls: AnyClass, original: Selector, swizzled: Selector) {
-        guard let originalMethod = class_getInstanceMethod(cls, original),
-            let swizzledMethod = class_getInstanceMethod(cls, swizzled)
-        else {
-            pepperLog.error("Failed to swizzle \(original)", category: .bridge)
-            return
-        }
-
-        let didAdd = class_addMethod(
-            cls,
-            original,
-            method_getImplementation(swizzledMethod),
-            method_getTypeEncoding(swizzledMethod)
-        )
-
-        if didAdd {
-            class_replaceMethod(
-                cls,
-                swizzled,
-                method_getImplementation(originalMethod),
-                method_getTypeEncoding(originalMethod)
-            )
-        } else {
-            method_exchangeImplementations(originalMethod, swizzledMethod)
-        }
-    }
-}
-
-// MARK: - UIViewController Swizzled Methods
-
-extension UIViewController {
-
-    @objc func pepper_viewDidAppear(_ animated: Bool) {
-        // Call original implementation (swizzled)
-        pepper_viewDidAppear(animated)
-        PepperState.shared.screenAppeared(self)
-        PepperIdleMonitor.shared.vcDidAppear(self)
-        PepperVarRegistry.shared.discoverFromViewController(self)
-        PepperAccessibilityObserver.shared.signalScreenChanged()
-
-        // Auto-tag interactive elements with accessibility IDs after layout settles
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
-            guard let self else { return }
-            PepperAccessibility.shared.tagElements(in: self)
-        }
-    }
-
-    @objc func pepper_viewDidDisappear(_ animated: Bool) {
-        // Call original implementation (swizzled)
-        pepper_viewDidDisappear(animated)
-        PepperState.shared.screenDisappeared(self)
-        PepperIdleMonitor.shared.vcDidDisappear(self)
-    }
 }

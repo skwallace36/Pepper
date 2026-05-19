@@ -4,9 +4,8 @@ import UIKit
 /// when screens appear, making tap-by-id work across the app even without
 /// upstream accessibility support.
 ///
-/// Does NOT use its own swizzling. Instead, call `tagElements(in:)` from
-/// the existing `PepperState` swizzle in `pepper_viewDidAppear`.
-/// This avoids double-swizzle conflicts.
+/// Does NOT use its own swizzling. Instead, `tagElements(in:)` is invoked from
+/// the `PepperState` viewDidAppear chain swizzle. This avoids double-swizzle conflicts.
 ///
 /// Also provides `tagCustomTabBar(_:)` for apps with custom tab bars,
 /// delegating to `PepperAppConfig.shared.tabBarProvider` for app-specific
